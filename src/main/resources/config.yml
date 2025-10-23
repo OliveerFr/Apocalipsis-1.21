@@ -1,0 +1,37 @@
+ajustes:
+  lluvia_fuego_extra_lluvia: true
+  reproducir_sonidos: true
+  dano_aleatorio: true
+  test_mode: false  # /avo test alterna este valor en runtime (no persistir)
+  max_explosion_hearts: 1.5
+
+# ═══════════════════════════════════════════════════════════════════
+# RENDIMIENTO - Sistema unificado de TPS y SAFE MODE
+# ═══════════════════════════════════════════════════════════════════
+rendimiento:
+  # Degradación progresiva por TPS (PerformanceAdapter)
+  tps_thresholds:
+    normal: 18.0              # TPS para estado NORMAL (sin degradación)
+    degraded: 14.0            # TPS para estado DEGRADED (escala 0.7)
+    critical: 10.0            # TPS para estado CRITICAL (escala 0.45)
+    safe_mode_hold_secs: 10   # Segundos para entrar a SAFE_MODE
+    recovery_hold_secs: 10    # Segundos para salir de SAFE_MODE
+  
+  # SAFE MODE directo por TPS o TNT (DisasterController)
+  safe_mode:
+    enabled: true
+    tps_umbral: 9.0           # TPS mínimo antes de activar SAFE_MODE directo
+    min_segundos: 5             # Segundos consecutivos bajo TPS para activar
+    bloquear_tnt_en_safe: true  # Cancelar explosiones TNT en SAFE_MODE
+    bloquear_explosiones_desastres: true  # Cancelar explosiones de desastres
+    auto_salir_segundos: 60     # Segundos para salir automáticamente
+  
+  # Control de TNT masiva
+  tnt_control:
+    enabled: true
+    ventana_ms: 5000            # Ventana de tiempo para contar explosiones
+    max_explosiones: 20         # Máximo de explosiones TNT en la ventana
+
+# Desastre por defecto al iniciar (o "random")
+default_disaster: "random"
+

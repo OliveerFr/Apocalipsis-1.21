@@ -1,0 +1,310 @@
+# ═══════════════════════════════════════════════════════════════════
+# CONTROL DE CICLO - Flags críticos para evitar inicios automáticos
+# ═══════════════════════════════════════════════════════════════════
+ciclo:
+  auto_cycle: true                # Si false, NUNCA iniciar automáticamente
+  start_on_boot: false             # No iniciar al encender/reload
+  min_jugadores: 1                 # No iniciar si < este número online
+  respectar_cooldown: true         # Respetar cooldown entre desastres
+  cooldown_fin_segundos: 600       # Segundos de espera tras finalizar un desastre
+
+desastres:
+  weights:
+    huracan: 1
+    lluvia_fuego: 1
+    terremoto: 1
+  explosion_power: 1.2
+  
+  rayos:
+    enabled: true
+    min_delay_ticks: 100
+    max_delay_ticks: 240
+  
+  debris:
+    enabled: true
+    max_por_jugador: 2
+  
+  huracan:
+    duracion_segundos: 150
+    romper_bloques: false  # [#6] Controla si altera bloques físicamente
+    
+    # Sistema de fases de intensidad (inicio/pico/declive)
+    fases:
+      enabled: true  # Si true, intensidad varía: inicio 0.5x → pico 1.5x → declive 0.8x
+    
+    # Visual debris seguros (FallingBlock sin gravity)
+    visual_debris:
+      enabled: true
+      materiales: ["DIRT","COBBLESTONE","OAK_LOG","OAK_LEAVES","GRASS_BLOCK","STONE"]
+      max_por_jugador: 8
+      tiempo_despawn_seg: 20
+    
+    # Empuje de viento
+    push:
+      max_horizontal: 0.18
+      clamp_total: 0.22
+      bajo_techo_reduction: 0.6  # Refugio bajo techo = 60% menos empuje
+      agachado_reduction: 0.55   # Agacharse = 55% menos empuje
+    
+    # Clima
+    clima:
+      lluvia: true
+      truenos: true
+    
+    # Rayos mejorados con targeting y efectos de estática
+    rayos:
+      enabled: true
+      min_delay_ticks: 80          # Mayor frecuencia que antes (era 100)
+      max_delay_ticks: 180         # Mayor frecuencia que antes (era 240)
+      target_exposed_players: true # Preferencia por jugadores sin techo
+      static_effect: true          # Efecto glowing 2s antes del impacto
+    
+    # NUEVO: Sistema de rachas de viento (calma vs ráfagas extremas)
+    rachas_viento:
+      enabled: true
+      duracion_ticks: 100          # Duración de cada ráfaga (5 segundos)
+      intervalo_ticks: 300         # Intervalo entre ráfagas (15 segundos)
+      multiplicador: 2.5           # Empuje durante ráfaga = 2.5x normal
+    
+    # NUEVO: Objetos voladores que pueden golpear jugadores
+    objetos_voladores:
+      enabled: true
+      max_activos: 15              # Máximo de objetos volando simultáneamente
+      spawn_interval_ticks: 20     # Cada cuánto spawn nuevos (1 segundo)
+      damage: 1.5                  # Daño al impactar (0.75 corazones)
+      materiales: ["STICK","DIRT","COBBLESTONE","OAK_LEAVES","GRAVEL","SAND"]
+    
+    # NUEVO: Inundación progresiva en zonas bajas
+    inundacion:
+      enabled: true
+      nivel_maximo: 2              # Altura máxima de agua acumulada
+      tick_interval: 100           # Cada cuánto expande (5 segundos)
+    
+    # NUEVO: Visibilidad reducida por lluvia intensa
+    visibilidad_reducida:
+      enabled: true
+      duracion_ticks: 60           # Duración de ceguera (3 segundos)
+      interval_ticks: 200          # Cada cuánto aplica (10 segundos)
+    
+    random_damage:
+      chance: 0.10
+
+  lluvia_fuego:
+    duracion_segundos: 150
+    romper_bloques: true
+    prender_fuego: true
+    fuego_dura_seg: 8
+    densidad: 0.3                # Densidad de bolas de fuego (0.5 = moderado, 0.9 = muy intenso)
+    explosion_power: 1.0         # Poder de explosión (1.0 = balanceado, 1.2 = más daño)
+    apaga_todo_al_finalizar: true
+    
+    # NUEVO: Sistema de fases (intensidad varía durante el desastre)
+    fases:
+      enabled: true
+      # Fase 1 (0-25%): 0.8x inicio moderado
+      # Fase 2 (25-75%): 1.4x pico intenso
+      # Fase 3 (75-100%): 0.9x declive
+    
+    # NUEVO: Meteoritos grandes con advertencia visual
+    meteoritos:
+      enabled: true
+      intervalo_ticks: 900         # Cada 30 segundos un meteorito (reducido de 20s)
+      explosion_power: 2.5         # Explosión 2.5x más grande (reducido de 3.0)
+      advertencia_ticks: 60        # 3 segundos de advertencia visual (columna roja)
+    
+    # NUEVO: Calor extremo constante
+    calor_extremo:
+      enabled: true
+      damage_interval_ticks: 200    # Daño cada 10 segundos si no hay techo
+    
+    # NUEVO: Lluvia de ceniza (ceguera temporal)
+    ceniza:
+      enabled: true
+      duracion_ticks: 100          # Duración de ceguera + slowness (5 segundos)
+    
+    # NUEVO: Transformación del terreno (grass → coarse dirt, hojas → aire)
+    transformacion_terreno:
+      enabled: true
+      # Transforma: GRASS_BLOCK/DIRT → COARSE_DIRT, hojas → AIR, WATER → AIR
+    
+    # NUEVO: Trayectorias parabólicas en lugar de caída vertical
+    trayectorias:
+      enabled: true
+      velocidad: 0.5               # Velocidad del proyectil curvo
+    
+    # NUEVO: Zonas de fuego persistente (se mantienen encendidas)
+    fuegos_persistentes:
+      enabled: true
+      radius: 1                    # Radio de fuegos alrededor de impactos
+    
+    # NUEVO: Rotura de bloques de protección (agua)
+    # Las bolas de fuego tienen probabilidad de romper bloques de agua cercanos
+    # Esto fuerza a los jugadores a reponer constantemente su protección
+    romper_proteccion:
+      enabled: true
+      probabilidad: 0.02           # 2% de probabilidad por impacto
+      cantidad_bloques: 2          # Rompe hasta 2 bloques de agua por impacto
+    
+    random_damage:
+      chance: 0.25
+
+  terremoto:
+    duracion_segundos: 150
+    romper_bloques: true
+    # Lista de bloques débiles que puede romper el terremoto
+    romper_whitelist: 
+      - "DIRT"
+      - "GRASS_BLOCK"
+      - "COBBLESTONE"
+      - "STONE"
+      - "GRAVEL"
+      - "SAND"
+      - "COARSE_DIRT"
+      - "PODZOL"
+      - "MYCELIUM"
+      - "SAND"
+      - "RED_SAND"
+      - "CLAY"
+      - "SOUL_SAND"
+      - "SOUL_SOIL"
+      - "NETHERRACK"
+      - "END_STONE"
+      - "CALCITE"
+      - "TUFF"
+      - "DRIPSTONE_BLOCK"
+      - "DEEPSLATE"
+      - "GRANITE"
+      - "DIORITE"
+      - "ANDESITE"
+    shake_intensity: 0.08
+    shake_every_ticks: 3
+    break_chance: 0.02  # Probabilidad base (fallback para materiales no especificados)
+    break_radius: 3
+    
+    # NUEVO: Probabilidades de rotura por dureza de material
+    # Escala realista: blandos (2%) → medios (1%) → duros (0.5%) → muy duros (0.25%)
+    durability:
+      soft: 0.02        # Tierra, arena, grava, arcilla (más fácil de romper)
+      medium: 0.01      # Piedra labrada, netherrack, end stone (resistencia moderada)
+      hard: 0.005       # Piedra, granito, diorita, andesita, deepslate (alta resistencia)
+      very_hard: 0.0025 # Tuff, calcita, basalto, blackstone (máxima resistencia)
+    
+    damage:
+      base_corazones: 0.0
+      max_por_pulso: 0.5
+    random_damage:
+      chance: 0.20
+    
+    # NUEVO: Sistema de fases (intensidad varía durante el desastre)
+    fases:
+      enabled: true
+      # Fase 1 (0-30%): 0.7x inicio ligero
+      # Fase 2 (30-70%): 1.3x pico intenso
+      # Fase 3 (70-100%): 0.9x declive
+    
+    # NUEVO: Grietas en el suelo (fisuras largas con lava/aire)
+    grietas:
+      enabled: true
+      max_activas: 5  # Máximo de grietas simultáneas
+      longitud_maxima: 8  # Longitud máxima de cada grieta
+    
+    # NUEVO: Derrumbes (bloques caen desde arriba)
+    derrumbes:
+      enabled: true
+      chance_por_tick: 0.05  # Probabilidad de derrumbe por jugador por tick
+      max_altura_busqueda: 10  # Altura máxima para buscar bloques que puedan caer
+    
+    # NUEVO: Aftershocks (réplicas sísmicas periódicas)
+    aftershocks:
+      enabled: true
+      intervalo_ticks: 300  # Cada 15 segundos una réplica
+      multiplicador_intensidad: 1.5  # Las réplicas son 1.5x más intensas
+    
+    # NUEVO: Ondas sísmicas visuales
+    ondas_sismicas:
+      enabled: true
+      intervalo_ticks: 80  # Cada 4 segundos genera una onda
+    
+    # NUEVO: Desorientación mejorada
+    desorientacion:
+      enabled: true
+      duracion_ticks: 100  # Duración de slowness + mining fatigue
+    
+    # NUEVO: Sistema de absorción de impacto
+    # Bloques específicos cerca del jugador reducen el efecto del terremoto
+    absorcion_impacto:
+      enabled: true
+      radio_deteccion: 5  # Radio de búsqueda de bloques absorbentes
+      reduccion_shake_por_bloque: 0.40  # Reduce intensidad de temblores 40% por bloque
+      reduccion_break_por_bloque: 0.50  # Reduce probabilidad de rotura 50% por bloque
+      reduccion_damage_por_bloque: 0.25  # Reduce daño y derrumbes 25% por bloque
+      max_bloques_efectivos: 4  # Máximo de bloques que cuentan para protección
+      materiales:  # Bloques que absorben vibraciones sísmicas
+        - "WHITE_WOOL"
+        - "ORANGE_WOOL"
+        - "MAGENTA_WOOL"
+        - "LIGHT_BLUE_WOOL"
+        - "YELLOW_WOOL"
+        - "LIME_WOOL"
+        - "PINK_WOOL"
+        - "GRAY_WOOL"
+        - "LIGHT_GRAY_WOOL"
+        - "CYAN_WOOL"
+        - "PURPLE_WOOL"
+        - "BLUE_WOOL"
+        - "BROWN_WOOL"
+        - "GREEN_WOOL"
+        - "RED_WOOL"
+        - "BLACK_WOOL"
+        - "SLIME_BLOCK"
+        - "BLUE_ICE"
+        - "HAY_BLOCK"
+    
+    # NUEVO: Rotura de bloques de protección
+    # El terremoto puede romper los bloques absorbentes, forzando al jugador a reponerlos
+    romper_proteccion:
+      enabled: true
+      probabilidad: 0.02         # 2% de probabilidad por segundo si hay protección activa
+      cantidad_bloques: 1        # Romper 1 bloque absorbente por tick
+
+common:
+  random_damage:
+    enabled: true
+    chance: 0.15
+    min_hearts: 0.5
+    max_hearts: 1.5
+    sound: "ENTITY_PLAYER_HURT"
+
+# [1.21.8] Efectos por jugador al completar TODAS sus misiones del día
+efectos_al_completar_mis_misiones:
+  enabled: true
+  title: "&b&l¡Misiones del día listas!"
+  subtitle: "&7Completaste todas tus misiones"
+  title_stay_ticks: 50
+  particle: "VILLAGER_HAPPY"
+  particle_count: 60
+  particle_spread:
+    x: 0.6
+    y: 1.0
+    z: 0.6
+  sound_player: "PLAYER_LEVELUP"
+  sound_volume: 1.0
+  sound_pitch: 1.1
+  fireworks: 2
+  fireworks_power: 1
+  # Opcional: comandos que se ejecutan SOLO al jugador (placeholder %player%)
+  commands_on_complete:
+    - "tellraw %player% {\"text\":\"¡Eres una máquina, %player%!\",\"color\":\"aqua\"}"
+
+# ═══════════════════════════════════════════════════════════════════
+# EXCEPCIONES - Jugadores inmunes a efectos de desastres
+# ═══════════════════════════════════════════════════════════════════
+excepciones:
+  enabled: true
+  players: []  # UUIDs en string; acepta nombres pero convierte a UUID
+
+# ═══════════════════════════════════════════════════════════════════
+# DEBUG - Logs de auditoría del ciclo de desastres
+# ═══════════════════════════════════════════════════════════════════
+debug:
+  ciclo: true  # Activar para ver logs detallados de inicio/bloqueo de desastres

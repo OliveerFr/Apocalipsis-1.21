@@ -1,0 +1,63 @@
+# ════════════════════════════════════════════════════════════════════
+# Apocalipsis — rangos.yml
+# Configuración de rangos existentes (NOVATO, EXPLORADOR, SOBREVIVIENTE, VETERANO, LEYENDA)
+# ════════════════════════════════════════════════════════════════════
+
+version: 1
+umbral_acumulado: true        # true = ps_required es ACUMULADO (recomendado)
+
+# Reglas visuales por defecto (se usan si el rango no define su propio valor)
+visual_por_defecto:
+  tab_prefix: ""
+  tab_suffix: ""
+  chat_prefix: ""
+  scoreboard_color: "WHITE"   # nombre Bukkit válido
+  display_name_style: "&f%rango%"  # cómo formatear display_name si falta
+
+# RANGOS EXISTENTES (IDs deben coincidir con MissionRank enum)
+ranks:
+  NOVATO:
+    display_name: "&aNovato"
+    ps_required: 0
+    misiones_diarias: 10
+    tab_prefix: "&a[N] "
+    tab_suffix: ""
+    chat_prefix: "&aN&7| "
+    scoreboard_color: "GREEN"
+
+  EXPLORADOR:
+    display_name: "&bExplorador"
+    ps_required: 250        # antes 150 → ~3 días de Novato (≈110 PS/día)
+    misiones_diarias: 8
+    tab_prefix: "&b[E] "
+    tab_suffix: ""
+    chat_prefix: "&bE&7| "
+    scoreboard_color: "AQUA"
+
+  SOBREVIVIENTE:
+    display_name: "&eSobreviviente"
+    ps_required: 900        # antes 400 → +650 PS (~3–4 días de Explorador)
+    misiones_diarias: 6
+    tab_prefix: "&e[S] "
+    tab_suffix: ""
+    chat_prefix: "&eS&7| "
+    scoreboard_color: "YELLOW"
+
+  VETERANO:
+    display_name: "&6Veterano"
+    ps_required: 2200       # antes 800 → +1300 PS (~4–5 días de Sobreviviente)
+    misiones_diarias: 4
+    tab_prefix: "&6[V] "
+    tab_suffix: ""
+    chat_prefix: "&6V&7| "
+    scoreboard_color: "GOLD"
+
+  LEYENDA:
+    display_name: "&c&lLeyenda"
+    ps_required: 4500       # antes 1500 → +2300 PS (~8–10 días de Veterano)
+    misiones_diarias: 3
+    tab_prefix: "&c[L] "
+    tab_suffix: ""
+    chat_prefix: "&cL&7| "
+    scoreboard_color: "RED"
+# ════════════════════════════════════════════════════════════════════

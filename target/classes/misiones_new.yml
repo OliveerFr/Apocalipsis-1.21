@@ -1,0 +1,412 @@
+misiones:
+
+  # ========== NOVATO - FÁCIL ==========
+  - id: "matar_zombies_facil"
+    nombre: "Matar zombies"
+    tipo: "MATAR"
+    objetivo: "ZOMBIE"
+    cantidad: 10
+    dificultad: "FACIL"
+    rangos: ["NOVATO", "EXPLORADOR"]
+    recompensa_ps: 16
+
+  - id: "romper_madera_facil"
+    nombre: "Talar árboles"
+    tipo: "ROMPER"
+    objetivo: "OAK_LOG"
+    cantidad: 20
+    dificultad: "FACIL"
+    rangos: ["NOVATO", "EXPLORADOR"]
+    recompensa_ps: 14
+
+  - id: "cocinar_chuleta"
+    nombre: "Cocinar chuleta"
+    tipo: "COCINAR"
+    objetivo: "COOKED_PORKCHOP"
+    cantidad: 5
+    dificultad: "FACIL"
+    rangos: ["NOVATO"]
+    recompensa_ps: 12
+
+  - id: "craftear_pico_piedra"
+    nombre: "Craftear pico de piedra"
+    tipo: "CRAFTEAR"
+    objetivo: "STONE_PICKAXE"
+    cantidad: 1
+    dificultad: "FACIL"
+    rangos: ["NOVATO"]
+    recompensa_ps: 10
+
+  - id: "consumir_manzana"
+    nombre: "Comer manzanas"
+    tipo: "CONSUMIR"
+    objetivo: "APPLE"
+    cantidad: 3
+    dificultad: "FACIL"
+    rangos: ["NOVATO", "EXPLORADOR"]
+    recompensa_ps: 8
+
+  - id: "romper_tierra"
+    nombre: "Romper tierra"
+    tipo: "ROMPER"
+    objetivo: "DIRT"
+    cantidad: 50
+    dificultad: "FACIL"
+    rangos: ["NOVATO"]
+    recompensa_ps: 10
+
+  - id: "matar_pollos"
+    nombre: "Cazar pollos"
+    tipo: "MATAR"
+    objetivo: "CHICKEN"
+    cantidad: 8
+    dificultad: "FACIL"
+    rangos: ["NOVATO"]
+    recompensa_ps: 12
+
+  - id: "cocinar_pescado"
+    nombre: "Cocinar pescado"
+    tipo: "COCINAR"
+    objetivo: "COOKED_SALMON"
+    cantidad: 4
+    dificultad: "FACIL"
+    rangos: ["NOVATO"]
+    recompensa_ps: 13
+
+  - id: "craftear_antorchas"
+    nombre: "Craftear antorchas"
+    tipo: "CRAFTEAR"
+    objetivo: "TORCH"
+    cantidad: 16
+    dificultad: "FACIL"
+    rangos: ["NOVATO"]
+    recompensa_ps: 9
+
+  # Nuevo: hierro básico desde el día 1 (bajo impacto)
+  - id: "fundir_hierro_basico"
+    nombre: "Fundir hierro (básico)"
+    tipo: "COCINAR"
+    objetivo: "IRON_INGOT"
+    cantidad: 3
+    dificultad: "FACIL"
+    rangos: ["NOVATO"]
+    recompensa_ps: 14
+
+  # ========== EXPLORADOR - MEDIA ==========
+  - id: "matar_esqueletos_media"
+    nombre: "Cazar esqueletos"
+    tipo: "MATAR"
+    objetivo: "SKELETON"
+    cantidad: 15
+    dificultad: "MEDIA"
+    rangos: ["EXPLORADOR", "SOBREVIVIENTE"]
+    recompensa_ps: 30
+
+  - id: "romper_piedra_media"
+    nombre: "Minar piedra"
+    tipo: "ROMPER"
+    objetivo: "STONE"
+    cantidad: 96
+    dificultad: "MEDIA"
+    rangos: ["EXPLORADOR", "SOBREVIVIENTE"]
+    recompensa_ps: 28
+
+  # Escudo sigue en media (ya hay hierro, pero es paso lógico)
+  - id: "craftear_escudo"
+    nombre: "Craftear un escudo"
+    tipo: "CRAFTEAR"
+    objetivo: "SHIELD"
+    cantidad: 1
+    dificultad: "MEDIA"
+    rangos: ["EXPLORADOR", "SOBREVIVIENTE"]
+    recompensa_ps: 26
+
+  - id: "craftear_espada_hierro"
+    nombre: "Forjar espada de hierro"
+    tipo: "CRAFTEAR"
+    objetivo: "IRON_SWORD"
+    cantidad: 1
+    dificultad: "MEDIA"
+    rangos: ["EXPLORADOR", "SOBREVIVIENTE"]
+    recompensa_ps: 24
+
+  - id: "cocinar_filete_media"
+    nombre: "Cocinar filetes"
+    tipo: "COCINAR"
+    objetivo: "COOKED_BEEF"
+    cantidad: 8
+    dificultad: "MEDIA"
+    rangos: ["EXPLORADOR"]
+    recompensa_ps: 22
+
+  - id: "romper_carbon"
+    nombre: "Minar carbón"
+    tipo: "ROMPER"
+    objetivo: "COAL_ORE"
+    cantidad: 24
+    dificultad: "MEDIA"
+    rangos: ["EXPLORADOR"]
+    recompensa_ps: 28
+
+  - id: "fundir_hierro_lote"
+    nombre: "Fundir hierro (lote)"
+    tipo: "COCINAR"
+    objetivo: "IRON_INGOT"
+    cantidad: 12
+    dificultad: "MEDIA"
+    rangos: ["EXPLORADOR"]
+    recompensa_ps: 26
+
+  - id: "matar_arana"
+    nombre: "Eliminar arañas"
+    tipo: "MATAR"
+    objetivo: "SPIDER"
+    cantidad: 10
+    dificultad: "MEDIA"
+    rangos: ["EXPLORADOR"]
+    recompensa_ps: 27
+
+  - id: "consumir_pan"
+    nombre: "Comer pan"
+    tipo: "CONSUMIR"
+    objetivo: "BREAD"
+    cantidad: 5
+    dificultad: "MEDIA"
+    rangos: ["EXPLORADOR"]
+    recompensa_ps: 20
+
+  # ========== SOBREVIVIENTE - DIFICIL ==========
+  - id: "matar_creepers_dificil"
+    nombre: "Eliminar creepers"
+    tipo: "MATAR"
+    objetivo: "CREEPER"
+    cantidad: 20
+    dificultad: "DIFICIL"
+    rangos: ["SOBREVIVIENTE", "VETERANO"]
+    recompensa_ps: 60
+
+  - id: "romper_obsidiana"
+    nombre: "Romper obsidiana"
+    tipo: "ROMPER"
+    objetivo: "OBSIDIAN"
+    cantidad: 10
+    dificultad: "DIFICIL"
+    rangos: ["SOBREVIVIENTE", "VETERANO"]
+    recompensa_ps: 55
+
+  - id: "craftear_cubo"
+    nombre: "Craftear un cubo"
+    tipo: "CRAFTEAR"
+    objetivo: "BUCKET"
+    cantidad: 2
+    dificultad: "DIFICIL"
+    rangos: ["SOBREVIVIENTE", "VETERANO"]
+    recompensa_ps: 50
+
+  - id: "craftear_yunque"
+    nombre: "Craftear un yunque"
+    tipo: "CRAFTEAR"
+    objetivo: "ANVIL"
+    cantidad: 1
+    dificultad: "DIFICIL"
+    rangos: ["SOBREVIVIENTE", "VETERANO"]
+    recompensa_ps: 58
+
+  - id: "cocinar_filete"
+    nombre: "Cocinar filetes"
+    tipo: "COCINAR"
+    objetivo: "COOKED_BEEF"
+    cantidad: 16
+    dificultad: "DIFICIL"
+    rangos: ["SOBREVIVIENTE", "VETERANO"]
+    recompensa_ps: 50
+
+  - id: "craftear_casco_hierro"
+    nombre: "Craftear casco de hierro"
+    tipo: "CRAFTEAR"
+    objetivo: "IRON_HELMET"
+    cantidad: 1
+    dificultad: "DIFICIL"
+    rangos: ["SOBREVIVIENTE"]
+    recompensa_ps: 48
+
+  - id: "romper_hierro"
+    nombre: "Minar hierro"
+    tipo: "ROMPER"
+    objetivo: "IRON_ORE"
+    cantidad: 64
+    dificultad: "DIFICIL"
+    rangos: ["SOBREVIVIENTE"]
+    recompensa_ps: 52
+
+   # ========== VETERANO - DIFICIL ==========
+  - id: "matar_enderman_veterano"
+    nombre: "Cazar Enderman"
+    tipo: "MATAR"
+    objetivo: "ENDERMAN"
+    cantidad: 16
+    dificultad: "DIFICIL"
+    rangos: ["VETERANO", "LEYENDA"]
+    recompensa_ps: 70
+
+  - id: "craftear_diamante"
+    nombre: "Forjar pechera de diamante"
+    tipo: "CRAFTEAR"
+    objetivo: "DIAMOND_CHESTPLATE"
+    cantidad: 1
+    dificultad: "DIFICIL"
+    rangos: ["VETERANO", "LEYENDA"]
+    recompensa_ps: 80
+
+  - id: "romper_netherrack"
+    nombre: "Minar Netherrack"
+    tipo: "ROMPER"
+    objetivo: "NETHERRACK"
+    cantidad: 256
+    dificultad: "DIFICIL"
+    rangos: ["VETERANO", "LEYENDA"]
+    recompensa_ps: 62
+
+  - id: "craftear_bloques_hierro"
+    nombre: "Craftear bloques de hierro"
+    tipo: "CRAFTEAR"
+    objetivo: "IRON_BLOCK"
+    cantidad: 8
+    dificultad: "DIFICIL"
+    rangos: ["VETERANO"]
+    recompensa_ps: 64
+
+  # NUEVO: avanzar hacia End (más ojos)
+  - id: "craftear_ojos_ender_vet"
+    nombre: "Craftear Ojos de Ender"
+    tipo: "CRAFTEAR"
+    objetivo: "ENDER_EYE"
+    cantidad: 12
+    dificultad: "DIFICIL"
+    rangos: ["VETERANO"]
+    recompensa_ps: 72
+
+  # NUEVO: farmeo de blaze real
+  - id: "matar_blaze_vet"
+    nombre: "Eliminar Blaze"
+    tipo: "MATAR"
+    objetivo: "BLAZE"
+    cantidad: 25
+    dificultad: "DIFICIL"
+    rangos: ["VETERANO"]
+    recompensa_ps: 70
+
+  # NUEVO: progreso a netherite (lote medio)
+  - id: "fundir_scrap_vet"
+    nombre: "Fundir Ancient Debris a scrap"
+    tipo: "COCINAR"
+    objetivo: "NETHERITE_SCRAP"
+    cantidad: 12
+    dificultad: "DIFICIL"
+    rangos: ["VETERANO"]
+    recompensa_ps: 75
+
+  # NUEVO: debris extra (romper, no solo fundir)
+  - id: "romper_debris_vet"
+    nombre: "Romper Ancient Debris"
+    tipo: "ROMPER"
+    objetivo: "ANCIENT_DEBRIS"
+    cantidad: 12
+    dificultad: "DIFICIL"
+    rangos: ["VETERANO"]
+    recompensa_ps: 78
+
+   # ========== LEYENDA - DIFICIL ==========
+  # META: jugadores ya tienen gear fuerte/netherite → metas de jefes, beacon, shulkers y piezas netherite
+
+  # Bosses y late–game
+  - id: "matar_wither_skeleton"
+    nombre: "Eliminar Wither Skeleton"
+    tipo: "MATAR"
+    objetivo: "WITHER_SKELETON"
+    cantidad: 20
+    dificultad: "DIFICIL"
+    rangos: ["LEYENDA"]
+    recompensa_ps: 90
+
+  - id: "matar_wither"
+    nombre: "Derrotar al Wither"
+    tipo: "MATAR"
+    objetivo: "WITHER"
+    cantidad: 1
+    dificultad: "DIFICIL"
+    rangos: ["LEYENDA"]
+    recompensa_ps: 120
+
+  - id: "matar_ender_dragon"
+    nombre: "Derrotar al Ender Dragón"
+    tipo: "MATAR"
+    objetivo: "ENDER_DRAGON"
+    cantidad: 1
+    dificultad: "DIFICIL"
+    rangos: ["LEYENDA"]
+    recompensa_ps: 140
+
+  # Progresión netherite y beacon
+  - id: "craftear_netherite_lote"
+    nombre: "Craftear lingotes de Netherite (lote)"
+    tipo: "CRAFTEAR"
+    objetivo: "NETHERITE_INGOT"
+    cantidad: 4
+    dificultad: "DIFICIL"
+    rangos: ["LEYENDA"]
+    recompensa_ps: 110
+
+  - id: "fundir_scrap_leyenda"
+    nombre: "Fundir scrap de Netherite (alto)"
+    tipo: "COCINAR"
+    objetivo: "NETHERITE_SCRAP"
+    cantidad: 24
+    dificultad: "DIFICIL"
+    rangos: ["LEYENDA"]
+    recompensa_ps: 110
+
+  - id: "craftear_beacon"
+    nombre: "Construir un Beacon"
+    tipo: "CRAFTEAR"
+    objetivo: "BEACON"
+    cantidad: 1
+    dificultad: "DIFICIL"
+    rangos: ["LEYENDA"]
+    recompensa_ps: 120
+
+  # End avanzado
+  - id: "matar_shulker_leyenda"
+    nombre: "Eliminar Shulkers"
+    tipo: "MATAR"
+    objetivo: "SHULKER"
+    cantidad: 10
+    dificultad: "DIFICIL"
+    rangos: ["LEYENDA"]
+    recompensa_ps: 95
+
+  # Piezas netherite (elección a tu gusto, dejo una)
+  - id: "craftear_pechera_netherite"
+    nombre: "Forjar pechera de Netherite"
+    tipo: "CRAFTEAR"
+    objetivo: "NETHERITE_CHESTPLATE"
+    cantidad: 1
+    dificultad: "DIFICIL"
+    rangos: ["LEYENDA"]
+    recompensa_ps: 115
+
+
+
+config:
+  max_por_dia: 10
+  por_rango:
+    NOVATO: 10
+    EXPLORADOR: 8
+    SOBREVIVIENTE: 6
+    VETERANO: 4
+    LEYENDA: 3
+  pesos_por_dificultad:
+    FACIL: 5
+    MEDIA: 3
+    DIFICIL: 1
+  auto_asignar_al_entrar: true  # Habilita asignación a "late joiners"

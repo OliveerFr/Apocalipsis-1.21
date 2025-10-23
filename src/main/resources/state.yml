@@ -1,0 +1,9 @@
+# ═══════════════════════════════════════════════════════════════════
+# STATE.YML - Estado persistente del servidor (generado automáticamente)
+# ═══════════════════════════════════════════════════════════════════
+# NOTA: Este archivo es generado y actualizado automáticamente por el plugin.
+# No requiere edición manual en la mayoría de los casos.
+
+estado: DETENIDO              # DETENIDO | PREPARACION | ACTIVO | SAFE_MODE
+ultimo_desastre: ""           # ID del último desastre ejecutado (o vacío)
+last_end_epoch_ms: 0          # Timestamp en milisegundos del último fin de desastre

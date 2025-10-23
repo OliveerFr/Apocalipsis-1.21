@@ -1,0 +1,26 @@
+name: Apocalipsis
+version: '1.0.0'
+main: me.apocalipsis.Apocalipsis
+api-version: 1.21
+author: OliveerF
+description: Plugin completo con estados globales, desastres y misiones
+softdepend:
+  - WorldGuard
+  - ProtectionStones
+
+commands:
+  avo:
+    description: Comando principal de Apocalipsis
+    usage: /avo <subcommand>
+    aliases: [avoc, apoc, apocalipsis]
+  apocalipsis:
+    description: Alias principal de Apocalipsis
+    usage: /apocalipsis <subcommand>
+
+permissions:
+  avo.admin:
+    description: Acceso total al plugin
+    default: op
+  avo.user:
+    description: Acceso a comandos básicos
+    default: true
