@@ -1,13 +1,14 @@
 package me.apocalipsis.listeners;
 
-import me.apocalipsis.Apocalipsis;
-import me.apocalipsis.ui.ScoreboardManager;
-import me.apocalipsis.ui.TablistManager;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+
+import me.apocalipsis.Apocalipsis;
+import me.apocalipsis.ui.ScoreboardManager;
+import me.apocalipsis.ui.TablistManager;
 
 public class PlayerListener implements Listener {
 

@@ -178,7 +178,11 @@ public class DisasterController {
             Bukkit.getScheduler().cancelTask(cooldownTaskId);
             cooldownTaskId = -1;
         }
-        if (nextTask != null && !nextTask.isCancelled()) {
+        // Solo cancelar nextTask si hay desastre activo o preparación forzada
+        String estado = stateManager.getEstado();
+        boolean isPrepForzada = stateManager.isPrepForzada();
+        if (nextTask != null && !nextTask.isCancelled() && ("ACTIVO".equals(estado) || ("PREPARACION".equals(estado) && isPrepForzada))) {
+            plugin.getLogger().info("[Cycle][DEBUG] cancelAllTasks: cancelando nextTask (auto-next)");
             nextTask.cancel();
             nextTask = null;
         }
@@ -819,7 +823,7 @@ public class DisasterController {
         String estado = stateManager.getEstado();
         
         // 1) Estado válido: PREPARACION siempre, o DETENIDO solo si reason=command
-        if (!(estado.equals("PREPARACION") || (estado.equals("DETENIDO") && "command".equals(reason)))) {
+        if (!(estado.equals("PREPARACION") || (estado.equals("DETENIDO") && ("command".equals(reason) || "cooldown".equals(reason))))) {
             if (plugin.getConfigManager().isDebugCiclo()) {
                 plugin.getLogger().info("[Cycle] BLOQUEADO: estado=" + estado + " reason=" + reason);
             }
@@ -1168,19 +1172,25 @@ public class DisasterController {
         soundUtil.playSoundAll(Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.2f);
         soundUtil.playSoundAll(Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 2.0f);
         
-        // Al terminar un desastre → PREPARACION (no forzada)
-        long now = System.currentTimeMillis();
-        stateManager.setEstado("PREPARACION");
-        stateManager.setString("desastre_actual", "");
-        stateManager.setLastEndEpochMs(now);         // ✅ Usa setter que actualiza memoria + YAML
-        stateManager.setPrepForzada(false);          // fin de desastre NO es preparación forzada
-        stateManager.setLong("start_epoch_ms", 0L);
-        stateManager.setLong("end_epoch_ms", 0L);
-        stateManager.setLastDisasterId(disasterId);  // ultimo_desastre
-        stateManager.saveState();
+    // Al terminar un desastre → PREPARACION (no forzada) con cooldown visible
+    long now = System.currentTimeMillis();
+    int cooldownSeg = plugin.getConfigManager().getCooldownFinSegundos();
+    long startMs = now;
+    long endMs = now + cooldownSeg * 1000L;
+    stateManager.setEstado("PREPARACION");
+    stateManager.setString("desastre_actual", "");
+    stateManager.setLastEndEpochMs(now);         // ✅ Usa setter que actualiza memoria + YAML
+    stateManager.setPrepForzada(false);          // fin de desastre NO es preparación forzada
+    stateManager.setLong("start_epoch_ms", startMs);
+    stateManager.setLong("end_epoch_ms", endMs);
+    stateManager.setLastDisasterId(disasterId);  // ultimo_desastre
+    stateManager.saveState();
         
-        // [ANTIRREBOTE] Marcar entrada en PREPARACION para evitar inicio en mismo tick
-        enteredPreparationAtMs = now;
+    // [ANTIRREBOTE] Marcar entrada en PREPARACION para evitar inicio en mismo tick
+    enteredPreparationAtMs = now;
+        
+    // Mostrar mensaje de cooldown visible
+    messageBus.broadcast("§e⏳ Cooldown: próximo desastre en §f" + cooldownSeg + "§es.", "cooldown_start");
         
         // Limpiar instancia activa
         activeDisaster = null;
@@ -1196,7 +1206,6 @@ public class DisasterController {
         // Programar auto-next si está habilitado
         if (plugin.getConfigManager().isAutoCycleEnabled()) {
             scheduleAutoNext();
-            int cooldownSeg = plugin.getConfigManager().getCooldownFinSegundos();
             logOnce(0, "AUTO-NEXT programado tras cooldown (" + cooldownSeg + "s)");
         }
     }
