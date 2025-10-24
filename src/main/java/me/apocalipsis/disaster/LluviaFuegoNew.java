@@ -297,7 +297,7 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
     @Override
     public void applyEffects(Player player) {
         // Spawn fireballs cada 2 ticks (era 3, demasiado lento)
-        if (shouldSkipTick(2)) return;
+        if (shouldSkipTick(8)) return;
         
         if (isPlayerExempt(player)) return;
 
@@ -307,14 +307,14 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
         // Densidad ajustada con multiplicador de fase
         double densidadFinal = densidad * scale * faseMultiplicador;
         if (plugin.getConfigManager().isTestMode()) {
-            densidadFinal *= 1.5;
+            densidadFinal *= 0.5;
         }
 
         int tries = Math.max(1, (int) Math.ceil(densidadFinal));
         
         for (int i = 0; i < tries; i++) {
             // Probabilidad más alta para asegurar spawns
-            if (random.nextDouble() > 0.85) continue; // Era densidadFinal / tries, muy bajo
+            if (random.nextDouble() > 0.05) continue; // Era densidadFinal / tries, muy bajo
 
             Location playerLoc = player.getLocation();
             World world = player.getWorld();

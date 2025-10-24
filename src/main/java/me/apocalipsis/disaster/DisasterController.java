@@ -723,7 +723,11 @@ public class DisasterController {
         
         nextTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
             long now = System.currentTimeMillis();
-            
+
+            if (plugin.getConfigManager().isDebugCiclo()) {
+                plugin.getLogger().info("[Cycle][DEBUG] scheduleAutoNext tick: now=" + now);
+            }
+                
             // [ANTIRREBOTE] Evitar inicio en mismo tick tras cambio a PREPARACION
             if (now - enteredPreparationAtMs < 250L) {
                 return;
@@ -732,39 +736,32 @@ public class DisasterController {
             // Leer estado desde state.yml (fuente única)
             String estado = stateManager.getEstado();
             
-            // 1) Funcionamiento en PREPARACION
-            if ("PREPARACION".equals(estado)) {
-                boolean prepForzada = stateManager.isPrepForzada();
-                long endEpochMs = stateManager.getLong("end_epoch_ms", 0L);
-                
-                // Si es preparación forzada
-                if (prepForzada) {
-                    // Si terminó la ventana forzada, iniciar SIN cooldown
-                    if (endEpochMs > 0 && now >= endEpochMs) {
-                        int minJugadores = plugin.getConfigManager().getMinJugadores();
-                        if (Bukkit.getOnlinePlayers().size() >= minJugadores) {
-                            plugin.getLogger().info("[Cycle] Fin de PREPARACION forzada → iniciando");
-                            
-                            // [FIX] Limpiar flag para evitar bucle infinito de intentos
-                            stateManager.setPrepForzada(false);
-                            stateManager.saveState();
-                            
-                            tryStartRandomDisaster("prep_forzada_end");
-                        } else {
-                            // No hay jugadores suficientes, esperar siguiente tick
-                            plugin.getLogger().info("[Cycle] Esperando jugadores mínimos: " + Bukkit.getOnlinePlayers().size() + "/" + minJugadores);
-                        }
+            // Permitir funcionamiento en PREPARACION (normal, no forzada) y DETENIDO
+            boolean isPrep = "PREPARACION".equals(estado);
+            boolean isDetenido = "DETENIDO".equals(estado);
+            boolean prepForzada = stateManager.isPrepForzada();
+            long endEpochMs = stateManager.getLong("end_epoch_ms", 0L);
+
+            // Si es preparación forzada, solo iniciar cuando termine la ventana
+            if (isPrep && prepForzada) {
+                if (endEpochMs > 0 && now >= endEpochMs) {
+                    int minJugadores = plugin.getConfigManager().getMinJugadores();
+                    if (Bukkit.getOnlinePlayers().size() >= minJugadores) {
+                        plugin.getLogger().info("[Cycle] Fin de PREPARACION forzada → iniciando");
+                        // Limpiar flag para evitar bucle infinito de intentos
+                        stateManager.setPrepForzada(false);
+                        stateManager.saveState();
+                        tryStartRandomDisaster("prep_forzada_end");
+                    } else {
+                        plugin.getLogger().info("[Cycle] Esperando jugadores mínimos: " + Bukkit.getOnlinePlayers().size() + "/" + minJugadores);
                     }
-                    return; // Mientras siga forzada, jamás iniciar
                 }
-                
-                // Preparación normal - esperar que termine naturalmente
-                return;
+                return; // Mientras siga forzada, jamás iniciar
             }
-            
-            // 2) Funcionamiento en DETENIDO (cooldown después de desastre)
-            if (!"DETENIDO".equals(estado)) {
-                return; // Solo funcionar en PREPARACION o DETENIDO
+
+            // Solo continuar si estamos en PREPARACION (normal, no forzada) o DETENIDO
+            if (!(isPrep && !prepForzada) && !isDetenido) {
+                return;
             }
             
             // 3) Verificar auto_cycle

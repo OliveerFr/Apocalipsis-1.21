@@ -29,11 +29,10 @@ public class PlayerListener implements Listener {
         // [FIX DEFINITIVO] Forzar board compartido (crítico para que todos vean lo mismo)
         player.setScoreboard(org.bukkit.Bukkit.getScoreboardManager().getMainScoreboard());
         
-        // [AUTOASIGNACIÓN] Late-join: asignar misiones con retraso para evitar race conditions
-        // TODO: Implementar método ensureDailyMissionsAssigned() en MissionService si se necesita auto-asignación
-        // org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
-        //     missionService.ensureDailyMissionsAssigned(player);
-        // }, 2L);
+        // [AUTOASIGNACIÓN] Late-join: asignar misiones si el día está activo
+        org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            plugin.getMissionService().assignMissionsToPlayer(player);
+        }, 2L);
 
         // Actualizar UI
         scoreboardManager.updatePlayer(player);

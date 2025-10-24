@@ -1,33 +1,33 @@
-C:\Users\riolu\Videos\Eventos\Apocalipsis 1.21.8\src\main\java\me\apocalipsis\missions\MissionAssignment.java
-C:\Users\riolu\Videos\Eventos\Apocalipsis 1.21.8\src\main\java\me\apocalipsis\ui\SoundUtil.java
-C:\Users\riolu\Videos\Eventos\Apocalipsis 1.21.8\src\main\java\me\apocalipsis\missions\RankService.java
-C:\Users\riolu\Videos\Eventos\Apocalipsis 1.21.8\src\main\java\me\apocalipsis\disaster\HuracanNew.java
-C:\Users\riolu\Videos\Eventos\Apocalipsis 1.21.8\src\main\java\me\apocalipsis\missions\MissionRenderer.java
-C:\Users\riolu\Videos\Eventos\Apocalipsis 1.21.8\src\main\java\me\apocalipsis\state\StateManager.java
-C:\Users\riolu\Videos\Eventos\Apocalipsis 1.21.8\src\main\java\me\apocalipsis\disaster\DisasterRegistry.java
-C:\Users\riolu\Videos\Eventos\Apocalipsis 1.21.8\src\main\java\me\apocalipsis\state\TimeService.java
-C:\Users\riolu\Videos\Eventos\Apocalipsis 1.21.8\src\main\java\me\apocalipsis\ui\MessageBus.java
-C:\Users\riolu\Videos\Eventos\Apocalipsis 1.21.8\src\main\java\me\apocalipsis\disaster\adapters\PerformanceAdapter.java
-C:\Users\riolu\Videos\Eventos\Apocalipsis 1.21.8\src\main\java\me\apocalipsis\disaster\Disaster.java
-C:\Users\riolu\Videos\Eventos\Apocalipsis 1.21.8\src\main\java\me\apocalipsis\disaster\DisasterController.java
-C:\Users\riolu\Videos\Eventos\Apocalipsis 1.21.8\src\main\java\me\apocalipsis\listeners\MissionListener.java
-C:\Users\riolu\Videos\Eventos\Apocalipsis 1.21.8\src\main\java\me\apocalipsis\missions\MissionType.java
-C:\Users\riolu\Videos\Eventos\Apocalipsis 1.21.8\src\main\java\me\apocalipsis\missions\MissionRank.java
-C:\Users\riolu\Videos\Eventos\Apocalipsis 1.21.8\src\main\java\me\apocalipsis\missions\MissionService.java
-C:\Users\riolu\Videos\Eventos\Apocalipsis 1.21.8\src\main\java\me\apocalipsis\listeners\PlayerListener.java
-C:\Users\riolu\Videos\Eventos\Apocalipsis 1.21.8\src\main\java\me\apocalipsis\utils\ConfigManager.java
-C:\Users\riolu\Videos\Eventos\Apocalipsis 1.21.8\src\main\java\me\apocalipsis\ui\ScoreboardManager.java
-C:\Users\riolu\Videos\Eventos\Apocalipsis 1.21.8\src\main\java\me\apocalipsis\missions\MissionCatalog.java
-C:\Users\riolu\Videos\Eventos\Apocalipsis 1.21.8\src\main\java\me\apocalipsis\utils\ParticleCompat.java
-C:\Users\riolu\Videos\Eventos\Apocalipsis 1.21.8\src\main\java\me\apocalipsis\ui\TablistManager.java
-C:\Users\riolu\Videos\Eventos\Apocalipsis 1.21.8\src\main\java\me\apocalipsis\state\ServerState.java
-C:\Users\riolu\Videos\Eventos\Apocalipsis 1.21.8\src\main\java\me\apocalipsis\utils\ExplosionGuard.java
-C:\Users\riolu\Videos\Eventos\Apocalipsis 1.21.8\src\main\java\me\apocalipsis\utils\DisasterDamage.java
-C:\Users\riolu\Videos\Eventos\Apocalipsis 1.21.8\src\main\java\me\apocalipsis\utils\EffectUtil.java
-C:\Users\riolu\Videos\Eventos\Apocalipsis 1.21.8\src\main\java\me\apocalipsis\commands\ApocalipsisCommand.java
-C:\Users\riolu\Videos\Eventos\Apocalipsis 1.21.8\src\main\java\me\apocalipsis\commands\AvoTabCompleter.java
-C:\Users\riolu\Videos\Eventos\Apocalipsis 1.21.8\src\main\java\me\apocalipsis\disaster\DisasterBase.java
-C:\Users\riolu\Videos\Eventos\Apocalipsis 1.21.8\src\main\java\me\apocalipsis\disaster\TerremotoNew.java
-C:\Users\riolu\Videos\Eventos\Apocalipsis 1.21.8\src\main\java\me\apocalipsis\Apocalipsis.java
-C:\Users\riolu\Videos\Eventos\Apocalipsis 1.21.8\src\main\java\me\apocalipsis\disaster\LluviaFuegoNew.java
-C:\Users\riolu\Videos\Eventos\Apocalipsis 1.21.8\src\main\java\me\apocalipsis\missions\MissionDifficulty.java
+Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\disaster\DisasterRegistry.java
+Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\utils\DisasterDamage.java
+Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\disaster\adapters\PerformanceAdapter.java
+Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\disaster\DisasterController.java
+Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\utils\ExplosionGuard.java
+Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\listeners\MissionListener.java
+Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\state\ServerState.java
+Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\disaster\HuracanNew.java
+Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\SoundUtil.java
+Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\missions\MissionAssignment.java
+Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\disaster\DisasterBase.java
+Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\listeners\PlayerListener.java
+Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\missions\MissionDifficulty.java
+Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\state\TimeService.java
+Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\disaster\LluviaFuegoNew.java
+Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\Apocalipsis.java
+Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\ScoreboardManager.java
+Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\state\StateManager.java
+Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\missions\MissionService.java
+Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\missions\MissionType.java
+Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\commands\AvoTabCompleter.java
+Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\missions\MissionCatalog.java
+Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\utils\ParticleCompat.java
+Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\disaster\Disaster.java
+Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\TablistManager.java
+Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\disaster\TerremotoNew.java
+Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\missions\MissionRank.java
+Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\MessageBus.java
+Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\missions\MissionRenderer.java
+Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\missions\RankService.java
+Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\utils\EffectUtil.java
+Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\utils\ConfigManager.java
+Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\commands\ApocalipsisCommand.java
