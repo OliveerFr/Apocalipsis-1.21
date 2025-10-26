@@ -134,54 +134,52 @@ public class ApocalipsisCommand implements CommandExecutor {
             return;
         }
 
-        // Leer estado desde state.yml (fuente única de verdad)
+        // Estado actual desde state.yml
         String estado = stateManager.getEstado();
-        
-        if ("ACTIVO".equals(estado)) {
-            sender.sendMessage("§cYa hay un desastre activo.");
+
+        // Si ya hay un desastre en curso, no dupliques
+        if ("ACTIVO".equalsIgnoreCase(estado)) {
+            sender.sendMessage("§eYa hay un desastre activo, no puedes iniciar otro.");
             return;
         }
 
-        // SAFE_MODE bloquea todo
-        if ("SAFE_MODE".equals(estado) || stateManager.isSafeModeActive()) {
+        // SAFE_MODE bloquea cualquier inicio
+        if ("SAFE_MODE".equalsIgnoreCase(estado) || stateManager.isSafeModeActive()) {
             sender.sendMessage("§cNo se puede iniciar en SAFE_MODE (TPS bajo).");
             return;
         }
-        
-        // 7) /avo start (manual): verificar preparación forzada
-        if ("PREPARACION".equals(estado)) {
-            boolean prepForzada = stateManager.isPrepForzada();
-            long endEpochMs = stateManager.getLong("end_epoch_ms", 0L);
-            long now = System.currentTimeMillis();
-            
-            if (prepForzada && now < endEpochMs) {
-                long remainingMs = endEpochMs - now;
-                long remainingMin = remainingMs / 60000L;
-                long remainingSec = (remainingMs % 60000L) / 1000L;
-                sender.sendMessage("§cPreparación forzada en curso (" + remainingMin + ":" + String.format("%02d", remainingSec) + " restante)");
-                return;
-            }
-        }
-        
-        // Verificar jugadores mínimos
-        int minJugadores = plugin.getConfigManager().getMinJugadores();
-        int onlinePlayers = plugin.getServer().getOnlinePlayers().size();
-        if (onlinePlayers < minJugadores) {
-            sender.sendMessage("§cNo hay suficientes jugadores online (" + onlinePlayers + "/" + minJugadores + ").");
-            return;
+
+        // ================================
+        // Arrancar el CICLO (no el desastre)
+        // PREPARACION normal (no forzada) + cooldown “cumplido”
+        // ================================
+        long now = System.currentTimeMillis();
+        long cooldownMs = plugin.getConfigManager().getCooldownFinSegundos() * 1000L;
+
+        // Dejar todo listo para que el scheduler inicie el 1º desastre enseguida
+        stateManager.setEstado("PREPARACION");
+        stateManager.setString("desastre_actual", "");
+        stateManager.setPrepForzada(false);                     // preparación NO forzada
+        stateManager.setLastEndEpochMs(now - cooldownMs - 1000L); // cooldown ya cumplido
+
+        // Tiempos solo para UI; no queremos barra azul aquí
+        stateManager.setLong("start_epoch_ms", now);
+        stateManager.setLong("end_epoch_ms", now);
+
+        stateManager.saveState();
+
+        // Antirrebote + reinicio de puertas internas
+        disasterController.resetStartingFlag();    // por si había un intento previo
+        disasterController.resetCooldownAutoStartFlag();
+        disasterController.markEnteredPreparation();
+        // Programa el auto-next (el que realmente iniciará el desastre)
+        disasterController.scheduleAutoNext();
+
+        // Feedback
+        sender.sendMessage("§a✅ Ciclo iniciado. El primer desastre comenzará en breve.");
+        plugin.getLogger().info("[Cycle] /avo start → PREPARACION (no forzada), cooldown cumplido. Scheduler armado.");
         }
 
-        // Llamar puerta única con reason="command" (permitido desde DETENIDO o PREPARACION)
-        disasterController.tryStartRandomDisaster("command");
-        sender.sendMessage("§a✓ Desastre iniciado manualmente.");
-        
-        // Log específico para inicio manual
-        plugin.getLogger().info("[Apocalipsis] [Cycle] Inicio manual: cooldown se aplicará al finalizar.");
-        
-        if (plugin.getConfigManager().isDebugCiclo()) {
-            plugin.getLogger().info("[Cycle] INICIO por /avo start desde estado=" + estado);
-        }
-    }
     
     private void cmdStop(CommandSender sender) {
         if (!sender.hasPermission("avo.admin")) {

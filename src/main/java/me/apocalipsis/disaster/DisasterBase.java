@@ -50,9 +50,10 @@ public abstract class DisasterBase implements Disaster {
 
     @Override
     public void start() {
-        this.active = true;
-        this.tickCounter = 0;
-        onStart();
+    this.active = true;
+    this.tickCounter = 0;
+    plugin.getLogger().info("[Cycle][DEBUG] onStart: " + id);
+    onStart();
     }
 
     @Override
@@ -78,9 +79,10 @@ public abstract class DisasterBase implements Disaster {
         tickCounter++;
         
         for (Player player : Bukkit.getOnlinePlayers()) {
+            plugin.getLogger().info("[Cycle][DEBUG] applyEffects: " + id + " player=" + player.getName());
             applyEffects(player);
         }
-        
+        plugin.getLogger().info("[Cycle][DEBUG] onTick: " + id);
         onTick();
     }
 

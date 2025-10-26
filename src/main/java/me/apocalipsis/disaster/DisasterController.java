@@ -36,6 +36,10 @@ public class DisasterController {
     private final AtomicBoolean starting = new AtomicBoolean(false);
     private long lastCycleLog = 0L;
     private final AtomicBoolean cooldownAutoStartAttempted = new AtomicBoolean(false);
+
+
+    // [GUARD] Prevenir ejecuciones concurrentes de onDisasterEnd
+    private final AtomicBoolean endingDisaster = new AtomicBoolean(false);
     
     // [ANTIRREBOTE] Timestamp cuando se entra en PREPARACION (evita inicio en mismo tick)
     private long enteredPreparationAtMs = 0L;
@@ -209,7 +213,15 @@ public class DisasterController {
     public void resetStartingFlag() {
         starting.set(false);
     }
-    
+    /**
+     * Reset del flag de auto-inicio para permitir nuevo intento manual
+     */
+    public void resetCooldownAutoStartFlag() {
+        cooldownAutoStartAttempted.set(false);
+        if (plugin.getConfigManager().isDebugCiclo()) {
+            plugin.getLogger().info("[Cycle] Flag cooldownAutoStart reseteado (manual)");
+        }
+    }
     /**
      * Marca entrada en PREPARACION (usado por /avo preparacion para antirrebote)
      */
@@ -281,15 +293,16 @@ public class DisasterController {
     }
 
     private void onTimeFinished() {
-        ServerState state = stateManager.getCurrentState();
-        
-        if (state == ServerState.PREPARACION) {
-            endPreparation();
-        } else if (state == ServerState.ACTIVO) {
-            stopDisaster();
-        }
+    ServerState state = stateManager.getCurrentState();
+    
+    if (state == ServerState.PREPARACION) {
+        endPreparation();
+    } else if (state == ServerState.ACTIVO) {
+        // [FIX] Llamar directamente a onDisasterEnd() en lugar de stopDisaster()
+        plugin.getLogger().info("[Cycle] onTimeFinished() detectó fin de ACTIVO → onDisasterEnd()");
+        onDisasterEnd();
     }
-
+}
     /**
      * Inicia preparación forzada (silencio de desastres por X minutos)
      * ESCRIBE en state.yml: estado=PREPARACION, start_epoch_ms, end_epoch_ms
@@ -346,25 +359,31 @@ public class DisasterController {
     /**
      * Fin de preparación forzada → auto-start si auto_cycle=true
      */
+    /**
+ * Fin de preparación forzada → auto-start si auto_cycle=true
+ */
     private void endPreparation() {
         messageBus.broadcast("§e☁ §fFin de la preparación. ¡El caos regresa!", "prep_end");
         soundUtil.playSoundAll(Sound.ENTITY_ENDER_DRAGON_GROWL, 0.5f, 0.8f);
 
-        // Limpiar timestamps de preparación forzada
+        // Limpiar timestamps y flag de preparación forzada
         stateManager.setLong("start_epoch_ms", 0L);
         stateManager.setLong("end_epoch_ms", 0L);
+        stateManager.setPrepForzada(false); // ← CRÍTICO: limpiar flag
         stateManager.saveState();
         
-        // Si auto_cycle=true, intentar inicio automático
+        // Si auto_cycle=true, intentar inicio automático (ignora cooldown)
         if (plugin.getConfigManager().isAutoCycleEnabled()) {
             if (plugin.getConfigManager().isDebugCiclo()) {
-                plugin.getLogger().info("[Cycle] Fin de preparación forzada, intentando auto-start...");
+                plugin.getLogger().info("[Cycle] Fin de preparación forzada → auto-start (ignora cooldown)");
             }
-            tryStartRandomDisaster("cooldown");
+            tryStartRandomDisaster("prep_forzada_end");
         } else {
             if (plugin.getConfigManager().isDebugCiclo()) {
-                plugin.getLogger().info("[Cycle] Fin de preparación forzada, pero auto_cycle=false");
+                plugin.getLogger().info("[Cycle] Fin de preparación forzada, pero auto_cycle=false → DETENIDO");
             }
+            stateManager.setEstado("DETENIDO");
+            stateManager.saveState();
         }
     }
 
@@ -406,41 +425,112 @@ public class DisasterController {
         plugin.getLogger().info("Desastre reanudado: " + disasterId);
     }
 
-    public void stopDisaster() {
-        if (activeDisaster == null || !activeDisaster.isActive()) return;
-
-        String disasterId = activeDisaster.getId();
-        activeDisaster.stop();
+    /**
+     * Fin del desastre → PREPARACION + cooldown + auto-next
+     * ESCRIBE en state.yml: estado=PREPARACION, last_end_epoch_ms, limpia start/end/desastre_actual
+     */
+    /**
+ * Fin del desastre → PREPARACION + cooldown + auto-next
+ * ESCRIBE en state.yml: estado=PREPARACION, last_end_epoch_ms, limpia start/end/desastre_actual
+ */
+    private void onDisasterEnd() {
+        plugin.getLogger().info("════════════════════════════════════════");
+        plugin.getLogger().info("[Cycle] >>> onDisasterEnd() INICIADO <<<");
+        plugin.getLogger().info("════════════════════════════════════════");
         
-        // [RE-FIX] Cancelar UI Ticker y resetear BossBar
-        cancelUITicker();
-        if (bossBar != null) {
-            bossBar.setVisible(false);
+        // [GUARD] Prevenir ejecuciones concurrentes
+        if (!endingDisaster.compareAndSet(false, true)) {
+            plugin.getLogger().warning("[Cycle] onDisasterEnd bloqueado (ya ejecutándose)");
+            return;
         }
-
-        messageBus.broadcast("§a§l¡DESASTRE FINALIZADO! §f" + disasterId.toUpperCase().replace("_", " "), "disaster_end");
-        soundUtil.playSoundAll(Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.2f);
-        soundUtil.playSoundAll(Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 2.0f);
-
-        // [FIX] Guardar timestamp de finalización para cooldown
-        stateManager.setLastDisasterId(disasterId);
-        stateManager.setLastEndEpochMs(System.currentTimeMillis());
-
-        activeDisaster = null;
-        stateManager.setActiveDisasterId(null);
         
-        // [HOTFIX] NO ir a PREPARACION, ir a DETENIDO (PREPARACION solo manual)
-        stateManager.setState(ServerState.DETENIDO);
-        timeService.end();
-        
-        // [FIX] Cancelar cualquier tarea pendiente
-        cancelAllTasks();
-        
-        stateManager.saveState();
+        try {
+            // Verificar que hay desastre
+            if (activeDisaster == null) {
+                plugin.getLogger().warning("[Cycle] onDisasterEnd sin activeDisaster - RESETEANDO FLAGS");
+                cooldownAutoStartAttempted.set(false);
+                starting.set(false);
+                return;
+            }
+            
+            final String disasterId = activeDisaster.getId();
+            plugin.getLogger().info("[Cycle] Finalizando desastre: " + disasterId);
+            
+            stopCurrentDisasterTasks();
+            
+            // [CRÍTICO] Cancelar nextTask
+            if (nextTask != null && !nextTask.isCancelled()) {
+                nextTask.cancel();
+                nextTask = null;
+                plugin.getLogger().info("[Cycle] ✓ nextTask cancelado");
+            }
+            
+            cancelUITicker();
 
-        // [DEPRECATED] scheduleCooldownNextDisaster() removido - usar scheduleAutoNext() que respeta todas las guardias
-        // El auto-next se maneja desde onDisasterEnd() con el sistema unificado
+            if (bossBar != null) {
+                bossBar.setProgress(1.0);
+                bossBar.setVisible(false);
+            }
+            
+            // Mensajes
+            messageBus.broadcast("§a§l¡DESASTRE FINALIZADO! §f" + disasterId.toUpperCase().replace("_", " "), "disaster_end");
+            soundUtil.playSoundAll(Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.2f);
+            soundUtil.playSoundAll(Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 2.0f);
+            
+            // PREPARACION con cooldown
+            long now = System.currentTimeMillis();
+            int cooldownSeg = plugin.getConfigManager().getCooldownFinSegundos();
+
+            stateManager.setEstado("PREPARACION");
+            stateManager.setString("desastre_actual", "");
+            stateManager.setLastDisasterId(disasterId);
+            stateManager.setLastEndEpochMs(now);
+            stateManager.setLong("start_epoch_ms", now);
+            stateManager.setLong("end_epoch_ms", now + cooldownSeg * 1000L);
+            stateManager.setPrepForzada(false);
+            enteredPreparationAtMs = now;
+            stateManager.saveState();
+            
+            messageBus.broadcast("§e⏳ Cooldown: próximo desastre en §f" + cooldownSeg + "§es.", "cooldown_start");
+            
+            // Limpiar
+            activeDisaster = null;
+            stateManager.setActiveDisasterId(null);
+            
+            // [CRÍTICO] RESETEAR FLAGS
+            plugin.getLogger().info("[Cycle] ANTES: cooldown=" + cooldownAutoStartAttempted.get() + ", starting=" + starting.get());
+            cooldownAutoStartAttempted.set(false);
+            starting.set(false);
+            plugin.getLogger().info("[Cycle] DESPUÉS: cooldown=" + cooldownAutoStartAttempted.get() + ", starting=" + starting.get());
+            plugin.getLogger().info("[Cycle] ✓✓✓ FLAGS RESETEADOS ✓✓✓");
+            
+            timeService.end();
+            
+            plugin.getLogger().info("[Cycle] FIN: " + disasterId + " → PREPARACION (cooldown " + cooldownSeg + "s)");
+            
+            // Auto-next
+            if (plugin.getConfigManager().isAutoCycleEnabled()) {
+                plugin.getLogger().info("[Cycle] ✓ Llamando scheduleAutoNext()...");
+                scheduleAutoNext();
+            } else {
+                plugin.getLogger().info("[Cycle] auto_cycle=false");
+            }
+            
+            plugin.getLogger().info("════════════════════════════════════════");
+            plugin.getLogger().info("[Cycle] >>> onDisasterEnd() COMPLETADO <<<");
+            plugin.getLogger().info("════════════════════════════════════════");
+            
+        } catch (Exception e) {
+            plugin.getLogger().severe("[Cycle] ERROR en onDisasterEnd: " + e.getMessage());
+            e.printStackTrace();
+            cooldownAutoStartAttempted.set(false);
+            starting.set(false);
+        } finally {
+            endingDisaster.set(false);
+        }
     }
+
+
 
     /**
      * Detiene todos los desastres activos
@@ -448,6 +538,7 @@ public class DisasterController {
      * @param changeState Si true, cambia el estado a DETENIDO (false para switches rápidos)
      */
     public void stopAllDisasters(boolean announce, boolean changeState) {
+        endingDisaster.set(false);
         if (activeDisaster != null && activeDisaster.isActive()) {
             activeDisaster.stop();
             if (announce) {
@@ -471,6 +562,10 @@ public class DisasterController {
         
         timeService.end();
         
+        // [FIX] Resetear flags de auto-inicio cuando se detiene manualmente
+        cooldownAutoStartAttempted.set(false);
+        starting.set(false);
+        
         // [FIX] Cancelar tareas programadas (cooldown, auto-next) pero NO el task principal de tick
         if (cooldownTaskId != -1) {
             Bukkit.getScheduler().cancelTask(cooldownTaskId);
@@ -478,7 +573,7 @@ public class DisasterController {
         }
         
         if (plugin.getConfigManager().isDebugCiclo()) {
-            plugin.getLogger().info("[Cycle] STOP: desastre detenido, tareas auxiliares canceladas (changeState=" + changeState + ")");
+            plugin.getLogger().info("[Cycle] STOP: desastre detenido, flags reseteados, tareas auxiliares canceladas (changeState=" + changeState + ")");
         }
         
         if (changeState) {
@@ -720,133 +815,172 @@ public class DisasterController {
      * Scheduler de auto-next (1 vez/seg, único)
      * Solo inicia si: estado==PREPARACION, auto_cycle==true, online>=min_jugadores, cooldown cumplido
      */
+    /**
+    * Scheduler de auto-next (1 vez/seg, único)
+    * Solo inicia si: estado==PREPARACION, auto_cycle==true, online>=min_jugadores, cooldown cumplido
+    */
     public void scheduleAutoNext() {
         if (nextTask != null && !nextTask.isCancelled()) {
             nextTask.cancel();
         }
         
+        // [FIX] Resetear flag al programar nuevo scheduler (permite reintentos frescos)
+        cooldownAutoStartAttempted.set(false);
+        if (plugin.getConfigManager().isDebugCiclo()) {
+            plugin.getLogger().info("[Cycle] scheduleAutoNext(): nuevo scheduler, flag reseteado");
+        }
+
         nextTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
             long now = System.currentTimeMillis();
 
             if (plugin.getConfigManager().isDebugCiclo()) {
-                plugin.getLogger().info("[Cycle][DEBUG] scheduleAutoNext tick: now=" + now);
+                plugin.getLogger().info("[Cycle][DEBUG] tick now=" + now);
             }
-                
-            // [ANTIRREBOTE] Evitar inicio en mismo tick tras cambio a PREPARACION
+
+            // Antirebote: tras entrar a PREPARACION
             if (now - enteredPreparationAtMs < 250L) {
+                if (plugin.getConfigManager().isDebugCiclo()) {
+                    plugin.getLogger().info("[Cycle] Antirebote activo (< 250ms desde entrada a PREPARACION)");
+                }
                 return;
             }
-            
-            // Leer estado desde state.yml (fuente única)
-            String estado = stateManager.getEstado();
-            
-            // Permitir funcionamiento en PREPARACION (normal, no forzada) y DETENIDO
-            boolean isPrep = "PREPARACION".equals(estado);
-            boolean isDetenido = "DETENIDO".equals(estado);
-            boolean prepForzada = stateManager.isPrepForzada();
-            long endEpochMs = stateManager.getLong("end_epoch_ms", 0L);
 
-            // Si es preparación forzada, solo iniciar cuando termine la ventana
-            if (isPrep && prepForzada) {
+            // Fuente única: state.yml
+            final String estado = stateManager.getEstado();
+            final boolean isPrep = "PREPARACION".equals(estado);
+            final boolean prepForzada = stateManager.isPrepForzada();
+
+            // ⛔ JAMÁS auto-iniciar en DETENIDO / ACTIVO / SAFE_MODE
+            if (!isPrep) {
+                if (plugin.getConfigManager().isDebugCiclo() && now % 5000 < 1000) {
+                    plugin.getLogger().info("[Cycle] No es PREPARACION: estado=" + estado);
+                }
+                return;
+            }
+
+            // ─────────────────────────────────────────────
+            // 1) PREPARACION FORZADA: sólo iniciar al vencer end_epoch_ms
+            // ─────────────────────────────────────────────
+            if (prepForzada) {
+                long endEpochMs = stateManager.getLong("end_epoch_ms", 0L);
                 if (endEpochMs > 0 && now >= endEpochMs) {
-                    int minJugadores = plugin.getConfigManager().getMinJugadores();
-                    if (Bukkit.getOnlinePlayers().size() >= minJugadores) {
+                    int minJug = plugin.getConfigManager().getMinJugadores();
+                    int online = Bukkit.getOnlinePlayers().size();
+                    if (online >= minJug) {
                         plugin.getLogger().info("[Cycle] Fin de PREPARACION forzada → iniciando");
-                        // Limpiar flag para evitar bucle infinito de intentos
                         stateManager.setPrepForzada(false);
                         stateManager.saveState();
-                        tryStartRandomDisaster("prep_forzada_end");
-                    } else {
-                        plugin.getLogger().info("[Cycle] Esperando jugadores mínimos: " + Bukkit.getOnlinePlayers().size() + "/" + minJugadores);
+                        tryStartRandomDisaster("prep_forzada_end"); // ignora cooldown
+                    } else if (plugin.getConfigManager().isDebugCiclo()) {
+                        plugin.getLogger().info("[Cycle] Esperando jugadores mínimos: " + online + "/" + minJug);
                     }
+                } else if (plugin.getConfigManager().isDebugCiclo() && now % 5000 < 1000) {
+                    long remainingMs = endEpochMs - now;
+                    plugin.getLogger().info("[Cycle] PrepForzada activa, faltan " + (remainingMs / 1000) + "s");
                 }
-                return; // Mientras siga forzada, jamás iniciar
+                return; // mientras sea forzada, no mirar cooldown
             }
 
-            // Solo continuar si estamos en PREPARACION (normal, no forzada) o DETENIDO
-            if (!(isPrep && !prepForzada) && !isDetenido) {
+            // ─────────────────────────────────────────────
+            // 2) PREPARACION NORMAL (cooldown)
+            // ─────────────────────────────────────────────
+            if (!plugin.getConfigManager().isAutoCycleEnabled()) {
+                if (plugin.getConfigManager().isDebugCiclo() && now % 5000 < 1000) {
+                    plugin.getLogger().info("[Cycle] auto_cycle=false, esperando comando manual");
+                }
                 return;
             }
-            
-            // 3) Verificar auto_cycle
-            boolean autoCycle = plugin.getConfigManager().isAutoCycleEnabled();
-            if (!autoCycle) {
+
+            int minJug = plugin.getConfigManager().getMinJugadores();
+            int online = Bukkit.getOnlinePlayers().size();
+            if (online < minJug) {
+                if (plugin.getConfigManager().isDebugCiclo() && now % 5000 < 1000) {
+                    plugin.getLogger().info("[Cycle] Insuficientes jugadores: " + online + "/" + minJug);
+                }
                 return;
             }
-            
-            // 4) Verificar jugadores mínimos
-            int minJugadores = plugin.getConfigManager().getMinJugadores();
-            int jugadoresOnline = Bukkit.getOnlinePlayers().size();
-            if (jugadoresOnline < minJugadores) {
-                return;
-            }
-            
-            // 5) Verificar cooldown cumplido
+
             long lastEndMs = stateManager.getLastEndEpochMs();
-            
-            // Validación: Si no hay desastre previo, no calcular cooldown
-            if (lastEndMs <= 0) {
-                return;
+            if (lastEndMs <= 0L) {
+                if (plugin.getConfigManager().isDebugCiclo() && now % 5000 < 1000) {
+                    plugin.getLogger().info("[Cycle] Sin desastre previo (lastEndMs=0)");
+                }
+                return; // aún no hubo desastre previo → no hay cooldown que cumplir
             }
-            
+
             long cooldownMs = plugin.getConfigManager().getCooldownFinSegundos() * 1000L;
             long elapsed = now - lastEndMs;
-            
+
             if (plugin.getConfigManager().isDebugCiclo()) {
-                plugin.getLogger().info("[Cycle] Cooldown check: elapsed=" + (elapsed/1000) + "s, required=" + (cooldownMs/1000) + "s, lastEnd=" + lastEndMs);
+                plugin.getLogger().info("[Cycle] Cooldown check: elapsed=" + (elapsed / 1000) + "s / req=" + (cooldownMs / 1000) + "s");
             }
             
             if (elapsed < cooldownMs) {
-                return; // Cooldown no cumplido
+                if (plugin.getConfigManager().isDebugCiclo() && now % 5000 < 1000) {
+                    plugin.getLogger().info("[Cycle] Cooldown en progreso: " + (elapsed / 1000) + "/" + (cooldownMs / 1000) + "s");
+                }
+                return;
             }
-            
-            // Cooldown cumplido - mostrar tiempo transcurrido
+
+            // ✅ Cooldown cumplido → intentar iniciar
+            boolean flagBloqueado = cooldownAutoStartAttempted.get();
             if (plugin.getConfigManager().isDebugCiclo()) {
-                plugin.getLogger().info("[Cycle] ✓ Cooldown cumplido (" + (elapsed/1000) + "s transcurridos) → intentando iniciar");
+                plugin.getLogger().info("[Cycle] Cooldown CUMPLIDO. Flag bloqueado=" + flagBloqueado);
             }
             
-            // 6) Intentar iniciar (puerta única con AtomicBoolean)
-            if (cooldownAutoStartAttempted.compareAndSet(false, true)) {
+            if (!flagBloqueado) {
+                if (plugin.getConfigManager().isDebugCiclo()) {
+                    plugin.getLogger().info("[Cycle] Llamando tryStartRandomDisaster('cooldown')...");
+                }
+                
                 tryStartRandomDisaster("cooldown");
+
+                // Verifica si realmente comenzó
+                String estadoDespues = stateManager.getEstado();
+                if ("ACTIVO".equals(estadoDespues)) {
+                    cooldownAutoStartAttempted.set(true);
+                    if (plugin.getConfigManager().isDebugCiclo()) {
+                        plugin.getLogger().info("[Cycle] ✅ Inicio por cooldown CONFIRMADO (estado=ACTIVO)");
+                    }
+                } else {
+                    // No arrancó: mantener flag en false para reintentar
+                    cooldownAutoStartAttempted.set(false);
+                    if (plugin.getConfigManager().isDebugCiclo()) {
+                        plugin.getLogger().info("[Cycle] ⚠ Intento fallido (estado=" + estadoDespues + "), reintentará el próximo tick");
+                    }
+                }
+            } else if (plugin.getConfigManager().isDebugCiclo()) {
+                plugin.getLogger().info("[Cycle] Bloqueado por flag cooldownAutoStartAttempted=true (ya intentó iniciar)");
             }
-            
-        }, 20L, 20L); // Cada 1 segundo
+        }, 20L, 20L); // Cada 1s
     }
+
     
     /**
      * Puerta única de inicio con guardias correctas según especificaciones
      */
+    /**
+ * Puerta única de inicio con guardias correctas según especificaciones
+ */
     public void tryStartRandomDisaster(String reason) {
         long now = System.currentTimeMillis();
         
-        // Leer estado desde state.yml (fuente única)
-        String estado = stateManager.getEstado();
-        
-        // 1) Estado válido: PREPARACION siempre, o DETENIDO solo si reason=command
-        if (!(estado.equals("PREPARACION") || (estado.equals("DETENIDO") && ("command".equals(reason) || "cooldown".equals(reason))))) {
+        // ═══════════════════════════════════════════════════════════════
+        // 0) VERIFICAR SAFE MODE (bloquea SIEMPRE)
+        // ═══════════════════════════════════════════════════════════════
+        if (stateManager.isSafeModeActive()) {
             if (plugin.getConfigManager().isDebugCiclo()) {
-                plugin.getLogger().info("[Cycle] BLOQUEADO: estado=" + estado + " reason=" + reason);
+                plugin.getLogger().info("[Cycle] BLOQUEADO por SAFE_MODE activo");
             }
             return;
         }
         
-        // 2) Bloqueo por preparación forzada (ventana activa)
-        if ("PREPARACION".equals(estado)) {
-            boolean prepForzada = stateManager.isPrepForzada();
-            long endEpochMs = stateManager.getLong("end_epoch_ms", 0L);
-            
-            if (prepForzada && now < endEpochMs) {
-                long remainingMs = endEpochMs - now;
-                long remainingMin = remainingMs / 60000L;
-                long remainingSec = (remainingMs % 60000L) / 1000L;
-                if (plugin.getConfigManager().isDebugCiclo()) {
-                    plugin.getLogger().info("[Cycle] Bloqueado: prep_forzada activa (" + remainingMin + ":" + String.format("%02d", remainingSec) + ")");
-                }
-                return; // Nunca iniciar dentro de la ventana forzada
-            }
-        }
+        // Leer estado desde state.yml (fuente única)
+        String estado = stateManager.getEstado();
         
-        // 3) Cooldown: solo aplica si reason == "cooldown" (NO para prep_forzada_end ni command)
+        // ═══════════════════════════════════════════════════════════════
+        // 1) VERIFICAR COOLDOWN PRIMERO (antes de cualquier otra lógica)
+        // ═══════════════════════════════════════════════════════════════
         if ("cooldown".equals(reason)) {
             long lastEndMs = stateManager.getLastEndEpochMs();
             long cooldownMs = plugin.getConfigManager().getCooldownFinSegundos() * 1000L;
@@ -862,7 +996,7 @@ public class DisasterController {
                         plugin.getLogger().info("[Cycle] Bloqueado por cooldown: faltan " + remainingSeconds + "s");
                     }
                 }
-                return;
+                return; // ❌ COOLDOWN NO CUMPLIDO
             }
             
             // Cooldown cumplido: log solo una vez
@@ -874,7 +1008,47 @@ public class DisasterController {
             }
         }
         
-        // 4) Min jugadores
+        // ═══════════════════════════════════════════════════════════════
+        // 2) ESTADO VÁLIDO
+        // ═══════════════════════════════════════════════════════════════
+        boolean estadoValido = false;
+        
+        if ("PREPARACION".equals(estado)) {
+            // PREPARACION siempre permite inicio (cooldown ya fue verificado arriba)
+            estadoValido = true;
+        } else if ("DETENIDO".equals(estado) && ("command".equals(reason) || "prep_forzada_end".equals(reason))) {
+            // DETENIDO solo permite comando manual o fin de prep forzada
+            estadoValido = true;
+        }
+        
+        if (!estadoValido) {
+            if (plugin.getConfigManager().isDebugCiclo()) {
+                plugin.getLogger().info("[Cycle] BLOQUEADO: estado=" + estado + " reason=" + reason);
+            }
+            return;
+        }
+        
+        // ═══════════════════════════════════════════════════════════════
+        // 3) BLOQUEO POR PREPARACIÓN FORZADA (ventana activa)
+        // ═══════════════════════════════════════════════════════════════
+        if ("PREPARACION".equals(estado)) {
+            boolean prepForzada = stateManager.isPrepForzada();
+            long endEpochMs = stateManager.getLong("end_epoch_ms", 0L);
+            
+            if (prepForzada && now < endEpochMs) {
+                long remainingMs = endEpochMs - now;
+                long remainingMin = remainingMs / 60000L;
+                long remainingSec = (remainingMs % 60000L) / 1000L;
+                if (plugin.getConfigManager().isDebugCiclo()) {
+                    plugin.getLogger().info("[Cycle] Bloqueado: prep_forzada activa (" + remainingMin + ":" + String.format("%02d", remainingSec) + ")");
+                }
+                return; // ❌ Nunca iniciar dentro de la ventana forzada
+            }
+        }
+        
+        // ═══════════════════════════════════════════════════════════════
+        // 4) MIN JUGADORES
+        // ═══════════════════════════════════════════════════════════════
         int minJugadores = plugin.getConfigManager().getMinJugadores();
         int jugadoresOnline = plugin.getServer().getOnlinePlayers().size();
         if (jugadoresOnline < minJugadores) {
@@ -888,28 +1062,50 @@ public class DisasterController {
             return;
         }
         
-        // 5) Anti-race
+        // ═══════════════════════════════════════════════════════════════
+        // 5) ANTI-RACE
+        // ═══════════════════════════════════════════════════════════════
         if (!starting.compareAndSet(false, true)) {
             logOnce(1000, "[CICLO] Inicio concurrente bloqueado");
             return;
         }
         
         try {
-            // 6) Elegir desastre según weights (excluyendo último)
+            // ═══════════════════════════════════════════════════════════════
+            // 6) DETENER DESASTRE ACTIVO SI EXISTE
+            // ═══════════════════════════════════════════════════════════════
+            if (activeDisaster != null && activeDisaster.isActive()) {
+                if (plugin.getConfigManager().isDebugCiclo()) {
+                    plugin.getLogger().info("[Cycle] Deteniendo desastre activo antes de iniciar nuevo");
+                }
+                stopAllDisasters(false, false);
+            }
+            
+            // ═══════════════════════════════════════════════════════════════
+            // 7) ELEGIR Y LANZAR DESASTRE
+            // ═══════════════════════════════════════════════════════════════
             String disasterId = elegirSegunWeight();
             if (disasterId == null) {
                 logOnce(5000, "[CICLO] No se pudo elegir desastre (weights inválidos)");
                 return;
             }
             
-            // 7) iniciarDesastreInterno() maneja toda la configuración y guardado del estado
+            if (!registry.exists(disasterId)) {
+                plugin.getLogger().warning("[CICLO] Desastre no existe en registry: " + disasterId);
+                return;
+            }
+            
+            if (plugin.getConfigManager().isDebugCiclo()) {
+                plugin.getLogger().info("[Cycle] ✅ INICIANDO desastre: " + disasterId + " (reason=" + reason + ")");
+            }
+            
             iniciarDesastreInterno(disasterId);
             
         } finally {
             starting.set(false);
         }
     }
-    
+        
     /**
      * Iniciar desastre forzado (ignora restricciones excepto SAFE MODE)
      */
@@ -1019,9 +1215,14 @@ public class DisasterController {
      * ESCRIBE en state.yml: estado, desastre_actual, start_epoch_ms, end_epoch_ms
      */
     private void iniciarDesastreInterno(String disasterId) {
-        // 1) Cancelar tareas/BossBar anteriores
+    // 1) Cancelar tareas/BossBar anteriores
         cancelUITicker();
         stopCurrentDisasterTasks();
+    // [FIX] Asegurar estado ACTIVO antes de iniciar el desastre
+        stateManager.setEstado(ServerState.ACTIVO.name());
+    // [FIX] Iniciar ciclo de ticks para el desastre
+        startTask();
+        plugin.getLogger().info("[Cycle][DEBUG] Estado cambiado a ACTIVO y startTask llamado tras iniciar desastre: " + disasterId);
         
         // 2) Marcar tiempos
         ConfigurationSection config = plugin.getConfigManager().getDesastresConfig()
@@ -1069,6 +1270,7 @@ public class DisasterController {
         Disaster disaster = registry.get(disasterId);
         activeDisaster = disaster;
         disaster.start();
+        plugin.getLogger().info("[Cycle][DEBUG] startTask llamado tras iniciar desastre: " + disasterId);
         
         // 6) Ticker UI único (lee de state.yml)
         startUiTicker();
@@ -1156,59 +1358,17 @@ public class DisasterController {
      * Fin del desastre → PREPARACION + cooldown + auto-next
      * ESCRIBE en state.yml: estado=PREPARACION, last_end_epoch_ms, limpia start/end/desastre_actual
      */
-    private void onDisasterEnd() {
-        stopCurrentDisasterTasks();
-        cancelUITicker();
-        
-        String disasterId = activeDisaster != null ? activeDisaster.getId() : "unknown";
-        
-        if (bossBar != null) {
-            bossBar.setProgress(1.0);
-            bossBar.setVisible(false);
-        }
-        
-        // Mensajes
-        messageBus.broadcast("§a§l¡DESASTRE FINALIZADO! §f" + disasterId.toUpperCase().replace("_", " "), "disaster_end");
-        soundUtil.playSoundAll(Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.2f);
-        soundUtil.playSoundAll(Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 2.0f);
-        
-    // Al terminar un desastre → PREPARACION (no forzada) con cooldown visible
-    long now = System.currentTimeMillis();
-    int cooldownSeg = plugin.getConfigManager().getCooldownFinSegundos();
-    long startMs = now;
-    long endMs = now + cooldownSeg * 1000L;
-    stateManager.setEstado("PREPARACION");
-    stateManager.setString("desastre_actual", "");
-    stateManager.setLastEndEpochMs(now);         // ✅ Usa setter que actualiza memoria + YAML
-    stateManager.setPrepForzada(false);          // fin de desastre NO es preparación forzada
-    stateManager.setLong("start_epoch_ms", startMs);
-    stateManager.setLong("end_epoch_ms", endMs);
-    stateManager.setLastDisasterId(disasterId);  // ultimo_desastre
-    stateManager.saveState();
-        
-    // [ANTIRREBOTE] Marcar entrada en PREPARACION para evitar inicio en mismo tick
-    enteredPreparationAtMs = now;
-        
-    // Mostrar mensaje de cooldown visible
-    messageBus.broadcast("§e⏳ Cooldown: próximo desastre en §f" + cooldownSeg + "§es.", "cooldown_start");
-        
-        // Limpiar instancia activa
-        activeDisaster = null;
-        stateManager.setActiveDisasterId(null);
-        
-        // Reset flag de auto-inicio para permitir siguiente ciclo automático tras cooldown
-        cooldownAutoStartAttempted.set(false);
-        
-        timeService.end();
-        
-        logOnce(0, "FIN: " + disasterId.toUpperCase() + " → PREPARACION (cooldown)");
-        
-        // Programar auto-next si está habilitado
-        if (plugin.getConfigManager().isAutoCycleEnabled()) {
-            scheduleAutoNext();
-            logOnce(0, "AUTO-NEXT programado tras cooldown (" + cooldownSeg + "s)");
-        }
-    }
+    /**
+     * Fin del desastre → PREPARACION + cooldown + auto-next
+     * ESCRIBE en state.yml: estado=PREPARACION, last_end_epoch_ms, limpia start/end/desastre_actual
+     */
+/**
+ * Fin del desastre → PREPARACION + cooldown + auto-next
+ * ESCRIBE en state.yml: estado=PREPARACION, last_end_epoch_ms, limpia start/end/desastre_actual
+ */
+    
+                
+       
     
     /**
      * Detener tareas del desastre actual
