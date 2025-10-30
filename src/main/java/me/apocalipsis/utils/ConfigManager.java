@@ -112,7 +112,8 @@ public class ConfigManager {
     }
     
     public boolean isDebugCiclo() {
-        return desastresConfig.getBoolean("debug.ciclo", false);
+        // Leer desde config.yml en lugar de desastres.yml para mejor control
+        return config.getBoolean("debug", false);
     }
     
     // ═══════════════════════════════════════════════════════════════════

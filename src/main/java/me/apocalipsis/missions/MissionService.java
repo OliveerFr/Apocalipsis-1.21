@@ -127,6 +127,17 @@ public class MissionService {
 
     public void assignMissionsToPlayer(Player player) {
         UUID uuid = player.getUniqueId();
+        
+        // [FIX] Si el jugador ya tiene misiones asignadas, no reasignar
+        List<MissionAssignment> existing = playerAssignments.get(uuid);
+        if (existing != null && !existing.isEmpty()) {
+            // Ya tiene misiones, no asignar nuevas
+            if (plugin.getConfigManager().isDebugCiclo()) {
+                plugin.getLogger().info("[MISIONES] Jugador " + player.getName() + " ya tiene " + existing.size() + " misiones, no se reasignan");
+            }
+            return;
+        }
+        
         int ps = playerPs.getOrDefault(uuid, 0);
         MissionRank rank = MissionRank.fromPs(ps);
         
@@ -647,9 +658,10 @@ public class MissionService {
 
     /**
      * Fuerza completar todas las misiones pendientes de un jugador
+     * @param completeAll Si es true, completa todas; si es false, solo completa las autocompletables
      * @return Número de misiones completadas
      */
-    public int forceCompleteAllMissions(Player player) {
+    public int forceCompleteAllMissions(Player player, boolean completeAll) {
         UUID uuid = player.getUniqueId();
         List<MissionAssignment> assignments = playerAssignments.get(uuid);
         
@@ -660,14 +672,24 @@ public class MissionService {
         int completed = 0;
         for (MissionAssignment assignment : assignments) {
             if (!assignment.isCompleted() && !assignment.isFailed()) {
+                MissionCatalog mission = assignment.getMission();
+                
+                // Si no es completeAll, solo completar las autocompletables
+                if (!completeAll && !isAutoCompletable(mission.getTipo())) {
+                    continue;
+                }
+                
                 // Marcar como completada
                 assignment.setCompleted(true);
-                assignment.setProgress(assignment.getMission().getCantidad());
+                assignment.setProgress(mission.getCantidad());
                 
                 // Dar recompensa
                 int currentPs = playerPs.getOrDefault(uuid, 0);
-                int newPs = currentPs + assignment.getMission().getRecompensaPs();
+                int newPs = currentPs + mission.getRecompensaPs();
                 playerPs.put(uuid, newPs);
+                
+                // Ejecutar comandos AlonsoLevels
+                dispatchAlonsoLevelsOnMissionCompleted(player, mission);
                 
                 completed++;
             }
@@ -675,10 +697,45 @@ public class MissionService {
 
         if (completed > 0) {
             savePlayerData();
-            messageBus.sendMessage(player, "§a§l✓ " + completed + " misiones completadas por administrador.");
+            
+            // [FIX] Actualizar scoreboard y tablist inmediatamente
+            if (plugin.getScoreboardManager() != null) {
+                plugin.getScoreboardManager().updatePlayer(player);
+            }
+            if (plugin.getTablistManager() != null) {
+                plugin.getTablistManager().updatePlayer(player);
+            }
+            
+            String type = completeAll ? "todas" : "autocompletables";
+            messageBus.sendMessage(player, "§a§l✓ " + completed + " misiones " + type + " completadas por administrador.");
         }
 
         return completed;
+    }
+    
+    /**
+     * Versión legacy para compatibilidad (completa todas)
+     */
+    public int forceCompleteAllMissions(Player player) {
+        return forceCompleteAllMissions(player, true);
+    }
+    
+    /**
+     * Determina si un tipo de misión es autocompletable
+     * Autocompletables: MATAR, ROMPER, CRAFTEAR, COCINAR, CONSUMIR
+     * No autocompletables: EXPLORAR, ALTURA (ya removidos), y cualquier futura que requiera verificación manual
+     */
+    private boolean isAutoCompletable(MissionType type) {
+        switch (type) {
+            case MATAR:
+            case ROMPER:
+            case CRAFTEAR:
+            case COCINAR:
+            case CONSUMIR:
+                return true;
+            default:
+                return false;
+        }
     }
 
     /**

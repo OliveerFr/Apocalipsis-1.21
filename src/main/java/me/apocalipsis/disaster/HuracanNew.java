@@ -60,6 +60,7 @@ public class HuracanNew extends DisasterBase {
     private double objetosDamage;
     private final List<Item> activeItems = new ArrayList<>();
     private final List<Material> objetosMaterials = new ArrayList<>();
+    private final Map<Item, Integer> itemTaskIds = new HashMap<>(); // Rastrear tasks por item
     
     // NUEVO: Inundación progresiva
     private boolean inundacionEnabled;
@@ -299,6 +300,9 @@ public class HuracanNew extends DisasterBase {
         
         // Cleanup de debris visuales
         cleanupDebris();
+        
+        // [FIX] Limpiar el mapa de tasks (ya no es necesario con el nuevo sistema)
+        itemTaskIds.clear();
         
         // Cleanup de objetos voladores
         for (Item item : activeItems) {
@@ -658,33 +662,13 @@ public class HuracanNew extends DisasterBase {
             
             activeItems.add(item);
             
-            // Verificar colisión con jugadores
-            Bukkit.getScheduler().runTaskTimer(plugin, (task) -> {
-                if (!item.isValid() || !isActive()) {
-                    task.cancel();
-                    activeItems.remove(item);
-                    return;
-                }
-                
-                for (Player p : Bukkit.getOnlinePlayers()) {
-                    if (p.getLocation().distance(item.getLocation()) < 1.5) {
-                        if (!isPlayerExempt(p)) {
-                            p.damage(objetosDamage);
-                            p.sendMessage("§e💨 §7¡Objeto volador te golpeó!");
-                            soundUtil.playSound(p, Sound.ENTITY_PLAYER_HURT, 1.0f, 1.0f);
-                        }
-                        item.remove();
-                        activeItems.remove(item);
-                        task.cancel();
-                        break;
-                    }
-                }
-            }, 1L, 5L);
+            // [FIX] Verificar colisión más eficientemente - el item se auto-limpia en cleanupFlyingObjects
+            // No crear un task por item, usar el cleanup cada 20 ticks
         }
     }
     
     /**
-     * Cleanup de objetos voladores fuera de rango o antiguos
+     * Cleanup de objetos voladores fuera de rango o antiguos + detección de colisiones
      */
     private void cleanupFlyingObjects() {
         activeItems.removeIf(item -> {
@@ -692,6 +676,20 @@ public class HuracanNew extends DisasterBase {
                 if (item.isValid()) item.remove();
                 return true;
             }
+            
+            // [FIX] Detectar colisiones aquí en lugar de crear task por item
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                if (p.getLocation().distance(item.getLocation()) < 1.5) {
+                    if (!isPlayerExempt(p)) {
+                        p.damage(objetosDamage);
+                        p.sendMessage("§e💨 §7¡Objeto volador te golpeó!");
+                        soundUtil.playSound(p, Sound.ENTITY_PLAYER_HURT, 1.0f, 1.0f);
+                    }
+                    item.remove();
+                    return true;
+                }
+            }
+            
             return false;
         });
     }

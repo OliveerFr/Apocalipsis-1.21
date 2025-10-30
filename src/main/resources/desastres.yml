@@ -302,9 +302,3 @@ efectos_al_completar_mis_misiones:
 excepciones:
   enabled: true
   players: []  # UUIDs en string; acepta nombres pero convierte a UUID
-
-# ═══════════════════════════════════════════════════════════════════
-# DEBUG - Logs de auditoría del ciclo de desastres
-# ═══════════════════════════════════════════════════════════════════
-debug:
-  ciclo: true  # Activar para ver logs detallados de inicio/bloqueo de desastres

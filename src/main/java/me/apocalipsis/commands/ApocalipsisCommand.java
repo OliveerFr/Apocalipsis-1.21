@@ -493,6 +493,10 @@ public class ApocalipsisCommand implements CommandExecutor {
         // Recargar TODAS las configuraciones
         plugin.getConfigManager().reload();
         
+        // [FIX] Reiniciar PerformanceAdapter con nueva configuración
+        plugin.getPerformanceAdapter().stopMonitoring();
+        plugin.getPerformanceAdapter().startMonitoring();
+        
         // Solo cancelar tareas auxiliares, NO el task principal si hay desastre activo
         if ("ACTIVO".equals(estadoAnterior)) {
             // Cancelar solo cooldown y next disaster tasks
@@ -507,6 +511,12 @@ public class ApocalipsisCommand implements CommandExecutor {
                 sender.sendMessage("§7✓ Auto-cycle reiniciado con nueva configuración");
             }
         }
+        
+        // [FIX] Reiniciar ScoreboardManager y TablistManager con nueva configuración
+        plugin.getScoreboardManager().cancelTask();
+        plugin.getScoreboardManager().startTask();
+        plugin.getTablistManager().cancelTask();
+        plugin.getTablistManager().startTask();
         
         // Reaplicar UI a todos los jugadores online
         for (org.bukkit.entity.Player p : plugin.getServer().getOnlinePlayers()) {
@@ -954,7 +964,9 @@ public class ApocalipsisCommand implements CommandExecutor {
 
             case "complete":
                 if (args.length < 3) {
-                    sender.sendMessage("§cUso: /avo mission complete <jugador> [todas]");
+                    sender.sendMessage("§cUso: /avo mission complete <jugador> [todas|auto]");
+                    sender.sendMessage("§7  todas - Completa todas las misiones");
+                    sender.sendMessage("§7  auto - Solo completa las autocompletables (default)");
                     return;
                 }
 
@@ -964,14 +976,13 @@ public class ApocalipsisCommand implements CommandExecutor {
                     return;
                 }
 
-                boolean all = args.length >= 4 && "todas".equalsIgnoreCase(args[3]);
-                if (all) {
-                    int completed = missionService.forceCompleteAllMissions(targetComplete);
-                    sender.sendMessage("§a✓ Completadas " + completed + " misiones de " + targetComplete.getName());
-                    targetComplete.sendMessage("§6[Admin] §aTodas tus misiones fueron completadas.");
-                } else {
-                    sender.sendMessage("§cEspecifica 'todas' para completar todas las misiones.");
-                }
+                // Determinar si completar todas o solo autocompletables
+                boolean completeAll = args.length >= 4 && "todas".equalsIgnoreCase(args[3]);
+                int completed = missionService.forceCompleteAllMissions(targetComplete, completeAll);
+                
+                String type = completeAll ? "todas" : "autocompletables";
+                sender.sendMessage("§a✓ Completadas " + completed + " misiones " + type + " de " + targetComplete.getName());
+                targetComplete.sendMessage("§6[Admin] §aTus misiones " + type + " fueron completadas.");
                 break;
 
             case "clear":

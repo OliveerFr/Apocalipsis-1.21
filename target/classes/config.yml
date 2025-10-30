@@ -6,6 +6,11 @@ ajustes:
   max_explosion_hearts: 1.5
 
 # ═══════════════════════════════════════════════════════════════════
+# DEBUG - Sistema de logs detallados
+# ═══════════════════════════════════════════════════════════════════
+debug: false  # Activar logs detallados del ciclo de desastres (afecta rendimiento)
+
+# ═══════════════════════════════════════════════════════════════════
 # RENDIMIENTO - Sistema unificado de TPS y SAFE MODE
 # ═══════════════════════════════════════════════════════════════════
 rendimiento:

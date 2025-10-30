@@ -114,6 +114,8 @@ public class MessageBus {
      */
     public void clearDebounce() {
         debounceMap.clear();
-        plugin.getLogger().info("[MessageBus] Debounce map cleared");
+        if (plugin.getConfigManager().isDebugCiclo()) {
+            plugin.getLogger().info("[MessageBus] Debounce map cleared");
+        }
     }
 }

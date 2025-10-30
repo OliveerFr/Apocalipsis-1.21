@@ -38,6 +38,8 @@ public class PerformanceAdapter {
     }
 
     public void startMonitoring() {
+        // Recargar configuración antes de iniciar
+        loadConfig();
         // Tick cada 2 segundos (40 ticks)
         taskId = Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 40L, 40L).getTaskId();
     }

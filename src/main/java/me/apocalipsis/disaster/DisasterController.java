@@ -186,7 +186,9 @@ public class DisasterController {
         String estado = stateManager.getEstado();
         boolean isPrepForzada = stateManager.isPrepForzada();
         if (nextTask != null && !nextTask.isCancelled() && ("ACTIVO".equals(estado) || ("PREPARACION".equals(estado) && isPrepForzada))) {
-            plugin.getLogger().info("[Cycle][DEBUG] cancelAllTasks: cancelando nextTask (auto-next)");
+            if (plugin.getConfigManager().isDebugCiclo()) {
+                plugin.getLogger().info("[Cycle][DEBUG] cancelAllTasks: cancelando nextTask (auto-next)");
+            }
             nextTask.cancel();
             nextTask = null;
         }
@@ -833,10 +835,6 @@ public class DisasterController {
         nextTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
             long now = System.currentTimeMillis();
 
-            if (plugin.getConfigManager().isDebugCiclo()) {
-                plugin.getLogger().info("[Cycle][DEBUG] tick now=" + now);
-            }
-
             // Antirebote: tras entrar a PREPARACION
             if (now - enteredPreparationAtMs < 250L) {
                 if (plugin.getConfigManager().isDebugCiclo()) {
@@ -1218,11 +1216,13 @@ public class DisasterController {
     // 1) Cancelar tareas/BossBar anteriores
         cancelUITicker();
         stopCurrentDisasterTasks();
-    // [FIX] Asegurar estado ACTIVO antes de iniciar el desastre
+        // [FIX] Asegurar estado ACTIVO antes de iniciar el desastre
         stateManager.setEstado(ServerState.ACTIVO.name());
-    // [FIX] Iniciar ciclo de ticks para el desastre
+        // [FIX] Iniciar ciclo de ticks para el desastre
         startTask();
-        plugin.getLogger().info("[Cycle][DEBUG] Estado cambiado a ACTIVO y startTask llamado tras iniciar desastre: " + disasterId);
+        if (plugin.getConfigManager().isDebugCiclo()) {
+            plugin.getLogger().info("[Cycle][DEBUG] Estado cambiado a ACTIVO y startTask llamado tras iniciar desastre: " + disasterId);
+        }
         
         // 2) Marcar tiempos
         ConfigurationSection config = plugin.getConfigManager().getDesastresConfig()
@@ -1270,7 +1270,9 @@ public class DisasterController {
         Disaster disaster = registry.get(disasterId);
         activeDisaster = disaster;
         disaster.start();
-        plugin.getLogger().info("[Cycle][DEBUG] startTask llamado tras iniciar desastre: " + disasterId);
+        if (plugin.getConfigManager().isDebugCiclo()) {
+            plugin.getLogger().info("[Cycle][DEBUG] startTask llamado tras iniciar desastre: " + disasterId);
+        }
         
         // 6) Ticker UI único (lee de state.yml)
         startUiTicker();

@@ -11,6 +11,7 @@ me\apocalipsis\ui\SoundUtil.class
 me\apocalipsis\listeners\MissionListener.class
 me\apocalipsis\commands\ApocalipsisCommand$1.class
 me\apocalipsis\disaster\adapters\PerformanceAdapter$PerformanceState.class
+me\apocalipsis\missions\MissionService$1.class
 me\apocalipsis\state\TimeService.class
 me\apocalipsis\Apocalipsis.class
 me\apocalipsis\missions\MissionRank.class

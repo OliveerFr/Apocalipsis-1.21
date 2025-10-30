@@ -50,10 +50,12 @@ public abstract class DisasterBase implements Disaster {
 
     @Override
     public void start() {
-    this.active = true;
-    this.tickCounter = 0;
-    plugin.getLogger().info("[Cycle][DEBUG] onStart: " + id);
-    onStart();
+        this.active = true;
+        this.tickCounter = 0;
+        if (plugin.getConfigManager().isDebugCiclo()) {
+            plugin.getLogger().info("[Cycle][DEBUG] onStart: " + id);
+        }
+        onStart();
     }
 
     @Override
@@ -79,10 +81,14 @@ public abstract class DisasterBase implements Disaster {
         tickCounter++;
         
         for (Player player : Bukkit.getOnlinePlayers()) {
-            plugin.getLogger().info("[Cycle][DEBUG] applyEffects: " + id + " player=" + player.getName());
+            if (plugin.getConfigManager().isDebugCiclo()) {
+                plugin.getLogger().info("[Cycle][DEBUG] applyEffects: " + id + " player=" + player.getName());
+            }
             applyEffects(player);
         }
-        plugin.getLogger().info("[Cycle][DEBUG] onTick: " + id);
+        if (plugin.getConfigManager().isDebugCiclo()) {
+            plugin.getLogger().info("[Cycle][DEBUG] onTick: " + id);
+        }
         onTick();
     }
 
@@ -105,5 +111,32 @@ public abstract class DisasterBase implements Disaster {
             return false;
         }
         return plugin.getConfigManager().getExcepciones().contains(player.getUniqueId());
+    }
+    
+    /**
+     * [FIX PARTÍCULAS] Muestra partículas solo a jugadores NO exentos
+     * Si un jugador está en la lista de excepciones, no verá las partículas
+     */
+    protected void spawnParticleForNonExempt(org.bukkit.World world, org.bukkit.Particle particle, 
+                                            org.bukkit.Location loc, int count, 
+                                            double offsetX, double offsetY, double offsetZ, double speed) {
+        for (Player player : world.getPlayers()) {
+            if (!isPlayerExempt(player)) {
+                player.spawnParticle(particle, loc, count, offsetX, offsetY, offsetZ, speed);
+            }
+        }
+    }
+    
+    /**
+     * [FIX PARTÍCULAS] Muestra partículas con blockdata solo a jugadores NO exentos
+     */
+    protected void spawnParticleForNonExempt(org.bukkit.World world, org.bukkit.Particle particle, 
+                                            org.bukkit.Location loc, int count, 
+                                            double offsetX, double offsetY, double offsetZ, double speed, Object data) {
+        for (Player player : world.getPlayers()) {
+            if (!isPlayerExempt(player)) {
+                player.spawnParticle(particle, loc, count, offsetX, offsetY, offsetZ, speed, data);
+            }
+        }
     }
 }

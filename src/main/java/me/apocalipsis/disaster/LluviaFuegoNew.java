@@ -407,10 +407,10 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
         evaporateNearbyWater(loc, romperProteccionCantidad);
         
         // Partículas de impacto
-        world.spawnParticle(ParticleCompat.flame(), loc, 15, 0.3, 0.3, 0.3, 0.1);
-        world.spawnParticle(ParticleCompat.lava(), loc, 5, 0.2, 0.2, 0.2, 0);
-        world.spawnParticle(ParticleCompat.smokeNormal(), loc, 10, 0.4, 0.4, 0.4, 0.05);
-        world.spawnParticle(ParticleCompat.explosionNormal(), loc, 1, 0, 0, 0, 0);
+        spawnParticleForNonExempt(world, ParticleCompat.flame(), loc, 15, 0.3, 0.3, 0.3, 0.1);
+        spawnParticleForNonExempt(world, ParticleCompat.lava(), loc, 5, 0.2, 0.2, 0.2, 0);
+        spawnParticleForNonExempt(world, ParticleCompat.smokeNormal(), loc, 10, 0.4, 0.4, 0.4, 0.05);
+        spawnParticleForNonExempt(world, ParticleCompat.explosionNormal(), loc, 1, 0, 0, 0, 0);
         
         // Explosión controlada
         boolean breakBlocks = romperBloques && !hasWaterProtection; // Agua evita rotura
@@ -547,8 +547,8 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 for (int y = 0; y < 20; y++) {
                     Location particleLoc = loc.clone().add(0, y, 0);
-                    world.spawnParticle(Particle.FLAME, particleLoc, 5, 0.5, 0.5, 0.5, 0.01);
-                    world.spawnParticle(Particle.LAVA, particleLoc, 2, 0.3, 0.3, 0.3);
+                    spawnParticleForNonExempt(world, Particle.FLAME, particleLoc, 5, 0.5, 0.5, 0.5, 0.01);
+                    spawnParticleForNonExempt(world, Particle.LAVA, particleLoc, 2, 0.3, 0.3, 0.3, 0);
                 }
             }, (long) i * 5);
         }
@@ -564,10 +564,10 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
         world.createExplosion(loc, (float) meteoritosExplosionPower, false, romperBloques);
         
         // Efectos visuales
-        world.spawnParticle(Particle.EXPLOSION_EMITTER, loc, 3, 1, 1, 1);
-        world.spawnParticle(Particle.FLAME, loc, 100, 3, 3, 3, 0.2);
-        world.spawnParticle(Particle.LAVA, loc, 50, 2, 2, 2);
-        world.spawnParticle(Particle.CAMPFIRE_COSY_SMOKE, loc, 80, 4, 4, 4, 0.1);
+        spawnParticleForNonExempt(world, Particle.EXPLOSION_EMITTER, loc, 3, 1, 1, 1, 0);
+        spawnParticleForNonExempt(world, Particle.FLAME, loc, 100, 3, 3, 3, 0.2);
+        spawnParticleForNonExempt(world, Particle.LAVA, loc, 50, 2, 2, 2, 0);
+        spawnParticleForNonExempt(world, Particle.CAMPFIRE_COSY_SMOKE, loc, 80, 4, 4, 4, 0.1);
         
         // Sonidos
         world.playSound(loc, Sound.ENTITY_GENERIC_EXPLODE, 2.0f, 0.5f);
@@ -649,7 +649,7 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
                         blocksTransformados.add(block);
                         
                         // Partículas de transformación
-                        world.spawnParticle(Particle.FLAME, blockLoc.add(0.5, 0.5, 0.5), 3, 0.2, 0.2, 0.2);
+                        spawnParticleForNonExempt(world, Particle.FLAME, blockLoc.add(0.5, 0.5, 0.5), 3, 0.2, 0.2, 0.2, 0);
                     }
                 }
             }
@@ -752,8 +752,8 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
             water.setType(Material.AIR);
             
             // Partículas de vapor en el bloque evaporado
-            world.spawnParticle(Particle.CLOUD, vaporLoc, 8, 0.3, 0.3, 0.3, 0.05);
-            world.spawnParticle(Particle.BUBBLE_POP, vaporLoc, 5, 0.2, 0.2, 0.2, 0.02);
+            spawnParticleForNonExempt(world, Particle.CLOUD, vaporLoc, 8, 0.3, 0.3, 0.3, 0.05);
+            spawnParticleForNonExempt(world, Particle.BUBBLE_POP, vaporLoc, 5, 0.2, 0.2, 0.2, 0.02);
             world.playSound(vaporLoc, Sound.BLOCK_FIRE_EXTINGUISH, 0.4f, 1.5f);
             
             evaporated++;

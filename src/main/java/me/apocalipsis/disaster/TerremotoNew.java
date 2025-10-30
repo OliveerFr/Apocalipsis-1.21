@@ -624,8 +624,8 @@ public class TerremotoNew extends DisasterBase {
                 grietaBlocks.add(block);
                 
                 // Partículas de grieta
-                world.spawnParticle(Particle.LAVA, loc.clone().add(0.5, 1.0, 0.5), 5, 0.3, 0.1, 0.3, 0.01);
-                world.spawnParticle(Particle.SMOKE, loc.clone().add(0.5, 1.0, 0.5), 3, 0.2, 0.1, 0.2);
+                spawnParticleForNonExempt(world, Particle.LAVA, loc.clone().add(0.5, 1.0, 0.5), 5, 0.3, 0.1, 0.3, 0.01);
+                spawnParticleForNonExempt(world, Particle.SMOKE, loc.clone().add(0.5, 1.0, 0.5), 3, 0.2, 0.1, 0.2, 0);
             }
         }
         
@@ -698,8 +698,8 @@ public class TerremotoNew extends DisasterBase {
                     double z = epicentro.getZ() + r * Math.sin(rad);
                     Location particleLoc = new Location(world, x, epicentro.getY(), z);
                     
-                    world.spawnParticle(Particle.CAMPFIRE_COSY_SMOKE, particleLoc, 1, 0, 0, 0, 0.01);
-                    world.spawnParticle(ParticleCompat.blockDust(), particleLoc, 2, 0.1, 0, 0.1, 0, Material.STONE.createBlockData());
+                    spawnParticleForNonExempt(world, Particle.CAMPFIRE_COSY_SMOKE, particleLoc, 1, 0, 0, 0, 0.01);
+                    spawnParticleForNonExempt(world, ParticleCompat.blockDust(), particleLoc, 2, 0.1, 0, 0.1, 0, Material.STONE.createBlockData());
                 }
                 
                 if (r == 4) {
