@@ -139,4 +139,61 @@ public abstract class DisasterBase implements Disaster {
             }
         }
     }
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // MÉTODOS OPTIMIZADOS CON PERFORMANCE ADAPTER
+    // ═══════════════════════════════════════════════════════════════════
+    
+    /**
+     * [OPTIMIZADO] Spawnea partículas respetando el PerformanceAdapter.
+     * Reduce la cantidad de partículas según el estado de rendimiento.
+     */
+    protected void spawnParticleOptimized(org.bukkit.World world, org.bukkit.Particle particle, 
+                                         org.bukkit.Location loc, int baseCount, 
+                                         double offsetX, double offsetY, double offsetZ, double speed) {
+        double scale = getPerformanceScale();
+        if (scale <= 0.0) return; // SAFE_MODE: no spawnear partículas
+        
+        int scaledCount = Math.max(1, (int) (baseCount * scale));
+        
+        for (Player player : world.getPlayers()) {
+            if (!isPlayerExempt(player)) {
+                player.spawnParticle(particle, loc, scaledCount, offsetX, offsetY, offsetZ, speed);
+            }
+        }
+    }
+    
+    /**
+     * [OPTIMIZADO] Spawnea partículas con blockdata respetando el PerformanceAdapter
+     */
+    protected void spawnParticleOptimized(org.bukkit.World world, org.bukkit.Particle particle, 
+                                         org.bukkit.Location loc, int baseCount, 
+                                         double offsetX, double offsetY, double offsetZ, double speed, Object data) {
+        double scale = getPerformanceScale();
+        if (scale <= 0.0) return; // SAFE_MODE: no spawnear partículas
+        
+        int scaledCount = Math.max(1, (int) (baseCount * scale));
+        
+        for (Player player : world.getPlayers()) {
+            if (!isPlayerExempt(player)) {
+                player.spawnParticle(particle, loc, scaledCount, offsetX, offsetY, offsetZ, speed, data);
+            }
+        }
+    }
+    
+    /**
+     * [OPTIMIZADO] Verifica si debe skipear efectos pesados según rendimiento
+     * @return true si el rendimiento es crítico y debe reducir efectos
+     */
+    protected boolean shouldReduceEffects() {
+        return getPerformanceScale() < 0.7;
+    }
+    
+    /**
+     * [OPTIMIZADO] Verifica si está en SAFE_MODE
+     * @return true si debe pausar todos los efectos pesados
+     */
+    protected boolean isInSafeMode() {
+        return getPerformanceScale() == 0.0;
+    }
 }

@@ -1,14 +1,15 @@
 package me.apocalipsis.ui;
 
-import me.apocalipsis.Apocalipsis;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.title.Title;
-import org.bukkit.Bukkit;
-import org.bukkit.entity.Player;
-
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
+
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
+
+import me.apocalipsis.Apocalipsis;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.title.Title;
 
 public class MessageBus {
 

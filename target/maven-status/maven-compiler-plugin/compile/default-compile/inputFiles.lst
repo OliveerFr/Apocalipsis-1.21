@@ -1,10 +1,14 @@
+Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\listeners\DisasterEvasionListener.java
 Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\disaster\DisasterRegistry.java
 Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\utils\DisasterDamage.java
+Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\listeners\BlockTrackListener.java
+Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\utils\BlockOwnershipTracker.java
 Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\disaster\adapters\PerformanceAdapter.java
 Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\disaster\DisasterController.java
 Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\utils\ExplosionGuard.java
 Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\listeners\MissionListener.java
 Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\state\ServerState.java
+Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\disaster\DisasterEvasionTracker.java
 Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\disaster\HuracanNew.java
 Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\SoundUtil.java
 Z:\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\missions\MissionAssignment.java

@@ -5,6 +5,7 @@ import me.apocalipsis.disaster.adapters.PerformanceAdapter;
 import me.apocalipsis.state.TimeService;
 import me.apocalipsis.ui.MessageBus;
 import me.apocalipsis.ui.SoundUtil;
+import me.apocalipsis.utils.BlockOwnershipTracker;
 import me.apocalipsis.utils.DisasterDamage;
 import me.apocalipsis.utils.EffectUtil;
 import me.apocalipsis.utils.ParticleCompat;
@@ -20,6 +21,8 @@ import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class TerremotoNew extends DisasterBase {
+
+    private final BlockOwnershipTracker blockTracker;
 
     private double shakeIntensity;
     private int shakeEveryTicks;
@@ -82,6 +85,7 @@ public class TerremotoNew extends DisasterBase {
     public TerremotoNew(Apocalipsis plugin, MessageBus messageBus, SoundUtil soundUtil, 
                        TimeService timeService, PerformanceAdapter performanceAdapter) {
         super(plugin, messageBus, soundUtil, timeService, performanceAdapter, "terremoto");
+        this.blockTracker = plugin.getBlockTracker();
         loadConfig();
     }
 
@@ -310,7 +314,13 @@ public class TerremotoNew extends DisasterBase {
         epicentros.clear();
         nextAfterShock = tickCounter + aftershockIntervalo;
         isAfterShock = false;
+        
+        // [FIX DUPLICACIÓN] Resetear multiplicador al inicio
         faseMultiplicador = 1.0;
+        
+        if (plugin.getConfigManager().isDebugCiclo()) {
+            plugin.getLogger().info("[TerremotoNew] Iniciado - multiplicadores reseteados");
+        }
     }
 
     @Override
@@ -434,6 +444,7 @@ public class TerremotoNew extends DisasterBase {
             k *= 0.4;
         }
 
+        // Shake de movimiento (velocidad)
         Vector v = new Vector(
             ThreadLocalRandom.current().nextDouble(-k, k),
             0.0,
@@ -441,6 +452,36 @@ public class TerremotoNew extends DisasterBase {
         );
         p.setVelocity(p.getVelocity().add(v));
         p.setFallDistance(0f);
+        
+        // [NUEVO] Shake de cámara (rotación de vista)
+        applyCameraShake(p, k);
+    }
+    
+    /**
+     * Aplica un shake realista a la cámara del jugador
+     * Mueve ligeramente la vista pitch/yaw para simular temblor
+     */
+    private void applyCameraShake(Player p, double intensity) {
+        Location loc = p.getLocation();
+        
+        // Shake suave para que sea jugable
+        float yawShake = (float) (ThreadLocalRandom.current().nextDouble(-2, 2) * intensity);
+        float pitchShake = (float) (ThreadLocalRandom.current().nextDouble(-1.5, 1.5) * intensity);
+        
+        // Aplicar el shake manteniendo límites jugables
+        float newYaw = loc.getYaw() + yawShake;
+        float newPitch = loc.getPitch() + pitchShake;
+        
+        // Limitar pitch para no voltear la cámara
+        newPitch = Math.max(-89f, Math.min(89f, newPitch));
+        
+        // Crear nueva location con rotación modificada
+        Location shakenLoc = loc.clone();
+        shakenLoc.setYaw(newYaw);
+        shakenLoc.setPitch(newPitch);
+        
+        // Teleportar al jugador a la misma posición con nueva rotación
+        p.teleport(shakenLoc);
     }
 
     private boolean isUnderRoof(Player p) {
@@ -477,6 +518,9 @@ public class TerremotoNew extends DisasterBase {
             
             // [#11] Solo romper bloques en la whitelist
             if (!romperWhitelist.contains(b.getType())) continue;
+            
+            // [ANTI-GRIEFING] Verificar si el bloque puede ser destruido para este jugador
+            if (!blockTracker.canDisasterDestroyBlock(b, p)) continue;
             
             // Obtener probabilidad según dureza del material
             double probability = materialDurability.getOrDefault(b.getType(), breakChance);
@@ -564,7 +608,8 @@ public class TerremotoNew extends DisasterBase {
     }
     
     /**
-     * Sistema de aftershocks (réplicas): cada intervalo aumenta intensidad temporalmente
+     * Sistema de aftershocks (réplicas): cada intervalo aumenta intensidad temporalmente.
+     * [FIX DUPLICACIÓN] Asegurar que el aftershock no se acumule infinitamente
      */
     private void updateAfterShocks() {
         if (!aftershocksEnabled) {
@@ -573,15 +618,19 @@ public class TerremotoNew extends DisasterBase {
         }
         
         if (tickCounter >= nextAfterShock) {
-            isAfterShock = true;
-            soundUtil.playSoundAll(Sound.ENTITY_WARDEN_HEARTBEAT, 1.0f, 0.5f);
-            messageBus.sendActionBarAll("§c§l⚠ RÉPLICA SÍSMICA ⚠", "aftershock");
+            // Solo activar si no está ya activo (prevenir duplicación)
+            if (!isAfterShock) {
+                isAfterShock = true;
+                soundUtil.playSoundAll(Sound.ENTITY_WARDEN_HEARTBEAT, 1.0f, 0.5f);
+                messageBus.sendActionBarAll("§c§l⚠ RÉPLICA SÍSMICA ⚠", "aftershock");
+                
+                // Duración de la réplica: 60 ticks (3 segundos)
+                plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+                    isAfterShock = false;
+                }, 60L);
+            }
             
-            // Duración de la réplica: 60 ticks (3 segundos)
-            plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-                isAfterShock = false;
-            }, 60L);
-            
+            // Programar siguiente aftershock
             nextAfterShock = tickCounter + aftershockIntervalo;
         }
     }
@@ -613,20 +662,33 @@ public class TerremotoNew extends DisasterBase {
         
         int length = random.nextInt(grietasLongitud) + 3;
         
+        // ANTI-GRIEFING: Verificar toda el área de la grieta ANTES de crear
+        List<Block> crackPath = new ArrayList<>();
         for (int i = 0; i < length; i++) {
             Location loc = start.clone().add(dirX * i, -1, dirZ * i);
             Block block = loc.getBlock();
             
             if (romperWhitelist.contains(block.getType())) {
-                // 70% aire, 30% lava
-                Material newType = random.nextDouble() < 0.7 ? Material.AIR : Material.LAVA;
-                block.setType(newType, false);
-                grietaBlocks.add(block);
-                
-                // Partículas de grieta
-                spawnParticleForNonExempt(world, Particle.LAVA, loc.clone().add(0.5, 1.0, 0.5), 5, 0.3, 0.1, 0.3, 0.01);
-                spawnParticleForNonExempt(world, Particle.SMOKE, loc.clone().add(0.5, 1.0, 0.5), 3, 0.2, 0.1, 0.2, 0);
+                // Verificar si este bloque puede ser destruido por el desastre
+                if (!blockTracker.canDisasterDestroyBlock(block, target)) {
+                    // Bloque pertenece a otro jugador, abortar toda la grieta
+                    return;
+                }
+                crackPath.add(block);
             }
+        }
+        
+        // Si llegamos aquí, todos los bloques son seguros - crear la grieta
+        for (Block block : crackPath) {
+            // 70% aire, 30% lava
+            Material newType = random.nextDouble() < 0.7 ? Material.AIR : Material.LAVA;
+            block.setType(newType, false);
+            grietaBlocks.add(block);
+            
+            // Partículas de grieta
+            Location loc = block.getLocation();
+            spawnParticleForNonExempt(world, Particle.LAVA, loc.clone().add(0.5, 1.0, 0.5), 5, 0.3, 0.1, 0.3, 0.01);
+            spawnParticleForNonExempt(world, Particle.SMOKE, loc.clone().add(0.5, 1.0, 0.5), 3, 0.2, 0.1, 0.2, 0);
         }
         
         // Sonido de grieta
@@ -647,8 +709,11 @@ public class TerremotoNew extends DisasterBase {
         for (int y = 1; y <= derrumbesMaxAltura; y++) {
             Block check = world.getBlockAt(loc.getBlockX(), loc.getBlockY() + y, loc.getBlockZ());
             if (romperWhitelist.contains(check.getType())) {
-                sourceBlock = check;
-                break;
+                // ANTI-GRIEFING: Verificar si este bloque puede ser destruido
+                if (blockTracker.canDisasterDestroyBlock(check, player)) {
+                    sourceBlock = check;
+                    break;
+                }
             }
         }
         
@@ -789,6 +854,17 @@ public class TerremotoNew extends DisasterBase {
         int radio = absorcionRadio;
         List<Block> protectionBlocks = new ArrayList<>();
         
+        // Buscar jugadores cercanos para verificación de ownership
+        Player nearestPlayer = null;
+        double minDist = Double.MAX_VALUE;
+        for (Player p : plugin.getServer().getOnlinePlayers()) {
+            double dist = p.getLocation().distance(location);
+            if (dist < minDist) {
+                minDist = dist;
+                nearestPlayer = p;
+            }
+        }
+        
         // Buscar bloques absorbentes en área
         for (int x = -radio; x <= radio; x++) {
             for (int y = -radio; y <= radio; y++) {
@@ -800,7 +876,10 @@ public class TerremotoNew extends DisasterBase {
                     );
                     
                     if (absorcionMateriales.contains(block.getType())) {
-                        protectionBlocks.add(block);
+                        // ANTI-GRIEFING: Solo incluir bloques que pueden ser destruidos
+                        if (nearestPlayer != null && blockTracker.canDisasterDestroyBlock(block, nearestPlayer)) {
+                            protectionBlocks.add(block);
+                        }
                     }
                 }
             }

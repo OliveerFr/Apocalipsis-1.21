@@ -10,8 +10,11 @@ package me.apocalipsis;
 import me.apocalipsis.commands.ApocalipsisCommand;
 import me.apocalipsis.commands.AvoTabCompleter;
 import me.apocalipsis.disaster.DisasterController;
+import me.apocalipsis.disaster.DisasterEvasionTracker;
 import me.apocalipsis.disaster.DisasterRegistry;
 import me.apocalipsis.disaster.adapters.PerformanceAdapter;
+import me.apocalipsis.listeners.BlockTrackListener;
+import me.apocalipsis.listeners.DisasterEvasionListener;
 import me.apocalipsis.listeners.MissionListener;
 import me.apocalipsis.listeners.PlayerListener;
 import me.apocalipsis.missions.MissionService;
@@ -22,6 +25,7 @@ import me.apocalipsis.ui.MessageBus;
 import me.apocalipsis.ui.ScoreboardManager;
 import me.apocalipsis.ui.SoundUtil;
 import me.apocalipsis.ui.TablistManager;
+import me.apocalipsis.utils.BlockOwnershipTracker;
 import me.apocalipsis.utils.ConfigManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -47,6 +51,10 @@ public final class Apocalipsis extends JavaPlugin {
 
     // Listeners
     private MissionListener missionListener;
+    
+    // Utils
+    private BlockOwnershipTracker blockTracker;
+    private DisasterEvasionTracker evasionTracker;
 
     @Override
     public void onEnable() {
@@ -73,6 +81,12 @@ public final class Apocalipsis extends JavaPlugin {
         missionService = new MissionService(this, messageBus);
         rankService = new RankService(this, missionService);
         
+        // Inicializar block tracker (anti-griefing)
+        blockTracker = new BlockOwnershipTracker(this);
+        
+        // Inicializar evasion tracker (anti-disconnect)
+        evasionTracker = new DisasterEvasionTracker(this);
+        
         // Inicializar disaster system
         disasterRegistry = new DisasterRegistry();
         disasterController = new DisasterController(this, stateManager, timeService, disasterRegistry, messageBus, soundUtil);
@@ -93,6 +107,8 @@ public final class Apocalipsis extends JavaPlugin {
         missionListener = new MissionListener(missionService);
         getServer().getPluginManager().registerEvents(missionListener, this);
         getServer().getPluginManager().registerEvents(new me.apocalipsis.utils.ExplosionGuard(this), this);
+        getServer().getPluginManager().registerEvents(new BlockTrackListener(this), this);
+        getServer().getPluginManager().registerEvents(new DisasterEvasionListener(this), this);
 
         // Cargar estado
         stateManager.loadState();
@@ -117,6 +133,17 @@ public final class Apocalipsis extends JavaPlugin {
         // Guardar estado
         if (stateManager != null) {
             stateManager.saveState();
+        }
+        
+        // Guardar block tracker
+        if (blockTracker != null) {
+            blockTracker.saveData();
+        }
+        
+        // Limpiar evasion tracker y guardar datos
+        if (evasionTracker != null) {
+            evasionTracker.saveData();
+            evasionTracker.clearAll();
         }
         
         // [DATA.YML] Guardar datos de jugadores
@@ -204,5 +231,13 @@ public final class Apocalipsis extends JavaPlugin {
 
     public MissionListener getMissionListener() {
         return missionListener;
+    }
+    
+    public BlockOwnershipTracker getBlockTracker() {
+        return blockTracker;
+    }
+    
+    public DisasterEvasionTracker getDisasterEvasionTracker() {
+        return evasionTracker;
     }
 }

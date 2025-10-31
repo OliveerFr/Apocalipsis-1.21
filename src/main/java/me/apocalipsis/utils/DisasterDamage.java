@@ -19,7 +19,8 @@ public class DisasterDamage {
     private static final long ACTIONBAR_COOLDOWN_MS = 200; // 200ms debounce
 
     /**
-     * Aplica daño aleatorio al jugador según configuración del desastre
+     * Aplica daño aleatorio al jugador según configuración del desastre.
+     * [FIX] Ahora usa damage() en lugar de setHealth() para respetar armadura y encantamientos.
      */
     public static void maybeDamage(Player player, String disasterId, ConfigurationSection disasterConfig, 
                                    MessageBus messageBus, SoundUtil soundUtil) {
@@ -44,9 +45,13 @@ public class DisasterDamage {
         double hearts = minHearts + RANDOM.nextDouble() * (maxHearts - minHearts);
         double damage = hearts * 2.0; // 1 corazón = 2.0 HP
 
-        // Aplicar daño
-        double newHealth = Math.max(0.5, player.getHealth() - damage);
-        player.setHealth(newHealth);
+        // [FIX] Usar damage() en lugar de setHealth() para respetar armadura
+        // damage() aplica el daño correctamente considerando:
+        // - Armadura y su durabilidad
+        // - Encantamientos (Protection, Blast Protection, etc.)
+        // - Efectos de pociones (Resistance)
+        // - Dificultad del mundo
+        player.damage(damage);
 
         // Sonido [1.21+] Usar Registry en lugar de valueOf (deprecated)
         String soundName = commonDamage.getString("sound", "ENTITY_PLAYER_HURT");

@@ -49,6 +49,12 @@ public class DisasterController {
     private long lastMinPlayersBlockLog = 0L;
     private long lastCooldownReadyLog = 0L;
     
+    // [COUNTDOWN ALERTS] Rastreo de alertas enviadas
+    private boolean alert60sIssued = false;
+    private boolean alert30sIssued = false;
+    private boolean alert10sIssued = false;
+    private boolean alert5sIssued = false;
+    
     // [RECONSTRUCCIÓN] BossBar ÚNICA (reutilizable)
     private BossBar bossBar;
     
@@ -421,6 +427,13 @@ public class DisasterController {
         stateManager.setState(ServerState.ACTIVO);
         disaster.start();
         
+        // [EVASION] Registrar inicio del desastre para todos los jugadores online
+        for (org.bukkit.entity.Player p : plugin.getServer().getOnlinePlayers()) {
+            if (!p.hasPermission("apocalipsis.exempt")) {
+                plugin.getDisasterEvasionTracker().onDisasterStart(p);
+            }
+        }
+        
         // [RE-FIX] Iniciar UI Ticker al reanudar tras boot
         startUITicker();
 
@@ -498,6 +511,12 @@ public class DisasterController {
             // Limpiar
             activeDisaster = null;
             stateManager.setActiveDisasterId(null);
+            
+            // [EVASION] Notificar fin del desastre (limpia registros)
+            plugin.getDisasterEvasionTracker().onDisasterEnd();
+            
+            // [COUNTDOWN] Resetear flags de alertas
+            resetCountdownAlerts();
             
             // [CRÍTICO] RESETEAR FLAGS
             plugin.getLogger().info("[Cycle] ANTES: cooldown=" + cooldownAutoStartAttempted.get() + ", starting=" + starting.get());
@@ -738,6 +757,14 @@ public class DisasterController {
         return activeDisaster;
     }
     
+    /**
+     * Verifica si hay un desastre activo actualmente
+     * @return true si hay un desastre ejecutándose, false en caso contrario
+     */
+    public boolean hasActiveDisaster() {
+        return activeDisaster != null && activeDisaster.isActive();
+    }
+    
     // ═══════════════════════════════════════════════════════════════════
     // Métodos auxiliares
     // ═══════════════════════════════════════════════════════════════════
@@ -908,9 +935,47 @@ public class DisasterController {
 
             long cooldownMs = plugin.getConfigManager().getCooldownFinSegundos() * 1000L;
             long elapsed = now - lastEndMs;
+            long remainingMs = cooldownMs - elapsed;
+            long remainingSec = remainingMs / 1000L;
 
             if (plugin.getConfigManager().isDebugCiclo()) {
-                plugin.getLogger().info("[Cycle] Cooldown check: elapsed=" + (elapsed / 1000) + "s / req=" + (cooldownMs / 1000) + "s");
+                plugin.getLogger().info("[Cycle] Cooldown check: elapsed=" + (elapsed / 1000) + "s / req=" + (cooldownMs / 1000) + "s, remaining=" + remainingSec + "s");
+            }
+            
+            // [COUNTDOWN ALERTS] Enviar alertas según tiempo restante
+            if (remainingMs > 0) {
+                // Alerta de 60 segundos
+                if (remainingSec <= 60 && remainingSec > 55 && !alert60sIssued) {
+                    sendCountdownAlert(60);
+                    alert60sIssued = true;
+                }
+                // Alerta de 30 segundos
+                else if (remainingSec <= 30 && remainingSec > 25 && !alert30sIssued) {
+                    sendCountdownAlert(30);
+                    alert30sIssued = true;
+                }
+                // Alerta de 10 segundos
+                else if (remainingSec <= 10 && remainingSec > 8 && !alert10sIssued) {
+                    sendCountdownAlert(10);
+                    alert10sIssued = true;
+                }
+                // Alertas finales (5, 4, 3, 2, 1)
+                else if (remainingSec == 5 && !alert5sIssued) {
+                    sendCountdownAlert(5);
+                    alert5sIssued = true;
+                }
+                else if (remainingSec == 4) {
+                    sendCountdownAlert(4);
+                }
+                else if (remainingSec == 3) {
+                    sendCountdownAlert(3);
+                }
+                else if (remainingSec == 2) {
+                    sendCountdownAlert(2);
+                }
+                else if (remainingSec == 1) {
+                    sendCountdownAlert(1);
+                }
             }
             
             if (elapsed < cooldownMs) {
@@ -919,6 +984,9 @@ public class DisasterController {
                 }
                 return;
             }
+            
+            // [COUNTDOWN] Resetear flags al iniciar desastre
+            resetCountdownAlerts();
 
             // ✅ Cooldown cumplido → intentar iniciar
             boolean flagBloqueado = cooldownAutoStartAttempted.get();
@@ -1270,6 +1338,14 @@ public class DisasterController {
         Disaster disaster = registry.get(disasterId);
         activeDisaster = disaster;
         disaster.start();
+        
+        // [EVASION] Registrar inicio del desastre para todos los jugadores online
+        for (org.bukkit.entity.Player p : plugin.getServer().getOnlinePlayers()) {
+            if (!p.hasPermission("apocalipsis.exempt")) {
+                plugin.getDisasterEvasionTracker().onDisasterStart(p);
+            }
+        }
+        
         if (plugin.getConfigManager().isDebugCiclo()) {
             plugin.getLogger().info("[Cycle][DEBUG] startTask llamado tras iniciar desastre: " + disasterId);
         }
@@ -1407,6 +1483,103 @@ public class DisasterController {
             for (Player p : Bukkit.getOnlinePlayers()) {
                 bossBar.addPlayer(p);
             }
+        }
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // SISTEMA DE ALERTAS DE CUENTA REGRESIVA
+    // ═══════════════════════════════════════════════════════════════════
+    
+    /**
+     * Envía alertas visuales y de sonido cuando falta tiempo para el inicio del desastre
+     * @param seconds Segundos restantes
+     */
+    private void sendCountdownAlert(int seconds) {
+        // Determinar color y estilo según tiempo restante
+        String color;
+        String prefix;
+        float pitch;
+        Sound sound;
+        
+        if (seconds >= 30) {
+            color = "§e"; // Amarillo
+            prefix = "§e⏰";
+            pitch = 1.0f;
+            sound = Sound.BLOCK_NOTE_BLOCK_PLING;
+        } else if (seconds >= 10) {
+            color = "§6"; // Naranja
+            prefix = "§6⚠";
+            pitch = 1.3f;
+            sound = Sound.BLOCK_NOTE_BLOCK_PLING;
+        } else if (seconds >= 5) {
+            color = "§c"; // Rojo
+            prefix = "§c⚠";
+            pitch = 1.5f;
+            sound = Sound.BLOCK_NOTE_BLOCK_PLING;
+        } else {
+            color = "§4§l"; // Rojo oscuro + negrita
+            prefix = "§4§l⚠⚠";
+            pitch = 1.8f + (5 - seconds) * 0.1f; // Aumenta el pitch progresivamente
+            sound = Sound.BLOCK_NOTE_BLOCK_PLING;
+        }
+        
+        // Mensaje principal
+        String message;
+        if (seconds >= 5) {
+            message = prefix + " " + color + "¡Desastre en " + seconds + " segundos!";
+        } else {
+            message = prefix + " " + color + seconds + "...";
+        }
+        
+        // Enviar a todos los jugadores (excepto exentos)
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            if (player.hasPermission("apocalipsis.exempt")) {
+                continue;
+            }
+            
+            // ActionBar para cuentas regresivas cortas (≤10s)
+            if (seconds <= 10) {
+                messageBus.sendActionBar(player, message);
+            } else {
+                // Mensaje en chat para alertas largas
+                player.sendMessage(message);
+            }
+            
+            // Sonido
+            player.playSound(player.getLocation(), sound, 1.0f, pitch);
+            
+            // Efecto visual adicional para últimos 5 segundos
+            if (seconds <= 5) {
+                // Título grande
+                player.showTitle(net.kyori.adventure.title.Title.title(
+                    net.kyori.adventure.text.Component.text(color + seconds),
+                    net.kyori.adventure.text.Component.text("§7¡Prepárate!"),
+                    net.kyori.adventure.title.Title.Times.times(
+                        java.time.Duration.ofMillis(0),
+                        java.time.Duration.ofMillis(1000),
+                        java.time.Duration.ofMillis(250)
+                    )
+                ));
+            }
+        }
+        
+        // Log
+        if (plugin.getConfigManager().isDebugCiclo()) {
+            plugin.getLogger().info("[Countdown] Alerta enviada: " + seconds + " segundos restantes");
+        }
+    }
+    
+    /**
+     * Resetea las flags de alertas (llamar al iniciar un desastre o al entrar en preparación)
+     */
+    private void resetCountdownAlerts() {
+        alert60sIssued = false;
+        alert30sIssued = false;
+        alert10sIssued = false;
+        alert5sIssued = false;
+        
+        if (plugin.getConfigManager().isDebugCiclo()) {
+            plugin.getLogger().info("[Countdown] Flags de alertas reseteadas");
         }
     }
 }

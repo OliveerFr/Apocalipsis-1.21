@@ -1,13 +1,21 @@
 package me.apocalipsis.disaster;
 
-import me.apocalipsis.Apocalipsis;
-import me.apocalipsis.disaster.adapters.PerformanceAdapter;
-import me.apocalipsis.state.TimeService;
-import me.apocalipsis.ui.MessageBus;
-import me.apocalipsis.ui.SoundUtil;
-import me.apocalipsis.utils.DisasterDamage;
-import me.apocalipsis.utils.ParticleCompat;
-import org.bukkit.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
+import java.util.UUID;
+
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
+import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.configuration.ConfigurationSection;
@@ -17,7 +25,14 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Vector;
 
-import java.util.*;
+import me.apocalipsis.Apocalipsis;
+import me.apocalipsis.disaster.adapters.PerformanceAdapter;
+import me.apocalipsis.state.TimeService;
+import me.apocalipsis.ui.MessageBus;
+import me.apocalipsis.ui.SoundUtil;
+import me.apocalipsis.utils.BlockOwnershipTracker;
+import me.apocalipsis.utils.DisasterDamage;
+import me.apocalipsis.utils.ParticleCompat;
 
 
 public class HuracanNew extends DisasterBase {
@@ -77,12 +92,16 @@ public class HuracanNew extends DisasterBase {
     private boolean fasesEnabled;
     private double faseMultiplicador;
     
+    // ANTI-GRIEFING: Tracker para verificar ownership de bloques
+    private final BlockOwnershipTracker blockTracker;
+    
     private final Random random = new Random();
     private final Set<UUID> playersWithStatic = new HashSet<>();
 
     public HuracanNew(Apocalipsis plugin, MessageBus messageBus, SoundUtil soundUtil, 
                      TimeService timeService, PerformanceAdapter performanceAdapter) {
         super(plugin, messageBus, soundUtil, timeService, performanceAdapter, "huracan");
+        this.blockTracker = plugin.getBlockTracker();
         loadConfig();
     }
 
@@ -312,13 +331,8 @@ public class HuracanNew extends DisasterBase {
         }
         activeItems.clear();
         
-        // Cleanup de inundación
-        for (Block block : waterBlocks) {
-            if (block != null && block.getType() == Material.WATER) {
-                block.setType(Material.AIR);
-            }
-        }
-        waterBlocks.clear();
+        // [AUTO-CLEANUP] Remover bloques de agua gradualmente para efecto natural
+        scheduleWaterCleanup();
         
         // Remover efectos de estática
         for (UUID uuid : playersWithStatic) {
@@ -328,6 +342,49 @@ public class HuracanNew extends DisasterBase {
             }
         }
         playersWithStatic.clear();
+    }
+    
+    /**
+     * Sistema de limpieza gradual de bloques de agua
+     * Remueve los bloques poco a poco para simular el "drenaje" natural
+     */
+    private void scheduleWaterCleanup() {
+        if (waterBlocks.isEmpty()) return;
+        
+        // Crear copia de la lista para evitar modificaciones concurrentes
+        final List<Block> blocksToClean = new ArrayList<>(waterBlocks);
+        waterBlocks.clear(); // Limpiar la lista original inmediatamente
+        
+        // Calcular cuántos bloques remover por tick (aproximadamente 15 bloques/segundo)
+        final int blocksPerTick = Math.max(1, blocksToClean.size() / 100); // ~5 segundos de limpieza
+        
+        new org.bukkit.scheduler.BukkitRunnable() {
+            private int index = 0;
+            
+            @Override
+            public void run() {
+                // Remover un lote de bloques
+                int removed = 0;
+                while (index < blocksToClean.size() && removed < blocksPerTick) {
+                    Block block = blocksToClean.get(index);
+                    if (block != null && block.getType() == Material.WATER) {
+                        block.setType(Material.AIR);
+                        
+                        // Partículas de evaporación
+                        block.getWorld().spawnParticle(Particle.CLOUD, 
+                            block.getLocation().add(0.5, 0.5, 0.5), 
+                            3, 0.2, 0.2, 0.2, 0.01);
+                    }
+                    index++;
+                    removed++;
+                }
+                
+                // Terminar cuando todos los bloques estén procesados
+                if (index >= blocksToClean.size()) {
+                    cancel();
+                }
+            }
+        }.runTaskTimer(plugin, 20L, 1L); // Empezar después de 1 segundo, ejecutar cada tick
     }
 
     @Override
@@ -726,6 +783,17 @@ public class HuracanNew extends DisasterBase {
                 }
                 
                 Block waterPos = below.getRelative(0, 1, 0);
+                
+                // [FIX NETHER] No poner agua en el Nether o End
+                if (waterPos.getWorld().getEnvironment() == World.Environment.NETHER ||
+                    waterPos.getWorld().getEnvironment() == World.Environment.THE_END) {
+                    continue;
+                }
+                
+                // [ANTI-GRIEFING] Verificar que el bloque pueda ser destruido por el desastre
+                if (!blockTracker.canDisasterDestroyBlock(waterPos, player)) {
+                    continue; // Bloque pertenece a otro jugador, no inundar
+                }
                 
                 // Verificar que sea válido para agua
                 if (waterPos.getType() == Material.AIR && waterPos.getY() < loc.getY()) {

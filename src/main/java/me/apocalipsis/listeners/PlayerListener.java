@@ -30,7 +30,12 @@ public class PlayerListener implements Listener {
         // [FIX DEFINITIVO] Forzar board compartido (crítico para que todos vean lo mismo)
         player.setScoreboard(org.bukkit.Bukkit.getScoreboardManager().getMainScoreboard());
         
-        // [AUTOASIGNACIÓN] Late-join: asignar misiones si el día está activo
+        // [EVASION PUNISHMENT] Aplicar castigos físicos pendientes
+        plugin.getDisasterEvasionTracker().applyReconnectPunishment(player);
+        
+        // [AUTOASIGNACIÓN] Late-join: asignar misiones si el jugador no tiene misiones activas
+        // Esto permite que jugadores que entren durante un día activo reciban misiones
+        // Si ya tienen misiones (por reconexión), assignMissionsToPlayer() las respeta y no reasigna
         org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
             plugin.getMissionService().assignMissionsToPlayer(player);
         }, 2L);

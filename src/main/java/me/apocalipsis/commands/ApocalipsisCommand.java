@@ -317,9 +317,12 @@ public class ApocalipsisCommand implements CommandExecutor {
         // missionService.resetExploreTrackers();
         // missionService.resetHeightCounters();
         
+        // [FIX] assignMissionsForDay ahora limpia automáticamente las misiones anteriores
         missionService.assignMissionsForDay(day);
+        
+        int onlinePlayers = plugin.getServer().getOnlinePlayers().size();
         messageBus.broadcast("§e§l⌛ §fNuevo día iniciado: §e" + day, "newday");
-        sender.sendMessage("§a✓ Día " + day + " iniciado. Misiones asignadas.");
+        sender.sendMessage("§a✓ Día " + day + " iniciado. Misiones anteriores limpiadas y nuevas asignadas a " + onlinePlayers + " jugador(es).");
     }
 
     private void cmdEndDay(CommandSender sender) {
@@ -335,9 +338,11 @@ public class ApocalipsisCommand implements CommandExecutor {
         // missionService.resetExploreTrackers();
         missionService.resetHeightCounters();
         
+        // Finalizar día (marca misiones como fallidas)
         missionService.endDay();
+        
         messageBus.broadcast("§7⌛ §fDía finalizado. Misiones no completadas han sido marcadas como §cfallidas§f.", "endday");
-        sender.sendMessage("§7Día finalizado.");
+        sender.sendMessage("§7Día finalizado. Usa §e/avo newday§7 para iniciar un nuevo día con misiones frescas.");
     }
 
     private void cmdCooldown(CommandSender sender) {

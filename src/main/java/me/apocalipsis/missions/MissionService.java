@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.Locale;
+import java.util.Random;
 
 public class MissionService {
 
@@ -119,9 +120,24 @@ public class MissionService {
         plugin.getLogger().info("Cargadas " + catalog.size() + " misiones del catálogo");
     }
 
+    /**
+     * Asigna misiones para un nuevo día a todos los jugadores online.
+     * IMPORTANTE: Limpia las misiones del día anterior antes de asignar nuevas.
+     * Este método se llama desde /avo newday
+     */
     public void assignMissionsForDay(int day) {
+        // [FIX] Limpiar todas las misiones del día anterior
+        playerAssignments.clear();
+        
+        // Asignar nuevas misiones a todos los jugadores online
         for (Player player : plugin.getServer().getOnlinePlayers()) {
             assignMissionsToPlayer(player);
+        }
+        
+        savePlayerData();
+        
+        if (plugin.getConfigManager().isDebugCiclo()) {
+            plugin.getLogger().info("[MISIONES] Nuevo día " + day + " iniciado. Misiones anteriores limpiadas, nuevas asignadas a " + plugin.getServer().getOnlinePlayers().size() + " jugadores.");
         }
     }
 
@@ -175,7 +191,12 @@ public class MissionService {
         playerAssignments.put(uuid, assignments);
         savePlayerData();
         
+        // [LATE-JOIN] Mensaje específico para jugadores que reciben misiones
         messageBus.sendMessage(player, "§e✓ Se te han asignado §f" + assignments.size() + " §emisiones para hoy.");
+        
+        if (plugin.getConfigManager().isDebugCiclo()) {
+            plugin.getLogger().info("[MISIONES] Late-join: Asignadas " + assignments.size() + " misiones a " + player.getName() + " (Rango: " + rank + ")");
+        }
     }
 
     private List<MissionCatalog> selectWeightedMissions(List<MissionCatalog> pool, int count) {
@@ -290,16 +311,31 @@ public class MissionService {
         }
     }
 
+    /**
+     * Finaliza el día actual marcando todas las misiones no completadas como fallidas.
+     * Este método se llama desde /avo endday
+     */
     public void endDay() {
+        int totalFailed = 0;
+        int totalCompleted = 0;
+        
         for (UUID uuid : playerAssignments.keySet()) {
             List<MissionAssignment> assignments = playerAssignments.get(uuid);
             for (MissionAssignment assignment : assignments) {
-                if (!assignment.isCompleted() && !assignment.isFailed()) {
+                if (assignment.isCompleted()) {
+                    totalCompleted++;
+                } else if (!assignment.isFailed()) {
                     assignment.setFailed(true);
+                    totalFailed++;
                 }
             }
         }
+        
         savePlayerData();
+        
+        if (plugin.getConfigManager().isDebugCiclo()) {
+            plugin.getLogger().info("[MISIONES] Día finalizado. Completadas: " + totalCompleted + ", Fallidas: " + totalFailed);
+        }
     }
 
     public List<MissionAssignment> getActiveAssignments(Player player) {
@@ -744,6 +780,62 @@ public class MissionService {
     public void clearPlayerMissions(UUID uuid) {
         playerAssignments.remove(uuid);
         heightSeconds.remove(uuid);
+        savePlayerData();
+    }
+    
+    /**
+     * Falla una misión aleatoria del jugador (penalización por evasión)
+     */
+    public void failRandomMission(UUID uuid) {
+        List<MissionAssignment> assignments = playerAssignments.get(uuid);
+        if (assignments == null || assignments.isEmpty()) return;
+        
+        // Filtrar misiones que no están completadas ni fallidas
+        List<MissionAssignment> active = assignments.stream()
+            .filter(a -> !a.isCompleted() && !a.isFailed())
+            .collect(Collectors.toList());
+        
+        if (active.isEmpty()) return;
+        
+        // Seleccionar una misión al azar y marcarla como fallida
+        Random rand = new Random();
+        MissionAssignment toFail = active.get(rand.nextInt(active.size()));
+        toFail.setFailed(true);
+        
+        savePlayerData();
+        
+        if (plugin.getConfigManager().isDebugCiclo()) {
+            plugin.getLogger().info("[MISIONES] Misión '" + toFail.getMission().getId() + "' fallada por evasión (UUID: " + uuid + ")");
+        }
+    }
+    
+    /**
+     * Falla todas las misiones del jugador (penalización severa por evasión repetida)
+     */
+    public void failAllMissions(UUID uuid) {
+        List<MissionAssignment> assignments = playerAssignments.get(uuid);
+        if (assignments == null || assignments.isEmpty()) return;
+        
+        int failedCount = 0;
+        for (MissionAssignment assignment : assignments) {
+            if (!assignment.isCompleted() && !assignment.isFailed()) {
+                assignment.setFailed(true);
+                failedCount++;
+            }
+        }
+        
+        savePlayerData();
+        
+        if (plugin.getConfigManager().isDebugCiclo()) {
+            plugin.getLogger().info("[MISIONES] " + failedCount + " misiones falladas por evasión múltiple (UUID: " + uuid + ")");
+        }
+    }
+    
+    /**
+     * Establece los PS de un jugador (usado por sistema de evasión)
+     */
+    public void setPlayerPs(UUID uuid, int ps) {
+        playerPs.put(uuid, ps);
         savePlayerData();
     }
 
