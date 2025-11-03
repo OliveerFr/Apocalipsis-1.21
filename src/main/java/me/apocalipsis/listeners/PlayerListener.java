@@ -7,6 +7,7 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
 import me.apocalipsis.Apocalipsis;
+import me.apocalipsis.state.ServerState;
 import me.apocalipsis.ui.ScoreboardManager;
 import me.apocalipsis.ui.TablistManager;
 
@@ -67,6 +68,12 @@ public class PlayerListener implements Listener {
         
         // [RECONSTRUCCIÓN] Remover jugador del BossBar único del DisasterController
         plugin.getDisasterController().removePlayerFromBossBar(player);
+        
+        // [EVASIÓN] Detectar si el jugador se desconecta durante un desastre activo
+        ServerState currentState = plugin.getStateManager().getCurrentState();
+        if (currentState == ServerState.ACTIVO) {
+            plugin.getDisasterEvasionTracker().onPlayerQuitDuringDisaster(player);
+        }
         
         scoreboardManager.clearPlayer(player);
     }

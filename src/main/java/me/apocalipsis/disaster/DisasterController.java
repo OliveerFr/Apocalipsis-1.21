@@ -899,9 +899,49 @@ public class DisasterController {
                     } else if (plugin.getConfigManager().isDebugCiclo()) {
                         plugin.getLogger().info("[Cycle] Esperando jugadores mínimos: " + online + "/" + minJug);
                     }
-                } else if (plugin.getConfigManager().isDebugCiclo() && now % 5000 < 1000) {
+                } else {
+                    // [COUNTDOWN ALERTS] Durante preparación forzada, enviar alertas basadas en endEpochMs
                     long remainingMs = endEpochMs - now;
-                    plugin.getLogger().info("[Cycle] PrepForzada activa, faltan " + (remainingMs / 1000) + "s");
+                    long remainingSec = remainingMs / 1000L;
+                    
+                    if (remainingMs > 0) {
+                        // Alerta de 60 segundos
+                        if (remainingSec <= 60 && remainingSec > 55 && !alert60sIssued) {
+                            sendCountdownAlert(60);
+                            alert60sIssued = true;
+                        }
+                        // Alerta de 30 segundos
+                        else if (remainingSec <= 30 && remainingSec > 25 && !alert30sIssued) {
+                            sendCountdownAlert(30);
+                            alert30sIssued = true;
+                        }
+                        // Alerta de 10 segundos
+                        else if (remainingSec <= 10 && remainingSec > 8 && !alert10sIssued) {
+                            sendCountdownAlert(10);
+                            alert10sIssued = true;
+                        }
+                        // Alertas finales (5, 4, 3, 2, 1)
+                        else if (remainingSec == 5 && !alert5sIssued) {
+                            sendCountdownAlert(5);
+                            alert5sIssued = true;
+                        }
+                        else if (remainingSec == 4) {
+                            sendCountdownAlert(4);
+                        }
+                        else if (remainingSec == 3) {
+                            sendCountdownAlert(3);
+                        }
+                        else if (remainingSec == 2) {
+                            sendCountdownAlert(2);
+                        }
+                        else if (remainingSec == 1) {
+                            sendCountdownAlert(1);
+                        }
+                    }
+                    
+                    if (plugin.getConfigManager().isDebugCiclo() && now % 5000 < 1000) {
+                        plugin.getLogger().info("[Cycle] PrepForzada activa, faltan " + remainingSec + "s");
+                    }
                 }
                 return; // mientras sea forzada, no mirar cooldown
             }

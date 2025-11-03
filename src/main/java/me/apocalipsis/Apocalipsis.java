@@ -158,6 +158,11 @@ public final class Apocalipsis extends JavaPlugin {
             disasterController.cancelTask();
         }
         
+        // [FIX DUPLICACIÓN] Limpiar registro de desastres
+        if (disasterRegistry != null) {
+            disasterRegistry.clearAll();
+        }
+        
         // Detener PerformanceAdapter
         if (performanceAdapter != null) {
             performanceAdapter.stopMonitoring();

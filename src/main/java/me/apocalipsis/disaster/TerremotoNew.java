@@ -40,6 +40,7 @@ public class TerremotoNew extends DisasterBase {
     private int grietasMaxActivas;
     private int grietasLongitud;
     private final List<Block> grietaBlocks = new ArrayList<>();
+    private final Map<Block, Material> grietaOriginalStates = new HashMap<>(); // [FIX DUPLICACION] Guardar estado original
     
     // NUEVO: Derrumbes de bloques superiores
     private boolean derrumbesEnabled;
@@ -310,35 +311,58 @@ public class TerremotoNew extends DisasterBase {
 
     @Override
     protected void onStart() {
+        // [FIX DUPLICACIÓN] Limpiar TODO antes de iniciar
         grietaBlocks.clear();
+        grietaOriginalStates.clear();
         epicentros.clear();
+        lastNauseaTime.clear();
+        
         nextAfterShock = tickCounter + aftershockIntervalo;
         isAfterShock = false;
         
-        // [FIX DUPLICACIÓN] Resetear multiplicador al inicio
+        // Resetear multiplicador al inicio
         faseMultiplicador = 1.0;
         
         if (plugin.getConfigManager().isDebugCiclo()) {
-            plugin.getLogger().info("[TerremotoNew] Iniciado - multiplicadores reseteados");
+            plugin.getLogger().info("[TerremotoNew] Iniciado - multiplicadores reseteados, tickCounter=" + tickCounter);
         }
     }
 
     @Override
     protected void onStop() {
+        if (plugin.getConfigManager().isDebugCiclo()) {
+            plugin.getLogger().info("[TerremotoNew] Deteniendo - limpiando " + grietaBlocks.size() + " grietas");
+        }
+        
         lastNauseaTime.clear();
         
-        // Restaurar grietas
+        // [FIX DUPLICACION] Restaurar grietas al estado original
         for (Block b : grietaBlocks) {
             if (b.getType() == Material.AIR || b.getType() == Material.LAVA) {
-                b.setType(Material.STONE);
+                // Restaurar al material original guardado
+                Material originalType = grietaOriginalStates.getOrDefault(b, Material.STONE);
+                b.setType(originalType);
             }
         }
         grietaBlocks.clear();
+        grietaOriginalStates.clear();
         epicentros.clear();
+        
+        if (plugin.getConfigManager().isDebugCiclo()) {
+            plugin.getLogger().info("[TerremotoNew] Detenido completamente");
+        }
     }
 
     @Override
     protected void onTick() {
+        // [FIX DUPLICACIÓN] Verificación de seguridad
+        if (!isActive()) {
+            if (plugin.getConfigManager().isDebugCiclo()) {
+                plugin.getLogger().warning("[TerremotoNew] onTick() llamado pero desastre NO ACTIVO - ignorando");
+            }
+            return;
+        }
+        
         // Actualizar sistema de fases
         updatePhaseMultiplier();
         
@@ -367,6 +391,8 @@ public class TerremotoNew extends DisasterBase {
 
     @Override
     public void applyEffects(Player player) {
+        // [FIX DUPLICACIÓN] Verificación de seguridad
+        if (!isActive()) return;
         if (isPlayerExempt(player)) return;
         
         double scale = getPerformanceScale();
@@ -464,9 +490,9 @@ public class TerremotoNew extends DisasterBase {
     private void applyCameraShake(Player p, double intensity) {
         Location loc = p.getLocation();
         
-        // Shake suave para que sea jugable
-        float yawShake = (float) (ThreadLocalRandom.current().nextDouble(-2, 2) * intensity);
-        float pitchShake = (float) (ThreadLocalRandom.current().nextDouble(-1.5, 1.5) * intensity);
+        // [FIX] Shake más notorio pero aún jugable (aumentado de ±2/±1.5 a ±4/±3)
+        float yawShake = (float) (ThreadLocalRandom.current().nextDouble(-4, 4) * intensity);
+        float pitchShake = (float) (ThreadLocalRandom.current().nextDouble(-3, 3) * intensity);
         
         // Aplicar el shake manteniendo límites jugables
         float newYaw = loc.getYaw() + yawShake;
@@ -680,6 +706,9 @@ public class TerremotoNew extends DisasterBase {
         
         // Si llegamos aquí, todos los bloques son seguros - crear la grieta
         for (Block block : crackPath) {
+            // [FIX DUPLICACION] Guardar estado original antes de modificar
+            grietaOriginalStates.put(block, block.getType());
+            
             // 70% aire, 30% lava
             Material newType = random.nextDouble() < 0.7 ? Material.AIR : Material.LAVA;
             block.setType(newType, false);

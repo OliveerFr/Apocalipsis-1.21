@@ -16,6 +16,10 @@ public class DisasterRegistry {
 
     public void registerDefaults(Apocalipsis plugin, MessageBus messageBus, SoundUtil soundUtil, 
                                 TimeService timeService, PerformanceAdapter performanceAdapter) {
+        // [FIX DUPLICACIÓN] Limpiar desastres anteriores antes de registrar nuevos
+        // Esto previene duplicación si el plugin se recarga
+        disasters.clear();
+        
         register(new HuracanNew(plugin, messageBus, soundUtil, timeService, performanceAdapter));
         register(new LluviaFuegoNew(plugin, messageBus, soundUtil, timeService, performanceAdapter));
         register(new TerremotoNew(plugin, messageBus, soundUtil, timeService, performanceAdapter));
@@ -35,5 +39,18 @@ public class DisasterRegistry {
 
     public boolean exists(String id) {
         return disasters.containsKey(id);
+    }
+    
+    /**
+     * [FIX DUPLICACIÓN] Limpia todos los desastres registrados
+     */
+    public void clearAll() {
+        // Detener cada desastre si está activo
+        for (Disaster disaster : disasters.values()) {
+            if (disaster.isActive()) {
+                disaster.stop();
+            }
+        }
+        disasters.clear();
     }
 }
