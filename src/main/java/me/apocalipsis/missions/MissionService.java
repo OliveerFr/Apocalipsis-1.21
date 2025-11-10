@@ -1,8 +1,21 @@
 package me.apocalipsis.missions;
 
-import me.apocalipsis.Apocalipsis;
-import me.apocalipsis.ui.MessageBus;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
 import org.bukkit.Bukkit;
+import org.bukkit.FireworkEffect;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
@@ -13,14 +26,9 @@ import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Firework;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.meta.FireworkMeta;
-import org.bukkit.FireworkEffect;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-import java.util.stream.Collectors;
-import java.util.Locale;
-import java.util.Random;
+import me.apocalipsis.Apocalipsis;
+import me.apocalipsis.ui.MessageBus;
 
 public class MissionService {
 
@@ -252,9 +260,35 @@ public class MissionService {
                 if (assignment.getProgress() > oldProgress) {
                     anyProgress = true;
                     
-                    // Mensaje de progreso
+                    // **EFECTOS DE PROGRESO MEJORADOS**
+                    int progress = assignment.getProgress();
+                    int targetAmount = mission.getCantidad();
+                    double percentage = (double) progress / targetAmount;
+                    
+                    // Barra de progreso visual
+                    String progressBar = createProgressBar(progress, targetAmount, 10, '█', '▒');
+                    
+                    // Mensaje de progreso mejorado
                     messageBus.sendActionBar(player, 
-                        "§e" + mission.getNombre() + " §f" + assignment.getProgress() + "/" + mission.getCantidad());
+                        "§e" + mission.getNombre() + " §7[" + progressBar + "§7] §f" + progress + "/" + targetAmount);
+                    
+                    // Sonidos y partículas sutiles en hitos (25%, 50%, 75%)
+                    if (percentage >= 0.25 && percentage < 0.30 && oldProgress < targetAmount * 0.25) {
+                        // 25%
+                        player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 0.6f, 1.0f);
+                        player.getWorld().spawnParticle(Particle.HAPPY_VILLAGER, player.getLocation().add(0, 1.5, 0), 5, 0.3, 0.3, 0.3, 0.02);
+                    } else if (percentage >= 0.50 && percentage < 0.55 && oldProgress < targetAmount * 0.50) {
+                        // 50%
+                        player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 0.7f, 1.2f);
+                        player.getWorld().spawnParticle(Particle.HAPPY_VILLAGER, player.getLocation().add(0, 1.5, 0), 8, 0.4, 0.4, 0.4, 0.03);
+                        messageBus.sendMessage(player, "§e⚡ ¡Mitad del camino en " + mission.getNombre() + "!");
+                    } else if (percentage >= 0.75 && percentage < 0.80 && oldProgress < targetAmount * 0.75) {
+                        // 75%
+                        player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 0.8f, 1.4f);
+                        player.getWorld().spawnParticle(Particle.HAPPY_VILLAGER, player.getLocation().add(0, 1.5, 0), 10, 0.5, 0.5, 0.5, 0.04);
+                        player.getWorld().spawnParticle(Particle.FIREWORK, player.getLocation().add(0, 1.5, 0), 3, 0.3, 0.3, 0.3, 0.02);
+                        messageBus.sendMessage(player, "§e⚡ ¡Casi terminas " + mission.getNombre() + "!");
+                    }
                     
                     // Si se completó
                     if (assignment.isCompleted()) {
@@ -280,6 +314,9 @@ public class MissionService {
         
         playerPs.put(uuid, newPs);
         
+        // **EFECTOS MEJORADOS POR DIFICULTAD**
+        playMissionCompleteEffects(player, mission);
+        
         messageBus.sendMessage(player, "§a§l✓ Misión completada: §f" + mission.getNombre() + " §7(§e+" + mission.getRecompensaPs() + " PS§7)");
         savePlayerData();
         
@@ -291,10 +328,8 @@ public class MissionService {
         if (oldRank != newRank) {
             // TODO: Implementar onRankUp en ConfigManager
             // plugin.getConfigManager().onRankUp(uuid, newRank.name(), newRank.getDisplayName());
+            playRankUpEffects(player, newRank);
         }
-        
-        // [INTEGRACIÓN ALONSOLEVELS] Ejecutar comandos de experiencia
-        dispatchAlonsoLevelsOnMissionCompleted(player, mission);
         
         // [FIX] Actualizar scoreboard y tablist inmediatamente para reflejar cambio de PS/rango
         if (plugin.getScoreboardManager() != null) {
@@ -309,6 +344,144 @@ public class MissionService {
             playerDailyCompleteFired.add(uuid);
             triggerPlayerDailyCompletionCelebration(player);
         }
+    }
+    
+    /**
+     * [NUEVO] Efectos mejorados al completar misión (según dificultad)
+     */
+    private void playMissionCompleteEffects(Player player, MissionCatalog mission) {
+        Location loc = player.getLocation().add(0, 1.5, 0);
+        
+        // Sonidos y partículas según dificultad
+        switch (mission.getDificultad()) {
+            case FACIL:
+                player.playSound(loc, Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.8f, 1.2f);
+                player.getWorld().spawnParticle(Particle.HAPPY_VILLAGER, loc, 10, 0.5, 0.5, 0.5, 0.02);
+                break;
+            case MEDIA:
+                player.playSound(loc, Sound.ENTITY_PLAYER_LEVELUP, 0.9f, 1.3f);
+                player.getWorld().spawnParticle(Particle.HAPPY_VILLAGER, loc, 15, 0.6, 0.6, 0.6, 0.03);
+                player.getWorld().spawnParticle(Particle.FIREWORK, loc, 5, 0.3, 0.3, 0.3, 0.05);
+                break;
+            case DIFICIL:
+                player.playSound(loc, Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
+                player.getWorld().spawnParticle(Particle.HAPPY_VILLAGER, loc, 20, 0.7, 0.7, 0.7, 0.04);
+                player.getWorld().spawnParticle(Particle.FIREWORK, loc, 10, 0.4, 0.4, 0.4, 0.08);
+                player.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING, loc, 5, 0.3, 0.3, 0.3, 0.05);
+                
+                // Fuego artificial para misiones difíciles
+                Firework fw = (Firework) player.getWorld().spawnEntity(loc, EntityType.FIREWORK_ROCKET);
+                FireworkMeta meta = fw.getFireworkMeta();
+                meta.setPower(1);
+                meta.addEffect(FireworkEffect.builder()
+                    .with(FireworkEffect.Type.BURST)
+                    .withColor(org.bukkit.Color.YELLOW, org.bukkit.Color.ORANGE)
+                    .withFade(org.bukkit.Color.WHITE)
+                    .withTrail()
+                    .withFlicker()
+                    .build());
+                fw.setFireworkMeta(meta);
+                break;
+        }
+        
+        // ActionBar con progreso visual
+        int completed = getCompletedCount(player);
+        int total = getActiveAssignments(player).size();
+        String progressBar = createProgressBar(completed, total, 10, '█', '▒');
+        messageBus.sendActionBar(player, "§e" + mission.getNombre() + " §a✓ §7[" + progressBar + "§7] §f" + completed + "/" + total);
+    }
+    
+    /**
+     * [NUEVO] Efectos de rank up con colores de rango
+     */
+    private void playRankUpEffects(Player player, me.apocalipsis.missions.MissionRank rank) {
+        Location loc = player.getLocation().add(0, 1.5, 0);
+        
+        // Colores por rango
+        org.bukkit.Color primary, secondary;
+        FireworkEffect.Type type;
+        
+        switch (rank) {
+            case LEYENDA:
+                primary = org.bukkit.Color.RED;
+                secondary = org.bukkit.Color.ORANGE;
+                type = FireworkEffect.Type.STAR;
+                break;
+            case VETERANO:
+                primary = org.bukkit.Color.ORANGE;
+                secondary = org.bukkit.Color.YELLOW;
+                type = FireworkEffect.Type.BALL_LARGE;
+                break;
+            case SOBREVIVIENTE:
+                primary = org.bukkit.Color.YELLOW;
+                secondary = org.bukkit.Color.WHITE;
+                type = FireworkEffect.Type.BALL;
+                break;
+            case EXPLORADOR:
+                primary = org.bukkit.Color.AQUA;
+                secondary = org.bukkit.Color.BLUE;
+                type = FireworkEffect.Type.BURST;
+                break;
+            default: // NOVATO
+                primary = org.bukkit.Color.LIME;
+                secondary = org.bukkit.Color.GREEN;
+                type = FireworkEffect.Type.BALL;
+                break;
+        }
+        
+        // Sonidos épicos
+        player.playSound(loc, Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.5f, 1.0f);
+        player.playSound(loc, Sound.ENTITY_PLAYER_LEVELUP, 1.2f, 0.8f);
+        
+        // Partículas múltiples
+        player.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING, loc, 40, 1.0, 1.0, 1.0, 0.1);
+        player.getWorld().spawnParticle(Particle.FIREWORK, loc, 30, 0.8, 0.8, 0.8, 0.15);
+        player.getWorld().spawnParticle(Particle.END_ROD, loc, 20, 0.6, 0.6, 0.6, 0.08);
+        
+        // Fuegos artificiales con colores del rango
+        for (int i = 0; i < 3; i++) {
+            Firework fw = (Firework) player.getWorld().spawnEntity(loc, EntityType.FIREWORK_ROCKET);
+            FireworkMeta meta = fw.getFireworkMeta();
+            meta.setPower(1);
+            meta.addEffect(FireworkEffect.builder()
+                .with(type)
+                .withColor(primary)
+                .withFade(secondary)
+                .withTrail()
+                .withFlicker()
+                .build());
+            fw.setFireworkMeta(meta);
+        }
+        
+        // Título animado
+        String rankName = rank.getDisplayName();
+        player.showTitle(net.kyori.adventure.title.Title.title(
+            net.kyori.adventure.text.Component.text("§6§l¡NUEVO RANGO!"),
+            net.kyori.adventure.text.Component.text("§f" + rankName),
+            net.kyori.adventure.title.Title.Times.times(
+                java.time.Duration.ofMillis(500),
+                java.time.Duration.ofMillis(3000),
+                java.time.Duration.ofMillis(1000)
+            )
+        ));
+        
+        // Mensaje público
+        Bukkit.getServer().broadcast(
+            net.kyori.adventure.text.Component.text("§6§l★ " + player.getName() + " §eha alcanzado el rango " + rankName + "§6§l ★")
+        );
+    }
+    
+    /**
+     * [NUEVO] Crea barra de progreso visual
+     */
+    private String createProgressBar(int current, int max, int barLength, char filled, char empty) {
+        if (max <= 0) return "§a" + String.valueOf(filled).repeat(barLength);
+        
+        int filledBars = (int) ((double) current / max * barLength);
+        int emptyBars = barLength - filledBars;
+        
+        return "§a" + String.valueOf(filled).repeat(Math.max(0, filledBars)) + 
+               "§7" + String.valueOf(empty).repeat(Math.max(0, emptyBars));
     }
 
     /**
@@ -465,57 +638,112 @@ public class MissionService {
             return;
         }
         
-        String title = c.getString(base + "title", "§b¡Misiones listas!");
-        String subtitle = c.getString(base + "subtitle", "§7Completaste todas tus misiones");
-        int stay = c.getInt(base + "title_stay_ticks", 50);
-        String particleName = c.getString(base + "particle", "VILLAGER_HAPPY");
-        int particleCount = c.getInt(base + "particle_count", 60);
-        double sx = c.getDouble(base + "particle_spread.x", 0.6);
-        double sy = c.getDouble(base + "particle_spread.y", 1.0);
-        double sz = c.getDouble(base + "particle_spread.z", 0.6);
-        String soundName = c.getString(base + "sound_player", "PLAYER_LEVELUP");
-        float vol = (float) c.getDouble(base + "sound_volume", 1.0);
-        float pitch = (float) c.getDouble(base + "sound_pitch", 1.1);
-        int fireworks = c.getInt(base + "fireworks", 2);
-        int power = c.getInt(base + "fireworks_power", 1);
+        // **CELEBRACIÓN MEJORADA CON COLORES DE RANGO**
+        me.apocalipsis.missions.MissionRank rank = plugin.getRankService().getRank(p);
+        Location loc = p.getLocation().add(0, 1.5, 0);
         
-        Particle particle = safeParticle(particleName, Particle.HAPPY_VILLAGER);
-        Sound sound = safeSound(soundName, Sound.ENTITY_PLAYER_LEVELUP);
+        // Colores según rango
+        org.bukkit.Color primary, secondary;
+        switch (rank) {
+            case LEYENDA:
+                primary = org.bukkit.Color.RED;
+                secondary = org.bukkit.Color.ORANGE;
+                break;
+            case VETERANO:
+                primary = org.bukkit.Color.ORANGE;
+                secondary = org.bukkit.Color.YELLOW;
+                break;
+            case SOBREVIVIENTE:
+                primary = org.bukkit.Color.YELLOW;
+                secondary = org.bukkit.Color.WHITE;
+                break;
+            case EXPLORADOR:
+                primary = org.bukkit.Color.AQUA;
+                secondary = org.bukkit.Color.BLUE;
+                break;
+            default: // NOVATO
+                primary = org.bukkit.Color.LIME;
+                secondary = org.bukkit.Color.GREEN;
+                break;
+        }
         
-        // Título (Adventure API)
-        title = title.replace("&", "§");
-        subtitle = subtitle.replace("&", "§");
+        // Título animado
+        String title = c.getString(base + "title", "§b§l¡MISIONES COMPLETADAS!");
+        String subtitle = c.getString(base + "subtitle", "§7Has completado todas tus misiones del día");
+        int stay = c.getInt(base + "title_stay_ticks", 60);
+        
+        if (title != null) title = title.replace("&", "§");
+        if (subtitle != null) subtitle = subtitle.replace("&", "§");
+        
         p.showTitle(net.kyori.adventure.title.Title.title(
-            net.kyori.adventure.text.Component.text(title),
-            net.kyori.adventure.text.Component.text(subtitle),
+            net.kyori.adventure.text.Component.text(title != null ? title : ""),
+            net.kyori.adventure.text.Component.text(subtitle != null ? subtitle : ""),
             net.kyori.adventure.title.Title.Times.times(
-                java.time.Duration.ofMillis(500),
+                java.time.Duration.ofMillis(800),
                 java.time.Duration.ofMillis(stay * 50L),
-                java.time.Duration.ofMillis(500)
+                java.time.Duration.ofMillis(800)
             )
         ));
         
-        // Sonido
-        p.playSound(p.getLocation(), sound, vol, pitch);
+        // **SONIDOS MÚLTIPLES EPICÓS**
+        p.playSound(loc, Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.5f, 1.0f);
+        p.playSound(loc, Sound.ENTITY_PLAYER_LEVELUP, 1.2f, 1.1f);
         
-        // Partículas
-        Location loc = p.getLocation().add(0, 1.0, 0);
-        p.getWorld().spawnParticle(particle, loc, particleCount, sx, sy, sz, 0.01);
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            p.playSound(loc, Sound.ENTITY_FIREWORK_ROCKET_BLAST, 1.0f, 1.3f);
+        }, 10L);
         
-        // Fuegos artificiales (locales)
-        for (int i = 0; i < fireworks; i++) {
-            Firework fw = (Firework) p.getWorld().spawnEntity(loc, EntityType.FIREWORK_ROCKET);
-            FireworkMeta meta = fw.getFireworkMeta();
-            meta.setPower(Math.max(0, Math.min(2, power)));
-            meta.addEffect(FireworkEffect.builder()
-                .with(FireworkEffect.Type.BALL_LARGE)
-                .withColor(org.bukkit.Color.AQUA)
-                .withFade(org.bukkit.Color.WHITE)
-                .withTrail()
-                .withFlicker()
-                .build());
-            fw.setFireworkMeta(meta);
+        // **PARTÍCULAS MÚLTIPLES DINÁMICAS**
+        p.getWorld().spawnParticle(Particle.HAPPY_VILLAGER, loc, 50, 1.0, 1.0, 1.0, 0.05);
+        p.getWorld().spawnParticle(Particle.FIREWORK, loc, 30, 0.8, 0.8, 0.8, 0.1);
+        p.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING, loc, 20, 0.6, 0.6, 0.6, 0.08);
+        p.getWorld().spawnParticle(Particle.END_ROD, loc, 15, 0.5, 0.5, 0.5, 0.05);
+        
+        // Partículas adicionales en círculo
+        for (int i = 0; i < 16; i++) {
+            double angle = 2 * Math.PI * i / 16;
+            double x = Math.cos(angle) * 1.5;
+            double z = Math.sin(angle) * 1.5;
+            Location particleLoc = loc.clone().add(x, 0, z);
+            p.getWorld().spawnParticle(Particle.FIREWORK, particleLoc, 2, 0.1, 0.1, 0.1, 0.02);
         }
+        
+        // **FUEGOS ARTIFICIALES CON COLORES DEL RANGO**
+        int fireworks = c.getInt(base + "fireworks", 3);
+        int power = c.getInt(base + "fireworks_power", 1);
+        
+        for (int i = 0; i < fireworks; i++) {
+            final int index = i;
+            final int delay = index * 10;
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                Firework fw = (Firework) p.getWorld().spawnEntity(loc, EntityType.FIREWORK_ROCKET);
+                FireworkMeta meta = fw.getFireworkMeta();
+                meta.setPower(Math.max(0, Math.min(2, power)));
+                
+                // Alternar tipos de efectos
+                FireworkEffect.Type[] types = {
+                    FireworkEffect.Type.BALL_LARGE,
+                    FireworkEffect.Type.STAR,
+                    FireworkEffect.Type.BURST
+                };
+                
+                meta.addEffect(FireworkEffect.builder()
+                    .with(types[index % types.length])
+                    .withColor(primary)
+                    .withFade(secondary)
+                    .withTrail()
+                    .withFlicker()
+                    .build());
+                fw.setFireworkMeta(meta);
+            }, delay);
+        }
+        
+        // **MENSAJE PÚBLICO DE CELEBRACIÓN**
+        String rankDisplay = rank.getDisplayName();
+        Bukkit.getServer().broadcast(
+            net.kyori.adventure.text.Component.text("§6§l⭐ " + rankDisplay + " §e" + p.getName() + 
+                " §7ha completado todas sus misiones del día! §6§l⭐")
+        );
         
         // Comandos opcionales
         List<String> cmds = c.getStringList(base + "commands_on_complete");
@@ -832,7 +1060,22 @@ public class MissionService {
     }
     
     /**
-     * Establece los PS de un jugador (usado por sistema de evasión)
+     * Obtiene los PS de un jugador por UUID
+     */
+    public int getPS(UUID uuid) {
+        return playerPs.getOrDefault(uuid, 0);
+    }
+    
+    /**
+     * Establece los PS de un jugador directamente (para castigos/recompensas externas)
+     */
+    public void setPS(UUID uuid, int ps) {
+        playerPs.put(uuid, ps);
+        savePlayerData();
+    }
+    
+    /**
+     * Establece los PS de un jugador por UUID (alias de setPS)
      */
     public void setPlayerPs(UUID uuid, int ps) {
         playerPs.put(uuid, ps);

@@ -29,7 +29,7 @@ public class AvoTabCompleter implements TabCompleter {
             List<String> subcommands = Arrays.asList(
                 "start", "stop", "force", "skip", "preparacion", "time",
                 "newday", "endday", "status", "setps", "mission",
-                "tps", "stats", "backup", "cooldown", "debug", "test",
+                "tps", "stats", "backup", "cooldown", "debug", "test", "test-alert",
                 "reload", "admin"
             );
             
@@ -50,6 +50,7 @@ public class AvoTabCompleter implements TabCompleter {
 
                 case "status":
                 case "setps":
+                case "test-alert":
                     // Sugerir nombres de jugadores online
                     return plugin.getServer().getOnlinePlayers().stream()
                         .map(Player::getName)
@@ -74,7 +75,7 @@ public class AvoTabCompleter implements TabCompleter {
                         .collect(Collectors.toList());
 
                 case "debug":
-                    return Arrays.asList("missions", "explore").stream()
+                    return Arrays.asList("on", "off", "status", "missions", "explore").stream()
                         .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
                         .collect(Collectors.toList());
                 

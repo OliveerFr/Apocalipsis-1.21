@@ -526,6 +526,11 @@ public class HuracanNew extends DisasterBase {
 
         // Aplicar multiplicador de fase
         double effectiveScale = scale * faseMultiplicador;
+        
+        // **NUEVO: Feedback de seguridad cada 5 segundos**
+        if (tickCounter % 100 == 0) {
+            sendSafetyFeedback(player);
+        }
 
         // Empuje horizontal con sistema de rachas
         double rachaFactor = rachaActiva && rachaSistemaEnabled ? rachaMultiplicador : 1.0;
@@ -578,6 +583,61 @@ public class HuracanNew extends DisasterBase {
         if (tickCounter % 40 == 0) {
             ConfigurationSection config = plugin.getConfigManager().getDesastresConfig();
             DisasterDamage.maybeDamage(player, "huracan", config, messageBus, soundUtil);
+        }
+    }
+    
+    /**
+     * **NUEVO** Envía feedback de seguridad al jugador durante el huracán
+     */
+    private void sendSafetyFeedback(Player player) {
+        if (isPlayerExempt(player)) return;
+        
+        boolean underRoof = isUnderRoof(player);
+        boolean isSneaking = player.isSneaking();
+        
+        if (underRoof) {
+            if (isSneaking) {
+                // Máxima protección
+                plugin.getMessageBus().sendActionBar(player,
+                    "§a§l✓ REFUGIO SEGURO §8| §7Techo §a+60% §8| §7Agachado §a+55%");
+                
+                // Partículas de seguridad
+                if (tickCounter % 60 == 0) {
+                    player.getWorld().spawnParticle(Particle.HAPPY_VILLAGER, 
+                        player.getLocation().add(0, 1, 0), 3, 0.3, 0.3, 0.3);
+                    soundUtil.playSound(player, Sound.BLOCK_NOTE_BLOCK_CHIME, 0.4f, 2.0f);
+                }
+            } else {
+                // Buena protección
+                plugin.getMessageBus().sendActionBar(player,
+                    "§a§l🏠 BAJO TECHO §8| §7Empuje §a-60%");
+                
+                // Consejo cada 20 segundos
+                if (tickCounter % 400 == 0) {
+                    player.sendMessage("§a💡 §7Agáchate para §amáxima protección§7 (-55% adicional)");
+                }
+            }
+        } else {
+            if (rachaActiva && rachaSistemaEnabled) {
+                // Peligro extremo durante ráfagas
+                plugin.getMessageBus().sendActionBar(player,
+                    "§c§l⚠ RÁFAGA EXTREMA §8| §7Empuje §c+150% §8| §7¡Busca refugio!");
+                
+                // Alertas cada 5 segundos durante ráfagas
+                if (tickCounter % 100 == 0) {
+                    player.sendMessage("§c⚡ §7RÁFAGA ACTIVA: busca §atecho§7 o §aagáchate§7 para reducir empuje");
+                    soundUtil.playSound(player, Sound.ENTITY_ENDER_DRAGON_FLAP, 0.6f, 0.8f);
+                }
+            } else {
+                // Peligro normal
+                plugin.getMessageBus().sendActionBar(player,
+                    "§e§l⚠ EXPUESTO §8| §7Busca §atecho§7 o §aagáchate");
+                
+                // Consejos periódicos
+                if (tickCounter % 600 == 0) {
+                    player.sendMessage("§e💨 §7Construye §atechos§7 o §acuevas§7 para protegerte del viento");
+                }
+            }
         }
     }
     

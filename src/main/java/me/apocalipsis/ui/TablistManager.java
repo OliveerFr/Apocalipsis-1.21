@@ -219,11 +219,11 @@ public class TablistManager {
     /**
      * [FIX] Aplica el prefijo de rango en TAB visible para TODOS
      * Se llama en join, rankUp y reload
+     * [MEJORA] Ordena jugadores por rango usando prefijos numéricos
      */
     public void applyTabPrefix(Player p) {
         // 1) Obtener rango y textos desde rangos.yml
         me.apocalipsis.missions.MissionRank rank = rankService.getRank(p);
-        String rankId = rank.name().toLowerCase();
         String rawPrefix = rankService.getTabPrefix(p);
         String prefix = sanitize(rawPrefix);
 
@@ -235,11 +235,27 @@ public class TablistManager {
         Component tabComponent = LegacyComponentSerializer.legacyAmpersand().deserialize(finalTab);
         p.playerListName(tabComponent);
 
-        // 3) (Opcional) Teams para la etiqueta sobre la cabeza (no TAB)
+        // 3) Teams para ordenar en TAB y etiqueta sobre la cabeza
+        // [MEJORA] Usar prefijos numéricos para ordenar: 1=LEYENDA, 2=VETERANO, ..., 5=NOVATO
+        String teamName = getRankedTeamName(rank);
         org.bukkit.scoreboard.Scoreboard board = getPluginMainBoard();
-        org.bukkit.scoreboard.Team team = ensureRankTeam(board, "rank_" + rankId, prefix);
+        org.bukkit.scoreboard.Team team = ensureRankTeam(board, teamName, prefix);
         removeFromOtherRankTeams(board, p.getName(), "rank_");
         team.addEntry(p.getName());
+    }
+    
+    /**
+     * [NUEVO] Genera nombre de team con prefijo numérico para ordenar por rango
+     * LEYENDA (1) aparece primero, NOVATO (5) aparece último
+     */
+    private String getRankedTeamName(me.apocalipsis.missions.MissionRank rank) {
+        return switch (rank) {
+            case LEYENDA -> "rank_1_leyenda";
+            case VETERANO -> "rank_2_veterano";
+            case SOBREVIVIENTE -> "rank_3_sobreviviente";
+            case EXPLORADOR -> "rank_4_explorador";
+            case NOVATO -> "rank_5_novato";
+        };
     }
 
     private String sanitize(String s) {

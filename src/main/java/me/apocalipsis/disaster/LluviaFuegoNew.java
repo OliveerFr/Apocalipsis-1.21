@@ -1,11 +1,23 @@
 package me.apocalipsis.disaster;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
-import org.bukkit.*;
+import org.bukkit.Bukkit;
+import org.bukkit.Chunk;
+import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
+import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.entity.*;
+import org.bukkit.entity.Player;
+import org.bukkit.entity.SmallFireball;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -21,8 +33,6 @@ import me.apocalipsis.ui.MessageBus;
 import me.apocalipsis.ui.SoundUtil;
 import me.apocalipsis.utils.DisasterDamage;
 import me.apocalipsis.utils.ParticleCompat;
-
-import java.util.*;
 
 public class LluviaFuegoNew extends DisasterBase implements Listener {
 
@@ -66,10 +76,15 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
     private boolean fasesEnabled;
     private double faseMultiplicador;
     
-    // NUEVO: Rotura de bloques de protección (agua)
+    // NUEVO: Rotura de bloques de protección (agua) - MEJORADO
     private boolean romperProteccionEnabled;
     private double romperProteccionProbabilidad;
+    private double romperProteccionProbabilidadMeteorito;
     private int romperProteccionCantidad;
+    private int romperProteccionRadio;
+    private int romperProteccionCooldown;
+    private boolean romperProteccionProtegerProfunda;
+    private long lastWaterBreakTime = 0;  // Cooldown tracking
     
     private final Random random = new Random();
     private final java.util.List<org.bukkit.block.Block> fuegosTemporal = new java.util.ArrayList<>();
@@ -173,16 +188,24 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
             // NUEVO: Fases
             fasesEnabled = config.getBoolean("fases.enabled", true);
             
-            // NUEVO: Rotura de protección (agua)
+            // Rotura de bloques de protección (agua) - MEJORADO
             ConfigurationSection romperProtConf = config.getConfigurationSection("romper_proteccion");
             if (romperProtConf != null) {
                 romperProteccionEnabled = romperProtConf.getBoolean("enabled", true);
-                romperProteccionProbabilidad = romperProtConf.getDouble("probabilidad", 0.35);
-                romperProteccionCantidad = romperProtConf.getInt("cantidad_bloques", 2);
+                romperProteccionProbabilidad = romperProtConf.getDouble("probabilidad", 0.004);
+                romperProteccionProbabilidadMeteorito = romperProtConf.getDouble("probabilidad_meteorito", 0.015);
+                romperProteccionCantidad = romperProtConf.getInt("cantidad_bloques", 1);
+                romperProteccionRadio = romperProtConf.getInt("radio_busqueda", 2);
+                romperProteccionCooldown = romperProtConf.getInt("cooldown_ticks", 180);
+                romperProteccionProtegerProfunda = romperProtConf.getBoolean("proteger_agua_profunda", true);
             } else {
                 romperProteccionEnabled = true;
-                romperProteccionProbabilidad = 0.35; // 35% de probabilidad por impacto
-                romperProteccionCantidad = 2; // Romper hasta 2 bloques de agua
+                romperProteccionProbabilidad = 0.004; // 0.4% de probabilidad por impacto
+                romperProteccionProbabilidadMeteorito = 0.015; // 1.5% para meteoritos
+                romperProteccionCantidad = 1;
+                romperProteccionRadio = 2;
+                romperProteccionCooldown = 180; // 9 segundos
+                romperProteccionProtegerProfunda = true;
             }
             
         } else {
@@ -303,6 +326,11 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
 
         double scale = getPerformanceScale();
         if (scale <= 0) return;
+        
+        // **NUEVO: Feedback de protección por agua cada 5 segundos**
+        if (tickCounter % 100 == 0) {
+            sendPlayerWaterProtectionStatus(player);
+        }
 
         // Densidad ajustada con multiplicador de fase
         double densidadFinal = densidad * scale * faseMultiplicador;
@@ -383,27 +411,27 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
         World world = loc.getWorld();
         
         // NUEVO: Verificar protección por agua cercana
-        boolean hasWaterProtection = hasNearbyWater(loc);
+        WaterProtection waterInfo = checkWaterProtection(loc);
         float finalExplosionPower = explosionPower;
         boolean canSetFire = prenderFuego;
         
-        if (hasWaterProtection) {
+        if (waterInfo.hasWater) {
             // Reducir explosión 60% si hay agua cerca
             finalExplosionPower *= 0.4f;
             canSetFire = false; // Agua evita fuego
             
-            // Efectos de vapor
+            // Efectos de vapor mejorados
             world.spawnParticle(Particle.CLOUD, loc, 25, 1.2, 1.2, 1.2, 0.1);
             world.spawnParticle(Particle.BUBBLE_POP, loc, 15, 0.8, 0.8, 0.8, 0.05);
+            world.spawnParticle(Particle.DRIPPING_WATER, loc, 10, 0.5, 0.5, 0.5, 0);
             world.playSound(loc, Sound.BLOCK_FIRE_EXTINGUISH, 1.2f, 1.0f);
             world.playSound(loc, Sound.ENTITY_GENERIC_SPLASH, 0.8f, 1.2f);
             
-            // [CAMBIO] Evaporar agua movido fuera del if - siempre intenta romper con probabilidad
+            // Mensaje de feedback si hay jugador cerca
+            sendWaterProtectionFeedback(loc, waterInfo);
         }
         
         // NUEVO: Intentar evaporar/romper bloques de agua cercanos (con probabilidad)
-        // Esto ocurre SIEMPRE, no solo cuando hay protección
-        // Fuerza al jugador a reponer los bloques de agua constantemente
         evaporateNearbyWater(loc, romperProteccionCantidad);
         
         // Partículas de impacto
@@ -413,12 +441,121 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
         spawnParticleForNonExempt(world, ParticleCompat.explosionNormal(), loc, 1, 0, 0, 0, 0);
         
         // Explosión controlada
-        boolean breakBlocks = romperBloques && !hasWaterProtection; // Agua evita rotura
+        boolean breakBlocks = romperBloques && !waterInfo.hasWater; // Agua evita rotura
         world.createExplosion(loc, finalExplosionPower, false, breakBlocks);
         
         // Prender fuego temporal si está habilitado y no hay agua
         if (canSetFire) {
             scheduleTemporalFire(loc);
+        }
+    }
+    
+    /**
+     * **NUEVO** Clase para almacenar información de protección por agua
+     */
+    private static class WaterProtection {
+        final boolean hasWater;
+        final int waterBlocks;
+        final boolean isDeep;
+        
+        WaterProtection(boolean hasWater, int waterBlocks, boolean isDeep) {
+            this.hasWater = hasWater;
+            this.waterBlocks = waterBlocks;
+            this.isDeep = isDeep;
+        }
+    }
+    
+    /**
+     * **NUEVO** Verifica protección de agua con información detallada
+     */
+    private WaterProtection checkWaterProtection(Location loc) {
+        int waterCount = 0;
+        boolean hasDeepWater = false;
+        
+        // Verificar agua en 3x3x3 alrededor del impacto
+        for (int x = -1; x <= 1; x++) {
+            for (int y = -1; y <= 1; y++) {
+                for (int z = -1; z <= 1; z++) {
+                    Block check = loc.clone().add(x, y, z).getBlock();
+                    if (check.getType() == Material.WATER) {
+                        waterCount++;
+                        if (isDeepWater(check)) {
+                            hasDeepWater = true;
+                        }
+                    }
+                }
+            }
+        }
+        
+        return new WaterProtection(waterCount > 0, waterCount, hasDeepWater);
+    }
+    
+    /**
+     * **NUEVO** Envía feedback de protección por agua a jugadores cercanos
+     */
+    private void sendWaterProtectionFeedback(Location loc, WaterProtection waterInfo) {
+        // Buscar jugadores en 10 bloques
+        for (Player player : loc.getWorld().getPlayers()) {
+            if (player.getLocation().distance(loc) <= 10 && !isPlayerExempt(player)) {
+                int reduccion = 60; // Reducción fija del 60%
+                
+                if (waterInfo.isDeep) {
+                    plugin.getMessageBus().sendActionBar(player,
+                        "§b§l💧 AGUA PROFUNDA §8| §7Explosión §a-" + reduccion + "% §8| §7Fuego §aAPAGADO");
+                } else {
+                    plugin.getMessageBus().sendActionBar(player,
+                        "§b§l💧 AGUA PROTECTORA §8| §7Explosión §a-" + reduccion + "% §8| §e" + waterInfo.waterBlocks + " §7bloques");
+                }
+                
+                // Sonido positivo
+                if (tickCounter % 40 == 0) {
+                    soundUtil.playSound(player, Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.6f, 1.5f);
+                }
+            }
+        }
+    }
+    
+    /**
+     * **NUEVO** Verifica y muestra el estado de protección de agua del jugador
+     */
+    private void sendPlayerWaterProtectionStatus(Player player) {
+        if (isPlayerExempt(player)) return;
+        
+        Location loc = player.getLocation();
+        WaterProtection waterInfo = checkWaterProtection(loc);
+        
+        if (waterInfo.hasWater) {
+            if (waterInfo.isDeep) {
+                // Agua profunda - protección máxima
+                plugin.getMessageBus().sendActionBar(player,
+                    "§b§l✓ AGUA PROFUNDA §8| §7Reducción §a60% §8| §7Anti-evaporación §aACTIVA");
+                
+                // Partículas de agua cada 10 segundos
+                if (tickCounter % 200 == 0) {
+                    player.getWorld().spawnParticle(Particle.DRIPPING_WATER, 
+                        loc.clone().add(0, 2, 0), 10, 1, 0.5, 1, 0);
+                    soundUtil.playSound(player, Sound.WEATHER_RAIN, 0.4f, 1.2f);
+                }
+            } else {
+                // Agua normal
+                plugin.getMessageBus().sendActionBar(player,
+                    "§b§l💧 AGUA PROTECTORA §8| §e" + waterInfo.waterBlocks + " §7bloques §8| §7-§a60%");
+                
+                // Consejo cada 15 segundos
+                if (tickCounter % 300 == 0 && waterInfo.waterBlocks < 5) {
+                    player.sendMessage("§b💧 §7Añade más §bagua profunda§7 (2+ bloques) para protección anti-evaporación.");
+                }
+            }
+        } else {
+            // Sin agua - peligro
+            plugin.getMessageBus().sendActionBar(player,
+                "§c§l⚠ SIN PROTECCIÓN §8| §7Coloca §bagua§7 para §a-60% §7explosiones");
+            
+            // Alertas periódicas
+            if (tickCounter % 400 == 0) {
+                player.sendMessage("§c🔥 §7Tu base está desprotegida. Coloca §bagua§7 en techos y alrededores.");
+                soundUtil.playSound(player, Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
+            }
         }
     }
     
@@ -690,48 +827,64 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
     }
     
     /**
-     * NUEVO: Detecta si hay agua cerca del punto de impacto
-     */
-    private boolean hasNearbyWater(Location loc) {
-        // Verificar agua en 3x3x3 alrededor del impacto
-        for (int x = -1; x <= 1; x++) {
-            for (int y = -1; y <= 1; y++) {
-                for (int z = -1; z <= 1; z++) {
-                    Block check = loc.clone().add(x, y, z).getBlock();
-                    if (check.getType() == Material.WATER) {
-                        return true;
-                    }
-                }
-            }
-        }
-        return false;
-    }
-    
-    /**
      * NUEVO: Evapora/rompe algunos bloques de agua cercanos con probabilidad
      * @param loc Ubicación del impacto
      * @param maxToEvaporate Cantidad máxima de bloques a evaporar
      */
     private void evaporateNearbyWater(Location loc, int maxToEvaporate) {
-        // Verificar si está habilitado y chequear probabilidad
+        // Verificar si está habilitado
         if (!romperProteccionEnabled) return;
-        if (random.nextDouble() > romperProteccionProbabilidad) return; // 35% de probabilidad por defecto
         
+        // **SISTEMA DE COOLDOWN MEJORADO**
+        long currentTime = System.currentTimeMillis();
+        long timeSinceLastBreak = currentTime - lastWaterBreakTime;
+        int cooldownMs = romperProteccionCooldown * 50; // Convertir ticks a ms (1 tick = 50ms)
+        
+        if (timeSinceLastBreak < cooldownMs) {
+            // Cooldown activo, no romper protección
+            if (plugin.getConfigManager().isDebugCiclo() && random.nextDouble() < 0.05) { // Log 5% para no spam
+                long remainingSec = (cooldownMs - timeSinceLastBreak) / 1000;
+                plugin.getLogger().info("[LluviaFuego] Protección de agua en cooldown (restan " + remainingSec + "s)");
+            }
+            return;
+        }
+        
+        // Determinar si es meteorito (impacto más destructivo)
+        // Asumimos que meteoritos tienen potencia de explosión mayor
+        boolean isMeteorito = (explosionPower > 3.0f); // Si la explosión es fuerte, es meteorito
+        double effectiveProbability = isMeteorito ? romperProteccionProbabilidadMeteorito : romperProteccionProbabilidad;
+        
+        // Chequear probabilidad (0.4% normal, 1.5% meteoritos)
+        if (random.nextDouble() > effectiveProbability) {
+            return; // No pasa el check de probabilidad
+        }
+        
+        // **BÚSQUEDA INTELIGENTE DE AGUA** con radio configurable
         List<Block> waterBlocks = new ArrayList<>();
+        int searchRadius = romperProteccionRadio;
         
-        // Recolectar bloques de agua en 2x2x2
-        for (int x = -1; x <= 1; x++) {
-            for (int y = -1; y <= 1; y++) {
-                for (int z = -1; z <= 1; z++) {
+        for (int x = -searchRadius; x <= searchRadius; x++) {
+            for (int y = -searchRadius; y <= searchRadius; y++) {
+                for (int z = -searchRadius; z <= searchRadius; z++) {
                     Block check = loc.clone().add(x, y, z).getBlock();
                     if (check.getType() == Material.WATER) {
+                        // **PROTECCIÓN DE AGUA PROFUNDA**
+                        if (romperProteccionProtegerProfunda && isDeepWater(check)) {
+                            // Agua profunda (2+ bloques apilados) está protegida
+                            if (plugin.getConfigManager().isDebugCiclo() && random.nextDouble() < 0.1) { // Log 10%
+                                plugin.getLogger().info("[LluviaFuego] Agua profunda protegida en " + 
+                                    check.getX() + "," + check.getY() + "," + check.getZ());
+                            }
+                            continue; // No agregar a la lista de evaporables
+                        }
+                        
                         waterBlocks.add(check);
                     }
                 }
             }
         }
         
-        // Si no hay agua, salir
+        // Si no hay agua evaporable, salir
         if (waterBlocks.isEmpty()) return;
         
         // Obtener World una sola vez (optimización)
@@ -759,9 +912,32 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
             evaporated++;
         }
         
-        // Mensaje de feedback si se evaporaron bloques
-        if (evaporated > 0 && plugin.getConfigManager().isDebugCiclo()) {
-            plugin.getLogger().info("[LluviaFuego] Evaporados " + evaporated + " bloques de agua por impacto");
+        // **ACTUALIZAR COOLDOWN** si se evaporaron bloques
+        if (evaporated > 0) {
+            lastWaterBreakTime = currentTime;
+            
+            if (plugin.getConfigManager().isDebugCiclo()) {
+                String impactType = isMeteorito ? "METEORITO" : "fuego";
+                plugin.getLogger().info("[LluviaFuego] Evaporados " + evaporated + 
+                    " bloques de agua por " + impactType + " (prob=" + 
+                    String.format("%.1f%%", effectiveProbability * 100) + 
+                    ", cooldown=" + (cooldownMs/1000) + "s)");
+            }
         }
+    }
+    
+    /**
+     * Verifica si un bloque de agua tiene 2 o más bloques de agua apilados debajo
+     * (agua profunda que debe ser más difícil de evaporar)
+     */
+    private boolean isDeepWater(Block waterBlock) {
+        if (waterBlock.getType() != Material.WATER) return false;
+        
+        // Verificar si hay agua debajo
+        Block below = waterBlock.getRelative(0, -1, 0);
+        if (below.getType() != Material.WATER) return false;
+        
+        // Agua profunda: al menos 2 bloques apilados
+        return true;
     }
 }

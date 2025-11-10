@@ -7,6 +7,7 @@ ciclo:
   min_jugadores: 1                 # No iniciar si < este número online
   respectar_cooldown: true         # Respetar cooldown entre desastres
   cooldown_fin_segundos: 600       # Segundos de espera tras finalizar un desastre
+  preparacion_inicial_segundos: 900  # Duración de preparación al usar /avo start (15 min default)
 
 desastres:
   weights:
@@ -137,13 +138,18 @@ desastres:
       enabled: true
       radius: 1                    # Radio de fuegos alrededor de impactos
     
-    # NUEVO: Rotura de bloques de protección (agua)
+    # Rotura de bloques de protección (MEJORADO - MUY REDUCIDO)
     # Las bolas de fuego tienen probabilidad de romper bloques de agua cercanos
     # Esto fuerza a los jugadores a reponer constantemente su protección
+    # AHORA: probabilidad muy baja, el agua es efectiva como protección
     romper_proteccion:
       enabled: true
-      probabilidad: 0.02           # 2% de probabilidad por impacto
-      cantidad_bloques: 2          # Rompe hasta 2 bloques de agua por impacto
+      probabilidad: 0.004          # 0.4% de probabilidad por impacto (reducido de 2%)
+      probabilidad_meteorito: 0.015  # 1.5% para meteoritos (más destructivos)
+      cantidad_bloques: 1          # Rompe hasta 1 bloque de agua por impacto (reducido de 2)
+      radio_busqueda: 2            # Radio para buscar agua (NUEVO)
+      cooldown_ticks: 180          # Cooldown de 9 segundos entre roturas (NUEVO)
+      proteger_agua_profunda: true  # No romper agua si hay 2+ bloques de agua apilados (NUEVO)
     
     random_damage:
       chance: 0.25
@@ -230,15 +236,15 @@ desastres:
       enabled: true
       duracion_ticks: 100  # Duración de slowness + mining fatigue
     
-    # NUEVO: Sistema de absorción de impacto
+    # Sistema de absorción de impacto (MEJORADO)
     # Bloques específicos cerca del jugador reducen el efecto del terremoto
     absorcion_impacto:
       enabled: true
-      radio_deteccion: 5  # Radio de búsqueda de bloques absorbentes
-      reduccion_shake_por_bloque: 0.40  # Reduce intensidad de temblores 40% por bloque
-      reduccion_break_por_bloque: 0.50  # Reduce probabilidad de rotura 50% por bloque
-      reduccion_damage_por_bloque: 0.25  # Reduce daño y derrumbes 25% por bloque
-      max_bloques_efectivos: 4  # Máximo de bloques que cuentan para protección
+      radio_deteccion: 6  # Radio de búsqueda de bloques absorbentes (aumentado de 5 a 6)
+      reduccion_shake_por_bloque: 0.45  # Reduce intensidad de temblores 45% por bloque (aumentado de 40%)
+      reduccion_break_por_bloque: 0.60  # Reduce probabilidad de rotura 60% por bloque (aumentado de 50%)
+      reduccion_damage_por_bloque: 0.35  # Reduce daño y derrumbes 35% por bloque (aumentado de 25%)
+      max_bloques_efectivos: 5  # Máximo de bloques que cuentan para protección (aumentado de 4)
       materiales:  # Bloques que absorben vibraciones sísmicas
         - "WHITE_WOOL"
         - "ORANGE_WOOL"
@@ -259,13 +265,20 @@ desastres:
         - "SLIME_BLOCK"
         - "BLUE_ICE"
         - "HAY_BLOCK"
+        - "HONEY_BLOCK"  # NUEVO: Bloque de miel también absorbe
+        - "SPONGE"       # NUEVO: Esponja también absorbe
+        - "WET_SPONGE"   # NUEVO: Esponja mojada también absorbe
     
-    # NUEVO: Rotura de bloques de protección
+    # Rotura de bloques de protección (MEJORADO - MUY REDUCIDO)
     # El terremoto puede romper los bloques absorbentes, forzando al jugador a reponerlos
+    # AHORA: probabilidad muy baja, requiere múltiples réplicas para romper protección
     romper_proteccion:
       enabled: true
-      probabilidad: 0.02         # 2% de probabilidad por segundo si hay protección activa
-      cantidad_bloques: 1        # Romper 1 bloque absorbente por tick
+      probabilidad: 0.003         # 0.3% de probabilidad por segundo (reducido de 2%)
+      probabilidad_aftershock: 0.008  # 0.8% durante réplicas (más daño en aftershocks)
+      cantidad_bloques: 1         # Romper solo 1 bloque absorbente por evento
+      cooldown_ticks: 200         # Cooldown de 10 segundos entre roturas (NUEVO)
+      priorizar_bloques_viejos: true  # Romper primero los bloques más antiguos (NUEVO)
 
 common:
   random_damage:

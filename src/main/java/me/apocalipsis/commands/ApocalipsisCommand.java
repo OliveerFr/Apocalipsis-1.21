@@ -4,6 +4,11 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.Sound;
+import org.bukkit.Particle;
+import org.bukkit.block.Block;
 
 import me.apocalipsis.Apocalipsis;
 import me.apocalipsis.disaster.DisasterController;
@@ -13,6 +18,8 @@ import me.apocalipsis.state.ServerState;
 import me.apocalipsis.state.StateManager;
 import me.apocalipsis.state.TimeService;
 import me.apocalipsis.ui.MessageBus;
+
+import java.util.*;
 
 public class ApocalipsisCommand implements CommandExecutor {
 
@@ -42,6 +49,9 @@ public class ApocalipsisCommand implements CommandExecutor {
             sender.sendMessage("§e/avo skip §7- Salta al siguiente estado");
             sender.sendMessage("§e/avo preparacion <min> §7- Inicia preparación");
             sender.sendMessage("§e/avo time <set|add> <min> §7- Modifica tiempo del estado");
+            sender.sendMessage("§6=== Protecciones ===");
+            sender.sendMessage("§e/avo escanear §7- Escanea protecciones cercanas");
+            sender.sendMessage("§e/avo protecciones §7- Guía de protecciones");
             sender.sendMessage("§6=== Misiones ===");
             sender.sendMessage("§e/avo newday §7- Crea un nuevo día y asigna misiones");
             sender.sendMessage("§e/avo endday §7- Termina el día actual");
@@ -55,7 +65,8 @@ public class ApocalipsisCommand implements CommandExecutor {
             sender.sendMessage("§e/avo backup §7- Backup manual de datos");
             sender.sendMessage("§e/avo reload §7- Recarga la configuración");
             sender.sendMessage("§e/avo test §7- Toggle modo test");
-            sender.sendMessage("§e/avo debug missions §7- Debug de misiones");
+            sender.sendMessage("§e/avo debug <on|off|status|missions> §7- Control de logs");
+            sender.sendMessage("§e/avo test-alert <jugador> §7- Prueba notificaciones");
             sender.sendMessage("§e/avo admin <add|remove|list> §7- Gestionar excepciones");
             return true;
         }
@@ -83,6 +94,9 @@ public class ApocalipsisCommand implements CommandExecutor {
                 break;
             case "test":
                 cmdTest(sender);
+                break;
+            case "test-alert":
+                cmdTestAlert(sender, args);
                 break;
             case "newday":
                 cmdNewDay(sender);
@@ -119,6 +133,12 @@ public class ApocalipsisCommand implements CommandExecutor {
                 break;
             case "admin":
                 cmdAdmin(sender, args);
+                break;
+            case "escanear":
+                cmdEscanear(sender);
+                break;
+            case "protecciones":
+                cmdProtecciones(sender);
                 break;
             default:
                 sender.sendMessage("§cSubcomando desconocido. Usa /avo para ver ayuda.");
@@ -157,28 +177,36 @@ public class ApocalipsisCommand implements CommandExecutor {
         long cooldownMs = plugin.getConfigManager().getCooldownFinSegundos() * 1000L;
 
         // Dejar todo listo para que el scheduler inicie el 1º desastre enseguida
+        // Usamos preparación forzada con duración configurable (default 15 min)
         stateManager.setEstado("PREPARACION");
         stateManager.setString("desastre_actual", "");
-        stateManager.setPrepForzada(false);                     // preparación NO forzada
+        // Preparación forzada para que scheduleAutoNext() use end_epoch_ms y envíe alerts
+        stateManager.setPrepForzada(true);
         stateManager.setLastEndEpochMs(now - cooldownMs - 1000L); // cooldown ya cumplido
 
-        // Tiempos solo para UI; no queremos barra azul aquí
+        // Tiempos para UI y countdown - leer desde config
+        int prepSeconds = plugin.getConfigManager().getPreparacionInicialSegundos();
         stateManager.setLong("start_epoch_ms", now);
-        stateManager.setLong("end_epoch_ms", now);
+        stateManager.setLong("end_epoch_ms", now + (prepSeconds * 1000L));
 
         stateManager.saveState();
 
         // Antirrebote + reinicio de puertas internas
         disasterController.resetStartingFlag();    // por si había un intento previo
         disasterController.resetCooldownAutoStartFlag();
+        // Resetear flags de countdown para asegurar que las alertas se muestren
+        disasterController.resetCountdownFlags();
         disasterController.markEnteredPreparation();
         // Programa el auto-next (el que realmente iniciará el desastre)
         disasterController.scheduleAutoNext();
 
-        // Feedback
-        sender.sendMessage("§a✅ Ciclo iniciado. El primer desastre comenzará en breve.");
-        plugin.getLogger().info("[Cycle] /avo start → PREPARACION (no forzada), cooldown cumplido. Scheduler armado.");
-        }
+        // Feedback - mostrar tiempo en formato legible
+        int minutos = prepSeconds / 60;
+        int segundos = prepSeconds % 60;
+        String tiempoDisplay = minutos > 0 ? minutos + " min" : segundos + "s";
+        sender.sendMessage(String.format("§a✅ Ciclo iniciado. El primer desastre comenzará en %s.", tiempoDisplay));
+        plugin.getLogger().info(String.format("[Cycle] /avo start → PREPARACION forzada (%ds). Scheduler armado.", prepSeconds));
+    }
 
     
     private void cmdStop(CommandSender sender) {
@@ -191,7 +219,7 @@ public class ApocalipsisCommand implements CommandExecutor {
         sender.sendMessage("§7Desastre detenido. Todas las tareas canceladas.");
         
         if (plugin.getConfigManager().isDebugCiclo()) {
-            plugin.getLogger().info("[Cycle] STOP ejecutado manualmente por " + sender.getName());
+            plugin.getLogger().info(String.format("[Cycle] STOP ejecutado manualmente por %s", sender.getName()));
         }
     }
 
@@ -223,7 +251,7 @@ public class ApocalipsisCommand implements CommandExecutor {
         sender.sendMessage("§a✓ Desastre forzado: §f" + disasterId);
         
         if (plugin.getConfigManager().isDebugCiclo()) {
-            plugin.getLogger().info("[Cycle] INICIO por /avo force: desastre=" + disasterId);
+            plugin.getLogger().info(String.format("[Cycle] INICIO por /avo force: desastre=%s", disasterId));
         }
     }
 
@@ -266,7 +294,10 @@ public class ApocalipsisCommand implements CommandExecutor {
             stateManager.setLong("end_epoch_ms", now + durationMs);
             stateManager.saveState();
             
-            // 3.5. Marcar entrada en PREPARACION para antirrebote
+            // 3.5. Resetear alertas de countdown para nueva preparación
+            disasterController.resetCountdownFlags();
+            
+            // 3.6. Marcar entrada en PREPARACION para antirrebote
             disasterController.markEnteredPreparation();
 
             // 4. Ocultar BossBar, scoreboard muestra tiempo restante
@@ -278,7 +309,7 @@ public class ApocalipsisCommand implements CommandExecutor {
             // Mostrar tiempo real según test mode
             String timeDisplay = plugin.getConfigManager().isTestMode() ? "5 segundos" : minutes + " minutos";
             sender.sendMessage("§e✓ Preparación forzada iniciada por §f" + timeDisplay + "§e.");
-            plugin.getLogger().info("[Cycle] PREPARACION forzada " + minutes + "m");
+            plugin.getLogger().info(String.format("[Cycle] PREPARACION forzada %dm", minutes));
         } catch (NumberFormatException e) {
             sender.sendMessage("§cEl valor debe ser un número.");
         }
@@ -458,11 +489,48 @@ public class ApocalipsisCommand implements CommandExecutor {
         }
 
         if (args.length < 2) {
-            sender.sendMessage("§cUso: /avo debug <missions>");
+            sender.sendMessage("§e=== DEBUG - APOCALIPSIS ===");
+            sender.sendMessage("§7Comandos disponibles:");
+            sender.sendMessage("§e/avo debug on §7- Activa logs de debug");
+            sender.sendMessage("§e/avo debug off §7- Desactiva logs de debug");
+            sender.sendMessage("§e/avo debug status §7- Estado actual");
+            sender.sendMessage("§e/avo debug missions §7- Info de misiones");
             return;
         }
 
-        if (args[1].equalsIgnoreCase("missions")) {
+        String subArg = args[1].toLowerCase();
+        
+        if (subArg.equals("on") || subArg.equals("enable") || subArg.equals("true")) {
+            plugin.getConfigManager().setDebugCiclo(true);
+            sender.sendMessage("§a✓ Debug activado");
+            sender.sendMessage("§7Los logs detallados ahora se mostrarán en consola");
+            sender.sendMessage("§7Verás información sobre:");
+            sender.sendMessage("§7  - Ciclo de desastres");
+            sender.sendMessage("§7  - Instancias de desastres");
+            sender.sendMessage("§7  - Ticks y estados");
+            sender.sendMessage("§7  - Alertas de countdown");
+            return;
+        }
+        
+        if (subArg.equals("off") || subArg.equals("disable") || subArg.equals("false")) {
+            plugin.getConfigManager().setDebugCiclo(false);
+            sender.sendMessage("§c✗ Debug desactivado");
+            sender.sendMessage("§7Solo se mostrarán logs importantes");
+            return;
+        }
+        
+        if (subArg.equals("status") || subArg.equals("state")) {
+            boolean debugActivo = plugin.getConfigManager().isDebugCiclo();
+            sender.sendMessage("§e=== ESTADO DEBUG ===");
+            sender.sendMessage("§7Debug ciclo: " + (debugActivo ? "§a✓ ACTIVO" : "§c✗ INACTIVO"));
+            sender.sendMessage("§7Estado actual: §e" + stateManager.getEstado());
+            sender.sendMessage("§7Desastre activo: §e" + (stateManager.getActiveDisasterId() != null ? stateManager.getActiveDisasterId() : "Ninguno"));
+            sender.sendMessage("§7Auto-cycle: " + (plugin.getConfigManager().isAutoCycleEnabled() ? "§a✓" : "§c✗"));
+            sender.sendMessage("§7Cooldown: §e" + plugin.getConfigManager().getCooldownFinSegundos() + "s");
+            return;
+        }
+
+        if (subArg.equals("missions")) {
             sender.sendMessage("§7=== DEBUG MISIONES ===");
             sender.sendMessage("§7Día actual: §e" + stateManager.getCurrentDay());
             sender.sendMessage("§7Jugadores con misiones: §e" + plugin.getServer().getOnlinePlayers().size());
@@ -472,11 +540,17 @@ public class ApocalipsisCommand implements CommandExecutor {
                 var assignments = missionService.getActiveAssignments(player);
                 sender.sendMessage("§e" + player.getName() + " §7tiene §f" + assignments.size() + " §7misiones.");
             }
-        } else if (args[1].equalsIgnoreCase("explore")) {
+            return;
+        }
+        
+        if (subArg.equals("explore")) {
             // [REMOVAL] Debug explore deshabilitado (tipo removido)
             sender.sendMessage("§c[REMOVAL] El comando /avo debug explore está deshabilitado");
             sender.sendMessage("§7Las misiones tipo EXPLORAR y ALTURA han sido removidas");
+            return;
         }
+        
+        sender.sendMessage("§cSubcomando desconocido. Usa §e/avo debug §cpara ver opciones.");
     }
     
     private void cmdReload(CommandSender sender) {
@@ -776,8 +850,11 @@ public class ApocalipsisCommand implements CommandExecutor {
                 stateManager.setPrepForzada(true);
                 stateManager.saveState();
                 
+                // [FIX] Resetear flags de countdown al modificar tiempo de preparación
+                disasterController.resetCountdownFlags();
+                
                 sender.sendMessage("§a✓ Preparación establecida a " + minutos + " minutos (" + segundos + "s).");
-                plugin.getLogger().info("[cmdTime] PREPARACION - TimeService reiniciado a " + segundos + "s (end_epoch_ms=" + newEndMs + ")");
+                plugin.getLogger().info(String.format("[cmdTime] PREPARACION - TimeService reiniciado a %ds (end_epoch_ms=%d)", segundos, newEndMs));
             }
             // Caso 4: Otro estado sin TimeService running
             else {
@@ -1134,6 +1211,340 @@ public class ApocalipsisCommand implements CommandExecutor {
         } catch (Exception e) {
             sender.sendMessage("§c✗ Error al crear backup: " + e.getMessage());
             plugin.getLogger().warning("[Admin] Error en backup: " + e.getMessage());
+        }
+    }
+
+    /**
+     * /avo test-alert <jugador> - Envía notificación de prueba a un jugador
+     */
+    private void cmdTestAlert(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("avo.admin")) {
+            sender.sendMessage("§cNo tienes permisos.");
+            return;
+        }
+
+        if (args.length < 2) {
+            sender.sendMessage("§cUso: /avo test-alert <jugador>");
+            return;
+        }
+
+        Player target = plugin.getServer().getPlayer(args[1]);
+        if (target == null) {
+            sender.sendMessage("§cJugador no encontrado: " + args[1]);
+            return;
+        }
+
+        sender.sendMessage("§eEnviando notificación de prueba a §f" + target.getName() + "§e...");
+        plugin.getLogger().info("[Test-Alert] " + sender.getName() + " enviando prueba a " + target.getName());
+
+        // Llamar al método de prueba del DisasterController
+        disasterController.testCountdownAlert(target, sender);
+    }
+
+    /**
+     * /avo escanear - Escanea y muestra protecciones cercanas con partículas
+     */
+    private void cmdEscanear(CommandSender sender) {
+        if (!(sender instanceof Player)) {
+            sender.sendMessage("§cEste comando solo puede ser usado por jugadores.");
+            return;
+        }
+
+        Player player = (Player) sender;
+        Location loc = player.getLocation();
+        
+        player.sendMessage("§8┌─────────────────────────────────────┐");
+        player.sendMessage("§6│ §e§l🛡 ESCANEO DE PROTECCIONES §6        │");
+        player.sendMessage("§8├─────────────────────────────────────┤");
+        
+        // === TERREMOTO: Bloques Absorbentes ===
+        Map<Material, Integer> absorbentes = escanearBloquesAbsorbentes(loc, 6);
+        int totalBloques = 0;
+        for (int count : absorbentes.values()) {
+            totalBloques += count;
+        }
+        int efectivos = Math.min(totalBloques, 5); // Cap de 5 bloques
+        int reduccionShake = efectivos * 15; // 15% por bloque
+        int reduccionBreak = efectivos * 20; // 20% por bloque
+        int reduccionDamage = efectivos * 25; // 25% por bloque
+        
+        player.sendMessage("§6│ §e⛰️ Terremoto:                        §6│");
+        if (totalBloques > 0) {
+            for (Map.Entry<Material, Integer> entry : absorbentes.entrySet()) {
+                String nombre = getNombreMaterial(entry.getKey());
+                player.sendMessage(String.format("§6│  §a✓ §7%d %s                     §6│", 
+                    entry.getValue(), nombre));
+            }
+            player.sendMessage(String.format("§6│  §7Total: §e%d §7bloques §8(§aefectivos: %d§8)§6│", 
+                totalBloques, efectivos));
+            player.sendMessage(String.format("§6│  §7Shake §a-%d%% §8| §7Break §a-%d%% §8| §7Daño §a-%d%%§6│", 
+                reduccionShake, reduccionBreak, reduccionDamage));
+            
+            // Spawnear partículas verdes en bloques absorbentes
+            spawnParticlesEnBloques(absorbentes, loc, Particle.HAPPY_VILLAGER);
+        } else {
+            player.sendMessage("§6│  §c✗ Sin bloques protectores           §6│");
+            player.sendMessage("§6│  §7Usa §blana§7, §aslime§7, §bhielo     §6│");
+        }
+        
+        player.sendMessage("§8│                                     │");
+        
+        // === LLUVIA DE FUEGO: Agua ===
+        WaterScanResult agua = escanearAgua(loc, 3);
+        player.sendMessage("§6│ §e🔥 Lluvia de Fuego:                  §6│");
+        if (agua.waterBlocks > 0) {
+            if (agua.hasDeepWater) {
+                player.sendMessage("§6│  §a✓ Agua profunda §8(§a2+ bloques§8)    §6│");
+                player.sendMessage("§6│  §7Explosión §a-60% §8| §7Fuego §aAPAGADO §6│");
+            } else {
+                player.sendMessage(String.format("§6│  §a✓ §b%d §7bloques de agua           §6│", 
+                    agua.waterBlocks));
+                player.sendMessage("§6│  §7Explosión §a-60% §8| §7Evaporación lenta§6│");
+            }
+            
+            // Partículas azules en agua
+            spawnParticlesEnAgua(loc, 3, Particle.BUBBLE_POP);
+        } else {
+            player.sendMessage("§6│  §c✗ Sin protección de agua           §6│");
+            player.sendMessage("§6│  §7Coloca §bagua §7cerca (3 bloques)  §6│");
+        }
+        
+        player.sendMessage("§8│                                     │");
+        
+        // === HURACÁN: Techo ===
+        boolean tieneTecho = escanearTecho(player);
+        player.sendMessage("§6│ §e🌪️ Huracán:                          §6│");
+        if (tieneTecho) {
+            player.sendMessage("§6│  §a✓ Techo detectado                  §6│");
+            player.sendMessage("§6│  §7Empuje §a-60% §8| §7Agachado §a-55%   §6│");
+            player.sendMessage("§6│  §7Combo: §a-85% §7reducción total     §6│");
+            
+            // Partículas arriba del jugador
+            Location above = loc.clone().add(0, 5, 0);
+            player.getWorld().spawnParticle(Particle.END_ROD, above, 10, 1, 0.1, 1, 0.01);
+        } else {
+            player.sendMessage("§6│  §c✗ Expuesto al viento               §6│");
+            player.sendMessage("§6│  §7Construye §etecho §7de 5+ bloques  §6│");
+        }
+        
+        player.sendMessage("§8└─────────────────────────────────────┘");
+        
+        // Sonido de confirmación
+        player.playSound(loc, Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 1.5f);
+        player.sendMessage("§a✓ §7Escaneo completado. §8(§7Partículas visibles 20s§8)");
+    }
+
+    /**
+     * /avo protecciones - Muestra guía completa de protecciones
+     */
+    private void cmdProtecciones(CommandSender sender) {
+        sender.sendMessage("");
+        sender.sendMessage("§8╔═══════════════════════════════════════════╗");
+        sender.sendMessage("§8║ §6§l      📚 GUÍA DE PROTECCIONES          §8║");
+        sender.sendMessage("§8╠═══════════════════════════════════════════╣");
+        sender.sendMessage("§8║                                           §8║");
+        
+        // TERREMOTO
+        sender.sendMessage("§8║ §e§l⛰️  TERREMOTO                           §8║");
+        sender.sendMessage("§8║ §7Bloques Absorbentes §8(§76-block radius§8): §8║");
+        sender.sendMessage("§8║   §f• §bLana §8(§716 colores§8) §7........... §a-15%§8║");
+        sender.sendMessage("§8║   §f• §aSlime Block §7............... §a-15%§8║");
+        sender.sendMessage("§8║   §f• §eHoney Block §7............... §a-15%§8║");
+        sender.sendMessage("§8║   §f• §bBlue Ice §7.................. §a-10%§8║");
+        sender.sendMessage("§8║   §f• §eHay Block §7................. §a-10%§8║");
+        sender.sendMessage("§8║   §f• §6Sponge §7.................... §a-15%§8║");
+        sender.sendMessage("§8║                                           §8║");
+        sender.sendMessage("§8║ §c⚠ §7Máximo: §e5 bloques efectivos         §8║");
+        sender.sendMessage("§8║ §7💡 Reduce: Shake, Break y Daño          §8║");
+        sender.sendMessage("§8║ §7💡 Colócalos en radio de §e6 bloques     §8║");
+        sender.sendMessage("§8║                                           §8║");
+        
+        // LLUVIA DE FUEGO
+        sender.sendMessage("§8║ §e§l🔥 LLUVIA DE FUEGO                      §8║");
+        sender.sendMessage("§8║ §7Protección de Agua §8(§73x3x3§8):          §8║");
+        sender.sendMessage("§8║   §f• §bAgua Normal §7............... §a-60%§8║");
+        sender.sendMessage("§8║   §f• §bAgua Profunda §8(§72+ bloques§8) §a-60%§8║");
+        sender.sendMessage("§8║                                           §8║");
+        sender.sendMessage("§8║ §7💧 Reduce explosiones y apaga fuego     §8║");
+        sender.sendMessage("§8║ §7💧 Agua profunda: §aInmune a evaporación§8║");
+        sender.sendMessage("§8║ §7💡 Coloca §b3+ bloques §7cerca de ti     §8║");
+        sender.sendMessage("§8║                                           §8║");
+        
+        // HURACÁN
+        sender.sendMessage("§8║ §e§l🌪️  HURACÁN                             §8║");
+        sender.sendMessage("§8║ §7Protección Estructural:                §8║");
+        sender.sendMessage("§8║   §f• §eTecho §8(§75+ bloques arriba§8) §7.. §a-60%§8║");
+        sender.sendMessage("§8║   §f• §7Agacharse §8(§7Sneaking§8) §7........ §a-55%§8║");
+        sender.sendMessage("§8║   §f• §a§lCombo §8(§7Techo + Agachado§8) §7. §a-85%§8║");
+        sender.sendMessage("§8║                                           §8║");
+        sender.sendMessage("§8║ §7🌪️ Reduce empuje del viento             §8║");
+        sender.sendMessage("§8║ §7💡 Construye refugio con §etecho sólido §8║");
+        sender.sendMessage("§8║ §7💡 §7Durante ráfagas: §aagáchate siempre §8║");
+        sender.sendMessage("§8║                                           §8║");
+        
+        // CONSEJOS GENERALES
+        sender.sendMessage("§8║ §6§l💡 CONSEJOS GENERALES                  §8║");
+        sender.sendMessage("§8║ §71. Usa §e/avo escanear §7para verificar §8║");
+        sender.sendMessage("§8║ §72. Prepara refugios §aANTES §7del desastre§8║");
+        sender.sendMessage("§8║ §73. Combina múltiples protecciones       §8║");
+        sender.sendMessage("§8║ §74. Revisa durabilidad con §e/avo escanear§8║");
+        sender.sendMessage("§8║                                           §8║");
+        sender.sendMessage("§8╚═══════════════════════════════════════════╝");
+        sender.sendMessage("");
+        
+        if (sender instanceof Player) {
+            Player player = (Player) sender;
+            player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 0.5f, 1.0f);
+        }
+    }
+
+    // ========== MÉTODOS AUXILIARES PARA ESCANEO ==========
+    
+    /**
+     * Escanea bloques absorbentes en un radio específico
+     */
+    private Map<Material, Integer> escanearBloquesAbsorbentes(Location center, int radio) {
+        Map<Material, Integer> encontrados = new HashMap<>();
+        Set<Material> materialesAbsorbentes = EnumSet.of(
+            Material.WHITE_WOOL, Material.ORANGE_WOOL, Material.MAGENTA_WOOL, Material.LIGHT_BLUE_WOOL,
+            Material.YELLOW_WOOL, Material.LIME_WOOL, Material.PINK_WOOL, Material.GRAY_WOOL,
+            Material.LIGHT_GRAY_WOOL, Material.CYAN_WOOL, Material.PURPLE_WOOL, Material.BLUE_WOOL,
+            Material.BROWN_WOOL, Material.GREEN_WOOL, Material.RED_WOOL, Material.BLACK_WOOL,
+            Material.SLIME_BLOCK, Material.BLUE_ICE, Material.HAY_BLOCK, Material.SPONGE, 
+            Material.WET_SPONGE, Material.HONEY_BLOCK, Material.PACKED_ICE, Material.ICE
+        );
+        
+        for (int x = -radio; x <= radio; x++) {
+            for (int y = -radio; y <= radio; y++) {
+                for (int z = -radio; z <= radio; z++) {
+                    Block block = center.clone().add(x, y, z).getBlock();
+                    if (materialesAbsorbentes.contains(block.getType())) {
+                        encontrados.put(block.getType(), 
+                            encontrados.getOrDefault(block.getType(), 0) + 1);
+                    }
+                }
+            }
+        }
+        
+        return encontrados;
+    }
+    
+    /**
+     * Escanea agua alrededor del jugador
+     */
+    private WaterScanResult escanearAgua(Location center, int radio) {
+        int waterBlocks = 0;
+        boolean hasDeepWater = false;
+        
+        for (int x = -radio; x <= radio; x++) {
+            for (int y = -radio; y <= radio; y++) {
+                for (int z = -radio; z <= radio; z++) {
+                    Block block = center.clone().add(x, y, z).getBlock();
+                    if (block.getType() == Material.WATER) {
+                        waterBlocks++;
+                        // Verificar si hay agua arriba (agua profunda)
+                        Block above = block.getRelative(0, 1, 0);
+                        if (above.getType() == Material.WATER) {
+                            hasDeepWater = true;
+                        }
+                    }
+                }
+            }
+        }
+        
+        return new WaterScanResult(waterBlocks, hasDeepWater);
+    }
+    
+    /**
+     * Verifica si el jugador tiene techo
+     */
+    private boolean escanearTecho(Player player) {
+        Location loc = player.getLocation();
+        for (int i = 1; i <= 5; i++) {
+            Block above = loc.clone().add(0, i, 0).getBlock();
+            if (above.getType().isSolid() && above.getType() != Material.BARRIER) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    /**
+     * Spawnea partículas en bloques encontrados
+     */
+    private void spawnParticlesEnBloques(Map<Material, Integer> bloques, Location playerLoc, Particle particle) {
+        int radio = 6;
+        int particlesSpawned = 0;
+        
+        for (int x = -radio; x <= radio; x++) {
+            for (int y = -radio; y <= radio; y++) {
+                for (int z = -radio; z <= radio; z++) {
+                    Block block = playerLoc.clone().add(x, y, z).getBlock();
+                    if (bloques.containsKey(block.getType())) {
+                        Location particleLoc = block.getLocation().add(0.5, 0.5, 0.5);
+                        playerLoc.getWorld().spawnParticle(particle, particleLoc, 3, 0.3, 0.3, 0.3, 0);
+                        particlesSpawned++;
+                        
+                        if (particlesSpawned >= 50) return; // Limitar para evitar lag
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * Spawnea partículas en agua
+     */
+    private void spawnParticlesEnAgua(Location center, int radio, Particle particle) {
+        int particlesSpawned = 0;
+        
+        for (int x = -radio; x <= radio; x++) {
+            for (int y = -radio; y <= radio; y++) {
+                for (int z = -radio; z <= radio; z++) {
+                    Block block = center.clone().add(x, y, z).getBlock();
+                    if (block.getType() == Material.WATER) {
+                        Location particleLoc = block.getLocation().add(0.5, 0.5, 0.5);
+                        center.getWorld().spawnParticle(particle, particleLoc, 2, 0.2, 0.2, 0.2, 0);
+                        particlesSpawned++;
+                        
+                        if (particlesSpawned >= 30) return;
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * Obtiene nombre legible de material
+     */
+    private String getNombreMaterial(Material mat) {
+        switch (mat) {
+            case SLIME_BLOCK: return "Slime";
+            case BLUE_ICE: return "Hielo Azul";
+            case HAY_BLOCK: return "Heno";
+            case SPONGE: case WET_SPONGE: return "Esponja";
+            case HONEY_BLOCK: return "Miel";
+            case PACKED_ICE: return "Hielo Compacto";
+            case ICE: return "Hielo";
+            default:
+                if (mat.name().contains("WOOL")) {
+                    String color = mat.name().replace("_WOOL", "").replace("_", " ");
+                    return "Lana " + color.substring(0, 1) + color.substring(1).toLowerCase();
+                }
+                return mat.name();
+        }
+    }
+    
+    /**
+     * Clase auxiliar para resultado de escaneo de agua
+     */
+    private static class WaterScanResult {
+        final int waterBlocks;
+        final boolean hasDeepWater;
+        
+        WaterScanResult(int waterBlocks, boolean hasDeepWater) {
+            this.waterBlocks = waterBlocks;
+            this.hasDeepWater = hasDeepWater;
         }
     }
 }

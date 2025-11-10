@@ -13,20 +13,35 @@ import java.util.Set;
 public class DisasterRegistry {
 
     private final Map<String, Disaster> disasters = new HashMap<>();
+    private Apocalipsis plugin; // [FIX] Para logging
 
     public void registerDefaults(Apocalipsis plugin, MessageBus messageBus, SoundUtil soundUtil, 
                                 TimeService timeService, PerformanceAdapter performanceAdapter) {
+        this.plugin = plugin; // [FIX] Guardar referencia
+        
         // [FIX DUPLICACIÓN] Limpiar desastres anteriores antes de registrar nuevos
         // Esto previene duplicación si el plugin se recarga
-        disasters.clear();
+        plugin.getLogger().info(String.format("[DisasterRegistry] Limpiando %d desastres anteriores", disasters.size()));
+        clearAll();
         
+        plugin.getLogger().info("[DisasterRegistry] Registrando desastres nuevos...");
         register(new HuracanNew(plugin, messageBus, soundUtil, timeService, performanceAdapter));
         register(new LluviaFuegoNew(plugin, messageBus, soundUtil, timeService, performanceAdapter));
         register(new TerremotoNew(plugin, messageBus, soundUtil, timeService, performanceAdapter));
+        plugin.getLogger().info(String.format("[DisasterRegistry] ✓ %d desastres registrados", disasters.size()));
     }
 
     public void register(Disaster disaster) {
-        disasters.put(disaster.getId(), disaster);
+        String id = disaster.getId();
+        if (disasters.containsKey(id)) {
+            if (plugin != null) {
+                plugin.getLogger().warning(String.format("[DisasterRegistry] Reemplazando desastre existente: %s", id));
+            }
+        }
+        disasters.put(id, disaster);
+        if (plugin != null) {
+            plugin.getLogger().info(String.format("[DisasterRegistry] Registrado: %s", id));
+        }
     }
 
     public Disaster get(String id) {

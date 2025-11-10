@@ -10,6 +10,7 @@ import org.bukkit.Sound;
 import org.bukkit.boss.BarColor;
 import org.bukkit.boss.BarStyle;
 import org.bukkit.boss.BossBar;
+import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitTask;
@@ -54,6 +55,10 @@ public class DisasterController {
     private boolean alert30sIssued = false;
     private boolean alert10sIssued = false;
     private boolean alert5sIssued = false;
+    private boolean alert4sIssued = false;
+    private boolean alert3sIssued = false;
+    private boolean alert2sIssued = false;
+    private boolean alert1sIssued = false;
     
     // [RECONSTRUCCIÓN] BossBar ÚNICA (reutilizable)
     private BossBar bossBar;
@@ -166,11 +171,28 @@ public class DisasterController {
     }
 
     public void startTask() {
+        // [FIX DUPLICACIÓN CRÍTICO] Cancelar tarea anterior ANTES de crear una nueva
+        // Esto previene la acumulación de múltiples runnables ejecutándose en paralelo
+        if (taskId != -1) {
+            if (plugin.getConfigManager().isDebugCiclo()) {
+                plugin.getLogger().warning("[CRÍTICO] startTask() llamado con tarea activa (id=" + taskId + ") - cancelando primero");
+            }
+            Bukkit.getScheduler().cancelTask(taskId);
+            taskId = -1;
+        }
+        
         taskId = Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 1L, 1L).getTaskId();
+        
+        if (plugin.getConfigManager().isDebugCiclo()) {
+            plugin.getLogger().info("[DisasterController] Task iniciada con ID=" + taskId);
+        }
     }
 
     public void cancelTask() {
         if (taskId != -1) {
+            if (plugin.getConfigManager().isDebugCiclo()) {
+                plugin.getLogger().info("[DisasterController] Cancelando task ID=" + taskId);
+            }
             Bukkit.getScheduler().cancelTask(taskId);
             taskId = -1;
         }
@@ -516,7 +538,7 @@ public class DisasterController {
             plugin.getDisasterEvasionTracker().onDisasterEnd();
             
             // [COUNTDOWN] Resetear flags de alertas
-            resetCountdownAlerts();
+            resetCountdownFlags();
             
             // [CRÍTICO] RESETEAR FLAGS
             plugin.getLogger().info("[Cycle] ANTES: cooldown=" + cooldownAutoStartAttempted.get() + ", starting=" + starting.get());
@@ -904,38 +926,54 @@ public class DisasterController {
                     long remainingMs = endEpochMs - now;
                     long remainingSec = remainingMs / 1000L;
                     
+                    if (plugin.getConfigManager().isDebugCiclo() && now % 2000 < 1000) {
+                        plugin.getLogger().info("[Countdown] PrepForzada: faltan " + remainingSec + "s (60=" + alert60sIssued + ", 30=" + alert30sIssued + ", 10=" + alert10sIssued + ")");
+                    }
+                    
                     if (remainingMs > 0) {
                         // Alerta de 60 segundos
                         if (remainingSec <= 60 && remainingSec > 55 && !alert60sIssued) {
                             sendCountdownAlert(60);
                             alert60sIssued = true;
+                            plugin.getLogger().info("[Countdown] ✓ Enviada alerta 60s (PrepForzada)");
                         }
                         // Alerta de 30 segundos
                         else if (remainingSec <= 30 && remainingSec > 25 && !alert30sIssued) {
                             sendCountdownAlert(30);
                             alert30sIssued = true;
+                            plugin.getLogger().info("[Countdown] ✓ Enviada alerta 30s (PrepForzada)");
                         }
                         // Alerta de 10 segundos
                         else if (remainingSec <= 10 && remainingSec > 8 && !alert10sIssued) {
                             sendCountdownAlert(10);
                             alert10sIssued = true;
+                            plugin.getLogger().info("[Countdown] ✓ Enviada alerta 10s (PrepForzada)");
                         }
                         // Alertas finales (5, 4, 3, 2, 1)
                         else if (remainingSec == 5 && !alert5sIssued) {
                             sendCountdownAlert(5);
                             alert5sIssued = true;
+                            plugin.getLogger().info("[Countdown] ✓ Enviada alerta 5s (PrepForzada)");
                         }
-                        else if (remainingSec == 4) {
+                        else if (remainingSec == 4 && !alert4sIssued) {
                             sendCountdownAlert(4);
+                            alert4sIssued = true;
+                            plugin.getLogger().info("[Countdown] ✓ Enviada alerta 4s (PrepForzada)");
                         }
-                        else if (remainingSec == 3) {
+                        else if (remainingSec == 3 && !alert3sIssued) {
                             sendCountdownAlert(3);
+                            alert3sIssued = true;
+                            plugin.getLogger().info("[Countdown] ✓ Enviada alerta 3s (PrepForzada)");
                         }
-                        else if (remainingSec == 2) {
+                        else if (remainingSec == 2 && !alert2sIssued) {
                             sendCountdownAlert(2);
+                            alert2sIssued = true;
+                            plugin.getLogger().info("[Countdown] ✓ Enviada alerta 2s (PrepForzada)");
                         }
-                        else if (remainingSec == 1) {
+                        else if (remainingSec == 1 && !alert1sIssued) {
                             sendCountdownAlert(1);
+                            alert1sIssued = true;
+                            plugin.getLogger().info("[Countdown] ✓ Enviada alerta 1s (PrepForzada)");
                         }
                     }
                     
@@ -984,37 +1022,53 @@ public class DisasterController {
             
             // [COUNTDOWN ALERTS] Enviar alertas según tiempo restante
             if (remainingMs > 0) {
+                if (plugin.getConfigManager().isDebugCiclo() && now % 2000 < 1000) {
+                    plugin.getLogger().info("[Countdown] Cooldown: faltan " + remainingSec + "s (60=" + alert60sIssued + ", 30=" + alert30sIssued + ", 10=" + alert10sIssued + ")");
+                }
+                
                 // Alerta de 60 segundos
                 if (remainingSec <= 60 && remainingSec > 55 && !alert60sIssued) {
                     sendCountdownAlert(60);
                     alert60sIssued = true;
+                    plugin.getLogger().info("[Countdown] ✓ Enviada alerta 60s (Cooldown)");
                 }
                 // Alerta de 30 segundos
                 else if (remainingSec <= 30 && remainingSec > 25 && !alert30sIssued) {
                     sendCountdownAlert(30);
                     alert30sIssued = true;
+                    plugin.getLogger().info("[Countdown] ✓ Enviada alerta 30s (Cooldown)");
                 }
                 // Alerta de 10 segundos
                 else if (remainingSec <= 10 && remainingSec > 8 && !alert10sIssued) {
                     sendCountdownAlert(10);
                     alert10sIssued = true;
+                    plugin.getLogger().info("[Countdown] ✓ Enviada alerta 10s (Cooldown)");
                 }
                 // Alertas finales (5, 4, 3, 2, 1)
                 else if (remainingSec == 5 && !alert5sIssued) {
                     sendCountdownAlert(5);
                     alert5sIssued = true;
+                    plugin.getLogger().info("[Countdown] ✓ Enviada alerta 5s (Cooldown)");
                 }
-                else if (remainingSec == 4) {
+                else if (remainingSec == 4 && !alert4sIssued) {
                     sendCountdownAlert(4);
+                    alert4sIssued = true;
+                    plugin.getLogger().info("[Countdown] ✓ Enviada alerta 4s (Cooldown)");
                 }
-                else if (remainingSec == 3) {
+                else if (remainingSec == 3 && !alert3sIssued) {
                     sendCountdownAlert(3);
+                    alert3sIssued = true;
+                    plugin.getLogger().info("[Countdown] ✓ Enviada alerta 3s (Cooldown)");
                 }
-                else if (remainingSec == 2) {
+                else if (remainingSec == 2 && !alert2sIssued) {
                     sendCountdownAlert(2);
+                    alert2sIssued = true;
+                    plugin.getLogger().info("[Countdown] ✓ Enviada alerta 2s (Cooldown)");
                 }
-                else if (remainingSec == 1) {
+                else if (remainingSec == 1 && !alert1sIssued) {
                     sendCountdownAlert(1);
+                    alert1sIssued = true;
+                    plugin.getLogger().info("[Countdown] ✓ Enviada alerta 1s (Cooldown)");
                 }
             }
             
@@ -1026,7 +1080,7 @@ public class DisasterController {
             }
             
             // [COUNTDOWN] Resetear flags al iniciar desastre
-            resetCountdownAlerts();
+            resetCountdownFlags();
 
             // ✅ Cooldown cumplido → intentar iniciar
             boolean flagBloqueado = cooldownAutoStartAttempted.get();
@@ -1490,11 +1544,19 @@ public class DisasterController {
     
     /**
      * Detener tareas del desastre actual
+     * [FIX DUPLICACIÓN] También cancelar el tick principal del controller
      */
     private void stopCurrentDisasterTasks() {
         if (activeDisaster != null && activeDisaster.isActive()) {
+            if (plugin.getConfigManager().isDebugCiclo()) {
+                plugin.getLogger().info("[DisasterController] Deteniendo desastre activo: " + activeDisaster.getId());
+            }
             activeDisaster.stop();
         }
+        
+        // [FIX CRÍTICO] Cancelar task principal para evitar acumulación
+        // Esto asegura que no haya múltiples runnables ejecutándose
+        cancelTask();
     }
     
     /**
@@ -1543,83 +1605,204 @@ public class DisasterController {
         
         if (seconds >= 30) {
             color = "§e"; // Amarillo
-            prefix = "§e⏰";
+            prefix = "§e§l⏰";
             pitch = 1.0f;
             sound = Sound.BLOCK_NOTE_BLOCK_PLING;
         } else if (seconds >= 10) {
             color = "§6"; // Naranja
-            prefix = "§6⚠";
+            prefix = "§6§l⚠";
             pitch = 1.3f;
-            sound = Sound.BLOCK_NOTE_BLOCK_PLING;
+            sound = Sound.BLOCK_NOTE_BLOCK_BELL;
         } else if (seconds >= 5) {
             color = "§c"; // Rojo
-            prefix = "§c⚠";
+            prefix = "§c§l⚠";
             pitch = 1.5f;
-            sound = Sound.BLOCK_NOTE_BLOCK_PLING;
+            sound = Sound.BLOCK_NOTE_BLOCK_BELL;
         } else {
             color = "§4§l"; // Rojo oscuro + negrita
-            prefix = "§4§l⚠⚠";
+            prefix = "§4§l⚠⚠⚠";
             pitch = 1.8f + (5 - seconds) * 0.1f; // Aumenta el pitch progresivamente
-            sound = Sound.BLOCK_NOTE_BLOCK_PLING;
+            sound = Sound.ENTITY_ENDER_DRAGON_GROWL;
         }
         
-        // Mensaje principal
+        // Mensaje principal con formato mejorado
         String message;
+        String separator = "§8§m━━━━━━━━━━━━━━━━━━━━━━━━━";
+        
         if (seconds >= 5) {
-            message = prefix + " " + color + "¡Desastre en " + seconds + " segundos!";
+            message = "\n" + separator + "\n" + 
+                     prefix + " " + color + "§l¡DESASTRE EN " + seconds + " SEGUNDOS!" + "\n" +
+                     "§7Prepárate para sobrevivir..." + "\n" +
+                     separator;
         } else {
-            message = prefix + " " + color + seconds + "...";
+            message = prefix + " " + color + "§l" + seconds + "...";
         }
         
-        // Enviar a todos los jugadores (excepto exentos)
+        // Contador de jugadores que recibirán la alerta
+        int playerCount = 0;
+
+        // Enviar a todos los jugadores (excepto los que están en la lista de excepciones de /avo admin)
         for (Player player : Bukkit.getOnlinePlayers()) {
-            if (player.hasPermission("apocalipsis.exempt")) {
+            // Verificar si el jugador está en la lista de excepciones (desastres.yml -> excepciones.players)
+            if (plugin.getConfigManager().getExcepciones().contains(player.getUniqueId())) {
                 continue;
             }
-            
-            // ActionBar para cuentas regresivas cortas (≤10s)
-            if (seconds <= 10) {
-                messageBus.sendActionBar(player, message);
-            } else {
-                // Mensaje en chat para alertas largas
-                player.sendMessage(message);
+
+            playerCount++;
+
+            // Línea corta y visible (garantía): ejemplo "§e¡DESASTRE EN 60s!"
+            String shortLine = prefix + " " + color + "§l¡DESASTRE EN " + seconds + " SEGUNDOS!";
+
+            // Enviar mensaje principal via MessageBus (Adventure) con fallback
+            try {
+                messageBus.sendMessage(player, shortLine);
+                // SIEMPRE log en debug para verificar que se ejecuta
+                if (plugin.getConfigManager().isDebugCiclo()) {
+                    plugin.getLogger().info("[Countdown] ✓ Chat enviado via MessageBus a " + player.getName() + ": " + shortLine);
+                }
+            } catch (Exception e) {
+                // Log el error específico
+                plugin.getLogger().warning("[Countdown] MessageBus.sendMessage falló para " + player.getName() + ": " + e.getMessage());
+                // Fallback directo por si MessageBus falla
+                try {
+                    player.sendMessage(shortLine);
+                    if (plugin.getConfigManager().isDebugCiclo()) {
+                        plugin.getLogger().info("[Countdown] ✓ Chat enviado via fallback directo a " + player.getName() + ": " + shortLine);
+                    }
+                } catch (Exception ex) {
+                    plugin.getLogger().severe("[Countdown] ERROR CRÍTICO - Ambos métodos de chat fallaron para " + player.getName() + ": " + ex.getMessage());
+                }
             }
-            
-            // Sonido
-            player.playSound(player.getLocation(), sound, 1.0f, pitch);
-            
+
+            // Enviar detalle multilínea (no obligatorio, pero útil)
+            try {
+                String[] lines = message.split("\\n");
+                for (String line : lines) {
+                    if (line == null || line.isEmpty()) continue;
+                    try {
+                        messageBus.sendMessage(player, line);
+                    } catch (Exception e) {
+                        // Intentar enviar como string
+                        try { player.sendMessage(line); } catch (Exception ignore) {}
+                    }
+                }
+            } catch (Exception e) {
+                // Ignorar problemas con el detalle
+            }
+
+            // ActionBar adicional para cuentas regresivas cortas (≤10s)
+            if (seconds <= 10) {
+                try {
+                    messageBus.sendActionBar(player, shortLine);
+                    if (plugin.getConfigManager().isDebugCiclo()) {
+                        plugin.getLogger().info("[Countdown] ✓ ActionBar enviado a " + player.getName());
+                    }
+                } catch (Throwable t) {
+                    plugin.getLogger().warning("[Countdown] ActionBar falló para " + player.getName() + ": " + t.getMessage());
+                }
+            }
+
+            // Sonido con volumen aumentado para mayor impacto (usar SoundUtil para respetar config)
+            try {
+                soundUtil.playSound(player, sound, 1.5f, pitch);
+                if (plugin.getConfigManager().isDebugCiclo()) {
+                    plugin.getLogger().info("[Countdown] ✓ Sonido enviado a " + player.getName() + ": " + sound.name());
+                }
+            } catch (Throwable t) {
+                plugin.getLogger().warning("[Countdown] playSound falló para " + player.getName() + ": " + t.getMessage());
+            }
+
             // Efecto visual adicional para últimos 5 segundos
             if (seconds <= 5) {
-                // Título grande
-                player.showTitle(net.kyori.adventure.title.Title.title(
-                    net.kyori.adventure.text.Component.text(color + seconds),
-                    net.kyori.adventure.text.Component.text("§7¡Prepárate!"),
-                    net.kyori.adventure.title.Title.Times.times(
-                        java.time.Duration.ofMillis(0),
-                        java.time.Duration.ofMillis(1000),
-                        java.time.Duration.ofMillis(250)
-                    )
-                ));
+                try {
+                    // Título grande con colores intensos
+                    String titleColor = seconds <= 3 ? "§4§l" : "§c§l";
+                    messageBus.sendTitle(player, titleColor + String.valueOf(seconds), "§7§l¡PREPÁRATE!", 0, 20, 5);
+                } catch (Throwable t) {
+                    // Fallback: usar player.showTitle directamente si Adventure falla
+                    try {
+                        player.showTitle(net.kyori.adventure.title.Title.title(
+                            net.kyori.adventure.text.Component.text((seconds <= 3 ? "§4§l" : "§c§l") + seconds),
+                            net.kyori.adventure.text.Component.text("§7§l¡PREPÁRATE!"),
+                            net.kyori.adventure.title.Title.Times.times(
+                                java.time.Duration.ofMillis(0),
+                                java.time.Duration.ofMillis(1000),
+                                java.time.Duration.ofMillis(250)
+                            )
+                        ));
+                    } catch (Throwable ignored) {
+                        if (plugin.getConfigManager().isDebugCiclo()) {
+                            plugin.getLogger().warning("[Countdown] showTitle fallback fallo para " + player.getName() + ": " + ignored.getMessage());
+                        }
+                    }
+                }
             }
         }
-        
-        // Log
-        if (plugin.getConfigManager().isDebugCiclo()) {
-            plugin.getLogger().info("[Countdown] Alerta enviada: " + seconds + " segundos restantes");
-        }
+
+        // Log detallado
+        plugin.getLogger().info("[Countdown] ✓ Alerta " + seconds + "s enviada a " + playerCount + " jugadores");
     }
     
     /**
      * Resetea las flags de alertas (llamar al iniciar un desastre o al entrar en preparación)
      */
-    private void resetCountdownAlerts() {
+    public void resetCountdownFlags() {
         alert60sIssued = false;
         alert30sIssued = false;
         alert10sIssued = false;
         alert5sIssued = false;
+        alert4sIssued = false;
+        alert3sIssued = false;
+        alert2sIssued = false;
+        alert1sIssued = false;
         
         if (plugin.getConfigManager().isDebugCiclo()) {
-            plugin.getLogger().info("[Countdown] Flags de alertas reseteadas");
+            plugin.getLogger().info("[Countdown] Flags de alertas reseteadas (60/30/10/5/4/3/2/1)");
         }
     }
+    
+    /**
+     * Método de prueba para verificar entrega de notificaciones a un jugador específico
+     */
+    public void testCountdownAlert(Player targetPlayer, CommandSender sender) {
+        plugin.getLogger().info("[TEST-ALERT] Iniciando prueba de alerta para " + targetPlayer.getName());
+        
+        // Verificar si está en la lista de excepciones de /avo admin
+        if (plugin.getConfigManager().getExcepciones().contains(targetPlayer.getUniqueId())) {
+            String msg = "[TEST-ALERT] El jugador " + targetPlayer.getName() + " está en la lista de excepciones (/avo admin) - BLOQUEADO";
+            plugin.getLogger().warning(msg);
+            sender.sendMessage("§c" + msg);
+            return;
+        }
+        
+        // Activar debug temporal para esta prueba
+        boolean debugOriginal = plugin.getConfigManager().isDebugCiclo();
+        if (!debugOriginal) {
+            plugin.getConfigManager().setDebugCiclo(true);
+            sender.sendMessage("§eDebug activado temporalmente para la prueba...");
+        }
+        
+        // Probar diferentes tipos de alertas
+        sender.sendMessage("§eProbando alerta de 60s...");
+        sendCountdownAlert(60);
+        
+        // Pequeña pausa y probar alerta de 5s (con título)
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            sender.sendMessage("§eProbando alerta de 5s (con título)...");
+            sendCountdownAlert(5);
+            
+            // Restaurar debug original después de un momento
+            if (!debugOriginal) {
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    plugin.getConfigManager().setDebugCiclo(false);
+                    sender.sendMessage("§eDebug restaurado. Revisa el log del servidor para detalles.");
+                }, 40L); // 2 segundos después
+            } else {
+                sender.sendMessage("§eRevisa el log del servidor para detalles de la prueba.");
+            }
+        }, 20L); // 1 segundo después
+        
+        plugin.getLogger().info("[TEST-ALERT] Prueba iniciada para " + targetPlayer.getName());
+    }
+
 }

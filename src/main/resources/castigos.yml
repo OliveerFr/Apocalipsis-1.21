@@ -1,0 +1,166 @@
+# ════════════════════════════════════════════════════════════════════
+# Apocalipsis — castigos.yml
+# Sistema de penalizaciones mejorado con efectos dinámicos y escalado
+# ════════════════════════════════════════════════════════════════════
+
+version: 1
+enabled: true
+
+# ═══════════════════════════════════════════════════════════════════
+# MUERTE DURANTE DESASTRE ACTIVO
+# ═══════════════════════════════════════════════════════════════════
+muerte_en_desastre:
+  enabled: true
+  
+  # Penalización base (se aplica SIEMPRE al morir en desastre activo)
+  penalizacion_base:
+    - tipo: "WEAKNESS"           # Debilidad
+      duracion_segundos: 45
+      amplificador: 1            # Nivel 2
+    - tipo: "SLOW_DIGGING"       # Fatiga minera
+      duracion_segundos: 60
+      amplificador: 0            # Nivel 1
+  
+  # Penalización adicional (probabilidad de recibir efectos extra)
+  penalizacion_adicional:
+    probabilidad: 0.40           # 40% de chance
+    efectos:
+      - tipo: "HUNGER"           # Hambre
+        duracion_segundos: 90
+        amplificador: 1          # Nivel 2
+      - tipo: "SLOW"             # Lentitud
+        duracion_segundos: 30
+        amplificador: 0          # Nivel 1
+  
+  # Penalización severa (muy baja probabilidad, efectos graves)
+  penalizacion_severa:
+    probabilidad: 0.08           # 8% de chance
+    efectos:
+      - tipo: "CONFUSION"        # Náusea/mareo
+        duracion_segundos: 15
+        amplificador: 0
+      - tipo: "BLINDNESS"        # Ceguera
+        duracion_segundos: 10
+        amplificador: 0
+  
+  # Pérdida de PS (puntos de supervivencia) escalado por rango
+  perdida_ps:
+    NOVATO: 5
+    EXPLORADOR: 8
+    SOBREVIVIENTE: 12
+    VETERANO: 18
+    LEYENDA: 25
+  
+  # Mensajes y efectos visuales
+  mensajes:
+    muerte: "&c&l✗ Has muerto durante el desastre!"
+    efectos_aplicados: "&7Penalizaciones activas: &c%efectos%"
+    ps_perdidos: "&7Has perdido &c-%ps% PS &7por morir"
+  
+  sonidos:
+    muerte: "ENTITY_WITHER_HURT"
+    volumen: 1.0
+    pitch: 0.8
+  
+  particulas:
+    tipo: "SMOKE_LARGE"
+    cantidad: 30
+    radio: 1.5
+
+# ═══════════════════════════════════════════════════════════════════
+# MISIONES FALLIDAS AL FINALIZAR DÍA
+# ═══════════════════════════════════════════════════════════════════
+mision_fallida:
+  enabled: true
+  
+  # Penalización por misión fallida (se aplica por CADA misión no completada)
+  por_mision:
+    # Efectos base (siempre se aplican)
+    efectos_base:
+      - tipo: "HUNGER"
+        duracion_segundos: 120   # 2 minutos
+        amplificador: 0
+    
+    # Efectos adicionales (chance por cada misión fallida)
+    efectos_adicionales:
+      probabilidad: 0.25         # 25% por misión
+      lista:
+        - tipo: "SLOW"
+          duracion_segundos: 60
+          amplificador: 0
+        - tipo: "WEAKNESS"
+          duracion_segundos: 45
+          amplificador: 0
+  
+  # Penalización acumulativa (si fallas MUCHAS misiones)
+  penalizacion_acumulativa:
+    umbral_misiones: 3           # Si fallas 3+ misiones
+    efectos:
+      - tipo: "UNLUCK"           # Mala suerte
+        duracion_segundos: 300   # 5 minutos
+        amplificador: 1          # Nivel 2
+      - tipo: "SLOW_DIGGING"
+        duracion_segundos: 180   # 3 minutos
+        amplificador: 1
+  
+  # Pérdida de PS por misión fallida (escalado por dificultad)
+  perdida_ps_por_dificultad:
+    FACIL: 3
+    NORMAL: 6
+    DIFICIL: 10
+    EXTREMA: 15
+  
+  mensajes:
+    mision_fallida: "&7Misión fallida: &c%mision% &7(-&c%ps% PS&7)"
+    acumulativo: "&c&l⚠ Has fallado %cantidad% misiones! Penalización severa aplicada."
+  
+  sonidos:
+    fallo: "ENTITY_VILLAGER_NO"
+    volumen: 0.8
+    pitch: 0.7
+
+# ═══════════════════════════════════════════════════════════════════
+# INACTIVIDAD / AFK DURANTE DESASTRE
+# ═══════════════════════════════════════════════════════════════════
+inactividad:
+  enabled: true
+  tiempo_umbral_segundos: 180  # 3 minutos sin movimiento
+  
+  # Advertencia antes de penalización
+  advertencia:
+    mensaje: "&e⚠ ¡Estás inactivo! Muévete o recibirás penalizaciones."
+    sonido: "BLOCK_NOTE_BLOCK_PLING"
+    volumen: 1.0
+    pitch: 0.5
+  
+  # Penalización por AFK
+  penalizacion:
+    efectos:
+      - tipo: "HUNGER"
+        duracion_segundos: 180
+        amplificador: 2          # Nivel 3 (grave)
+      - tipo: "WEAKNESS"
+        duracion_segundos: 120
+        amplificador: 1
+    
+    perdida_ps: 10
+    mensaje: "&c&l✗ Penalizado por inactividad durante desastre! &7(-10 PS)"
+
+# ═══════════════════════════════════════════════════════════════════
+# CONFIGURACIÓN GENERAL
+# ═══════════════════════════════════════════════════════════════════
+general:
+  # Inmunidad temporal al respawnear (no recibir castigos inmediatamente)
+  inmunidad_respawn_segundos: 10
+  
+  # PS mínimo (no puede bajar de este valor por penalizaciones)
+  ps_minimo: 0
+  
+  # Debug: mostrar información detallada en consola
+  debug: false
+  
+  # Anuncios públicos de penalizaciones severas
+  anuncio_publico:
+    enabled: true
+    mensaje: "&c%jugador% &7ha recibido penalizaciones severas por &c%razon%"
+    solo_muerte_severa: true   # Solo anunciar muertes con penalización severa

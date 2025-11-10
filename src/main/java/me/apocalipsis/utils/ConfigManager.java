@@ -111,9 +111,21 @@ public class ConfigManager {
         return desastresConfig.getBoolean("ciclo.respectar_cooldown", true);
     }
     
+    public int getPreparacionInicialSegundos() {
+        return desastresConfig.getInt("ciclo.preparacion_inicial_segundos", 900);
+    }
+    
     public boolean isDebugCiclo() {
         // Leer desde config.yml en lugar de desastres.yml para mejor control
         return config.getBoolean("debug", false);
+    }
+    
+    /**
+     * Activa o desactiva el modo debug en tiempo real (se guarda en config.yml)
+     */
+    public void setDebugCiclo(boolean value) {
+        config.set("debug", value);
+        plugin.saveConfig();
     }
     
     // ═══════════════════════════════════════════════════════════════════

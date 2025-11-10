@@ -6,6 +6,7 @@ me\apocalipsis\ui\TablistManager$1.class
 me\apocalipsis\disaster\LluviaFuegoNew.class
 me\apocalipsis\ui\SoundUtil.class
 me\apocalipsis\disaster\DisasterEvasionTracker.class
+me\apocalipsis\disaster\LluviaFuegoNew$WaterProtection.class
 me\apocalipsis\commands\ApocalipsisCommand$1.class
 me\apocalipsis\disaster\DisasterRegistry.class
 me\apocalipsis\missions\MissionType.class
@@ -19,6 +20,7 @@ me\apocalipsis\missions\MissionDifficulty.class
 me\apocalipsis\disaster\Disaster.class
 me\apocalipsis\disaster\adapters\PerformanceAdapter.class
 me\apocalipsis\missions\MissionRenderer.class
+me\apocalipsis\commands\ApocalipsisCommand$WaterScanResult.class
 me\apocalipsis\ui\MessageBus.class
 me\apocalipsis\missions\MissionAssignment.class
 me\apocalipsis\state\ServerState.class

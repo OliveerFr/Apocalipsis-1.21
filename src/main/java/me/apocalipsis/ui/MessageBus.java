@@ -10,6 +10,7 @@ import org.bukkit.entity.Player;
 import me.apocalipsis.Apocalipsis;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.title.Title;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 
 public class MessageBus {
 
@@ -26,7 +27,9 @@ public class MessageBus {
      */
     public void broadcast(String message, String debounceKey) {
         if (shouldDebounce(debounceKey)) return;
-        Bukkit.broadcast(Component.text(message));
+        // Convert legacy color codes (§ or &) into Adventure Components
+        Component comp = LegacyComponentSerializer.legacySection().deserialize(message);
+        Bukkit.broadcast(comp);
         if (plugin.getConfigManager().isDebugCiclo()) {
             plugin.getLogger().info("[MessageBus] Broadcast: " + message);
         }
@@ -36,7 +39,14 @@ public class MessageBus {
      * Envía mensaje en chat a un jugador
      */
     public void sendMessage(Player player, String message) {
-        player.sendMessage(message);
+        Component comp = LegacyComponentSerializer.legacySection().deserialize(message);
+        // Use Adventure-aware sendMessage when available
+        try {
+            player.sendMessage(comp);
+        } catch (NoSuchMethodError e) {
+            // Fallback to legacy string
+            player.sendMessage(LegacyComponentSerializer.legacySection().serialize(comp));
+        }
     }
 
     /**
@@ -44,10 +54,12 @@ public class MessageBus {
      */
     public void sendTitleAll(String title, String subtitle, int fadeIn, int stay, int fadeOut, String debounceKey) {
         if (shouldDebounce(debounceKey)) return;
-        
+        // Deserialize legacy formatting into components
+        Component titleComp = LegacyComponentSerializer.legacySection().deserialize(title);
+        Component subComp = LegacyComponentSerializer.legacySection().deserialize(subtitle);
         Title titleObj = Title.title(
-            Component.text(title),
-            Component.text(subtitle),
+            titleComp,
+            subComp,
             Title.Times.times(
                 Duration.ofMillis(fadeIn * 50L),
                 Duration.ofMillis(stay * 50L),
@@ -64,9 +76,11 @@ public class MessageBus {
      * Envía título a un jugador específico
      */
     public void sendTitle(Player player, String title, String subtitle, int fadeIn, int stay, int fadeOut) {
+        Component titleComp = LegacyComponentSerializer.legacySection().deserialize(title);
+        Component subComp = LegacyComponentSerializer.legacySection().deserialize(subtitle);
         Title titleObj = Title.title(
-            Component.text(title),
-            Component.text(subtitle),
+            titleComp,
+            subComp,
             Title.Times.times(
                 Duration.ofMillis(fadeIn * 50L),
                 Duration.ofMillis(stay * 50L),
@@ -80,7 +94,8 @@ public class MessageBus {
      * Envía ActionBar a un jugador
      */
     public void sendActionBar(Player player, String message) {
-        player.sendActionBar(Component.text(message));
+        Component comp = LegacyComponentSerializer.legacySection().deserialize(message);
+        player.sendActionBar(comp);
     }
 
     /**
@@ -88,8 +103,9 @@ public class MessageBus {
      */
     public void sendActionBarAll(String message, String debounceKey) {
         if (shouldDebounce(debounceKey)) return;
+        Component comp = LegacyComponentSerializer.legacySection().deserialize(message);
         for (Player player : Bukkit.getOnlinePlayers()) {
-            player.sendActionBar(Component.text(message));
+            player.sendActionBar(comp);
         }
     }
 

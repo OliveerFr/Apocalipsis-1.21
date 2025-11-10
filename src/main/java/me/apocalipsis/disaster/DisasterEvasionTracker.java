@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
@@ -297,31 +298,37 @@ public class DisasterEvasionTracker {
             
             // Cargar contador de evasiones
             if (config.contains("evasions")) {
-                for (String key : config.getConfigurationSection("evasions").getKeys(false)) {
-                    try {
-                        UUID uuid = UUID.fromString(key);
-                        int count = config.getInt("evasions." + key + ".count", 0);
-                        long lastTime = config.getLong("evasions." + key + ".lastTime", 0);
-                        
-                        evasionCount.put(uuid, count);
-                        if (lastTime > 0) {
-                            lastEvasionTime.put(uuid, lastTime);
+                ConfigurationSection evasionsSection = config.getConfigurationSection("evasions");
+                if (evasionsSection != null) {
+                    for (String key : evasionsSection.getKeys(false)) {
+                        try {
+                            UUID uuid = UUID.fromString(key);
+                            int count = config.getInt("evasions." + key + ".count", 0);
+                            long lastTime = config.getLong("evasions." + key + ".lastTime", 0);
+                            
+                            evasionCount.put(uuid, count);
+                            if (lastTime > 0) {
+                                lastEvasionTime.put(uuid, lastTime);
+                            }
+                        } catch (IllegalArgumentException e) {
+                            // UUID inválido, ignorar
                         }
-                    } catch (IllegalArgumentException e) {
-                        // UUID inválido, ignorar
                     }
                 }
             }
             
             // Cargar castigos pendientes
             if (config.contains("pending_punishments")) {
-                for (String key : config.getConfigurationSection("pending_punishments").getKeys(false)) {
-                    try {
-                        UUID uuid = UUID.fromString(key);
-                        int level = config.getInt("pending_punishments." + key);
-                        pendingPunishment.put(uuid, level);
-                    } catch (IllegalArgumentException e) {
-                        // UUID inválido, ignorar
+                ConfigurationSection punishmentsSection = config.getConfigurationSection("pending_punishments");
+                if (punishmentsSection != null) {
+                    for (String key : punishmentsSection.getKeys(false)) {
+                        try {
+                            UUID uuid = UUID.fromString(key);
+                            int level = config.getInt("pending_punishments." + key);
+                            pendingPunishment.put(uuid, level);
+                        } catch (IllegalArgumentException e) {
+                            // UUID inválido, ignorar
+                        }
                     }
                 }
             }

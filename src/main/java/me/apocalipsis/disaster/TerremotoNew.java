@@ -1,5 +1,28 @@
 package me.apocalipsis.disaster;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
+
+import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
+import org.bukkit.World;
+import org.bukkit.block.Block;
+import org.bukkit.block.data.BlockData;
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.entity.Player;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.util.Vector;
+
 import me.apocalipsis.Apocalipsis;
 import me.apocalipsis.disaster.adapters.PerformanceAdapter;
 import me.apocalipsis.state.TimeService;
@@ -9,16 +32,6 @@ import me.apocalipsis.utils.BlockOwnershipTracker;
 import me.apocalipsis.utils.DisasterDamage;
 import me.apocalipsis.utils.EffectUtil;
 import me.apocalipsis.utils.ParticleCompat;
-import org.bukkit.*;
-import org.bukkit.block.Block;
-import org.bukkit.block.data.BlockData;
-import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.entity.Player;
-import org.bukkit.potion.PotionEffect;
-import org.bukkit.util.Vector;
-
-import java.util.*;
-import java.util.concurrent.ThreadLocalRandom;
 
 public class TerremotoNew extends DisasterBase {
 
@@ -75,10 +88,14 @@ public class TerremotoNew extends DisasterBase {
     private int absorcionMaxBloques;
     private Set<Material> absorcionMateriales;
     
-    // NUEVO: Rotura de bloques de protección
+    // Rotura de bloques de protección (MEJORADO)
     private boolean romperProteccionEnabled;
     private double romperProteccionProbabilidad;
+    private double romperProteccionProbabilidadAftershock;
     private int romperProteccionCantidad;
+    private int romperProteccionCooldown;
+    private boolean romperProteccionPriorizarViejos;
+    private long lastProtectionBreakTime = 0;  // Cooldown tracking
     
     private final Random random = new Random();
     private final List<Location> epicentros = new ArrayList<>();
@@ -225,16 +242,22 @@ public class TerremotoNew extends DisasterBase {
                 );
             }
             
-            // NUEVO: Rotura de bloques de protección
+            // Rotura de bloques de protección (MEJORADO)
             ConfigurationSection romperProtConf = config.getConfigurationSection("romper_proteccion");
             if (romperProtConf != null) {
                 romperProteccionEnabled = romperProtConf.getBoolean("enabled", true);
-                romperProteccionProbabilidad = romperProtConf.getDouble("probabilidad", 0.25);
+                romperProteccionProbabilidad = romperProtConf.getDouble("probabilidad", 0.003);
+                romperProteccionProbabilidadAftershock = romperProtConf.getDouble("probabilidad_aftershock", 0.008);
                 romperProteccionCantidad = romperProtConf.getInt("cantidad_bloques", 1);
+                romperProteccionCooldown = romperProtConf.getInt("cooldown_ticks", 200);
+                romperProteccionPriorizarViejos = romperProtConf.getBoolean("priorizar_bloques_viejos", true);
             } else {
                 romperProteccionEnabled = true;
-                romperProteccionProbabilidad = 0.25; // 25% de probabilidad por tick
-                romperProteccionCantidad = 1; // Romper 1 bloque absorbente
+                romperProteccionProbabilidad = 0.003; // 0.3% de probabilidad por tick
+                romperProteccionProbabilidadAftershock = 0.008; // 0.8% durante aftershocks
+                romperProteccionCantidad = 1;
+                romperProteccionCooldown = 200; // 10 segundos
+                romperProteccionPriorizarViejos = true;
             }
             
         } else {
@@ -401,9 +424,19 @@ public class TerremotoNew extends DisasterBase {
         // [NUEVO] Calcular absorción de impacto
         AbsorptionInfo absorption = calculateAbsorption(player.getLocation());
         
+        // **MENSAJES EDUCATIVOS DE PROTECCIÓN** (cada 100 ticks = 5 segundos)
+        if (tickCounter % 100 == 0) {
+            sendProtectionFeedback(player, absorption);
+        }
+        
         // Mostrar partículas de protección cada 20 ticks si hay absorción
         if (absorption.blockCount > 0 && tickCounter % 20 == 0) {
             spawnAbsorptionParticles(player.getLocation(), absorption.blockCount);
+            
+            // Sonido sutil de protección activa
+            if (tickCounter % 60 == 0) {
+                player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 0.3f, 1.8f);
+            }
             
             // [NUEVO] Intentar romper bloques de protección con probabilidad
             maybeBreakProtectionBlocks(player.getLocation(), absorption.blockCount);
@@ -871,13 +904,26 @@ public class TerremotoNew extends DisasterBase {
     }
     
     /**
-     * [NUEVO] Romper bloques de protección con probabilidad
-     * Fuerza al jugador a reponer constantemente los bloques absorbentes
+     * [MEJORADO] Romper bloques de protección con probabilidad muy reducida y cooldown
+     * Fuerza al jugador a reponer ocasionalmente los bloques absorbentes sin ser abusivo
      */
     private void maybeBreakProtectionBlocks(Location location, int nearbyCount) {
         if (!romperProteccionEnabled) return;
         if (nearbyCount == 0) return;
-        if (random.nextDouble() > romperProteccionProbabilidad) return; // 25% por defecto
+        
+        // [NUEVO] Verificar cooldown (evita rotura constante)
+        long currentTime = System.currentTimeMillis();
+        long timeSinceLastBreak = currentTime - lastProtectionBreakTime;
+        long cooldownMs = romperProteccionCooldown * 50L; // ticks a milisegundos
+        
+        if (timeSinceLastBreak < cooldownMs) {
+            return; // Cooldown activo, no romper aún
+        }
+        
+        // Usar probabilidad diferente para aftershocks (más destructivos)
+        double probabilidad = isAfterShock ? romperProteccionProbabilidadAftershock : romperProteccionProbabilidad;
+        
+        if (random.nextDouble() > probabilidad) return; // 0.3% (0.8% en aftershock) por defecto
         
         World world = location.getWorld();
         int radio = absorcionRadio;
@@ -916,8 +962,19 @@ public class TerremotoNew extends DisasterBase {
         
         if (protectionBlocks.isEmpty()) return;
         
-        // Romper aleatoriamente hasta romperProteccionCantidad bloques
-        Collections.shuffle(protectionBlocks);
+        // [NUEVO] Priorizar bloques más antiguos si está habilitado
+        if (romperProteccionPriorizarViejos) {
+            // Ordenar por edad del bloque (bloques colocados hace más tiempo primero)
+            protectionBlocks.sort((b1, b2) -> {
+                // Los bloques en Y menor suelen ser más antiguos (colocados primero al construir)
+                return Integer.compare(b1.getY(), b2.getY());
+            });
+        } else {
+            // Aleatorio
+            Collections.shuffle(protectionBlocks);
+        }
+        
+        // Romper hasta romperProteccionCantidad bloques
         int broken = 0;
         int maxAllowed = Math.min(romperProteccionCantidad, protectionBlocks.size());
         
@@ -957,9 +1014,74 @@ public class TerremotoNew extends DisasterBase {
             broken++;
         }
         
-        // Log de debug
-        if (broken > 0 && plugin.getConfigManager().isDebugCiclo()) {
-            plugin.getLogger().info("[Terremoto] Rotos " + broken + " bloques de protección por vibración");
+        // [NUEVO] Actualizar cooldown después de romper bloques
+        if (broken > 0) {
+            lastProtectionBreakTime = System.currentTimeMillis();
+            
+            // Log de debug
+            if (plugin.getConfigManager().isDebugCiclo()) {
+                plugin.getLogger().info(String.format(
+                    "[Terremoto] Rotos %d bloque(s) de protección | Cooldown: %d ticks | AfterShock: %s",
+                    broken, romperProteccionCooldown, isAfterShock
+                ));
+            }
+        }
+    }
+    
+    /**
+     * **NUEVO** Envía feedback visual de protección al jugador con efectos completos
+     */
+    private void sendProtectionFeedback(Player player, AbsorptionInfo absorption) {
+        int bloques = absorption.blockCount;
+        int reduccionPorcentaje = (int)((1.0 - absorption.damageMultiplier) * 100);
+        
+        if (bloques == 0) {
+            // Sin protección - advertencia urgente
+            plugin.getMessageBus().sendActionBar(player, 
+                "§c§l⚠ SIN PROTECCIÓN §8| §7Busca §blana§7, §aslime§7 o §bhielo");
+            
+            // Sonido de alerta cada 10 segundos
+            if (tickCounter % 200 == 0) {
+                soundUtil.playSound(player, Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
+                player.sendMessage("§c💥 §7Tu base necesita protección antisísmica. Usa §blana§7, §aslime§7 o §bhielo§7.");
+            }
+            
+        } else if (bloques >= 5) {
+            // Protección MÁXIMA (cap alcanzado)
+            plugin.getMessageBus().sendActionBar(player,
+                "§a§l✓ PROTECCIÓN MÁXIMA §8| §e" + bloques + " §7bloques §8(§a-" + reduccionPorcentaje + "%§8)");
+            
+            // Efectos especiales cada 15 segundos
+            if (tickCounter % 300 == 0) {
+                player.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING, 
+                    player.getLocation().add(0, 1, 0), 10, 0.5, 0.5, 0.5, 0.1);
+                soundUtil.playSound(player, Sound.BLOCK_BEACON_POWER_SELECT, 0.5f, 2.0f);
+            }
+            
+        } else if (bloques >= 3) {
+            // Protección buena
+            plugin.getMessageBus().sendActionBar(player,
+                "§a§l🛡 PROTECCIÓN ACTIVA §8| §e" + bloques + " §7bloques §8(§a-" + reduccionPorcentaje + "%§8)");
+            
+        } else if (bloques >= 2) {
+            // Protección parcial
+            plugin.getMessageBus().sendActionBar(player,
+                "§e§l⚠ PROTECCIÓN PARCIAL §8| §e" + bloques + " §7bloques §8(§a-" + reduccionPorcentaje + "%§8)");
+            
+            // Recordatorio cada 20 segundos
+            if (tickCounter % 400 == 0) {
+                player.sendMessage("§e⚡ §7Añade más bloques absorbentes para mejor protección (actual: §e" + bloques + "§7/§a5§7)");
+            }
+            
+        } else {
+            // Protección mínima
+            plugin.getMessageBus().sendActionBar(player,
+                "§6§l⚠ PROTECCIÓN MÍNIMA §8| §e" + bloques + " §7bloque §8(§a-" + reduccionPorcentaje + "%§8)");
+            
+            // Consejo cada 15 segundos
+            if (tickCounter % 300 == 0) {
+                player.sendMessage("§6⚠ §7Protección débil. Distribuye §b4-5 bloques absorbentes§7 en un radio de 6 bloques.");
+            }
         }
     }
     

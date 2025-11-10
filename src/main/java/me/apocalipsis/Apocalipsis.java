@@ -7,6 +7,8 @@
  */
 package me.apocalipsis;
 
+import org.bukkit.plugin.java.JavaPlugin;
+
 import me.apocalipsis.commands.ApocalipsisCommand;
 import me.apocalipsis.commands.AvoTabCompleter;
 import me.apocalipsis.disaster.DisasterController;
@@ -27,7 +29,6 @@ import me.apocalipsis.ui.SoundUtil;
 import me.apocalipsis.ui.TablistManager;
 import me.apocalipsis.utils.BlockOwnershipTracker;
 import me.apocalipsis.utils.ConfigManager;
-import org.bukkit.plugin.java.JavaPlugin;
 
 public final class Apocalipsis extends JavaPlugin {
 
