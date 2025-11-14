@@ -12,9 +12,10 @@ public class ConfigManager {
     private final Apocalipsis plugin;
     private FileConfiguration config;
     private FileConfiguration desastresConfig;
+    private FileConfiguration eventosConfig;
     private FileConfiguration misionesConfig;
     private FileConfiguration rangosConfig;
-    private FileConfiguration alonsoLevelsConfig;
+    private FileConfiguration recompensasConfig;
 
     public ConfigManager(Apocalipsis plugin) {
         this.plugin = plugin;
@@ -24,9 +25,10 @@ public class ConfigManager {
     public void reload() {
         this.config = plugin.getConfig();
         this.desastresConfig = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "desastres.yml"));
+        this.eventosConfig = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "eventos.yml"));
         this.misionesConfig = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "misiones_new.yml"));
         this.rangosConfig = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "rangos.yml"));
-        this.alonsoLevelsConfig = loadOrCreateAlonsoLevels();
+        this.recompensasConfig = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "recompensas.yml"));
     }
 
     public FileConfiguration getConfig() {
@@ -37,6 +39,10 @@ public class ConfigManager {
         return desastresConfig;
     }
 
+    public FileConfiguration getEventosConfig() {
+        return eventosConfig;
+    }
+
     public FileConfiguration getMisionesConfig() {
         return misionesConfig;
     }
@@ -45,8 +51,8 @@ public class ConfigManager {
         return rangosConfig;
     }
 
-    public FileConfiguration getAlonsoLevelsConfig() {
-        return alonsoLevelsConfig;
+    public FileConfiguration getRecompensasConfig() {
+        return recompensasConfig;
     }
 
     public boolean isLluviaFuegoExtraLluvia() {
@@ -239,63 +245,4 @@ public class ConfigManager {
     }
     
     // ═══════════════════════════════════════════════════════════════════
-    // AlonsoLevels - Auto-creación y carga
-    // ═══════════════════════════════════════════════════════════════════
-    
-    private FileConfiguration loadOrCreateAlonsoLevels() {
-        File file = new File(plugin.getDataFolder(), "alonsolevels.yml");
-        
-        // Si no existe, crear con defaults
-        if (!file.exists()) {
-            try {
-                file.createNewFile();
-                FileConfiguration defaults = new YamlConfiguration();
-                
-                // Metadata
-                defaults.set("version", 1);
-                defaults.set("enabled", true);
-                
-                // Conversión
-                defaults.set("conversion.use_exp", true);
-                defaults.set("conversion.exp_factor", 66.67);
-                defaults.set("conversion.exp_round", "FLOOR");
-                defaults.set("conversion.use_levels", false);
-                defaults.set("conversion.level_factor", 0.10);
-                defaults.set("conversion.level_round", "FLOOR");
-                
-                // Multiplicadores por dificultad
-                defaults.set("multipliers.enabled", true);
-                defaults.set("multipliers.por_dificultad.FACIL", 1.00);
-                defaults.set("multipliers.por_dificultad.MEDIA", 1.15);
-                defaults.set("multipliers.por_dificultad.DIFICIL", 1.30);
-                
-                // Multiplicadores por rango
-                defaults.set("multipliers_por_rango.enabled", false);
-                defaults.set("multipliers_por_rango.NOVATO", 1.00);
-                defaults.set("multipliers_por_rango.EXPLORADOR", 1.00);
-                defaults.set("multipliers_por_rango.SOBREVIVIENTE", 1.05);
-                defaults.set("multipliers_por_rango.VETERANO", 1.10);
-                defaults.set("multipliers_por_rango.LEYENDA", 1.15);
-                
-                // Comandos
-                java.util.List<String> cmds = new java.util.ArrayList<>();
-                cmds.add("alonsolevels addexp %player% %exp%");
-                defaults.set("commands", cmds);
-                
-                // Log
-                defaults.set("log", true);
-                
-                defaults.save(file);
-                plugin.getLogger().info("[Alonso] alonsolevels.yml creado con defaults");
-            } catch (java.io.IOException e) {
-                plugin.getLogger().severe("[Alonso] Error creando alonsolevels.yml: " + e.getMessage());
-            }
-        }
-        
-        // Cargar y retornar
-        FileConfiguration config = YamlConfiguration.loadConfiguration(file);
-        int cmdCount = config.getStringList("commands").size();
-        plugin.getLogger().info("[Alonso] alonsolevels.yml cargado OK (cmds=" + cmdCount + ")");
-        return config;
-    }
 }

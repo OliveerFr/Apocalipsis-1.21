@@ -15,8 +15,14 @@ import me.apocalipsis.disaster.DisasterController;
 import me.apocalipsis.disaster.DisasterEvasionTracker;
 import me.apocalipsis.disaster.DisasterRegistry;
 import me.apocalipsis.disaster.adapters.PerformanceAdapter;
+import me.apocalipsis.events.EcoBrasasEvent;
+import me.apocalipsis.events.EventController;
+import me.apocalipsis.experience.AbilityService;
+import me.apocalipsis.experience.ExperienceService;
+import me.apocalipsis.experience.RewardService;
 import me.apocalipsis.listeners.BlockTrackListener;
 import me.apocalipsis.listeners.DisasterEvasionListener;
+import me.apocalipsis.listeners.ExperienceListener;
 import me.apocalipsis.listeners.MissionListener;
 import me.apocalipsis.listeners.PlayerListener;
 import me.apocalipsis.missions.MissionService;
@@ -40,9 +46,15 @@ public final class Apocalipsis extends JavaPlugin {
     private TimeService timeService;
     private DisasterRegistry disasterRegistry;
     private DisasterController disasterController;
+    private EventController eventController;
     private MissionService missionService;
     private RankService rankService;
     private PerformanceAdapter performanceAdapter;
+
+    // Servicios de experiencia y progresión
+    private ExperienceService experienceService;
+    private AbilityService abilityService;
+    private RewardService rewardService;
 
     // UI
     private MessageBus messageBus;
@@ -52,6 +64,7 @@ public final class Apocalipsis extends JavaPlugin {
 
     // Listeners
     private MissionListener missionListener;
+    private ExperienceListener experienceListener;
     
     // Utils
     private BlockOwnershipTracker blockTracker;
@@ -64,9 +77,10 @@ public final class Apocalipsis extends JavaPlugin {
         // Guardar archivos por defecto
         saveDefaultConfig();
         saveResource("desastres.yml", false);
+        saveResource("eventos.yml", false);
         saveResource("misiones_new.yml", false);
         saveResource("rangos.yml", false);
-        saveResource("alonsolevels.yml", false);
+        saveResource("recompensas.yml", false);
 
         // Inicializar servicios
         configManager = new ConfigManager(this);
@@ -82,6 +96,15 @@ public final class Apocalipsis extends JavaPlugin {
         missionService = new MissionService(this, messageBus);
         rankService = new RankService(this, missionService);
         
+        // Inicializar servicios de experiencia y progresión
+        experienceService = new ExperienceService(this);
+        abilityService = new AbilityService(this);
+        rewardService = new RewardService(this);
+        
+        // Iniciar tarea de habilidades pasivas
+        abilityService.startTask();
+        getLogger().info("[AbilityService] ✓ Sistema de habilidades iniciado");
+        
         // Inicializar block tracker (anti-griefing)
         blockTracker = new BlockOwnershipTracker(this);
         
@@ -92,21 +115,31 @@ public final class Apocalipsis extends JavaPlugin {
         disasterRegistry = new DisasterRegistry();
         disasterController = new DisasterController(this, stateManager, timeService, disasterRegistry, messageBus, soundUtil);
         
+        // Inicializar event system
+        eventController = new EventController(this);
+        
         // Inicializar UI
         scoreboardManager = new ScoreboardManager(this, stateManager, disasterController, missionService, rankService);
         tablistManager = new TablistManager(this, stateManager, performanceAdapter, rankService);
 
         // Registrar desastres (ahora con PerformanceAdapter)
         disasterRegistry.registerDefaults(this, messageBus, soundUtil, timeService, performanceAdapter);
+        
+        // Registrar eventos narrativos
+        EcoBrasasEvent ecoBrasasEvent = new EcoBrasasEvent(this, messageBus, soundUtil);
+        eventController.registerEvent(ecoBrasasEvent);
+        getLogger().info("[EventController] ✓ Eventos narrativos registrados");
 
         // Registrar comandos y tab completer
-        getCommand("avo").setExecutor(new ApocalipsisCommand(this, stateManager, disasterController, missionService, timeService, messageBus));
+        getCommand("avo").setExecutor(new ApocalipsisCommand(this, stateManager, disasterController, eventController, missionService, timeService, messageBus));
         getCommand("avo").setTabCompleter(new AvoTabCompleter(this));
 
         // Registrar listeners
         getServer().getPluginManager().registerEvents(new PlayerListener(this, scoreboardManager, tablistManager), this);
         missionListener = new MissionListener(missionService);
         getServer().getPluginManager().registerEvents(missionListener, this);
+        experienceListener = new ExperienceListener(this);
+        getServer().getPluginManager().registerEvents(experienceListener, this);
         getServer().getPluginManager().registerEvents(new me.apocalipsis.utils.ExplosionGuard(this), this);
         getServer().getPluginManager().registerEvents(new BlockTrackListener(this), this);
         getServer().getPluginManager().registerEvents(new DisasterEvasionListener(this), this);
@@ -119,6 +152,13 @@ public final class Apocalipsis extends JavaPlugin {
         disasterController.startTask();
         scoreboardManager.startTask();
         tablistManager.startTask();
+        
+        // Iniciar tick loop de eventos
+        getServer().getScheduler().runTaskTimer(this, () -> {
+            if (eventController != null) {
+                eventController.tick();
+            }
+        }, 0L, 1L); // Tick cada 1 tick (50ms)
         
         // [DATA.YML] Scheduler para tiempo jugado (cada 60 segundos)
         // TODO: Implementar sistema de data.yml completo
@@ -134,6 +174,16 @@ public final class Apocalipsis extends JavaPlugin {
         // Guardar estado
         if (stateManager != null) {
             stateManager.saveState();
+        }
+        
+        // Guardar datos de experiencia
+        if (experienceService != null) {
+            experienceService.saveData();
+        }
+        
+        // Detener habilidades
+        if (abilityService != null) {
+            abilityService.stopTask();
         }
         
         // Guardar block tracker
@@ -157,6 +207,11 @@ public final class Apocalipsis extends JavaPlugin {
         if (disasterController != null) {
             disasterController.stopAllDisasters(false);
             disasterController.cancelTask();
+        }
+        
+        // Detener eventos
+        if (eventController != null) {
+            eventController.stopActiveEvent();
         }
         
         // [FIX DUPLICACIÓN] Limpiar registro de desastres
@@ -207,6 +262,10 @@ public final class Apocalipsis extends JavaPlugin {
         return disasterController;
     }
 
+    public EventController getEventController() {
+        return eventController;
+    }
+
     public MissionService getMissionService() {
         return missionService;
     }
@@ -245,5 +304,17 @@ public final class Apocalipsis extends JavaPlugin {
     
     public DisasterEvasionTracker getDisasterEvasionTracker() {
         return evasionTracker;
+    }
+    
+    public ExperienceService getExperienceService() {
+        return experienceService;
+    }
+    
+    public AbilityService getAbilityService() {
+        return abilityService;
+    }
+    
+    public RewardService getRewardService() {
+        return rewardService;
     }
 }

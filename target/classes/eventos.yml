@@ -1,0 +1,453 @@
+# ═══════════════════════════════════════════════════════════════════
+# EVENTOS NARRATIVOS - Eventos únicos con progresión automática
+# ═══════════════════════════════════════════════════════════════════
+# A diferencia de los desastres, los eventos:
+# - NO se activan automáticamente
+# - Tienen narrativa del Observador
+# - Progresión por fases con cinematics
+# - Se inician manualmente con comandos
+# - Dan recompensas únicas y PS según participación
+# ═══════════════════════════════════════════════════════════════════
+
+eventos:
+  # ═══════════════════════════════════════════════════════════════════
+  # ECO DE BRASAS - Evento cooperativo de 3 fases
+  # ═══════════════════════════════════════════════════════════════════
+  eco_brasas:
+    enabled: true
+    duracion_total_seg: 6000  # 100 minutos total (suma de las 3 fases)
+    
+    # ═══════════════════════════════════════════════════════════════
+    # SISTEMA DE RECOMPENSAS PS POR PARTICIPACIÓN
+    # ═══════════════════════════════════════════════════════════════
+    recompensas_ps:
+      base_participacion: 50      # PS base solo por estar presente al finalizar
+      por_grieta_cerrada: 15      # PS por cada grieta cerrada
+      por_ancla_completada: 25    # PS por cada ancla completada
+      por_derrotar_guardian: 40   # PS bonus por participar en muerte del guardián
+      # Participación completa (10 grietas + 3 anclas + guardián) = 50 + 150 + 75 + 40 = 315 PS
+    
+    # ═══════════════════════════════════════════════════════════════
+    # ITEMS COLECCIONABLES DEL EVENTO
+    # ═══════════════════════════════════════════════════════════════
+    items:
+      # Fragmentos consumibles (Fase 1 - drops de grietas)
+      ceniza:
+        material: "GUNPOWDER"
+        nombre: "§7Fragmento de Ceniza"
+        lore:
+          - "§8Eco de Brasas"
+          - ""
+          - "§7Resto de mundos quemados."
+          - "§7Aún late con calor residual."
+          - ""
+          - "§8\"La ceniza recuerda lo que fue.\""
+        glow: true
+        drop_por_grieta_min: 9    # Drops garantizados por grieta
+        drop_por_grieta_max: 9
+      
+      fulgor:
+        material: "BLAZE_POWDER"
+        nombre: "§6Fragmento de Fulgor"
+        lore:
+          - "§8Eco de Brasas"
+          - ""
+          - "§7Corazón de llama cristalizado."
+          - "§7Cálido al tacto, eterno."
+          - ""
+          - "§8\"El fuego nunca olvida su origen.\""
+        glow: true
+        drop_por_grieta_min: 3    # Drops garantizados por grieta
+        drop_por_grieta_max: 3
+      
+      eco_roto:
+        material: "ECHO_SHARD"
+        nombre: "§5Eco Roto"
+        lore:
+          - "§8Eco de Brasas"
+          - ""
+          - "§7Susurro de un mundo caído."
+          - "§7Resuena con nostalgia."
+          - ""
+          - "§8\"Cada eco es un adiós que no termina.\""
+        glow: true
+        drop_chance: 0.33         # 33% chance por grieta (~3-4 en 10 grietas)
+      
+      # Recompensas progresivas (coleccionables únicos)
+      moneda_brasa:
+        material: "GOLD_NUGGET"
+        nombre: "§6Moneda de Brasa"
+        lore:
+          - "§8Eco de Brasas"
+          - ""
+          - "§7Una grieta cerrada."
+          - "§7Un fragmento de esperanza."
+          - ""
+          - "§e✦ Recuerdo de Fase 1 ✦"
+        glow: true
+        drop_por_grieta: 1        # 1 por cada grieta cerrada
+      
+      cristal_ancla:
+        material: "PRISMARINE_SHARD"
+        nombre: "§dCristal de Ancla"
+        lore:
+          - "§8Eco de Brasas"
+          - ""
+          - "§7El ancla canalizó el caos."
+          - "§7Esto quedó cristalizado."
+          - ""
+          - "§d✦ Recuerdo de Fase 2 ✦"
+        glow: true
+        drop_por_ancla: 1         # 1 por cada ancla completada
+      
+      espada_guardian:
+        material: "NETHERITE_SWORD"
+        nombre: "§4Espada del Guardián Caído"
+        lore:
+          - "§8Eco de Brasas - Fase 3"
+          - ""
+          - "§7El Guardián protegía el altar."
+          - "§7Fue necesario detenerlo."
+          - ""
+          - "§c✦ Solo quien lo derrotó la porta ✦"
+        glow: true
+        enchants:
+          - "SHARPNESS:5"
+          - "FIRE_ASPECT:2"
+          - "UNBREAKING:3"
+        drop_al_killer: true      # Solo quien mata al guardián
+      
+      luz_templada:
+        material: "END_CRYSTAL"
+        nombre: "§e§lLuz Templada"
+        lore:
+          - "§8Eco de Brasas - Recompensa Final"
+          - ""
+          - "§7El fuego se convirtió en luz."
+          - "§7Ahora ilumina sin quemar."
+          - ""
+          - "§6✦ Recompensa de victoria ✦"
+        glow: true
+        drop_final_todos: true    # Todos al finalizar evento
+      
+      emblema_victoria:
+        material: "NETHER_STAR"
+        nombre: "§e§l✦ Emblema del Eco Templado ✦"
+        lore:
+          - "§8Eco de Brasas - Victoria"
+          - ""
+          - "§7El fuego primordial ardía sin control."
+          - "§7Amenazaba con consumirlo todo."
+          - ""
+          - "§7Cerramos las grietas. Estabilizamos anclas."
+          - "§7El ritual transformó su furia en luz."
+          - ""
+          - "§6El eco ahora late en paz."
+          - ""
+          - "§e✦ Gracias por estar aquí ✦"
+        glow: true
+        drop_final_todos: true    # Todos al finalizar evento
+    
+    # ═══════════════════════════════════════════════════════════════
+    # NARRATIVA Y CINEMATICS
+    # ═══════════════════════════════════════════════════════════════
+    narrativa:
+      # Intro al iniciar evento (antes de Fase 1)
+      intro:
+        delay_seg: 5  # Espera 5 segundos antes de mostrar
+        mensajes:
+          - "§5§l⚡ EL OBSERVADOR §r§7detecta una anomalía..."
+          - "§7El portal del Nether respira... §c§oexhala calor§7."
+          - "§7La superficie tiembla. §e§oGrietas§7 aparecerán lejos de ti."
+          - "§7Tu tarea: §a§lacércate, ciérralas, recolecta fragmentos§7."
+          - "§8§o\"El fuego busca forma... no enemigos.\" — El Observador"
+        sonidos:
+          - delay: 0
+            sound: "ENTITY_WITHER_SPAWN"
+            volume: 0.7
+            pitch: 0.8
+          - delay: 40  # 2 segundos después
+            sound: "BLOCK_PORTAL_AMBIENT"
+            volume: 1.0
+            pitch: 0.5
+        titulo:
+          texto: "§5§lECO DE BRASAS"
+          subtitulo: "§7Fase I: §e§lRECOLECCIÓN"
+          fadeIn: 20
+          stay: 60
+          fadeOut: 20
+      
+      # Transición Fase 1 → Fase 2
+      transicion_fase2:
+        delay_seg: 10  # Espera 10 segundos tras activarse
+        mensajes:
+          - "§5§l⚡ EL OBSERVADOR §r§7siente un cambio..."
+          - "§7Los fragmentos resuenan. §6§oTres Anclas§7 emergen del suelo."
+          - "§7Deben estabilizarlas: §e§oentrega Ceniza, Fulgor y Eco Roto§7."
+          - "§7Tres puntos sostienen el calor. §a§oSi caen juntos, el mundo respira mejor.§7"
+        sonidos:
+          - delay: 0
+            sound: "ENTITY_ENDER_DRAGON_GROWL"
+            volume: 0.8
+            pitch: 0.6
+          - delay: 60  # 3 segundos después
+            sound: "BLOCK_RESPAWN_ANCHOR_SET_SPAWN"
+            volume: 1.0
+            pitch: 1.0
+        titulo:
+          texto: "§6§lFASE II"
+          subtitulo: "§7Estabilización - §e§lANCLAS DE FUEGO"
+          fadeIn: 20
+          stay: 60
+          fadeOut: 20
+      
+      # Transición Fase 2 → Fase 3
+      transicion_fase3:
+        delay_seg: 15  # Espera 15 segundos tras activarse
+        mensajes:
+          - "§5§l⚡ EL OBSERVADOR §r§7ve el ritual comenzar..."
+          - "§7Las anclas resonan. §d§oUn altar central§7 se manifiesta."
+          - "§7Reúnanse. §a§oLlenen el sello con pulsos de energía§7."
+          - "§7Si lo logran... §c§oun Guardián probará su valía§7."
+          - "§8§o\"Cada chispa que guardan, alguna vez ya ardió en otro mundo.\" — El Observador"
+        sonidos:
+          - delay: 0
+            sound: "ENTITY_WITHER_SPAWN"
+            volume: 1.0
+            pitch: 1.2
+          - delay: 80  # 4 segundos después
+            sound: "BLOCK_END_PORTAL_SPAWN"
+            volume: 0.8
+            pitch: 0.7
+        titulo:
+          texto: "§c§lFASE III"
+          subtitulo: "§7Ritual Final - §d§lEL SELLO"
+          fadeIn: 20
+          stay: 80
+          fadeOut: 20
+      
+      # Victoria al completar Fase 3
+      victoria:
+        mensajes:
+          - "§5§l⚡ EL OBSERVADOR §r§a§lasiente con aprobación..."
+          - "§7Dominaron el calor. §e§oEl eco se calma§7."
+          - "§7El fuego ya no busca... §a§oencontró forma en ustedes§7."
+          - "§6§l✦ EVENTO COMPLETADO ✦"
+        sonidos:
+          - delay: 0
+            sound: "UI_TOAST_CHALLENGE_COMPLETE"
+            volume: 1.0
+            pitch: 1.0
+          - delay: 40
+            sound: "ENTITY_PLAYER_LEVELUP"
+            volume: 1.0
+            pitch: 1.2
+        titulo:
+          texto: "§a§l✓ EVENTO COMPLETADO"
+          subtitulo: "§7El Eco de Brasas §e§ose ha calmado"
+          fadeIn: 20
+          stay: 100
+          fadeOut: 30
+        fuegos_artificiales: 5  # Spawn 5 fuegos artificiales
+    
+    # ═══════════════════════════════════════════════════════════════
+    # DIÁLOGOS PERIÓDICOS DEL OBSERVADOR (durante fases)
+    # ═══════════════════════════════════════════════════════════════
+    dialogos_observador:
+      intervalo_seg: 180  # Cada 3 minutos un diálogo aleatorio
+      fase1:
+        - "§5§l⚡ EL OBSERVADOR: §7§oEl portal no duerme, solo respira más lento."
+        - "§5§l⚡ EL OBSERVADOR: §7§oLa tierra quiebra donde ustedes caminan."
+        - "§5§l⚡ EL OBSERVADOR: §7§oSi no entienden el calor… lo perderán."
+      fase2:
+        - "§5§l⚡ EL OBSERVADOR: §7§oNo busquen destruirlo, aprendan su ritmo."
+        - "§5§l⚡ EL OBSERVADOR: §7§oLo que tocan, respira. Lo que respira, recuerda."
+        - "§5§l⚡ EL OBSERVADOR: §7§oTres puntos, un equilibrio."
+      fase3:
+        - "§5§l⚡ EL OBSERVADOR: §7§oEl fuego busca forma... no enemigos."
+        - "§5§l⚡ EL OBSERVADOR: §7§oCada pulso los acerca a la verdad."
+        - "§5§l⚡ EL OBSERVADOR: §7§oNo teman al Guardián. Es una prueba, no una amenaza."
+    
+    # ═══════════════════════════════════════════════════════════════
+    # FASE 1: RECOLECCIÓN (Grietas de vapor)
+    # ═══════════════════════════════════════════════════════════════
+    fase1:
+      duracion_seg: 1500        # 25 minutos
+      meta_grietas: 10          # Número de grietas a cerrar para completar fase
+      
+      grietas:
+        vida_base: 100           # Golpes necesarios para cerrar
+        distancia_min: 150       # Spawn 150+ bloques del jugador más cercano
+        distancia_max: 300       # Hasta 300 bloques
+        spawn_secuencial: true   # Spawn siguiente grieta tras cerrar anterior
+        delay_siguiente_seg: 3   # 3 segundos después de cerrar
+        
+        particulas:
+          tipo: "SMOKE"
+          cantidad: 3
+          intervalo_ticks: 20    # Partículas cada segundo
+        
+        sonido_ambiente:
+          sound: "BLOCK_FIRE_AMBIENT"
+          volume: 0.8
+          pitch: 0.5
+          intervalo_ticks: 60    # Cada 3 segundos
+      
+      # NOTA: Los drops ahora están definidos en el código (dropFragments)
+      # Para modificarlos, ver EcoBrasasEvent.java línea ~1620
+      # Drops actuales garantizados por grieta:
+      # - 9x Ceniza (100% chance)
+      # - 3x Fulgor (100% chance)
+      # - 1x Eco Roto (33% chance)
+      # Total en 10 grietas: 90 Ceniza, 30 Fulgor, ~3 Eco Roto
+    
+    # ═══════════════════════════════════════════════════════════════
+    # FASE 2: ESTABILIZACIÓN (Anclas de fuego)
+    # ═══════════════════════════════════════════════════════════════
+    fase2:
+      duracion_seg: 2700         # 45 minutos
+      
+      anclas:
+        cantidad: 3              # 3 anclas simultáneas
+        distancia_minima: 80     # Separación mínima entre anclas
+        
+        requisitos:
+          # Requisitos por ancla (ajustados para 10 grietas)
+          ceniza: 30             # 30 Ceniza por ancla (90 total para 3)
+          fulgor: 10             # 10 Fulgor por ancla (30 total para 3)
+          eco_roto: 1            # 1 Eco Roto por ancla (3 total para 3)
+          # Con 10 grietas se obtiene exactamente lo necesario
+        
+        particulas:
+          tipo: "FLAME"
+          cantidad: 5
+          intervalo_ticks: 10    # Partículas cada 0.5s
+        
+        sonido_entrega:
+          sound: "BLOCK_RESPAWN_ANCHOR_CHARGE"
+          volume: 1.0
+          pitch: 1.0
+        
+        hologram_info: true      # Mostrar hologramas con progreso
+      
+      # Notificación cuando todas las anclas están completas
+      anclas_completas:
+        mensaje_global: "§a§l✓ §7Las tres anclas resuenan en armonía. §e§oEl ritual puede comenzar§7."
+        sonido:
+          sound: "UI_TOAST_CHALLENGE_COMPLETE"
+          volume: 1.0
+          pitch: 1.0
+    
+    
+    # ═══════════════════════════════════════════════════════════════
+    # FASE 3: RITUAL FINAL (Altar central + Boss + Sistema de Oleadas)
+    # ═══════════════════════════════════════════════════════════════
+    fase3:
+      duracion_seg: 900          # 15 minutos
+      
+      altar:
+        spawn_cercano_jugadores: true  # Spawn cerca del jugador más central
+        pulsos_requeridos: 20    # 20 pulsos para completar ritual
+        
+        particulas:
+          tipo: "SOUL_FIRE_FLAME"
+          cantidad: 10
+          intervalo_ticks: 5     # Partículas cada 0.25s
+        
+        contribucion_jugador:
+          por_click: 1           # 1 pulso por click
+          cooldown_ms: 0         # Sin cooldown entre pulsos
+        
+        bloqueo_guardian: true   # El guardián bloquea el ritual si está vivo
+      
+      # Sistema de Oleadas Dinámicas
+      oleadas:
+        activado: true
+        # NOTA: trigger_cada_pulsos se calcula automáticamente como 20% de pulsos_requeridos
+        # Ejemplo: Si pulsos_requeridos=20, oleadas cada 4 pulsos (20, 40, 60, 80, 100%)
+        # Ejemplo: Si pulsos_requeridos=8, oleadas cada 2 pulsos (25, 50, 75, 100%)
+        bloquea_pulsos: true     # Jugadores deben eliminar oleada para continuar
+        
+        # Fases de intensidad (basado en progreso del ritual)
+        fases:
+          fase_inicial:          # 0-25% (pulsos 1-5)
+            intensidad: 0-25
+            enemigos:
+              base: 2            # 2 enemigos base
+              tipos: ["ZOMBIE", "SKELETON"]
+              hp_multiplier: 1.0
+            efectos:
+              particulas: "SOUL_FIRE_FLAME (5)"
+              sonidos: "RESPAWN_ANCHOR_AMBIENT (0.3)"
+          
+          fase_media:            # 25-50% (pulsos 6-10)
+            intensidad: 25-50
+            enemigos:
+              base: 3
+              tipos: ["ZOMBIE", "SKELETON", "SPIDER", "CREEPER"]
+              hp_multiplier: 1.25
+            efectos:
+              particulas: "SOUL_FIRE_FLAME (10) + SMOKE (5)"
+              sonidos: "RESPAWN_ANCHOR_CHARGE (0.5)"
+          
+          fase_avanzada:         # 50-75% (pulsos 11-15)
+            intensidad: 50-75
+            enemigos:
+              base: 4
+              tipos: ["ZOMBIE", "SKELETON", "BLAZE", "PIGLIN_BRUTE"]
+              hp_multiplier: 1.5
+            efectos:
+              particulas: "SOUL_FIRE_FLAME (15) + FLAME (10) + LAVA (5)"
+              sonidos: "WITHER_AMBIENT (0.4)"
+          
+          fase_final:            # 75-100% (pulsos 16-20)
+            intensidad: 75-100
+            enemigos:
+              base: 5
+              tipos: ["BLAZE", "PIGLIN_BRUTE", "WITHER_SKELETON", "RAVAGER"]
+              hp_multiplier: 2.0
+            efectos:
+              particulas: "SOUL_FIRE_FLAME (25) + FLAME (20) + LAVA (10) + END_ROD (15) + BEAM VERTICAL"
+              sonidos: "ENDER_DRAGON_GROWL (0.6)"
+      
+      guardian:
+        # NOTA: spawn_en_pulso se calcula automáticamente como 75% de pulsos_requeridos si no se especifica
+        # Ejemplo: Si pulsos_requeridos=20, spawn en pulso 15 (75%)
+        # Ejemplo: Si pulsos_requeridos=8, spawn en pulso 6 (75%)
+        spawn_en_pulso: 17       # O deja que se calcule automáticamente
+        tipo: "WITHER_SKELETON"
+        nombre: "§c§lGuardián del Eco"
+        
+        # Stats balanceados
+        vida_base: 200           # 100 corazones
+        velocidad: 0.3           # 30% más rápido que normal
+        daño_melee: 10           # 5 corazones por golpe
+        
+        equipamiento:
+          helmet: "NETHERITE_HELMET"
+          chestplate: "NETHERITE_CHESTPLATE"
+          weapon: "NETHERITE_SWORD"
+        
+        # NOTA: Drop especial manejado por EcoBrasasListener
+        # Solo el killer recibe: Espada del Guardián Caído (Netherite Sword encantada)
+        
+        # Guardián es tratado como oleada especial que bloquea progreso
+        es_oleada_especial: true
+      
+      victoria:
+        requisito: "RITUAL_COMPLETADO"  # Completar 20 pulsos + derrotar todas las oleadas
+        
+        # Recompensas automáticas manejadas por código:
+        # - Luz Templada (todos)
+        # - Emblema del Eco Templado (todos)
+        # - PS según participación: 50-315 PS por jugador
+
+# ═══════════════════════════════════════════════════════════════════
+# CONFIGURACIÓN GLOBAL DE EVENTOS
+# ═══════════════════════════════════════════════════════════════════
+global:
+  debug_mode: false              # Logs extra en consola
+  permitir_multiple: false       # Solo un evento a la vez
+  guardar_progreso: true         # Guardar progreso en state.yml
+  notificar_fases: true          # Anunciar cambios de fase globalmente
+

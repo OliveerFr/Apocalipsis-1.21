@@ -1,17 +1,23 @@
 package me.apocalipsis.commands;
 
+import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+
+import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
+import org.bukkit.block.Block;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.Sound;
-import org.bukkit.Particle;
-import org.bukkit.block.Block;
 
 import me.apocalipsis.Apocalipsis;
 import me.apocalipsis.disaster.DisasterController;
+import me.apocalipsis.events.EventController;
 import me.apocalipsis.missions.MissionService;
 import me.apocalipsis.missions.MissionType;
 import me.apocalipsis.state.ServerState;
@@ -19,21 +25,21 @@ import me.apocalipsis.state.StateManager;
 import me.apocalipsis.state.TimeService;
 import me.apocalipsis.ui.MessageBus;
 
-import java.util.*;
-
 public class ApocalipsisCommand implements CommandExecutor {
 
     private final Apocalipsis plugin;
     private final StateManager stateManager;
     private final DisasterController disasterController;
+    private final EventController eventController;
     private final MissionService missionService;
     private final MessageBus messageBus;
 
     public ApocalipsisCommand(Apocalipsis plugin, StateManager stateManager, DisasterController disasterController,
-                             MissionService missionService, TimeService timeService, MessageBus messageBus) {
+                             EventController eventController, MissionService missionService, TimeService timeService, MessageBus messageBus) {
         this.plugin = plugin;
         this.stateManager = stateManager;
         this.disasterController = disasterController;
+        this.eventController = eventController;
         this.missionService = missionService;
         this.messageBus = messageBus;
     }
@@ -52,6 +58,14 @@ public class ApocalipsisCommand implements CommandExecutor {
             sender.sendMessage("§6=== Protecciones ===");
             sender.sendMessage("§e/avo escanear §7- Escanea protecciones cercanas");
             sender.sendMessage("§e/avo protecciones §7- Guía de protecciones");
+            sender.sendMessage("§6=== Evento Eco de Brasas ===");
+            sender.sendMessage("§e/avo eco start §7- Inicia el evento");
+            sender.sendMessage("§e/avo eco stop §7- Detiene el evento");
+            sender.sendMessage("§e/avo eco fase <1|2|3> §7- Fuerza fase específica");
+            sender.sendMessage("§e/avo eco next §7- Avanza a siguiente fase");
+            sender.sendMessage("§e/avo eco info §7- Info detallada del evento");
+            sender.sendMessage("§e/avo eco pulso <add|set> <valor> §7- Ajusta pulso");
+            sender.sendMessage("§e/avo eco ancla <1-3> §7- Completa ancla");
             sender.sendMessage("§6=== Misiones ===");
             sender.sendMessage("§e/avo newday §7- Crea un nuevo día y asigna misiones");
             sender.sendMessage("§e/avo endday §7- Termina el día actual");
@@ -139,6 +153,9 @@ public class ApocalipsisCommand implements CommandExecutor {
                 break;
             case "protecciones":
                 cmdProtecciones(sender);
+                break;
+            case "eco":
+                cmdEco(sender, args);
                 break;
             default:
                 sender.sendMessage("§cSubcomando desconocido. Usa /avo para ver ayuda.");
@@ -623,16 +640,9 @@ public class ApocalipsisCommand implements CommandExecutor {
         // NO reiniciar desastres tras reload
         boolean startOnBoot = plugin.getConfigManager().isStartOnBoot();
         
-        // [AlonsoLevels] Log reload info
-        org.bukkit.configuration.file.FileConfiguration alonsoConfig = plugin.getConfigManager().getAlonsoLevelsConfig();
-        boolean alonsoEnabled = alonsoConfig != null && alonsoConfig.getBoolean("enabled", true);
-        int alonsoCmds = alonsoConfig != null ? alonsoConfig.getStringList("commands").size() : 0;
-        plugin.getLogger().info("[Alonso] Reload OK (enabled=" + alonsoEnabled + ", cmds=" + alonsoCmds + ")");
-        
         sender.sendMessage("§a✓ Reload completado:");
-        sender.sendMessage("§7  - misiones_new.yml, rangos.yml, desastres.yml");
-        sender.sendMessage("§7  - config.yml, alonsolevels.yml");
-        sender.sendMessage("§7  - AlonsoLevels: " + (alonsoEnabled ? "§aENABLED" : "§cDISABLED") + " §7(" + alonsoCmds + " cmds)");
+        sender.sendMessage("§7  - misiones_new.yml, rangos.yml, desastres.yml, recompensas.yml");
+        sender.sendMessage("§7  - config.yml");
         sender.sendMessage("§7  - TAB/Scoreboard reaplicados a " + plugin.getServer().getOnlinePlayers().size() + " jugadores");
         sender.sendMessage("§7Flags de ciclo:");
         sender.sendMessage("§7  auto_cycle: §e" + plugin.getConfigManager().isAutoCycleEnabled());
@@ -640,7 +650,7 @@ public class ApocalipsisCommand implements CommandExecutor {
         sender.sendMessage("§7  min_jugadores: §e" + plugin.getConfigManager().getMinJugadores());
         sender.sendMessage("§7  cooldown: §e" + plugin.getConfigManager().getCooldownFinSegundos() + "s");
         
-        plugin.getLogger().info("[Reload] OK: misiones, rangos, desastres, anticheat, alonso aplicados. " +
+        plugin.getLogger().info("[Reload] OK: misiones, rangos, desastres, recompensas aplicados. " +
             "TAB/Scoreboard reaplicados a " + plugin.getServer().getOnlinePlayers().size() + " jugadores.");
         
         // Si había un desastre activo, advertir
@@ -1395,6 +1405,243 @@ public class ApocalipsisCommand implements CommandExecutor {
         if (sender instanceof Player) {
             Player player = (Player) sender;
             player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 0.5f, 1.0f);
+        }
+    }
+    
+    /**
+     * /avo eco <subcomando> - Gestión del evento Eco de Brasas
+     */
+    private void cmdEco(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("avo.admin")) {
+            sender.sendMessage("§cNo tienes permisos.");
+            return;
+        }
+        
+        if (args.length < 2) {
+            sender.sendMessage("§e§l=== ECO DE BRASAS - COMANDOS ===");
+            sender.sendMessage("§e/avo eco start §7- Inicia el evento");
+            sender.sendMessage("§e/avo eco stop §7- Detiene el evento");
+            sender.sendMessage("§e/avo eco skip §7- §cSalta cinemática/diálogo actual");
+            sender.sendMessage("§e/avo eco fase <1|2|3> §7- Fuerza fase (1=Recolección, 2=Estabilización, 3=Ritual)");
+            sender.sendMessage("§e/avo eco next §7- Avanza a la siguiente fase");
+            sender.sendMessage("§e/avo eco info §7- Muestra información detallada");
+            sender.sendMessage("§e/avo eco pulso <add|set> <valor> §7- Modifica pulso global");
+            sender.sendMessage("§e/avo eco ancla <1-3> §7- Completa ancla específica");
+            return;
+        }
+        
+        String subCmd = args[1].toLowerCase();
+        
+        // Obtener instancia del evento desde EventController
+        me.apocalipsis.events.EcoBrasasEvent ecoBrasas = null;
+        if (eventController.hasActiveEvent() && 
+            eventController.getActiveEvent() instanceof me.apocalipsis.events.EcoBrasasEvent) {
+            ecoBrasas = (me.apocalipsis.events.EcoBrasasEvent) eventController.getActiveEvent();
+        }
+        
+        switch (subCmd) {
+            case "start":
+            case "iniciar":
+                // Verificar si hay desastre activo
+                if (disasterController.hasActiveDisaster()) {
+                    sender.sendMessage("§cYa hay un desastre activo. Usa §e/avo stop §cprimero.");
+                    return;
+                }
+                
+                // Verificar si ya hay evento activo
+                if (eventController.hasActiveEvent()) {
+                    sender.sendMessage("§cYa hay un evento activo. Usa §e/avo eco stop §cprimero.");
+                    return;
+                }
+                
+                // Verificar SAFE_MODE
+                if (stateManager.isSafeModeActive()) {
+                    sender.sendMessage("§cNo se puede iniciar en SAFE_MODE (TPS bajo).");
+                    return;
+                }
+                
+                // Iniciar Eco de Brasas usando EventController
+                if (eventController.startEvent("eco_brasas")) {
+                    sender.sendMessage("§a✓ Evento §5§lEco de Brasas §ainiciado");
+                    sender.sendMessage("§7Aguarda... §d§ola historia comienza§7...");
+                    plugin.getLogger().info(String.format("[EcoBrasas] Iniciado por %s", sender.getName()));
+                } else {
+                    sender.sendMessage("§cNo se pudo iniciar el evento. Verifica la consola.");
+                }
+                break;
+                
+            case "stop":
+            case "detener":
+                if (ecoBrasas == null) {
+                    sender.sendMessage("§cEl evento Eco de Brasas no está activo.");
+                    return;
+                }
+                
+                eventController.stopActiveEvent();
+                sender.sendMessage("§7✓ Evento §5Eco de Brasas §7detenido");
+                
+                plugin.getLogger().info(String.format("[EcoBrasas] Detenido por %s", sender.getName()));
+                break;
+                
+            case "skip":
+            case "saltar":
+                if (ecoBrasas == null) {
+                    sender.sendMessage("§cEl evento Eco de Brasas no está activo.");
+                    return;
+                }
+                
+                // Saltar cinemática o avanzar a siguiente fase
+                if (ecoBrasas.forzarSiguienteFase()) {
+                    sender.sendMessage("§a✓ Cinemática/fase saltada");
+                    sender.sendMessage("§7Fase actual: §e" + ecoBrasas.getFaseActual());
+                    plugin.getLogger().info(String.format("[EcoBrasas] Skip ejecutado por %s", sender.getName()));
+                } else {
+                    sender.sendMessage("§cYa estás en la última fase o no se pudo saltar.");
+                }
+                break;
+                
+            case "fase":
+            case "phase":
+                if (ecoBrasas == null) {
+                    sender.sendMessage("§cEl evento Eco de Brasas no está activo.");
+                    return;
+                }
+                
+                if (args.length < 3) {
+                    sender.sendMessage("§cUso: /avo eco fase <1|2|3>");
+                    sender.sendMessage("§7  1 = Recolección (grietas)");
+                    sender.sendMessage("§7  2 = Estabilización (anclas)");
+                    sender.sendMessage("§7  3 = Ritual Final (altar)");
+                    return;
+                }
+                
+                String faseArg = args[2];
+                boolean success = ecoBrasas.forzarFase(faseArg);
+                
+                if (success) {
+                    String faseNombre = "";
+                    switch (faseArg) {
+                        case "1":
+                        case "recoleccion":
+                            faseNombre = "RECOLECCIÓN";
+                            break;
+                        case "2":
+                        case "estabilizacion":
+                            faseNombre = "ESTABILIZACIÓN";
+                            break;
+                        case "3":
+                        case "ritual":
+                            faseNombre = "RITUAL FINAL";
+                            break;
+                    }
+                    sender.sendMessage("§a✓ Fase cambiada a: §e§l" + faseNombre);
+                    plugin.getLogger().info(String.format("[EcoBrasas] %s forzó fase: %s", sender.getName(), faseNombre));
+                } else {
+                    sender.sendMessage("§cYa estás en esa fase o fase inválida.");
+                }
+                break;
+                
+            case "next":
+            case "siguiente":
+                if (ecoBrasas == null) {
+                    sender.sendMessage("§cEl evento Eco de Brasas no está activo.");
+                    return;
+                }
+                
+                if (ecoBrasas.forzarSiguienteFase()) {
+                    sender.sendMessage("§a✓ Avanzado a la siguiente fase");
+                    sender.sendMessage("§7Fase actual: §e" + ecoBrasas.getFaseActual());
+                } else {
+                    sender.sendMessage("§cYa estás en la última fase o no se pudo avanzar.");
+                }
+                break;
+                
+            case "info":
+            case "status":
+                if (ecoBrasas == null) {
+                    sender.sendMessage("§cEl evento Eco de Brasas no está activo.");
+                    sender.sendMessage("§7Usa §e/avo eco start §7para iniciarlo.");
+                    return;
+                }
+                
+                String info = ecoBrasas.getInfoDetallada();
+                sender.sendMessage(info);
+                break;
+                
+            case "pulso":
+                if (ecoBrasas == null) {
+                    sender.sendMessage("§cEl evento Eco de Brasas no está activo.");
+                    return;
+                }
+                
+                if (args.length < 4) {
+                    sender.sendMessage("§cUso: /avo eco pulso <add|set> <valor>");
+                    sender.sendMessage("§7Ejemplo: §e/avo eco pulso add 50 §7(añade 50%)");
+                    sender.sendMessage("§7Ejemplo: §e/avo eco pulso set 100 §7(establece a 100%)");
+                    return;
+                }
+                
+                String pulsoAction = args[2].toLowerCase();
+                int pulsoValor;
+                
+                try {
+                    pulsoValor = Integer.parseInt(args[3]);
+                } catch (NumberFormatException e) {
+                    sender.sendMessage("§cValor inválido: " + args[3]);
+                    return;
+                }
+                
+                if (pulsoAction.equals("add")) {
+                    ecoBrasas.addPulsoGlobal(pulsoValor);
+                    sender.sendMessage("§a✓ Pulso ajustado: §e+" + pulsoValor + "%");
+                } else if (pulsoAction.equals("set")) {
+                    // Calcular diferencia
+                    int actual = ecoBrasas.getProgresoFase();
+                    ecoBrasas.addPulsoGlobal(pulsoValor - actual);
+                    sender.sendMessage("§a✓ Pulso establecido a: §e" + pulsoValor + "%");
+                } else {
+                    sender.sendMessage("§cAcción inválida. Usa: add o set");
+                    return;
+                }
+                
+                sender.sendMessage("§7Progreso actual: §e" + ecoBrasas.getProgresoFase() + "%");
+                break;
+                
+            case "ancla":
+                if (ecoBrasas == null) {
+                    sender.sendMessage("§cEl evento Eco de Brasas no está activo.");
+                    return;
+                }
+                
+                if (args.length < 3) {
+                    sender.sendMessage("§cUso: /avo eco ancla <1|2|3>");
+                    sender.sendMessage("§7Completa forzadamente el ancla especificada");
+                    return;
+                }
+                
+                int anclaId;
+                try {
+                    anclaId = Integer.parseInt(args[2]);
+                } catch (NumberFormatException e) {
+                    sender.sendMessage("§cID de ancla inválido: " + args[2]);
+                    return;
+                }
+                
+                if (ecoBrasas.completarAncla(anclaId)) {
+                    sender.sendMessage("§a✓ Ancla #" + anclaId + " completada forzadamente");
+                    plugin.getLogger().info(String.format("[EcoBrasas] %s completó ancla #%d", sender.getName(), anclaId));
+                } else {
+                    sender.sendMessage("§cNo se pudo completar el ancla. Verifica:");
+                    sender.sendMessage("§7- Estar en Fase 2 (Estabilización)");
+                    sender.sendMessage("§7- ID válido (1-3)");
+                    sender.sendMessage("§7- Ancla no completada previamente");
+                }
+                break;
+                
+            default:
+                sender.sendMessage("§cSubcomando desconocido: §f" + subCmd);
+                sender.sendMessage("§7Usa §e/avo eco §7para ver comandos disponibles.");
+                break;
         }
     }
 

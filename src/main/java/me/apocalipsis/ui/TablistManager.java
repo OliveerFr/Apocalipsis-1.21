@@ -246,15 +246,18 @@ public class TablistManager {
     
     /**
      * [NUEVO] Genera nombre de team con prefijo numérico para ordenar por rango
-     * LEYENDA (1) aparece primero, NOVATO (5) aparece último
+     * ABSOLUTO (1) aparece primero, NOVATO (8) aparece último
      */
     private String getRankedTeamName(me.apocalipsis.missions.MissionRank rank) {
         return switch (rank) {
-            case LEYENDA -> "rank_1_leyenda";
-            case VETERANO -> "rank_2_veterano";
-            case SOBREVIVIENTE -> "rank_3_sobreviviente";
-            case EXPLORADOR -> "rank_4_explorador";
-            case NOVATO -> "rank_5_novato";
+            case ABSOLUTO -> "rank_1_absoluto";
+            case TITAN -> "rank_2_titan";
+            case MAESTRO -> "rank_3_maestro";
+            case LEYENDA -> "rank_4_leyenda";
+            case VETERANO -> "rank_5_veterano";
+            case SOBREVIVIENTE -> "rank_6_sobreviviente";
+            case EXPLORADOR -> "rank_7_explorador";
+            case NOVATO -> "rank_8_novato";
         };
     }
 

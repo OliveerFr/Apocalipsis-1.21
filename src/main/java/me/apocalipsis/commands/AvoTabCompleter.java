@@ -30,7 +30,7 @@ public class AvoTabCompleter implements TabCompleter {
                 "start", "stop", "force", "skip", "preparacion", "time",
                 "newday", "endday", "status", "setps", "mission",
                 "tps", "stats", "backup", "cooldown", "debug", "test", "test-alert",
-                "reload", "admin"
+                "reload", "admin", "escanear", "protecciones", "eco"
             );
             
             return subcommands.stream()
@@ -84,6 +84,12 @@ public class AvoTabCompleter implements TabCompleter {
                     return Arrays.asList("add", "remove", "list").stream()
                         .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
                         .collect(Collectors.toList());
+                
+                case "eco":
+                    // Sugerir subcomandos de eco
+                    return Arrays.asList("start", "stop", "fase", "next", "info", "pulso", "ancla").stream()
+                        .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
+                        .collect(Collectors.toList());
             }
         }
         
@@ -125,6 +131,27 @@ public class AvoTabCompleter implements TabCompleter {
                 return plugin.getServer().getOnlinePlayers().stream()
                     .map(Player::getName)
                     .filter(s -> s.toLowerCase().startsWith(args[2].toLowerCase()))
+                    .collect(Collectors.toList());
+            }
+            
+            // /avo eco fase <1|2|3>
+            if (subCmd.equals("eco") && args[1].equalsIgnoreCase("fase")) {
+                return Arrays.asList("1", "2", "3").stream()
+                    .filter(s -> s.startsWith(args[2]))
+                    .collect(Collectors.toList());
+            }
+            
+            // /avo eco pulso <add|set>
+            if (subCmd.equals("eco") && args[1].equalsIgnoreCase("pulso")) {
+                return Arrays.asList("add", "set").stream()
+                    .filter(s -> s.startsWith(args[2]))
+                    .collect(Collectors.toList());
+            }
+            
+            // /avo eco ancla <1|2|3>
+            if (subCmd.equals("eco") && args[1].equalsIgnoreCase("ancla")) {
+                return Arrays.asList("1", "2", "3").stream()
+                    .filter(s -> s.startsWith(args[2]))
                     .collect(Collectors.toList());
             }
         }

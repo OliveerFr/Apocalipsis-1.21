@@ -40,3 +40,11 @@ rendimiento:
 # Desastre por defecto al iniciar (o "random")
 default_disaster: "random"
 
+# ═══════════════════════════════════════════════════════════════════
+# SISTEMA DE PS POR TIEMPO JUGADO (GLOBAL)
+# ═══════════════════════════════════════════════════════════════════
+tiempo_jugado:
+  enabled: true
+  ps_por_intervalo: 1            # 1 PS cada intervalo
+  intervalo_minutos: 30          # Cada 30 minutos
+  notificacion: "§7[§ePS§7] §a+1 PS §7por tiempo jugado"

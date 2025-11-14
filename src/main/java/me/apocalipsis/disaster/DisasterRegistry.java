@@ -1,14 +1,14 @@
 package me.apocalipsis.disaster;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+
 import me.apocalipsis.Apocalipsis;
 import me.apocalipsis.disaster.adapters.PerformanceAdapter;
 import me.apocalipsis.state.TimeService;
 import me.apocalipsis.ui.MessageBus;
 import me.apocalipsis.ui.SoundUtil;
-
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
 
 public class DisasterRegistry {
 
@@ -28,6 +28,7 @@ public class DisasterRegistry {
         register(new HuracanNew(plugin, messageBus, soundUtil, timeService, performanceAdapter));
         register(new LluviaFuegoNew(plugin, messageBus, soundUtil, timeService, performanceAdapter));
         register(new TerremotoNew(plugin, messageBus, soundUtil, timeService, performanceAdapter));
+        // EcoBrasas movido a EventController - NO es un desastre automático
         plugin.getLogger().info(String.format("[DisasterRegistry] ✓ %d desastres registrados", disasters.size()));
     }
 

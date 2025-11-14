@@ -24,6 +24,8 @@ import me.apocalipsis.ui.TablistManager;
 import java.io.File;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.Set;
 import java.util.UUID;
 
@@ -37,6 +39,11 @@ public class PlayerListener implements Listener {
     private FileConfiguration castigosConfig;
     private final Set<UUID> respawnImmunity = new HashSet<>();
     private final java.util.Random random = new java.util.Random();
+    
+    // Sistema de puntos por tiempo jugado
+    private final Map<UUID, Long> playerJoinTime = new HashMap<>();
+    private static final long PS_TIME_INTERVAL = 30 * 60 * 1000; // 30 minutos en ms
+    private static final int PS_PER_INTERVAL = 1; // 1 PS cada 30 minutos
 
     public PlayerListener(Apocalipsis plugin, ScoreboardManager scoreboardManager,
                          TablistManager tablistManager) {
@@ -44,6 +51,7 @@ public class PlayerListener implements Listener {
         this.scoreboardManager = scoreboardManager;
         this.tablistManager = tablistManager;
         loadCastigosConfig();
+        startPlaytimeRewardTask();
     }
     
     /**
@@ -61,11 +69,28 @@ public class PlayerListener implements Listener {
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
         
+        // [TIEMPO JUGADO] Registrar hora de conexión para PS por tiempo
+        trackPlayerJoin(player);
+        
         // [FIX DEFINITIVO] Forzar board compartido (crítico para que todos vean lo mismo)
         player.setScoreboard(org.bukkit.Bukkit.getScoreboardManager().getMainScoreboard());
         
         // [EVASION PUNISHMENT] Aplicar castigos físicos pendientes
         plugin.getDisasterEvasionTracker().applyReconnectPunishment(player);
+        
+        // [HABILIDADES DE RANGO] Aplicar habilidades pasivas del rango actual
+        org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (plugin.getAbilityService() != null) {
+                plugin.getAbilityService().applyAbilities(player, true);
+            }
+        }, 20L); // 1 segundo después de conectarse
+        
+        // [RECOMPENSAS PENDIENTES] Verificar y entregar recompensas de rangos no reclamados
+        org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (plugin.getRewardService() != null) {
+                plugin.getRewardService().checkAndDeliverPendingRewards(player);
+            }
+        }, 40L); // 2 segundos después de conectarse
         
         // [AUTOASIGNACIÓN] Late-join: asignar misiones si el jugador no tiene misiones activas
         // Esto permite que jugadores que entren durante un día activo reciban misiones
@@ -98,6 +123,9 @@ public class PlayerListener implements Listener {
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
+        
+        // [TIEMPO JUGADO] Limpiar tracking al desconectarse
+        trackPlayerQuit(player);
         
         // [RECONSTRUCCIÓN] Remover jugador del BossBar único del DisasterController
         plugin.getDisasterController().removePlayerFromBossBar(player);
@@ -293,5 +321,55 @@ public class PlayerListener implements Listener {
         if (effectType.contains("BLINDNESS")) return "Ceguera";
         if (effectType.contains("UNLUCK")) return "Mala Suerte";
         return "Desconocido";
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════
+    //                    SISTEMA DE PS POR TIEMPO JUGADO
+    // ═══════════════════════════════════════════════════════════════════
+    
+    /**
+     * Inicia tarea periódica para dar PS por tiempo jugado
+     */
+    private void startPlaytimeRewardTask() {
+        // Ejecutar cada 30 minutos (36000 ticks = 30 minutos)
+        org.bukkit.Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            for (Player player : org.bukkit.Bukkit.getOnlinePlayers()) {
+                UUID uuid = player.getUniqueId();
+                
+                // Verificar si el jugador ha estado online por al menos 30 minutos
+                if (playerJoinTime.containsKey(uuid)) {
+                    long joinTime = playerJoinTime.get(uuid);
+                    long currentTime = System.currentTimeMillis();
+                    long timeOnline = currentTime - joinTime;
+                    
+                    // Si ha estado online por al menos 30 minutos
+                    if (timeOnline >= PS_TIME_INTERVAL) {
+                        // Dar PS
+                        plugin.getMissionService().addPS(uuid, PS_PER_INTERVAL, "Tiempo jugado (30min)");
+                        
+                        // Notificar discretamente
+                        player.sendMessage("§7[§ePS§7] §a+1 PS §7por tiempo jugado");
+                        player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.3f, 1.5f);
+                        
+                        // Actualizar tiempo base para próxima recompensa
+                        playerJoinTime.put(uuid, currentTime);
+                    }
+                }
+            }
+        }, 36000L, 36000L); // 30 minutos inicial, repetir cada 30 minutos
+    }
+    
+    /**
+     * Registra cuando un jugador se conecta (para tracking de tiempo)
+     */
+    private void trackPlayerJoin(Player player) {
+        playerJoinTime.put(player.getUniqueId(), System.currentTimeMillis());
+    }
+    
+    /**
+     * Limpia tracking cuando un jugador se desconecta
+     */
+    private void trackPlayerQuit(Player player) {
+        playerJoinTime.remove(player.getUniqueId());
     }
 }

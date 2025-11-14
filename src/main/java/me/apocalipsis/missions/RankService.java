@@ -129,7 +129,7 @@ public class RankService {
      */
     public boolean isMaxRank(Player player) {
         MissionRank current = getRank(player);
-        return current == MissionRank.LEYENDA;
+        return current == MissionRank.ABSOLUTO;
     }
 
     /**

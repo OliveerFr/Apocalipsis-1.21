@@ -14,6 +14,7 @@ desastres:
     huracan: 1
     lluvia_fuego: 1
     terremoto: 1
+    # eco_brasas: NO incluir - evento manual único
   explosion_power: 1.2
   
   rayos:

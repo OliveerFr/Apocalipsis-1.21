@@ -5,7 +5,10 @@ public enum MissionRank {
     EXPLORADOR,
     SOBREVIVIENTE,
     VETERANO,
-    LEYENDA;
+    LEYENDA,
+    MAESTRO,
+    TITAN,
+    ABSOLUTO;
 
     // [RANGOS.YML] Datos configurables (se cargan desde rangos.yml)
     private String displayName;
@@ -17,8 +20,8 @@ public enum MissionRank {
     private String scoreboardColor;
     
     // Valores por defecto hardcodeados (fallback si rangos.yml falla)
-    private static final int[] DEFAULT_PS_REQUIRED = {0, 150, 400, 800, 1500};
-    private static final int[] DEFAULT_MISIONES_DIARIAS = {10, 8, 6, 4, 3};
+    private static final int[] DEFAULT_PS_REQUIRED = {0, 200, 600, 1400, 2800, 4800, 7200, 10000};
+    private static final int[] DEFAULT_MISIONES_DIARIAS = {10, 8, 6, 5, 4, 3, 3, 2};
 
     /**
      * Configura los datos de este rango desde rangos.yml

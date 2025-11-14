@@ -320,6 +320,16 @@ public class MissionService {
         messageBus.sendMessage(player, "§a§l✓ Misión completada: §f" + mission.getNombre() + " §7(§e+" + mission.getRecompensaPs() + " PS§7)");
         savePlayerData();
         
+        // [XP SYSTEM] Otorgar experiencia por completar la misión
+        if (plugin.getExperienceService() != null) {
+            plugin.getExperienceService().addMissionXP(player, mission.getRecompensaPs(), mission.getDificultad());
+        }
+        
+        // [REWARD SYSTEM] Recompensa aleatoria por completar misión (incentivo adicional)
+        if (plugin.getRewardService() != null) {
+            plugin.getRewardService().deliverMissionReward(player, mission.getDificultad());
+        }
+        
         // [DATA.YML] Hooks - TODO: Implementar sistema completo de data.yml
         // plugin.getConfigManager().onMissionCompleted(uuid);
         // plugin.getConfigManager().onPsChange(uuid, currentPs, newPs);
@@ -329,6 +339,11 @@ public class MissionService {
             // TODO: Implementar onRankUp en ConfigManager
             // plugin.getConfigManager().onRankUp(uuid, newRank.name(), newRank.getDisplayName());
             playRankUpEffects(player, newRank);
+            
+            // [REWARD SYSTEM] Entregar recompensas de rango
+            if (plugin.getRewardService() != null) {
+                plugin.getRewardService().deliverRewards(player, newRank);
+            }
         }
         
         // [FIX] Actualizar scoreboard y tablist inmediatamente para reflejar cambio de PS/rango
@@ -667,6 +682,11 @@ public class MissionService {
                 break;
         }
         
+        // [REWARD SYSTEM] Entregar recompensas diarias completas
+        if (plugin.getRewardService() != null) {
+            plugin.getRewardService().deliverDailyCompletionReward(p);
+        }
+        
         // Título animado
         String title = c.getString(base + "title", "§b§l¡MISIONES COMPLETADAS!");
         String subtitle = c.getString(base + "subtitle", "§7Has completado todas tus misiones del día");
@@ -819,94 +839,6 @@ public class MissionService {
             heightTaskId = -1;
         }
     }
-    
-    /**
-     * [INTEGRACIÓN ALONSOLEVELS] Ejecuta comandos AlonsoLevels al completar una misión.
-     * Calcula EXP desde PS usando factores configurables y ejecuta comandos desde consola.
-     * 
-     * Solo se ejecuta si:
-     * - La configuración alonsolevels.enabled = true
-     * - La misión está marcada como completada
-     * 
-     * @param player Jugador que completó la misión
-     * @param mission Misión completada
-     */
-    private void dispatchAlonsoLevelsOnMissionCompleted(Player player, MissionCatalog mission) {
-        // Cargar alonsolevels.yml
-        FileConfiguration a = plugin.getConfigManager().getAlonsoLevelsConfig();
-        if (!a.getBoolean("enabled", true)) return;
-
-        final String missionId = mission.getId();
-        final String dificultad = mission.getDificultad() != null ? mission.getDificultad().name() : "DESCONOCIDA";
-        final String rango = plugin.getRankService().getRank(player).name();
-
-        // PS base desde la misión
-        int psBase = mission.getRecompensaPs();
-
-        // Multiplicadores
-        double mult = 1.0;
-        if (a.getBoolean("multipliers.enabled", true)) {
-            double mDif = a.getDouble("multipliers.por_dificultad." + dificultad, 1.0);
-            mult *= mDif;
-        }
-        if (a.getBoolean("multipliers_por_rango.enabled", false)) {
-            double mR = a.getDouble("multipliers_por_rango." + rango, 1.0);
-            mult *= mR;
-        }
-        double psCalc = psBase * mult;
-
-        // EXP
-        long exp = 0L;
-        if (a.getBoolean("conversion.use_exp", true)) {
-            double factor = a.getDouble("conversion.exp_factor", 10.0);
-            double raw = psCalc * factor;
-            String mode = a.getString("conversion.exp_round", "FLOOR");
-            exp = roundValue(raw, mode);
-        }
-
-        // LEVELS (opcional)
-        long levels = 0L;
-        if (a.getBoolean("conversion.use_levels", false)) {
-            double factor = a.getDouble("conversion.level_factor", 0.10);
-            double raw = psCalc * factor;
-            String mode = a.getString("conversion.level_round", "FLOOR");
-            levels = roundValue(raw, mode);
-        }
-
-        // Construir y ejecutar comandos
-        List<String> cmds = a.getStringList("commands");
-        if (cmds == null || cmds.isEmpty()) return;
-
-        final String sPlayer = player.getName();
-        final String sPs    = String.valueOf((long)Math.floor(psCalc));
-        final String sExp   = String.valueOf(exp);
-        final String sLvl   = String.valueOf(levels);
-
-        Bukkit.getScheduler().runTask(plugin, () -> {
-            boolean log = a.getBoolean("log", true);
-            for (String tpl : cmds) {
-                String cmd = tpl
-                    .replace("%player%", sPlayer)
-                    .replace("%mission_id%", missionId)
-                    .replace("%ps%", sPs)
-                    .replace("%exp%", sExp)
-                    .replace("%level%", sLvl)
-                    .replace("%dificultad%", dificultad)
-                    .replace("%rango%", rango);
-
-                boolean ok = Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
-                if (log) plugin.getLogger().info("[AlonsoLevels] Comando: /" + cmd + " -> " + (ok ? "OK" : "ERROR"));
-            }
-        });
-    }
-
-    private long roundValue(double value, String mode) {
-        switch (mode.toUpperCase(Locale.ROOT)) {
-            case "CEIL":  return (long) Math.ceil(value);
-            case "ROUND": return Math.round(value);
-            default:      return (long) Math.floor(value); // FLOOR
-        }
-    }
 
     // ═══════════════════════════════════════════════════════════════════
     // [ADMIN COMMANDS] Métodos para comandos de administración
@@ -951,9 +883,6 @@ public class MissionService {
                 int currentPs = playerPs.getOrDefault(uuid, 0);
                 int newPs = currentPs + mission.getRecompensaPs();
                 playerPs.put(uuid, newPs);
-                
-                // Ejecutar comandos AlonsoLevels
-                dispatchAlonsoLevelsOnMissionCompleted(player, mission);
                 
                 completed++;
             }
@@ -1064,6 +993,23 @@ public class MissionService {
      */
     public int getPS(UUID uuid) {
         return playerPs.getOrDefault(uuid, 0);
+    }
+    
+    /**
+     * Añade PS a un jugador (para recompensas progresivas, tiempo jugado, eventos)
+     * @param uuid UUID del jugador
+     * @param amount Cantidad de PS a añadir
+     * @param reason Razón para el log (ej: "Tiempo jugado", "Evento: Eco de Brasas")
+     */
+    public void addPS(UUID uuid, int amount, String reason) {
+        int current = playerPs.getOrDefault(uuid, 0);
+        int newAmount = current + amount;
+        playerPs.put(uuid, newAmount);
+        savePlayerData();
+        
+        // Log para tracking
+        plugin.getLogger().info(String.format("[PS] %s ganó %d PS (%s) [%d -> %d]", 
+            uuid, amount, reason, current, newAmount));
     }
     
     /**
