@@ -28,7 +28,7 @@ public class AvoTabCompleter implements TabCompleter {
             // Nivel 1: subcomandos principales
             List<String> subcommands = Arrays.asList(
                 "start", "stop", "force", "skip", "preparacion", "time",
-                "newday", "endday", "status", "setps", "mission",
+                "newday", "endday", "status", "setxp", "mission",
                 "tps", "stats", "backup", "cooldown", "debug", "test", "test-alert",
                 "reload", "admin", "escanear", "protecciones", "eco",
                 "xp", "experience", "nivel", "level"
@@ -50,7 +50,8 @@ public class AvoTabCompleter implements TabCompleter {
                         .collect(Collectors.toList());
 
                 case "status":
-                case "setps":
+                case "setxp":
+                case "setps": // Backward compatibility
                 case "test-alert":
                     // Sugerir nombres de jugadores online
                     return plugin.getServer().getOnlinePlayers().stream()

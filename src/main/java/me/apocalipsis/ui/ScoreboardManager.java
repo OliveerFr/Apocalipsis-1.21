@@ -13,6 +13,7 @@ import org.bukkit.scoreboard.Scoreboard;
 
 import me.apocalipsis.Apocalipsis;
 import me.apocalipsis.disaster.DisasterController;
+import me.apocalipsis.missions.MissionRank;
 import me.apocalipsis.missions.MissionService;
 import me.apocalipsis.missions.RankService;
 import me.apocalipsis.state.ServerState;
@@ -99,13 +100,15 @@ public class ScoreboardManager {
         StringBuilder content = new StringBuilder();
         
         // [FIX] Sistema de rangos con display_name traducido y scoreboard_color desde rangos.yml
-        int ps = rankService.getPS(player);
+        int xp = rankService.getXP(player);
         String displayName = rankService.getTranslatedDisplayName(player);
-        content.append("§7Rango: ").append(displayName).append(" §8(§7").append(ps).append(" PS§8)\n");
+        MissionRank currentRank = rankService.getRank(player);
         
-        // Sistema de XP y Nivel
+        // Mostrar rango actual con XP
+        content.append("§7Rango: ").append(displayName).append(" §8(§7").append(xp).append(" XP§8)\n");
+        
+        // Sistema de XP y Nivel (muestra progreso de nivel, NO de rango)
         if (plugin.getExperienceService() != null) {
-            int xp = plugin.getExperienceService().getXP(player);
             int nivel = plugin.getExperienceService().getLevel(player);
             int xpForNext = plugin.getExperienceService().getXPForLevel(nivel + 1);
             int xpCurrent = plugin.getExperienceService().getXPForLevel(nivel);
@@ -155,23 +158,19 @@ public class ScoreboardManager {
         
         content.append(" \n"); // Línea vacía
         
-        // Progreso de rango (basado en XP/nivel)
+        // Progreso de rango (basado en XP según rangos.yml)
         if (!rankService.isMaxRank(player)) {
-            double progress = rankService.getProgressToNextRank(player);
-            content.append("§7Progreso de rango:\n");
-            
-            if (plugin.getExperienceService() != null) {
-                int xp = plugin.getExperienceService().getXP(player);
-                int nivel = plugin.getExperienceService().getLevel(player);
-                int xpForNext = plugin.getExperienceService().getXPForLevel(nivel + 1);
-                int xpCurrent = plugin.getExperienceService().getXPForLevel(nivel);
-                int xpProgress = xp - xpCurrent;
-                int xpNeeded = xpForNext - xpCurrent;
+            MissionRank nextRank = currentRank.getNext();
+            if (nextRank != null) {
+                int currentThreshold = currentRank.getXpRequired();
+                int nextThreshold = nextRank.getXpRequired();
+                int xpNeeded = nextThreshold - currentThreshold;
+                int xpProgress = xp - currentThreshold;
+                double progress = (double) xpProgress / xpNeeded;
+                progress = Math.max(0.0, Math.min(1.0, progress));
+                
+                content.append("§7Próx. rango: ").append(nextRank.getDisplayName()).append("\n");
                 content.append(buildProgressBar(progress)).append(" §7").append(xpProgress).append("/").append(xpNeeded).append(" XP\n");
-            } else {
-                // Fallback a PS si no hay ExperienceService
-                int nextThreshold = rankService.getNextRankThreshold(player);
-                content.append(buildProgressBar(progress)).append(" §7").append(ps).append("/").append(nextThreshold).append(" PS\n");
             }
         } else {
             content.append("§6§l★ RANGO MÁXIMO ★\n");
@@ -218,7 +217,6 @@ public class ScoreboardManager {
         int line = 15;
         
         // [FIX] Sistema de rangos con display_name traducido y scoreboard_color desde rangos.yml
-        int ps = rankService.getPS(player);
         line = refreshRankLine(player, objective, line);
         
         ServerState state = stateManager.getCurrentState();
@@ -271,11 +269,14 @@ public class ScoreboardManager {
         
         // Progreso de rango (solo si no es max rank)
         if (!rankService.isMaxRank(player)) {
+            int xp = rankService.getXP(player);
+            MissionRank currentRank = rankService.getRank(player);
             int nextThreshold = rankService.getNextRankThreshold(player);
+            int currentThreshold = currentRank.getXpRequired();
             double progress = rankService.getProgressToNextRank(player);
             objective.getScore("§7Progreso de rango:").setScore(line--);
             String progressBar = buildProgressBar(progress);
-            objective.getScore(progressBar + " §7" + ps + "/" + nextThreshold + " PS").setScore(line--);
+            objective.getScore(progressBar + " §7" + (xp - currentThreshold) + "/" + (nextThreshold - currentThreshold) + " XP").setScore(line--);
         } else {
             objective.getScore("§6§l★ RANGO MÁXIMO ★").setScore(line--);
         }
@@ -353,13 +354,13 @@ public class ScoreboardManager {
      * @return nueva posición de línea (line - 1)
      */
     private int refreshRankLine(Player player, Objective objective, int line) {
-        int ps = rankService.getPS(player);
+        int xp = rankService.getXP(player);
         
         // Obtener display_name traducido desde rangos.yml (ya viene con colores)
         String displayName = rankService.getTranslatedDisplayName(player);
         
-        // Renderizar línea de rango: "Rango: <display_name> (PS PS)"
-        String rankLine = "§7Rango: " + displayName + " §8(§7" + ps + " PS§8)";
+        // Renderizar línea de rango: "Rango: <display_name> (XP XP)"
+        String rankLine = "§7Rango: " + displayName + " §8(§7" + xp + " XP§8)";
         objective.getScore(rankLine).setScore(line--);
         
         return line;

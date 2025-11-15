@@ -123,12 +123,27 @@ public class TablistManager {
             footer.append("\n§7Tiempo restante: §7---");
         }
         
-        if (!rankService.isMaxRank(player)) {
-            int ps = rankService.getPS(player);
-            int nextThreshold = rankService.getNextRankThreshold(player);
-            footer.append("  §8|  §7Próx. rango: §a").append(ps).append("§7/§f").append(nextThreshold).append(" PS");
+        // [FIX] Usar nivel y XP en lugar de PS
+        if (plugin.getExperienceService() != null) {
+            int currentLevel = plugin.getExperienceService().getLevel(player);
+            int currentXP = plugin.getExperienceService().getXP(player);
+            
+            if (!rankService.isMaxRank(player)) {
+                int xpNeeded = plugin.getExperienceService().getXPForNextLevel(player);
+                footer.append("  §8|  §7Nivel: §a").append(currentLevel)
+                      .append("  §8|  §7XP: §a").append(currentXP).append("§7/§f").append(xpNeeded);
+            } else {
+                footer.append("  §8|  §7Nivel: §6").append(currentLevel).append("  §8|  §6§l★ RANGO MÁXIMO ★");
+            }
         } else {
-            footer.append("  §8|  §6§l★ RANGO MÁXIMO ★");
+            // Fallback al sistema antiguo si ExperienceService no está disponible
+            if (!rankService.isMaxRank(player)) {
+                int xp = rankService.getXP(player);
+                int nextThreshold = rankService.getNextRankThreshold(player);
+                footer.append("  §8|  §7Próx. rango: §a").append(xp).append("§7/§f").append(nextThreshold).append(" XP");
+            } else {
+                footer.append("  §8|  §6§l★ RANGO MÁXIMO ★");
+            }
         }
         
         player.sendPlayerListHeaderAndFooter(Component.text(header.toString()), Component.text(footer.toString()));
@@ -188,13 +203,28 @@ public class TablistManager {
             content.append("DT:").append(calculateCooldownFromStateYml()).append("|");
         }
         
-        // Rango
-        if (!rankService.isMaxRank(player)) {
-            int ps = rankService.getPS(player);
-            int nextThreshold = rankService.getNextRankThreshold(player);
-            content.append(ps).append("/").append(nextThreshold);
+        // [FIX] Usar nivel y XP en lugar de PS en caché
+        if (plugin.getExperienceService() != null) {
+            int currentLevel = plugin.getExperienceService().getLevel(player);
+            int currentXP = plugin.getExperienceService().getXP(player);
+            
+            content.append("LVL:").append(currentLevel).append("|XP:").append(currentXP);
+            
+            if (!rankService.isMaxRank(player)) {
+                int xpNeeded = plugin.getExperienceService().getXPForNextLevel(player);
+                content.append("/").append(xpNeeded);
+            } else {
+                content.append("|MAX");
+            }
         } else {
-            content.append("MAX");
+            // Fallback
+            if (!rankService.isMaxRank(player)) {
+                int xp = rankService.getXP(player);
+                int nextThreshold = rankService.getNextRankThreshold(player);
+                content.append(xp).append("/").append(nextThreshold);
+            } else {
+                content.append("MAX");
+            }
         }
         
         return content.toString();

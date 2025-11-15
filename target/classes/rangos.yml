@@ -1,10 +1,10 @@
 # ════════════════════════════════════════════════════════════════════
 # Apocalipsis — rangos.yml
-# Configuración de rangos existentes (NOVATO, EXPLORADOR, SOBREVIVIENTE, VETERANO, LEYENDA)
+# Configuración de rangos basados en EXPERIENCIA (XP)
 # ════════════════════════════════════════════════════════════════════
 
 version: 1
-umbral_acumulado: true        # true = ps_required es ACUMULADO (recomendado)
+umbral_acumulado: true        # true = xp_required es ACUMULADO (recomendado)
 
 # Reglas visuales por defecto (se usan si el rango no define su propio valor)
 visual_por_defecto:
@@ -18,7 +18,7 @@ visual_por_defecto:
 ranks:
   NOVATO:
     display_name: "&aNovato"
-    ps_required: 0
+    xp_required: 0
     misiones_diarias: 10
     tab_prefix: "&a[N] "
     tab_suffix: ""
@@ -27,7 +27,7 @@ ranks:
 
   EXPLORADOR:
     display_name: "&bExplorador"
-    ps_required: 200        # ~2 días (4h/día = ~100 PS/día)
+    xp_required: 980         # Nivel 5 (según sistema XP: base 140, mult 70)
     misiones_diarias: 8
     tab_prefix: "&b[E] "
     tab_suffix: ""
@@ -36,7 +36,7 @@ ranks:
 
   SOBREVIVIENTE:
     display_name: "&eSobreviviente"
-    ps_required: 600        # +400 PS → ~6 días total
+    xp_required: 3780        # Nivel 10
     misiones_diarias: 6
     tab_prefix: "&e[S] "
     tab_suffix: ""
@@ -45,7 +45,7 @@ ranks:
 
   VETERANO:
     display_name: "&6Veterano"
-    ps_required: 1400       # +800 PS → ~14 días total
+    xp_required: 8330        # Nivel 15
     misiones_diarias: 5
     tab_prefix: "&6[V] "
     tab_suffix: ""
@@ -54,7 +54,7 @@ ranks:
 
   LEYENDA:
     display_name: "&c&lLeyenda"
-    ps_required: 2800       # +1400 PS → ~28 días total (1 mes)
+    xp_required: 14630       # Nivel 20
     misiones_diarias: 4
     tab_prefix: "&c[L] "
     tab_suffix: ""
@@ -63,7 +63,7 @@ ranks:
 
   MAESTRO:
     display_name: "&5&lMaestro"
-    ps_required: 4800       # +2000 PS → ~48 días total
+    xp_required: 22680       # Nivel 25
     misiones_diarias: 3
     tab_prefix: "&5[M] "
     tab_suffix: ""
@@ -72,7 +72,7 @@ ranks:
 
   TITAN:
     display_name: "&4&lTitán"
-    ps_required: 7200       # +2400 PS → ~72 días total (2.4 meses)
+    xp_required: 32480       # Nivel 30
     misiones_diarias: 3
     tab_prefix: "&4[T] "
     tab_suffix: "&4✦"
@@ -81,7 +81,7 @@ ranks:
 
   ABSOLUTO:
     display_name: "&f&l&oAbsoluto"
-    ps_required: 10000      # +2800 PS → ~90 días total (3 meses exactos)
+    xp_required: 44030       # Nivel 35
     misiones_diarias: 2
     tab_prefix: "&f&l[A] "
     tab_suffix: "&f&l✦✦"
@@ -89,22 +89,25 @@ ranks:
     scoreboard_color: "WHITE"
 
 # ════════════════════════════════════════════════════════════════════
-# NOTAS DE PROGRESIÓN (3 MESES DE SERIE)
+# NOTAS DE PROGRESIÓN (SISTEMA UNIFICADO XP - 30 DÍAS)
 # ════════════════════════════════════════════════════════════════════
-# Fuentes de PS (jugador activo 4h/día):
-# - Misiones: ~30-40 PS/día (dependiendo del rango)
-# - Tiempo jugado: 8 PS/día (4h ÷ 30min = 8 intervalos)
-# - Eventos: 150-250 PS/evento (~2 eventos/semana = 75-125 PS/semana extra)
-# Total: ~100 PS/día promedio
+# Fuentes de XP (jugador activo):
+# - Misiones: ~1,500-2,200 XP/día (fuente principal 85%)
+# - Mobs: 2 XP/hostile, 100 XP/jefe (~100-200 XP/día)
+# - Minado: 5 XP/diamante, 10 XP/debris (~50-100 XP/día)
+# - Farming/Craft/Pesca: ~50-100 XP/día
+# Total: ~1,750-2,900 XP/día promedio
 #
-# Progresión balanceada para 90 días (3 meses):
-# - NOVATO → EXPLORADOR: 200 PS → ~2 días (arranque rápido)
-# - EXPLORADOR → SOBREVIVIENTE: +400 PS → ~6 días total
-# - SOBREVIVIENTE → VETERANO: +800 PS → ~14 días total (2 semanas)
-# - VETERANO → LEYENDA: +1400 PS → ~28 días total (1 mes)
-# - LEYENDA → MAESTRO: +2000 PS → ~48 días total
-# - MAESTRO → TITAN: +2400 PS → ~72 días total (2.4 meses)
-# - TITAN → ABSOLUTO: +2800 PS → ~90 días total (3 meses EXACTOS)
+# Progresión balanceada para 30 días:
+# - NOVATO → EXPLORADOR: 980 XP (Nivel 5) → ~1 día
+# - EXPLORADOR → SOBREVIVIENTE: +2,800 XP (Nivel 10) → ~3 días total
+# - SOBREVIVIENTE → VETERANO: +4,550 XP (Nivel 15) → ~5 días total
+# - VETERANO → LEYENDA: +6,300 XP (Nivel 20) → ~8 días total
+# - LEYENDA → MAESTRO: +8,050 XP (Nivel 25) → ~12 días total
+# - MAESTRO → TITAN: +9,800 XP (Nivel 30) → ~17 días total
+# - TITAN → ABSOLUTO: +11,550 XP (Nivel 35) → ~23 días total
 #
-# Alcanzar ABSOLUTO requiere juego constante durante toda la serie (3 meses)
+# Jugador muy activo (2,200 XP/día): Alcanza ABSOLUTO en ~20 días
+# Jugador activo (1,500 XP/día): Alcanza ABSOLUTO en ~29 días
+# Jugador casual (900 XP/día): Alcanza MAESTRO/TITAN en 30 días
 # ════════════════════════════════════════════════════════════════════

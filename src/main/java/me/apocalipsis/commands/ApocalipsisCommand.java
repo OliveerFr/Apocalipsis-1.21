@@ -74,7 +74,7 @@ public class ApocalipsisCommand implements CommandExecutor {
             sender.sendMessage("§e/avo newday §7- Crea un nuevo día y asigna misiones");
             sender.sendMessage("§e/avo endday §7- Termina el día actual");
             sender.sendMessage("§e/avo status [jugador] §7- Muestra misiones activas");
-            sender.sendMessage("§e/avo setps <jugador> <ps> §7- Ajusta PS de un jugador");
+            sender.sendMessage("§e/avo setxp <jugador> <xp> §7- Ajusta XP de un jugador");
             sender.sendMessage("§e/avo mission <give|complete|clear> §7- Gestión de misiones");
             sender.sendMessage("§6=== Sistema ===");
             sender.sendMessage("§e/avo tps §7- Ver TPS y rendimiento");
@@ -125,8 +125,9 @@ public class ApocalipsisCommand implements CommandExecutor {
             case "status":
                 cmdStatus(sender, args);
                 break;
-            case "setps":
-                cmdSetPs(sender, args);
+            case "setxp":
+            case "setps": // Backward compatibility
+                cmdSetXp(sender, args);
                 break;
             case "mission":
                 cmdMission(sender, args);
@@ -941,16 +942,16 @@ public class ApocalipsisCommand implements CommandExecutor {
     }
 
     /**
-     * /avo setps <jugador> <ps> - Ajusta PS de un jugador manualmente
+     * /avo setxp <jugador> <xp> - Ajusta XP de un jugador manualmente
      */
-    private void cmdSetPs(CommandSender sender, String[] args) {
+    private void cmdSetXp(CommandSender sender, String[] args) {
         if (!sender.hasPermission("avo.admin")) {
             sender.sendMessage("§cNo tienes permisos.");
             return;
         }
 
         if (args.length < 3) {
-            sender.sendMessage("§cUso: /avo setps <jugador> <ps>");
+            sender.sendMessage("§cUso: /avo setxp <jugador> <xp>");
             return;
         }
 
@@ -960,24 +961,28 @@ public class ApocalipsisCommand implements CommandExecutor {
             return;
         }
 
-        int ps;
+        int xp;
         try {
-            ps = Integer.parseInt(args[2]);
+            xp = Integer.parseInt(args[2]);
         } catch (NumberFormatException e) {
-            sender.sendMessage("§cPS inválido: " + args[2]);
+            sender.sendMessage("§cXP inválido: " + args[2]);
             return;
         }
 
-        if (ps < 0) {
-            sender.sendMessage("§cPS no puede ser negativo.");
+        if (xp < 0) {
+            sender.sendMessage("§cXP no puede ser negativo.");
             return;
         }
 
-        int oldPs = plugin.getRankService().getPS(target);
-        plugin.getMissionService().setPlayerPS(target.getUniqueId(), ps);
+        int oldXp = plugin.getRankService().getXP(target);
+        if (plugin.getExperienceService() != null) {
+            plugin.getExperienceService().setXP(target, xp);
+        } else {
+            plugin.getMissionService().setPlayerPS(target.getUniqueId(), xp);
+        }
         
-        sender.sendMessage("§a✓ PS de " + target.getName() + ": §e" + oldPs + " §7→ §e" + ps);
-        target.sendMessage("§6[Admin] §aTus PS fueron ajustados a §e" + ps);
+        sender.sendMessage("§a✓ XP de " + target.getName() + ": §e" + oldXp + " §7→ §e" + xp);
+        target.sendMessage("§6[Admin] §aTu XP fue ajustada a §e" + xp);
         
         // Actualizar UI
         if (plugin.getScoreboardManager() != null) {
@@ -987,7 +992,7 @@ public class ApocalipsisCommand implements CommandExecutor {
             plugin.getTablistManager().applyTabPrefix(target);
         }
         
-        plugin.getLogger().info("[Admin] " + sender.getName() + " ajustó PS de " + target.getName() + ": " + oldPs + " → " + ps);
+        plugin.getLogger().info("[Admin] " + sender.getName() + " ajustó XP de " + target.getName() + ": " + oldXp + " → " + xp);
     }
 
     /**

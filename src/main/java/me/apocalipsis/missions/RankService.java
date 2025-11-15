@@ -94,24 +94,23 @@ public class RankService {
     }
 
     /**
-     * Obtiene los PS actuales del jugador
+     * Obtiene la XP actual del jugador
      */
-    public int getPS(Player player) {
+    public int getXP(Player player) {
+        if (plugin.getExperienceService() != null) {
+            return plugin.getExperienceService().getXP(player);
+        }
+        // Fallback: usar PS como XP si ExperienceService no está disponible
         return missionService.getPlayerPs(player);
     }
 
     /**
-     * Obtiene el rango actual del jugador según sus PS
+     * Obtiene el rango actual del jugador según su XP (según rangos.yml)
      */
     public MissionRank getRank(Player player) {
-        // Usar nivel de XP en lugar de PS para determinar rango
-        if (plugin.getExperienceService() != null) {
-            int nivel = plugin.getExperienceService().getLevel(player);
-            return MissionRank.fromLevel(nivel);
-        }
-        // Fallback al sistema anterior si no hay ExperienceService
-        int ps = getPS(player);
-        return MissionRank.fromPs(ps);
+        // SIEMPRE usar XP para determinar rango (según rangos.yml con umbral_acumulado: true)
+        int xp = getXP(player);
+        return MissionRank.fromXp(xp);
     }
 
     /**
@@ -127,7 +126,7 @@ public class RankService {
             return Integer.MAX_VALUE;
         }
         
-        return next.getPsRequired();
+        return next.getXpRequired();
     }
 
     /**
@@ -139,29 +138,30 @@ public class RankService {
     }
 
     /**
-     * Obtiene el progreso hacia el siguiente rango (0.0 a 1.0)
+     * Obtiene el progreso hacia el siguiente rango (0.0 a 1.0) basado en XP
      */
     public double getProgressToNextRank(Player player) {
         if (isMaxRank(player)) {
             return 1.0;
         }
 
-        // Usar progreso de XP en lugar de PS
-        if (plugin.getExperienceService() != null) {
-            return plugin.getExperienceService().getProgressToNextLevel(player);
+        // Usar XP para calcular progreso de rango (según rangos.yml)
+        MissionRank current = getRank(player);
+        MissionRank next = current.getNext();
+        
+        if (next == null) {
+            return 1.0;
         }
         
-        // Fallback al sistema anterior si no hay ExperienceService
-        MissionRank current = getRank(player);
-        int ps = getPS(player);
-        int currentMin = current.getPsRequired();
-        int nextMin = getNextRankThreshold(player);
+        int xp = getXP(player);
+        int currentMin = current.getXpRequired();
+        int nextMin = next.getXpRequired();
 
         if (nextMin <= currentMin) {
             return 1.0;
         }
 
-        double progress = (double) (ps - currentMin) / (nextMin - currentMin);
+        double progress = (double) (xp - currentMin) / (nextMin - currentMin);
         return Math.max(0.0, Math.min(1.0, progress));
     }
 

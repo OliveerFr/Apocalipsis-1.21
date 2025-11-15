@@ -19,7 +19,7 @@ public class EcoBrasasListener implements Listener {
     }
     
     /**
-     * Detecta cuando un jugador golpea una entidad (Shulker = grieta)
+     * Detecta cuando un jugador golpea una entidad (para grietas)
      */
     @EventHandler(priority = EventPriority.HIGH)
     public void onEntityDamage(EntityDamageByEntityEvent event) {
@@ -27,18 +27,29 @@ public class EcoBrasasListener implements Listener {
         
         Player player = (Player) event.getDamager();
         
-        // Detectar Shulker (hitbox de grieta)
+        // Detectar Interaction entity (nuevo hitbox de grieta)
+        if (event.getEntity() instanceof org.bukkit.entity.Interaction) {
+            org.bukkit.entity.Interaction interaction = (org.bukkit.entity.Interaction) event.getEntity();
+            
+            if (interaction.getScoreboardTags().contains("eco_grieta_hitbox")) {
+                event.setCancelled(true); // No destruir la entidad
+                ecoBrasas.onGrietaGolpeada(interaction.getLocation(), player);
+                return;
+            }
+        }
+        
+        // Detectar Shulker (legacy, por si hay grietas viejas)
         if (event.getEntity() instanceof Shulker) {
             Shulker shulker = (Shulker) event.getEntity();
             
             if (shulker.getScoreboardTags().contains("eco_grieta_hitbox")) {
-                event.setCancelled(true); // No matar el shulker
+                event.setCancelled(true);
                 ecoBrasas.onGrietaGolpeada(shulker.getLocation(), player);
                 return;
             }
         }
         
-        // Detectar ArmorStand (por si acaso clickean el label)
+        // Detectar ArmorStand (por si clickean el label)
         if (event.getEntity() instanceof ArmorStand) {
             ArmorStand entity = (ArmorStand) event.getEntity();
             
@@ -57,25 +68,37 @@ public class EcoBrasasListener implements Listener {
     public void onPlayerInteract(PlayerInteractAtEntityEvent event) {
         Player player = event.getPlayer();
         
-        // Detectar Shulker (hitbox de grieta, ancla o altar)
+        // Detectar Interaction entity (nuevo hitbox para grietas, anclas y altar)
+        if (event.getRightClicked() instanceof org.bukkit.entity.Interaction) {
+            org.bukkit.entity.Interaction interaction = (org.bukkit.entity.Interaction) event.getRightClicked();
+            
+            // Grietas también aceptan clic derecho (además de golpes)
+            if (interaction.getScoreboardTags().contains("eco_grieta_hitbox")) {
+                event.setCancelled(true);
+                ecoBrasas.onGrietaGolpeada(interaction.getLocation(), player);
+                return;
+            }
+            
+            if (interaction.getScoreboardTags().contains("eco_ancla_hitbox")) {
+                event.setCancelled(true);
+                ecoBrasas.onAnclaInteractuada(interaction.getLocation(), player);
+                return;
+            }
+            
+            if (interaction.getScoreboardTags().contains("eco_altar_hitbox")) {
+                event.setCancelled(true);
+                ecoBrasas.onAltarInteractuado(interaction.getLocation(), player);
+                return;
+            }
+        }
+        
+        // Detectar Shulker (solo para grietas, aunque ya no se usa para anclas/altar)
         if (event.getRightClicked() instanceof Shulker) {
             Shulker shulker = (Shulker) event.getRightClicked();
             
             if (shulker.getScoreboardTags().contains("eco_grieta_hitbox")) {
                 event.setCancelled(true);
                 ecoBrasas.onGrietaGolpeada(shulker.getLocation(), player);
-                return;
-            }
-            
-            if (shulker.getScoreboardTags().contains("eco_ancla_hitbox")) {
-                event.setCancelled(true);
-                ecoBrasas.onAnclaInteractuada(shulker.getLocation(), player);
-                return;
-            }
-            
-            if (shulker.getScoreboardTags().contains("eco_altar_hitbox")) {
-                event.setCancelled(true);
-                ecoBrasas.onAltarInteractuado(shulker.getLocation(), player);
                 return;
             }
         }

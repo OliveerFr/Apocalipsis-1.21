@@ -298,39 +298,64 @@ public class EcoBrasasEvent extends EventBase {
         
         World world = spawnLoc.getWorld();
         
-        // Crear SHULKER INVISIBLE como hitbox (no se mueve, invulnerable)
-        org.bukkit.entity.Shulker hitbox = world.spawn(spawnLoc.clone().add(0, 1, 0), org.bukkit.entity.Shulker.class);
-        hitbox.setInvisible(true);
-        hitbox.setGravity(false);
-        hitbox.setInvulnerable(false); // Permitir daño para detectar golpes
-        hitbox.setAI(false); // Sin IA para que no se mueva
-        hitbox.setSilent(true);
+        // [VISUAL MEJORADO] Crear estructura de grieta con bloques
+        createGrietaStructure(spawnLoc);
+        
+        // Crear INTERACTION ENTITY como hitbox para detección de golpes (mejor que Magma Cube)
+        org.bukkit.entity.Interaction hitbox = world.spawn(
+            spawnLoc.clone().add(0, 1.0, 0), 
+            org.bukkit.entity.Interaction.class
+        );
+        hitbox.setInteractionWidth(2.0f);  // Ancho generoso (2 bloques)
+        hitbox.setInteractionHeight(2.0f); // Alto generoso (2 bloques)
+        hitbox.setResponsive(true); // Responde a interacciones
         hitbox.addScoreboardTag("eco_grieta_hitbox");
         
-        // Crear ArmorStand para nombre visible (flotante encima del shulker)
-        org.bukkit.entity.ArmorStand marker = world.spawn(spawnLoc.clone().add(0, 2.5, 0), org.bukkit.entity.ArmorStand.class);
+        // Crear ArmorStand con item visual (bloque de magma flotante)
+        org.bukkit.entity.ArmorStand visual = world.spawn(spawnLoc.clone().add(0, 1.5, 0), org.bukkit.entity.ArmorStand.class);
+        visual.setVisible(false);
+        visual.setGravity(false);
+        visual.setInvulnerable(true);
+        visual.setMarker(true);
+        visual.getEquipment().setHelmet(new org.bukkit.inventory.ItemStack(org.bukkit.Material.MAGMA_BLOCK));
+        visual.addScoreboardTag("eco_grieta_visual");
+        
+        // Crear ArmorStand para nombre visible (más arriba)
+        org.bukkit.entity.ArmorStand marker = world.spawn(spawnLoc.clone().add(0, 3.0, 0), org.bukkit.entity.ArmorStand.class);
         marker.setVisible(false);
         marker.setGravity(false);
         marker.setInvulnerable(true);
         marker.setMarker(true);
-        marker.customName(net.kyori.adventure.text.Component.text("§c§l⚠ GRIETA DE VAPOR §c§l⚠"));
+        marker.customName(net.kyori.adventure.text.Component.text("§c§l⚠ GRIETA DE VAPOR ⚠"));
         marker.setCustomNameVisible(true);
         marker.addScoreboardTag("eco_grieta_label");
         
-        // Registrar grieta (guardamos el shulker como entidad principal)
-        grietasActivas.put(spawnLoc, marker); // Marker para nombre
+        // Segundo ArmorStand con instrucción
+        org.bukkit.entity.ArmorStand instruccion = world.spawn(spawnLoc.clone().add(0, 2.5, 0), org.bukkit.entity.ArmorStand.class);
+        instruccion.setVisible(false);
+        instruccion.setGravity(false);
+        instruccion.setInvulnerable(true);
+        instruccion.setMarker(true);
+        instruccion.customName(net.kyori.adventure.text.Component.text("§e§l>>> GOLPEA AQUÍ <<<"));
+        instruccion.setCustomNameVisible(true);
+        instruccion.addScoreboardTag("eco_grieta_label");
+        
+        // Registrar grieta
+        grietasActivas.put(spawnLoc, marker);
         grietaHealth.put(spawnLoc, GRIETA_MAX_HEALTH);
         
-        // Efectos visuales iniciales masivos
-        world.spawnParticle(Particle.EXPLOSION, spawnLoc, 10, 2, 2, 2, 0);
-        world.spawnParticle(Particle.LAVA, spawnLoc, 100, 3, 3, 3, 0.2);
-        world.spawnParticle(Particle.FLAME, spawnLoc, 200, 4, 4, 4, 0.3);
-        world.spawnParticle(Particle.SOUL_FIRE_FLAME, spawnLoc, 50, 2, 2, 2, 0.1);
+        // Efectos visuales iniciales mejorados
+        world.spawnParticle(Particle.EXPLOSION, spawnLoc.clone().add(0, 1, 0), 15, 2, 2, 2, 0);
+        world.spawnParticle(Particle.LAVA, spawnLoc.clone().add(0, 1, 0), 150, 2, 2, 2, 0.2);
+        world.spawnParticle(Particle.FLAME, spawnLoc.clone().add(0, 1, 0), 200, 2, 2, 2, 0.3);
+        world.spawnParticle(Particle.SOUL_FIRE_FLAME, spawnLoc.clone().add(0, 1, 0), 80, 1.5, 1.5, 1.5, 0.15);
+        world.spawnParticle(Particle.DRIPPING_LAVA, spawnLoc.clone().add(0, 2, 0), 50, 1, 0.5, 1, 0);
         
         // Sonidos dramáticos
         world.playSound(spawnLoc, Sound.ENTITY_GENERIC_EXPLODE, 2.0f, 0.5f);
         world.playSound(spawnLoc, Sound.BLOCK_PORTAL_AMBIENT, 2.0f, 0.6f);
         world.playSound(spawnLoc, Sound.ENTITY_BLAZE_AMBIENT, 1.5f, 0.8f);
+        world.playSound(spawnLoc, Sound.BLOCK_LAVA_POP, 1.0f, 0.7f);
         
         // Mensaje del Observador con coordenadas
         String coords = String.format("X: %d Z: %d", 
@@ -361,38 +386,152 @@ public class EcoBrasasEvent extends EventBase {
     }
     
     /**
+     * Crea estructura visual de grieta con bloques
+     */
+    private void createGrietaStructure(Location center) {
+        World world = center.getWorld();
+        int x = center.getBlockX();
+        int y = center.getBlockY();
+        int z = center.getBlockZ();
+        
+        // Crear cruz de netherrack y magma en el suelo (patrón de grieta)
+        world.getBlockAt(x, y, z).setType(org.bukkit.Material.MAGMA_BLOCK);
+        world.getBlockAt(x+1, y, z).setType(org.bukkit.Material.NETHERRACK);
+        world.getBlockAt(x-1, y, z).setType(org.bukkit.Material.NETHERRACK);
+        world.getBlockAt(x, y, z+1).setType(org.bukkit.Material.NETHERRACK);
+        world.getBlockAt(x, y, z-1).setType(org.bukkit.Material.NETHERRACK);
+        world.getBlockAt(x+1, y, z+1).setType(org.bukkit.Material.MAGMA_BLOCK);
+        world.getBlockAt(x-1, y, z-1).setType(org.bukkit.Material.MAGMA_BLOCK);
+        world.getBlockAt(x+1, y, z-1).setType(org.bukkit.Material.MAGMA_BLOCK);
+        world.getBlockAt(x-1, y, z+1).setType(org.bukkit.Material.MAGMA_BLOCK);
+        
+        // Crear fuegos pequeños alrededor
+        spawnFireEffect(new Location(world, x+1, y+1, z));
+        spawnFireEffect(new Location(world, x-1, y+1, z));
+        spawnFireEffect(new Location(world, x, y+1, z+1));
+        spawnFireEffect(new Location(world, x, y+1, z-1));
+    }
+    
+    private void spawnFireEffect(Location loc) {
+        if (loc.getBlock().getType() == org.bukkit.Material.AIR) {
+            loc.getBlock().setType(org.bukkit.Material.FIRE);
+        }
+    }
+    
+    /**
      * Buscar ubicación lejos de jugadores (150-300 bloques)
+     * MEJORADO: Extiende el rango automáticamente si no encuentra superficie válida
      */
     private Location findRemoteLocationFar() {
         World world = Bukkit.getWorlds().get(0);
+        int rangoMin = 150;
+        int rangoMax = 300;
+        int incremento = 50; // Incrementar 50 bloques si no encuentra
+        int maxExtension = 1000; // Límite máximo de búsqueda
         
-        for (int intento = 0; intento < 30; intento++) {
-            int x = random.nextInt(600) - 300; // -300 a +300
-            int z = random.nextInt(600) - 300;
-            int y = world.getHighestBlockYAt(x, z) + 1;
-            
-            Location loc = new Location(world, x, y, z);
-            
-            // Verificar que esté lejos de jugadores (min 150 bloques)
-            boolean lejos = true;
-            for (Player player : Bukkit.getOnlinePlayers()) {
-                double dist = player.getLocation().distance(loc);
-                if (dist < 150 || dist > 300) {
-                    lejos = false;
-                    break;
+        while (rangoMax <= maxExtension) {
+            // Intentar con el rango actual
+            for (int intento = 0; intento < 30; intento++) {
+                int distancia = random.nextInt(rangoMax - rangoMin + 1) + rangoMin;
+                double angulo = random.nextDouble() * 2 * Math.PI;
+                int x = (int) (distancia * Math.cos(angulo));
+                int z = (int) (distancia * Math.sin(angulo));
+                int y = world.getHighestBlockYAt(x, z);
+                
+                Location loc = new Location(world, x, y, z);
+                
+                // [VALIDACIÓN] Verificar que sea superficie sólida válida
+                if (!isValidSurfaceLocation(loc)) {
+                    continue;
+                }
+                
+                // Verificar que esté lejos de jugadores
+                boolean lejos = true;
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    double dist = player.getLocation().distance(loc);
+                    if (dist < rangoMin) {
+                        lejos = false;
+                        break;
+                    }
+                }
+                
+                if (lejos) {
+                    plugin.getLogger().info(String.format("[EcoBrasas] Grieta ubicación encontrada en rango %d-%d bloques", rangoMin, rangoMax));
+                    return loc.add(0, 1, 0);
                 }
             }
             
-            if (lejos) {
-                return loc;
+            // No se encontró superficie válida, extender rango
+            plugin.getLogger().warning(String.format("[EcoBrasas] No se encontró superficie en rango %d-%d, extendiendo a %d-%d", 
+                rangoMin, rangoMax, rangoMin, rangoMax + incremento));
+            rangoMax += incremento;
+        }
+        
+        // Último recurso: buscar cualquier superficie válida cerca del spawn
+        plugin.getLogger().warning("[EcoBrasas] Usando fallback: spawn del mundo");
+        Location spawn = world.getSpawnLocation();
+        
+        // Buscar superficie válida cerca del spawn
+        for (int radio = 50; radio <= 200; radio += 50) {
+            for (int i = 0; i < 20; i++) {
+                double angulo = random.nextDouble() * 2 * Math.PI;
+                int x = spawn.getBlockX() + (int) (radio * Math.cos(angulo));
+                int z = spawn.getBlockZ() + (int) (radio * Math.sin(angulo));
+                int y = world.getHighestBlockYAt(x, z);
+                Location fallbackLoc = new Location(world, x, y, z);
+                
+                if (isValidSurfaceLocation(fallbackLoc)) {
+                    plugin.getLogger().info("[EcoBrasas] Superficie válida encontrada a " + radio + " bloques del spawn");
+                    return fallbackLoc.add(0, 1, 0);
+                }
             }
         }
         
-        // Fallback: ubicación aleatoria básica
-        int x = random.nextInt(400) - 200;
-        int z = random.nextInt(400) - 200;
-        int y = world.getHighestBlockYAt(x, z) + 1;
-        return new Location(world, x, y, z);
+        return spawn;
+    }
+    
+    /**
+     * Valida que una ubicación sea superficie sólida válida (no agua, área suficiente)
+     */
+    private boolean isValidSurfaceLocation(Location loc) {
+        if (loc == null || loc.getWorld() == null) return false;
+        
+        World world = loc.getWorld();
+        int x = loc.getBlockX();
+        int y = loc.getBlockY();
+        int z = loc.getBlockZ();
+        
+        // 1. El bloque donde se spawneará debe ser AIR (espacio libre)
+        org.bukkit.Material blockAt = world.getBlockAt(x, y + 1, z).getType();
+        if (blockAt != org.bukkit.Material.AIR && blockAt != org.bukkit.Material.CAVE_AIR) {
+            return false; // No hay espacio
+        }
+        
+        // 2. El bloque debajo debe ser SUPERFICIE SÓLIDA (no agua, lava, aire)
+        org.bukkit.Material groundBlock = world.getBlockAt(x, y, z).getType();
+        if (!groundBlock.isSolid() || 
+            groundBlock == org.bukkit.Material.WATER || 
+            groundBlock == org.bukkit.Material.LAVA ||
+            groundBlock == org.bukkit.Material.ICE ||
+            groundBlock == org.bukkit.Material.MAGMA_BLOCK) {
+            return false; // No es superficie válida
+        }
+        
+        // 3. Verificar área de 5x5 alrededor (suficiente superficie)
+        int solidCount = 0;
+        for (int dx = -2; dx <= 2; dx++) {
+            for (int dz = -2; dz <= 2; dz++) {
+                org.bukkit.Material checkGround = world.getBlockAt(x + dx, y, z + dz).getType();
+                if (checkGround.isSolid() && 
+                    checkGround != org.bukkit.Material.WATER && 
+                    checkGround != org.bukkit.Material.LAVA) {
+                    solidCount++;
+                }
+            }
+        }
+        
+        // Al menos 18 de 25 bloques deben ser sólidos (72%)
+        return solidCount >= 18;
     }
     
     private void showGrietaActionBar(Player player) {
@@ -468,28 +607,68 @@ public class EcoBrasasEvent extends EventBase {
         return "§7▓▓░░░░░░░░ §7§lMUY LEJOS";
     }
     
+    /**
+     * Buscar ubicación lejos de jugadores (50+ bloques) para anclas
+     * MEJORADO: Extiende el rango automáticamente si no encuentra superficie válida
+     */
     private Location findRemoteLocation() {
-        // Intentar encontrar ubicación lejos de todos los jugadores
-        World world = Bukkit.getWorlds().get(0); // Mundo principal
+        World world = Bukkit.getWorlds().get(0);
+        int rangoMin = 50;
+        int rangoMax = 200;
+        int incremento = 50;
+        int maxExtension = 800;
         
-        for (int intento = 0; intento < 20; intento++) {
-            int x = random.nextInt(400) - 200; // -200 a +200
-            int z = random.nextInt(400) - 200;
-            int y = world.getHighestBlockYAt(x, z) + 1;
-            
-            Location loc = new Location(world, x, y, z);
-            
-            // Verificar que esté lejos de jugadores (min 50 bloques)
-            boolean lejos = true;
-            for (Player player : Bukkit.getOnlinePlayers()) {
-                if (player.getLocation().distance(loc) < 50) {
-                    lejos = false;
-                    break;
+        while (rangoMax <= maxExtension) {
+            // Intentar con el rango actual
+            for (int intento = 0; intento < 25; intento++) {
+                int distancia = random.nextInt(rangoMax - rangoMin + 1) + rangoMin;
+                double angulo = random.nextDouble() * 2 * Math.PI;
+                int x = (int) (distancia * Math.cos(angulo));
+                int z = (int) (distancia * Math.sin(angulo));
+                int y = world.getHighestBlockYAt(x, z);
+                
+                Location loc = new Location(world, x, y, z);
+                
+                // [VALIDACIÓN] Verificar que sea superficie sólida válida
+                if (!isValidSurfaceLocation(loc)) {
+                    continue;
+                }
+                
+                // Verificar que esté lejos de jugadores
+                boolean lejos = true;
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    if (player.getLocation().distance(loc) < rangoMin) {
+                        lejos = false;
+                        break;
+                    }
+                }
+                
+                if (lejos) {
+                    plugin.getLogger().info(String.format("[EcoBrasas] Ancla ubicación encontrada en rango %d-%d bloques", rangoMin, rangoMax));
+                    return loc.add(0, 1, 0);
                 }
             }
             
-            if (lejos) {
-                return loc;
+            // No se encontró superficie válida, extender rango
+            plugin.getLogger().warning(String.format("[EcoBrasas] Ancla: No se encontró superficie en rango %d-%d, extendiendo a %d-%d", 
+                rangoMin, rangoMax, rangoMin, rangoMax + incremento));
+            rangoMax += incremento;
+        }
+        
+        // Fallback: buscar cualquier superficie válida
+        plugin.getLogger().warning("[EcoBrasas] Ancla usando fallback: búsqueda amplia");
+        for (int radio = 30; radio <= 500; radio += 30) {
+            for (int i = 0; i < 15; i++) {
+                double angulo = random.nextDouble() * 2 * Math.PI;
+                int x = (int) (radio * Math.cos(angulo));
+                int z = (int) (radio * Math.sin(angulo));
+                int y = world.getHighestBlockYAt(x, z);
+                Location fallbackLoc = new Location(world, x, y, z);
+                
+                if (isValidSurfaceLocation(fallbackLoc)) {
+                    plugin.getLogger().info("[EcoBrasas] Ancla: Superficie encontrada a " + radio + " bloques");
+                    return fallbackLoc.add(0, 1, 0);
+                }
             }
         }
         
@@ -635,18 +814,32 @@ public class EcoBrasasEvent extends EventBase {
                 progreso.put("eco_roto", 0);
                 anclaProgreso.put(i, progreso);
                 
-                // Crear SHULKER INVISIBLE como hitbox
-                org.bukkit.entity.Shulker hitbox = world.spawn(loc.clone().add(0, 1, 0), org.bukkit.entity.Shulker.class);
-                hitbox.setInvisible(true);
-                hitbox.setGravity(false);
-                hitbox.setInvulnerable(true); // Invulnerable porque no queremos que reciba daño
-                hitbox.setAI(false);
-                hitbox.setSilent(true);
+                // [VISUAL MEJORADO] Crear estructura de ancla con bloques
+                createAnclaStructure(loc, i);
+                
+                // Crear INTERACTION ENTITY como hitbox para detección de clics (mejor que Shulker)
+                org.bukkit.entity.Interaction hitbox = world.spawn(
+                    loc.clone().add(0, 1.5, 0), 
+                    org.bukkit.entity.Interaction.class
+                );
+                hitbox.setInteractionWidth(1.5f);  // Ancho de la hitbox (1.5 bloques)
+                hitbox.setInteractionHeight(1.5f); // Alto de la hitbox (1.5 bloques)
+                hitbox.setResponsive(true); // Responde a interacciones
                 hitbox.addScoreboardTag("eco_ancla_hitbox");
                 hitbox.addScoreboardTag("eco_ancla_" + i);
                 
-                // Crear ArmorStand para nombre (flotante encima del shulker)
-                org.bukkit.entity.ArmorStand marker = world.spawn(loc.clone().add(0, 2.5, 0), org.bukkit.entity.ArmorStand.class);
+                // Crear ArmorStand con item visual (respawn anchor)
+                org.bukkit.entity.ArmorStand visual = world.spawn(loc.clone().add(0, 1.5, 0), org.bukkit.entity.ArmorStand.class);
+                visual.setVisible(false);
+                visual.setGravity(false);
+                visual.setInvulnerable(true);
+                visual.setMarker(true);
+                visual.getEquipment().setHelmet(new org.bukkit.inventory.ItemStack(org.bukkit.Material.RESPAWN_ANCHOR));
+                visual.addScoreboardTag("eco_ancla_visual");
+                visual.addScoreboardTag("eco_ancla_" + i);
+                
+                // Crear ArmorStand para nombre (flotante encima)
+                org.bukkit.entity.ArmorStand marker = world.spawn(loc.clone().add(0, 3.0, 0), org.bukkit.entity.ArmorStand.class);
                 marker.setVisible(false);
                 marker.setGravity(false);
                 marker.setInvulnerable(true);
@@ -657,11 +850,24 @@ public class EcoBrasasEvent extends EventBase {
                 marker.addScoreboardTag("eco_ancla_" + i);
                 anclaMarkers.put(i, marker);
                 
-                // Efectos visuales
-                loc.getWorld().spawnParticle(Particle.FLAME, loc, 100, 2, 2, 2, 0.1);
-                loc.getWorld().spawnParticle(Particle.SOUL_FIRE_FLAME, loc, 50, 1, 1, 1, 0.05);
-                loc.getWorld().spawnParticle(Particle.END_ROD, loc, 50, 1, 2, 1, 0.1);
+                // ArmorStand con instrucción
+                org.bukkit.entity.ArmorStand instruccion = world.spawn(loc.clone().add(0, 2.5, 0), org.bukkit.entity.ArmorStand.class);
+                instruccion.setVisible(false);
+                instruccion.setGravity(false);
+                instruccion.setInvulnerable(true);
+                instruccion.setMarker(true);
+                instruccion.customName(net.kyori.adventure.text.Component.text("§e§l>>> CLIC DERECHO CON FRAGMENTOS <<<"));
+                instruccion.setCustomNameVisible(true);
+                instruccion.addScoreboardTag("eco_ancla_label");
+                instruccion.addScoreboardTag("eco_ancla_" + i);
+                
+                // Efectos visuales mejorados
+                loc.getWorld().spawnParticle(Particle.FLAME, loc.clone().add(0, 1, 0), 100, 2, 2, 2, 0.1);
+                loc.getWorld().spawnParticle(Particle.SOUL_FIRE_FLAME, loc.clone().add(0, 1, 0), 80, 1.5, 1.5, 1.5, 0.08);
+                loc.getWorld().spawnParticle(Particle.END_ROD, loc.clone().add(0, 2, 0), 50, 1, 2, 1, 0.1);
+                loc.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING, loc.clone().add(0, 1.5, 0), 30, 1, 1, 1, 0.05);
                 loc.getWorld().playSound(loc, Sound.BLOCK_RESPAWN_ANCHOR_SET_SPAWN, 1.5f, 1.0f);
+                loc.getWorld().playSound(loc, Sound.BLOCK_BEACON_ACTIVATE, 1.0f, 1.2f);
                 
                 String coords = String.format("X: %d, Y: %d, Z: %d", 
                     loc.getBlockX(), loc.getBlockY(), loc.getBlockZ());
@@ -677,6 +883,38 @@ public class EcoBrasasEvent extends EventBase {
             "§7Lleva fragmentos a las §d3 Anclas §7(clic derecho)",
             10, 100, 20
         );
+    }
+    
+    /**
+     * Crea estructura visual de ancla con bloques
+     */
+    private void createAnclaStructure(Location center, int anclaNum) {
+        World world = center.getWorld();
+        int x = center.getBlockX();
+        int y = center.getBlockY();
+        int z = center.getBlockZ();
+        
+        // Crear base de piedra del End (3x3)
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dz = -1; dz <= 1; dz++) {
+                world.getBlockAt(x+dx, y, z+dz).setType(org.bukkit.Material.END_STONE);
+            }
+        }
+        
+        // Respawn Anchor en el centro (nivel 1)
+        world.getBlockAt(x, y+1, z).setType(org.bukkit.Material.RESPAWN_ANCHOR);
+        
+        // End Rods decorativos en cruz (esquinas, nivel 1)
+        world.getBlockAt(x+1, y+1, z).setType(org.bukkit.Material.END_ROD);
+        world.getBlockAt(x-1, y+1, z).setType(org.bukkit.Material.END_ROD);
+        world.getBlockAt(x, y+1, z+1).setType(org.bukkit.Material.END_ROD);
+        world.getBlockAt(x, y+1, z-1).setType(org.bukkit.Material.END_ROD);
+        
+        // Glowstone en esquinas diagonales para iluminación
+        world.getBlockAt(x+1, y+1, z+1).setType(org.bukkit.Material.GLOWSTONE);
+        world.getBlockAt(x-1, y+1, z-1).setType(org.bukkit.Material.GLOWSTONE);
+        world.getBlockAt(x+1, y+1, z-1).setType(org.bukkit.Material.GLOWSTONE);
+        world.getBlockAt(x-1, y+1, z+1).setType(org.bukkit.Material.GLOWSTONE);
     }
     
     private void showAnclaActionBar(Player player) {
@@ -861,22 +1099,36 @@ public class EcoBrasasEvent extends EventBase {
         if (altarLocation != null) {
             org.bukkit.World world = altarLocation.getWorld();
             
-            // Crear Shulker invisible para hitbox real
-            org.bukkit.entity.Shulker hitbox = world.spawn(
-                altarLocation.clone().add(0, 1, 0), 
-                org.bukkit.entity.Shulker.class
+            // [VISUAL MEJORADO] Crear estructura de altar con bloques
+            createAltarStructure(altarLocation);
+            
+            // Crear INTERACTION ENTITY como hitbox para detección de clics (mejor que Shulker)
+            org.bukkit.entity.Interaction hitbox = world.spawn(
+                altarLocation.clone().add(0, 2.0, 0), 
+                org.bukkit.entity.Interaction.class
             );
-            hitbox.setInvisible(true);
-            hitbox.setGravity(false);
-            hitbox.setInvulnerable(true);
-            hitbox.setAI(false);
-            hitbox.setSilent(true);
+            hitbox.setInteractionWidth(2.0f);  // Ancho de la hitbox (2 bloques)
+            hitbox.setInteractionHeight(2.0f); // Alto de la hitbox (2 bloques)
+            hitbox.setResponsive(true); // Responde a interacciones
             hitbox.addScoreboardTag("eco_altar_hitbox");
             hitbox.addScoreboardTag("eco_altar");
             
+            // Crear ArmorStand con item visual (beacon)
+            org.bukkit.entity.ArmorStand visual = world.spawn(
+                altarLocation.clone().add(0, 1.5, 0), 
+                org.bukkit.entity.ArmorStand.class
+            );
+            visual.setVisible(false);
+            visual.setGravity(false);
+            visual.setInvulnerable(true);
+            visual.setMarker(true);
+            visual.getEquipment().setHelmet(new org.bukkit.inventory.ItemStack(org.bukkit.Material.BEACON));
+            visual.addScoreboardTag("eco_altar_visual");
+            visual.addScoreboardTag("eco_altar");
+            
             // Crear ArmorStand para el nombre flotante
             org.bukkit.entity.ArmorStand altarMarker = world.spawn(
-                altarLocation.clone().add(0, 2.5, 0), 
+                altarLocation.clone().add(0, 3.5, 0), 
                 org.bukkit.entity.ArmorStand.class
             );
             altarMarker.setVisible(false);
@@ -888,11 +1140,29 @@ public class EcoBrasasEvent extends EventBase {
             altarMarker.addScoreboardTag("eco_altar_label");
             altarMarker.addScoreboardTag("eco_altar");
             
-            // Efectos visuales masivos
-            altarLocation.getWorld().spawnParticle(Particle.END_ROD, altarLocation, 200, 3, 3, 3, 0.2);
-            altarLocation.getWorld().spawnParticle(Particle.SOUL_FIRE_FLAME, altarLocation, 100, 2, 2, 2, 0.1);
-            altarLocation.getWorld().spawnParticle(Particle.FLAME, altarLocation, 150, 2, 2, 2, 0.15);
+            // ArmorStand con instrucción
+            org.bukkit.entity.ArmorStand instruccion = world.spawn(
+                altarLocation.clone().add(0, 3.0, 0), 
+                org.bukkit.entity.ArmorStand.class
+            );
+            instruccion.setVisible(false);
+            instruccion.setGravity(false);
+            instruccion.setInvulnerable(true);
+            instruccion.setMarker(true);
+            instruccion.customName(net.kyori.adventure.text.Component.text("§e§l>>> CLIC DERECHO PARA PULSO <<<"));
+            instruccion.setCustomNameVisible(true);
+            instruccion.addScoreboardTag("eco_altar_label");
+            instruccion.addScoreboardTag("eco_altar");
+            
+            // Efectos visuales masivos mejorados
+            altarLocation.getWorld().spawnParticle(Particle.END_ROD, altarLocation.clone().add(0, 1, 0), 200, 3, 3, 3, 0.2);
+            altarLocation.getWorld().spawnParticle(Particle.SOUL_FIRE_FLAME, altarLocation.clone().add(0, 1, 0), 120, 2.5, 2.5, 2.5, 0.12);
+            altarLocation.getWorld().spawnParticle(Particle.FLAME, altarLocation.clone().add(0, 1.5, 0), 180, 2, 2, 2, 0.18);
+            altarLocation.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING, altarLocation.clone().add(0, 2, 0), 50, 1.5, 1.5, 1.5, 0.1);
+            altarLocation.getWorld().spawnParticle(Particle.ENCHANT, altarLocation.clone().add(0, 0, 0), 100, 3, 0.5, 3, 1);
             altarLocation.getWorld().playSound(altarLocation, Sound.BLOCK_END_PORTAL_SPAWN, 2.0f, 0.7f);
+            altarLocation.getWorld().playSound(altarLocation, Sound.BLOCK_BEACON_ACTIVATE, 1.5f, 1.0f);
+            altarLocation.getWorld().playSound(altarLocation, Sound.ENTITY_WITHER_SPAWN, 0.5f, 0.5f);
             
             String coords = String.format("§d[X: %d, Y: %d, Z: %d]", 
                 altarLocation.getBlockX(), altarLocation.getBlockY(), altarLocation.getBlockZ());
@@ -921,6 +1191,63 @@ public class EcoBrasasEvent extends EventBase {
         }
     }
     
+    /**
+     * Crea estructura visual de altar con bloques (plataforma ritual con beacon)
+     */
+    private void createAltarStructure(Location center) {
+        World world = center.getWorld();
+        int x = center.getBlockX();
+        int y = center.getBlockY();
+        int z = center.getBlockZ();
+        
+        // Base de obsidiana (5x5)
+        for (int dx = -2; dx <= 2; dx++) {
+            for (int dz = -2; dz <= 2; dz++) {
+                world.getBlockAt(x+dx, y, z+dz).setType(org.bukkit.Material.OBSIDIAN);
+            }
+        }
+        
+        // Piedra del End en capa 1 (3x3 interior)
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dz = -1; dz <= 1; dz++) {
+                world.getBlockAt(x+dx, y+1, z+dz).setType(org.bukkit.Material.END_STONE);
+            }
+        }
+        
+        // Beacon en el centro (nivel 2)
+        world.getBlockAt(x, y+2, z).setType(org.bukkit.Material.BEACON);
+        
+        // End Rods en cruz alrededor del beacon (nivel 2)
+        world.getBlockAt(x+1, y+2, z).setType(org.bukkit.Material.END_ROD);
+        world.getBlockAt(x-1, y+2, z).setType(org.bukkit.Material.END_ROD);
+        world.getBlockAt(x, y+2, z+1).setType(org.bukkit.Material.END_ROD);
+        world.getBlockAt(x, y+2, z-1).setType(org.bukkit.Material.END_ROD);
+        
+        // Skulls decorativos en esquinas (nivel 2)
+        placeSkull(world, x+1, y+2, z+1, org.bukkit.Material.WITHER_SKELETON_SKULL);
+        placeSkull(world, x-1, y+2, z-1, org.bukkit.Material.WITHER_SKELETON_SKULL);
+        placeSkull(world, x+1, y+2, z-1, org.bukkit.Material.WITHER_SKELETON_SKULL);
+        placeSkull(world, x-1, y+2, z+1, org.bukkit.Material.WITHER_SKELETON_SKULL);
+        
+        // Velas púrpura en bordes exteriores (nivel 1)
+        world.getBlockAt(x+2, y+1, z).setType(org.bukkit.Material.PURPLE_CANDLE);
+        world.getBlockAt(x-2, y+1, z).setType(org.bukkit.Material.PURPLE_CANDLE);
+        world.getBlockAt(x, y+1, z+2).setType(org.bukkit.Material.PURPLE_CANDLE);
+        world.getBlockAt(x, y+1, z-2).setType(org.bukkit.Material.PURPLE_CANDLE);
+        
+        // Linternas de alma en esquinas exteriores (nivel 1)
+        world.getBlockAt(x+2, y+1, z+2).setType(org.bukkit.Material.SOUL_LANTERN);
+        world.getBlockAt(x-2, y+1, z-2).setType(org.bukkit.Material.SOUL_LANTERN);
+        world.getBlockAt(x+2, y+1, z-2).setType(org.bukkit.Material.SOUL_LANTERN);
+        world.getBlockAt(x-2, y+1, z+2).setType(org.bukkit.Material.SOUL_LANTERN);
+    }
+    
+    private void placeSkull(World world, int x, int y, int z, org.bukkit.Material skullType) {
+        if (world.getBlockAt(x, y, z).getType() == org.bukkit.Material.AIR) {
+            world.getBlockAt(x, y, z).setType(skullType);
+        }
+    }
+    
     private void showRitualActionBar(Player player) {
         if (altarLocation == null) {
             player.sendActionBar("§7[§cRitual Final§7] §7Preparando altar...");
@@ -940,6 +1267,10 @@ public class EcoBrasasEvent extends EventBase {
         ));
     }
     
+    /**
+     * Buscar ubicación central entre jugadores para el Altar
+     * MEJORADO: Extiende el radio de búsqueda hasta encontrar superficie válida
+     */
     private Location findCentralLocation() {
         // Buscar ubicación central entre todos los jugadores
         if (Bukkit.getOnlinePlayers().isEmpty()) {
@@ -960,9 +1291,57 @@ public class EcoBrasasEvent extends EventBase {
         World world = Bukkit.getOnlinePlayers().iterator().next().getWorld();
         int centerX = (int) (sumX / count);
         int centerZ = (int) (sumZ / count);
-        int centerY = world.getHighestBlockYAt(centerX, centerZ) + 1;
+        int centerY = world.getHighestBlockYAt(centerX, centerZ);
         
-        return new Location(world, centerX, centerY, centerZ);
+        Location centerLoc = new Location(world, centerX, centerY, centerZ);
+        
+        // [VALIDACIÓN] Verificar que sea superficie sólida válida
+        if (isValidSurfaceLocation(centerLoc)) {
+            plugin.getLogger().info("[EcoBrasas] Altar ubicación encontrada en centro exacto de jugadores");
+            return centerLoc.add(0, 1, 0);
+        }
+        
+        // Si el centro no es válido, buscar en círculos cada vez más grandes
+        int radioMax = 200; // Extender hasta 200 bloques si es necesario
+        for (int radio = 10; radio <= radioMax; radio += 10) {
+            // Intentar 16 direcciones en cada círculo
+            for (int intento = 0; intento < 16; intento++) {
+                double angulo = (Math.PI * 2 * intento) / 16;
+                int offsetX = (int) (Math.cos(angulo) * radio);
+                int offsetZ = (int) (Math.sin(angulo) * radio);
+                
+                int testX = centerX + offsetX;
+                int testZ = centerZ + offsetZ;
+                int testY = world.getHighestBlockYAt(testX, testZ);
+                
+                Location testLoc = new Location(world, testX, testY, testZ);
+                if (isValidSurfaceLocation(testLoc)) {
+                    plugin.getLogger().info(String.format("[EcoBrasas] Altar ubicación encontrada a %d bloques del centro", radio));
+                    return testLoc.add(0, 1, 0);
+                }
+            }
+        }
+        
+        // Si aún no se encuentra, buscar en modo espiral más denso
+        plugin.getLogger().warning("[EcoBrasas] Altar: Búsqueda extendida modo espiral");
+        for (int radio = 20; radio <= 300; radio += 20) {
+            for (int i = 0; i < 24; i++) {
+                double angulo = random.nextDouble() * 2 * Math.PI;
+                int testX = centerX + (int) (Math.cos(angulo) * radio);
+                int testZ = centerZ + (int) (Math.sin(angulo) * radio);
+                int testY = world.getHighestBlockYAt(testX, testZ);
+                
+                Location testLoc = new Location(world, testX, testY, testZ);
+                if (isValidSurfaceLocation(testLoc)) {
+                    plugin.getLogger().info("[EcoBrasas] Altar: Superficie encontrada en espiral a " + radio + " bloques");
+                    return testLoc.add(0, 1, 0);
+                }
+            }
+        }
+        
+        // Último recurso: spawn del mundo
+        plugin.getLogger().warning("[EcoBrasas] Altar usando fallback: spawn del mundo");
+        return world.getSpawnLocation();
     }
     
     // ═══════════════════════════════════════════════════════════════════

@@ -163,7 +163,7 @@ public class MissionService {
         }
         
         int ps = playerPs.getOrDefault(uuid, 0);
-        MissionRank rank = MissionRank.fromPs(ps);
+        MissionRank rank = MissionRank.fromXp(ps);
         
         // [RANGOS.YML] Usar misionesDiarias del rango configurado
         int maxMissions = rank.getMisionesDiarias();
@@ -309,8 +309,8 @@ public class MissionService {
         int newPs = currentPs + mission.getRecompensaPs();
         
         // [DATA.YML] Detectar rank up
-        me.apocalipsis.missions.MissionRank oldRank = me.apocalipsis.missions.MissionRank.fromPs(currentPs);
-        me.apocalipsis.missions.MissionRank newRank = me.apocalipsis.missions.MissionRank.fromPs(newPs);
+        me.apocalipsis.missions.MissionRank oldRank = me.apocalipsis.missions.MissionRank.fromXp(currentPs);
+        me.apocalipsis.missions.MissionRank newRank = me.apocalipsis.missions.MissionRank.fromXp(newPs);
         
         playerPs.put(uuid, newPs);
         
@@ -553,8 +553,13 @@ public class MissionService {
                 UUID uuid = UUID.fromString(uuidStr);
                 ConfigurationSection playerSection = playersSection.getConfigurationSection(uuidStr);
                 
-                int ps = playerSection.getInt("ps", 0);
-                playerPs.put(uuid, ps);
+                // [COMPATIBILIDAD] Leer tanto "xp" como "ps" (ps es legacy)
+                int xp = playerSection.getInt("xp", -1);
+                if (xp == -1) {
+                    // Fallback a "ps" si "xp" no existe (compatibilidad con datos antiguos)
+                    xp = playerSection.getInt("ps", 0);
+                }
+                playerPs.put(uuid, xp);
                 
                 List<MissionAssignment> assignments = new ArrayList<>();
                 List<Map<?, ?>> assignmentsList = playerSection.getMapList("assignments");
@@ -607,7 +612,8 @@ public class MissionService {
             for (Map.Entry<UUID, List<MissionAssignment>> entry : playerAssignments.entrySet()) {
                 String path = "players." + entry.getKey().toString();
                 
-                config.set(path + ".ps", playerPs.getOrDefault(entry.getKey(), 0));
+                // [UNIFICACIÓN] Guardar como "xp" (el sistema unificado)
+                config.set(path + ".xp", playerPs.getOrDefault(entry.getKey(), 0));
                 
                 List<Map<String, Object>> assignmentsList = new ArrayList<>();
                 for (MissionAssignment assignment : entry.getValue()) {

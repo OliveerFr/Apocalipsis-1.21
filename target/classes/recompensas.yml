@@ -124,10 +124,12 @@ recompensas_diarias_completas:
 # ═══════════════════════════════════════════════════════════════
 
 # Fórmula para XP necesario por nivel: base + (nivel * multiplicador)
+# ⚠️ AJUSTADO PARA SERIE DE 30 DÍAS (jugadores muy activos alcanzan ABSOLUTO en ~20 días)
 experiencia:
-  nivel_inicial: 100           # XP necesario para nivel 2
-  multiplicador: 50            # XP adicional por cada nivel
-  # Ejemplo: Nivel 2 = 100, Nivel 3 = 150, Nivel 4 = 200, etc.
+  nivel_inicial: 140           # XP necesario para nivel 2 (aumentado de 100 → 140)
+  multiplicador: 70            # XP adicional por cada nivel (aumentado de 50 → 70)
+  # Ejemplo: Nivel 2 = 140, Nivel 3 = 210, Nivel 4 = 280, etc.
+  # Total para nivel 35 (ABSOLUTO): ~44,030 XP
 
 # Fuentes de experiencia
 fuentes_xp:
@@ -204,7 +206,7 @@ recompensas_por_rango:
   # Al alcanzar EXPLORADOR
   EXPLORADOR:
     comandos:
-      - "give %player% minecraft:bedrock 1"                    # 1 bloque de protección
+      - "protectionstones give 15 %player%"                    # 1 bloque de protección
       - "give %player% minecraft:diamond 5"                    # 5 diamantes
       - "give %player% minecraft:golden_apple 3"               # 3 manzanas doradas
     mensaje: "&b¡Has alcanzado el rango EXPLORADOR! &7Recompensas entregadas"
@@ -212,7 +214,7 @@ recompensas_por_rango:
   # Al alcanzar SOBREVIVIENTE
   SOBREVIVIENTE:
     comandos:
-      - "give %player% minecraft:bedrock 2"                    # 2 bloques de protección
+      - "protectionstones give 15 %player%"                   # 1 bloque de protección
       - "give %player% minecraft:diamond 10"                   # 10 diamantes
       - "give %player% minecraft:golden_apple 5"               # 5 manzanas doradas
       - "give %player% minecraft:ender_pearl 16"               # 16 perlas de ender
@@ -221,7 +223,7 @@ recompensas_por_rango:
   # Al alcanzar VETERANO
   VETERANO:
     comandos:
-      - "give %player% minecraft:bedrock 3"                    # 3 bloques de protección
+      - "protectionstones give 15 %player%"                    # 1 bloque de protección
       - "give %player% minecraft:diamond 20"                   # 20 diamantes
       - "give %player% minecraft:enchanted_golden_apple 2"     # 2 manzanas encantadas
       - "give %player% minecraft:ender_pearl 32"               # 32 perlas de ender
@@ -231,7 +233,7 @@ recompensas_por_rango:
   # Al alcanzar LEYENDA
   LEYENDA:
     comandos:
-      - "give %player% minecraft:bedrock 4"                    # 4 bloques de protección
+      - "protectionstones give 15 %player%"                    # 1 bloque de protección
       - "give %player% minecraft:netherite_ingot 5"            # 5 lingotes de netherite
       - "give %player% minecraft:enchanted_golden_apple 3"     # 3 manzanas encantadas
       - "give %player% minecraft:totem_of_undying 2"           # 2 tótems de inmortalidad
@@ -241,7 +243,7 @@ recompensas_por_rango:
   # Al alcanzar MAESTRO
   MAESTRO:
     comandos:
-      - "give %player% minecraft:bedrock 5"                    # 5 bloques de protección
+      - "protectionstones give 15 %player%"                    # 1 bloque de protección
       - "give %player% minecraft:netherite_ingot 10"           # 10 lingotes de netherite
       - "give %player% minecraft:enchanted_golden_apple 5"     # 5 manzanas encantadas
       - "give %player% minecraft:totem_of_undying 3"           # 3 tótems de inmortalidad
@@ -251,7 +253,7 @@ recompensas_por_rango:
   # Al alcanzar TITAN
   TITAN:
     comandos:
-      - "give %player% minecraft:bedrock 6"                    # 6 bloques de protección
+      - "protectionstones give 15 %player%"                    # 1 bloque de protección
       - "give %player% minecraft:netherite_ingot 20"           # 20 lingotes de netherite
       - "give %player% minecraft:enchanted_golden_apple 8"     # 8 manzanas encantadas
       - "give %player% minecraft:totem_of_undying 5"           # 5 tótems de inmortalidad
@@ -261,7 +263,7 @@ recompensas_por_rango:
   # Al alcanzar ABSOLUTO
   ABSOLUTO:
     comandos:
-      - "give %player% minecraft:bedrock 10"                   # 10 bloques de protección
+      - "protectionstones give 15 %player%"                   # 1 bloque de protección
       - "give %player% minecraft:netherite_ingot 32"           # 32 lingotes de netherite
       - "give %player% minecraft:enchanted_golden_apple 16"    # 16 manzanas encantadas
       - "give %player% minecraft:totem_of_undying 10"          # 10 tótems de inmortalidad
@@ -430,13 +432,15 @@ habilidades_config:
   mensaje_aplicacion: "&aHabilidades de rango &e%rango% &aaplicadas"
 
 # ═══════════════════════════════════════════════════════════════
-# NOTAS DE BALANCE
+# NOTAS DE BALANCE - AJUSTADO PARA SERIE DE 30 DÍAS
 # ═══════════════════════════════════════════════════════════════
 # - Las misiones dan ~1000-2000 XP/día (dependiendo del rango)
 # - Matar mobs da ~2 XP/mob (~100-200 XP/día para jugadores activos)
 # - Minar/farming da ~0.5-2 XP/acción (~50-100 XP/día con cooldowns)
-# - Total jugador 24/7: ~1200-2300 XP/día
-# - Total jugador casual (solo misiones): ~1000-2000 XP/día
+# - Total jugador muy activo (24/7): ~1,750-2,900 XP/día → Lvl 35 en ~20 días ✨
+# - Total jugador activo (solo misiones + algo): ~1,200-1,800 XP/día → Lvl 35 en ~29 días ✨
+# - Total jugador casual (solo misiones): ~750-1,000 XP/día → Lvl 35 en ~49 días
 # - Las habilidades NO son rotas pero SÍ valiosas (speed, regen, resistencia)
 # - El sistema incentiva hacer misiones pero permite progreso alternativo
+# - Con estos valores, jugadores muy activos alcanzarán ABSOLUTO hacia el final del mes
 # ═══════════════════════════════════════════════════════════════
