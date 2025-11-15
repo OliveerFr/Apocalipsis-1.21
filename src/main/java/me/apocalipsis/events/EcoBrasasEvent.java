@@ -509,8 +509,15 @@ public class EcoBrasasEvent extends EventBase {
             }
         }
         
-        plugin.getLogger().warning("[EcoBrasas] Grieta usando spawn");
-        return world.getSpawnLocation();
+        // Último recurso: usar ubicación aleatoria relativa al spawn con offset
+        plugin.getLogger().warning("[EcoBrasas] Grieta usando ubicación aleatoria cerca del spawn");
+        Location spawn = world.getSpawnLocation();
+        int offsetX = random.nextInt(200) - 100; // -100 a +100
+        int offsetZ = random.nextInt(200) - 100;
+        int x = spawn.getBlockX() + offsetX;
+        int z = spawn.getBlockZ() + offsetZ;
+        int y = world.getHighestBlockYAt(x, z);
+        return new Location(world, x, y + 1, z);
     }
     
     /**
@@ -2579,31 +2586,32 @@ public class EcoBrasasEvent extends EventBase {
     }
     
     /**
-     * Dropea fragmentos según probabilidades
+     * Da fragmentos directamente al inventario del jugador (con cantidades aumentadas)
      */
     private void dropFragments(Location loc, Player player) {
         World world = loc.getWorld();
         
-        // Ceniza - garantizado 9 por grieta (necesita 90 total para 10 grietas)
-        ItemStack ceniza = EcoBrasasItems.createCeniza(9);
-        world.dropItemNaturally(loc, ceniza);
-        player.sendMessage("§7[§6Drop§7] §fx9 Fragmentos de §7Ceniza");
+        // Ceniza - 15 por grieta (necesita 90 total para 10 grietas → 6 grietas cubren 1 ancla)
+        ItemStack ceniza = EcoBrasasItems.createCeniza(15);
+        player.getInventory().addItem(ceniza);
+        player.sendMessage("§7[§6Recompensa§7] §f+15 Fragmentos de §7Ceniza");
         
-        // Fulgor - garantizado 3 por grieta (necesita 30 total para 10 grietas)
-        ItemStack fulgor = EcoBrasasItems.createFulgor(3);
-        world.dropItemNaturally(loc, fulgor);
-        player.sendMessage("§7[§6Drop§7] §fx3 Fragmentos de §6Fulgor");
+        // Fulgor - 6 por grieta (necesita 30 total para 10 grietas → 5 grietas cubren 1 ancla)
+        ItemStack fulgor = EcoBrasasItems.createFulgor(6);
+        player.getInventory().addItem(fulgor);
+        player.sendMessage("§7[§6Recompensa§7] §f+6 Fragmentos de §6Fulgor");
         
         // Eco Roto - 1 cada ~3 grietas (33% chance, necesita 3 total)
         if (random.nextInt(100) < 33) {
             ItemStack ecoRoto = EcoBrasasItems.createEcoRoto(1);
-            world.dropItemNaturally(loc, ecoRoto);
-            player.sendMessage("§7[§6Drop§7] §fEco §5Roto §7§l(¡RARO!)");
+            player.getInventory().addItem(ecoRoto);
+            player.sendMessage("§7[§6Recompensa§7] §fEco §5Roto §7§l(¡RARO!)");
         }
         
-        // Efectos de drop
+        // Efectos de recompensa
         world.spawnParticle(Particle.END_ROD, loc.clone().add(0, 1, 0), 20, 0.5, 0.5, 0.5, 0.1);
         world.playSound(loc, Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.2f);
+        player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 0.5f, 1.5f);
     }
     
     // ═══════════════════════════════════════════════════════════════════
