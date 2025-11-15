@@ -136,6 +136,35 @@ public class ExperienceService {
     }
     
     /**
+     * Establece el XP de un jugador (para comandos admin)
+     */
+    public void setXP(Player player, int xp) {
+        UUID uuid = player.getUniqueId();
+        PlayerExperienceData data = playerData.get(uuid);
+        
+        if (data == null) {
+            data = new PlayerExperienceData(0, 1);
+            playerData.put(uuid, data);
+        }
+        
+        int oldLevel = data.getNivel();
+        data.setXp(Math.max(0, xp));
+        
+        // Recalcular nivel basado en nuevo XP
+        int newLevel = calculateLevel(xp);
+        data.setNivel(newLevel);
+        
+        // Notificar si cambió de nivel
+        if (newLevel != oldLevel) {
+            player.sendMessage("§e§l⬆ §6¡NIVEL ACTUALIZADO! §e§l⬆");
+            player.sendMessage("§7Nuevo nivel: §bNivel " + newLevel + " §8(§e" + xp + " XP§8)");
+            plugin.getLogger().info("[XP-Admin] " + player.getName() + " nivel actualizado: " + oldLevel + " → " + newLevel);
+        }
+        
+        saveData();
+    }
+    
+    /**
      * Calcula el progreso hacia el siguiente nivel (0.0 - 1.0)
      */
     public double getProgressToNextLevel(Player player) {

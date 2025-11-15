@@ -103,6 +103,18 @@ public class ScoreboardManager {
         String displayName = rankService.getTranslatedDisplayName(player);
         content.append("§7Rango: ").append(displayName).append(" §8(§7").append(ps).append(" PS§8)\n");
         
+        // Sistema de XP y Nivel
+        if (plugin.getExperienceService() != null) {
+            int xp = plugin.getExperienceService().getXP(player);
+            int nivel = plugin.getExperienceService().getLevel(player);
+            int xpForNext = plugin.getExperienceService().getXPForLevel(nivel + 1);
+            int xpCurrent = plugin.getExperienceService().getXPForLevel(nivel);
+            int xpProgress = xp - xpCurrent;
+            int xpNeeded = xpForNext - xpCurrent;
+            
+            content.append("§7Nivel: §b").append(nivel).append(" §8(§7").append(xpProgress).append("/").append(xpNeeded).append(" XP§8)\n");
+        }
+        
         ServerState state = stateManager.getCurrentState();
         String stateDisplay = state.getDisplay();
         String disasterName = stateManager.getActiveDisasterId() != null 

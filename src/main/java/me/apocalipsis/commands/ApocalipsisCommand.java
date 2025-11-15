@@ -58,6 +58,10 @@ public class ApocalipsisCommand implements CommandExecutor {
             sender.sendMessage("§6=== Protecciones ===");
             sender.sendMessage("§e/avo escanear §7- Escanea protecciones cercanas");
             sender.sendMessage("§e/avo protecciones §7- Guía de protecciones");
+            sender.sendMessage("§6=== Experiencia y Progresión ===");
+            sender.sendMessage("§e/avo xp §7- Ver tu experiencia y progreso");
+            sender.sendMessage("§e/avo nivel §7- Ver tu nivel actual");
+            sender.sendMessage("§e/avo xp <get|add|set> §7- Gestión de XP (Admin)");
             sender.sendMessage("§6=== Evento Eco de Brasas ===");
             sender.sendMessage("§e/avo eco start §7- Inicia el evento");
             sender.sendMessage("§e/avo eco stop §7- Detiene el evento");
@@ -156,6 +160,14 @@ public class ApocalipsisCommand implements CommandExecutor {
                 break;
             case "eco":
                 cmdEco(sender, args);
+                break;
+            case "xp":
+            case "experience":
+                cmdXP(sender, args);
+                break;
+            case "nivel":
+            case "level":
+                cmdNivel(sender, args);
                 break;
             default:
                 sender.sendMessage("§cSubcomando desconocido. Usa /avo para ver ayuda.");
@@ -1794,4 +1806,142 @@ public class ApocalipsisCommand implements CommandExecutor {
             this.hasDeepWater = hasDeepWater;
         }
     }
+    
+    /**
+     * Comando para gestionar XP
+     * /avo xp <add|set|get> <jugador> [cantidad]
+     */
+    private void cmdXP(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("avo.admin")) {
+            sender.sendMessage("§cNo tienes permisos.");
+            return;
+        }
+        
+        if (args.length < 2) {
+            sender.sendMessage("§e=== Comandos de XP ===");
+            sender.sendMessage("§7/avo xp get <jugador> §f- Ver XP de un jugador");
+            sender.sendMessage("§7/avo xp add <jugador> <cantidad> §f- Añadir XP");
+            sender.sendMessage("§7/avo xp set <jugador> <cantidad> §f- Establecer XP");
+            sender.sendMessage("§7/avo xp reset <jugador> §f- Resetear XP a 0");
+            return;
+        }
+        
+        String action = args[1].toLowerCase();
+        
+        if (action.equals("get") && args.length >= 3) {
+            Player target = plugin.getServer().getPlayer(args[2]);
+            if (target == null) {
+                sender.sendMessage("§cJugador no encontrado.");
+                return;
+            }
+            
+            int xp = plugin.getExperienceService().getXP(target);
+            int nivel = plugin.getExperienceService().getLevel(target);
+            int xpForNext = plugin.getExperienceService().getXPForNextLevel(target);
+            
+            sender.sendMessage("§e▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+            sender.sendMessage("§6XP de §f" + target.getName());
+            sender.sendMessage("§7Nivel: §b" + nivel);
+            sender.sendMessage("§7XP Total: §e" + xp);
+            sender.sendMessage("§7XP para siguiente nivel: §e" + xpForNext);
+            sender.sendMessage("§e▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+            
+        } else if ((action.equals("add") || action.equals("set")) && args.length >= 4) {
+            Player target = plugin.getServer().getPlayer(args[2]);
+            if (target == null) {
+                sender.sendMessage("§cJugador no encontrado.");
+                return;
+            }
+            
+            int amount;
+            try {
+                amount = Integer.parseInt(args[3]);
+            } catch (NumberFormatException e) {
+                sender.sendMessage("§cCantidad inválida.");
+                return;
+            }
+            
+            if (action.equals("add")) {
+                int oldXP = plugin.getExperienceService().getXP(target);
+                plugin.getExperienceService().addXP(target, amount, "Admin");
+                int newXP = plugin.getExperienceService().getXP(target);
+                sender.sendMessage("§a✓ XP añadido a " + target.getName() + ": §e" + oldXP + " §7→ §e" + newXP);
+                plugin.getLogger().info("[Admin] " + sender.getName() + " añadió " + amount + " XP a " + target.getName());
+            } else {
+                plugin.getExperienceService().setXP(target, amount);
+                sender.sendMessage("§a✓ XP establecido para " + target.getName() + ": §e" + amount);
+                plugin.getLogger().info("[Admin] " + sender.getName() + " estableció " + amount + " XP para " + target.getName());
+            }
+            
+        } else if (action.equals("reset") && args.length >= 3) {
+            Player target = plugin.getServer().getPlayer(args[2]);
+            if (target == null) {
+                sender.sendMessage("§cJugador no encontrado.");
+                return;
+            }
+            
+            plugin.getExperienceService().setXP(target, 0);
+            sender.sendMessage("§a✓ XP reseteado para " + target.getName());
+            plugin.getLogger().info("[Admin] " + sender.getName() + " reseteó XP de " + target.getName());
+            
+        } else {
+            sender.sendMessage("§cUso incorrecto. /avo xp para ver ayuda.");
+        }
+    }
+    
+    /**
+     * Comando para ver nivel de jugadores
+     * /avo nivel [jugador]
+     */
+    private void cmdNivel(CommandSender sender, String[] args) {
+        Player target;
+        
+        if (args.length >= 2) {
+            if (!sender.hasPermission("avo.admin")) {
+                sender.sendMessage("§cNo tienes permisos para ver el nivel de otros.");
+                return;
+            }
+            target = plugin.getServer().getPlayer(args[1]);
+            if (target == null) {
+                sender.sendMessage("§cJugador no encontrado.");
+                return;
+            }
+        } else {
+            if (!(sender instanceof Player)) {
+                sender.sendMessage("§cDebes especificar un jugador desde consola.");
+                return;
+            }
+            target = (Player) sender;
+        }
+        
+        int xp = plugin.getExperienceService().getXP(target);
+        int nivel = plugin.getExperienceService().getLevel(target);
+        int xpForNext = plugin.getExperienceService().getXPForNextLevel(target);
+        int xpCurrent = plugin.getExperienceService().getXPForLevel(nivel);
+        int xpProgress = xp - xpCurrent;
+        int xpNeeded = xpForNext - xpCurrent;
+        
+        double progress = (double) xpProgress / xpNeeded;
+        int bars = (int) (progress * 20);
+        StringBuilder progressBar = new StringBuilder("§a");
+        for (int i = 0; i < 20; i++) {
+            if (i < bars) {
+                progressBar.append("█");
+            } else {
+                progressBar.append("§7█");
+            }
+        }
+        
+        sender.sendMessage("§e▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+        sender.sendMessage("§6Nivel de §f" + target.getName());
+        sender.sendMessage("");
+        sender.sendMessage("§7Nivel Actual: §b§l" + nivel);
+        sender.sendMessage("§7XP Total: §e" + xp);
+        sender.sendMessage("");
+        sender.sendMessage("§7Progreso al nivel " + (nivel + 1) + ":");
+        sender.sendMessage(progressBar.toString());
+        sender.sendMessage("§7" + xpProgress + " / " + xpNeeded + " XP §8(§e" + String.format("%.1f", progress * 100) + "%§8)");
+        sender.sendMessage("§e▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+    }
 }
+
