@@ -55,5 +55,5 @@ tiempo_jugado:
 evasion:
   enabled: true                   # Activar sistema de evasión
   min_tiempo_segundos: 60         # Tiempo mínimo en desastre (60s)
-  castigos_fisicos_enabled: false # Castigos físicos al reconectar (rayos, meteoritos, etc)
-  solo_perdida_ps: true           # Solo aplicar pérdida de PS y misiones fallidas
+  castigos_fisicos_enabled: true  # Castigos físicos al reconectar (rayos, meteoritos, etc)
+  solo_perdida_ps: false          # Solo aplicar pérdida de PS y misiones fallidas

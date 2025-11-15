@@ -1398,15 +1398,17 @@ public class DisasterController {
         ConfigurationSection config = plugin.getConfigManager().getDesastresConfig()
             .getConfigurationSection("desastres." + disasterId);
         
-        int durSeg = 900; // 15 min default
+        int durSegTemp = 900; // 15 min default
         if (config != null) {
-            durSeg = config.getInt("duracion_segundos", 900);
+            durSegTemp = config.getInt("duracion_segundos", 900);
         }
         
         // Modo test: 20 segundos
         if (plugin.getConfigManager().isTestMode()) {
-            durSeg = 20;
+            durSegTemp = 20;
         }
+        
+        final int durSeg = durSegTemp; // Final para uso en lambda
         
         long now = System.currentTimeMillis();
         long startMs = now;
@@ -1424,12 +1426,22 @@ public class DisasterController {
         // [FIX] Iniciar TimeService para sincronización de tiempo
         timeService.startDisaster(disasterId, durSeg);
         
-        // 4) BossBar única (verde, progreso 0)
+        // 4) BossBar única (verde, progreso 0) - Con delay para evitar crashes
         ensureBossBar();
-        bossBar.setTitle("§a" + disasterId.toUpperCase().replace("_", " ") + " §7• " + formatMMSS(durSeg * 1000L));
-        bossBar.setProgress(0.0);
-        bossBar.setColor(BarColor.GREEN);
-        bossBar.setVisible(true);
+        
+        // Esperar a que BossBar esté listo antes de modificarlo
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (bossBar != null) {
+                try {
+                    bossBar.setTitle("§a" + disasterId.toUpperCase().replace("_", " ") + " §7• " + formatMMSS(durSeg * 1000L));
+                    bossBar.setProgress(0.0);
+                    bossBar.setColor(BarColor.GREEN);
+                    bossBar.setVisible(true);
+                } catch (Exception e) {
+                    plugin.getLogger().warning("[BossBar] Error al configurar BossBar: " + e.getMessage());
+                }
+            }
+        }, 10L);
         
         // 5) Lanzar el desastre real
         if (!registry.exists(disasterId)) {
