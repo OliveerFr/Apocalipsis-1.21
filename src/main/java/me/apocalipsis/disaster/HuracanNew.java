@@ -796,7 +796,9 @@ public class HuracanNew extends DisasterBase {
             
             // [FIX] Detectar colisiones aquí en lugar de crear task por item
             for (Player p : Bukkit.getOnlinePlayers()) {
-                if (p.getLocation().distance(item.getLocation()) < 1.5) {
+                // Verificar que estén en el mismo mundo antes de calcular distancia
+                if (p.getWorld().equals(item.getWorld()) && 
+                    p.getLocation().distance(item.getLocation()) < 1.5) {
                     if (!isPlayerExempt(p)) {
                         p.damage(objetosDamage);
                         p.sendMessage("§e💨 §7¡Objeto volador te golpeó!");
