@@ -839,10 +839,18 @@ public class DisasterController {
             bossBar = Bukkit.createBossBar("§7Esperando...", BarColor.WHITE, BarStyle.SOLID);
             bossBar.setVisible(false);
             
-            // Agregar todos los jugadores online
-            for (Player p : Bukkit.getOnlinePlayers()) {
-                bossBar.addPlayer(p);
-            }
+            // Agregar jugadores de forma segura con manejo de errores
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    try {
+                        if (p.isOnline() && bossBar != null) {
+                            bossBar.addPlayer(p);
+                        }
+                    } catch (Exception e) {
+                        plugin.getLogger().warning("[BossBar] Error al agregar jugador " + p.getName() + ": " + e.getMessage());
+                    }
+                }
+            }, 5L); // 250ms después
         }
     }
     
@@ -1429,15 +1437,29 @@ public class DisasterController {
             return;
         }
         
-        Disaster disaster = registry.get(disasterId);
-        activeDisaster = disaster;
-        disaster.start();
-        
-        // [EVASION] Registrar inicio del desastre para todos los jugadores online
-        for (org.bukkit.entity.Player p : plugin.getServer().getOnlinePlayers()) {
-            if (!p.hasPermission("apocalipsis.exempt")) {
-                plugin.getDisasterEvasionTracker().onDisasterStart(p);
+        try {
+            Disaster disaster = registry.get(disasterId);
+            activeDisaster = disaster;
+            disaster.start();
+            
+            // [EVASION] Registrar inicio del desastre para todos los jugadores online
+            for (org.bukkit.entity.Player p : plugin.getServer().getOnlinePlayers()) {
+                try {
+                    if (!p.hasPermission("apocalipsis.exempt")) {
+                        plugin.getDisasterEvasionTracker().onDisasterStart(p);
+                    }
+                } catch (Exception e) {
+                    plugin.getLogger().warning("[DisasterStart] Error registrando evasión para " + p.getName() + ": " + e.getMessage());
+                }
             }
+        } catch (Exception e) {
+            plugin.getLogger().severe("[CRÍTICO] Error al iniciar desastre " + disasterId + ": " + e.getMessage());
+            e.printStackTrace();
+            // Revertir estado a PREPARACION
+            stateManager.setEstado(ServerState.PREPARACION.name());
+            stateManager.saveState();
+            activeDisaster = null;
+            return;
         }
         
         if (plugin.getConfigManager().isDebugCiclo()) {
@@ -1563,8 +1585,12 @@ public class DisasterController {
      * Agregar jugador al BossBar (llamar en PlayerJoinEvent)
      */
     public void addPlayerToBossBar(Player player) {
-        if (bossBar != null) {
-            bossBar.addPlayer(player);
+        if (bossBar != null && player != null && player.isOnline()) {
+            try {
+                bossBar.addPlayer(player);
+            } catch (Exception e) {
+                plugin.getLogger().warning("[BossBar] Error al agregar jugador " + player.getName() + ": " + e.getMessage());
+            }
         }
     }
     
@@ -1572,8 +1598,12 @@ public class DisasterController {
      * Remover jugador del BossBar (llamar en PlayerQuitEvent)
      */
     public void removePlayerFromBossBar(Player player) {
-        if (bossBar != null) {
-            bossBar.removePlayer(player);
+        if (bossBar != null && player != null) {
+            try {
+                bossBar.removePlayer(player);
+            } catch (Exception e) {
+                plugin.getLogger().warning("[BossBar] Error al remover jugador " + player.getName() + ": " + e.getMessage());
+            }
         }
     }
     
@@ -1583,7 +1613,13 @@ public class DisasterController {
     public void reattachBossBarAll() {
         if (bossBar != null) {
             for (Player p : Bukkit.getOnlinePlayers()) {
-                bossBar.addPlayer(p);
+                try {
+                    if (p.isOnline()) {
+                        bossBar.addPlayer(p);
+                    }
+                } catch (Exception e) {
+                    plugin.getLogger().warning("[BossBar] Error al re-agregar jugador " + p.getName() + ": " + e.getMessage());
+                }
             }
         }
     }
