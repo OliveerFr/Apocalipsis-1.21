@@ -1636,6 +1636,11 @@ public class EcoBrasasEvent extends EventBase {
      * Limpieza al detener evento
      */
     private void cleanup() {
+        plugin.getLogger().info("[EcoBrasas] Iniciando limpieza completa del evento...");
+        
+        // LIBERAR TODOS LOS BLOQUES DEL EVENTO (grietas, anclas, altar)
+        liberarTodosLosBloques();
+        
         // Eliminar todas las grietas (ArmorStands + Shulkers)
         for (Map.Entry<Location, org.bukkit.entity.ArmorStand> entry : grietasActivas.entrySet()) {
             Location loc = entry.getKey();
@@ -1694,7 +1699,7 @@ public class EcoBrasasEvent extends EventBase {
         participacionAnclas.clear();
         participacionGuardian.clear();
         
-        plugin.getLogger().info("[EcoBrasas] Limpieza completada - todas las entidades del evento eliminadas");
+        plugin.getLogger().info("[EcoBrasas] Limpieza completada - todas las entidades eliminadas y bloques liberados");
     }
     
     // ═══════════════════════════════════════════════════════════════════
@@ -2742,6 +2747,58 @@ public class EcoBrasasEvent extends EventBase {
         }
         
         plugin.getLogger().info("[EcoBrasas] Limpieza del altar completada - bloques ahora rompibles");
+    }
+    
+    /**
+     * Libera TODOS los bloques del evento (grietas, anclas, altar) para que puedan romperse
+     * Se llama al finalizar el evento (victoria o cleanup)
+     */
+    private void liberarTodosLosBloques() {
+        plugin.getLogger().info("[EcoBrasas] Liberando TODOS los bloques del evento...");
+        
+        // Liberar bloques de grietas (todas las que existieron)
+        for (Location grietaLoc : grietasActivas.keySet()) {
+            if (grietaLoc != null) {
+                bloquesRompibles.add(grietaLoc.clone());
+            }
+        }
+        
+        // Liberar bloques de anclas (3x3 + estructuras completas)
+        for (Location anclaLoc : anclas.values()) {
+            if (anclaLoc != null) {
+                World world = anclaLoc.getWorld();
+                int x = anclaLoc.getBlockX();
+                int y = anclaLoc.getBlockY();
+                int z = anclaLoc.getBlockZ();
+                
+                // Marcar todos los bloques de la estructura del ancla
+                for (int dx = -1; dx <= 1; dx++) {
+                    for (int dz = -1; dz <= 1; dz++) {
+                        bloquesRompibles.add(new Location(world, x+dx, y, z+dz));
+                        bloquesRompibles.add(new Location(world, x+dx, y+1, z+dz));
+                    }
+                }
+            }
+        }
+        
+        // Liberar bloques del altar (5x5 base + 3 niveles)
+        if (altarLocation != null && altarLocation.getWorld() != null) {
+            World world = altarLocation.getWorld();
+            int x = altarLocation.getBlockX();
+            int y = altarLocation.getBlockY();
+            int z = altarLocation.getBlockZ();
+            
+            // Marcar todos los bloques de la estructura del altar
+            for (int dx = -2; dx <= 2; dx++) {
+                for (int dz = -2; dz <= 2; dz++) {
+                    bloquesRompibles.add(new Location(world, x+dx, y, z+dz));     // Base
+                    bloquesRompibles.add(new Location(world, x+dx, y+1, z+dz));   // Nivel 1
+                    bloquesRompibles.add(new Location(world, x+dx, y+2, z+dz));   // Nivel 2
+                }
+            }
+        }
+        
+        plugin.getLogger().info("[EcoBrasas] " + bloquesRompibles.size() + " bloques liberados - ahora pueden romperse");
     }
     
     // ═══════════════════════════════════════════════════════════════════
