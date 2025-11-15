@@ -1866,11 +1866,9 @@ public class ApocalipsisCommand implements CommandExecutor {
                 plugin.getExperienceService().addXP(target, amount, "Admin");
                 int newXP = plugin.getExperienceService().getXP(target);
                 sender.sendMessage("§a✓ XP añadido a " + target.getName() + ": §e" + oldXP + " §7→ §e" + newXP);
-                plugin.getLogger().info("[Admin] " + sender.getName() + " añadió " + amount + " XP a " + target.getName());
             } else {
                 plugin.getExperienceService().setXP(target, amount);
                 sender.sendMessage("§a✓ XP establecido para " + target.getName() + ": §e" + amount);
-                plugin.getLogger().info("[Admin] " + sender.getName() + " estableció " + amount + " XP para " + target.getName());
             }
             
         } else if (action.equals("reset") && args.length >= 3) {
@@ -1882,7 +1880,6 @@ public class ApocalipsisCommand implements CommandExecutor {
             
             plugin.getExperienceService().setXP(target, 0);
             sender.sendMessage("§a✓ XP reseteado para " + target.getName());
-            plugin.getLogger().info("[Admin] " + sender.getName() + " reseteó XP de " + target.getName());
             
         } else {
             sender.sendMessage("§cUso incorrecto. /avo xp para ver ayuda.");

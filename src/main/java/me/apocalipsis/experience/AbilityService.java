@@ -87,8 +87,6 @@ public class AbilityService {
             
             abilitiesByRank.put(rank, abilities);
         }
-        
-        plugin.getLogger().info("[Abilities] Habilidades cargadas para " + abilitiesByRank.size() + " rangos");
     }
     
     /**
@@ -107,8 +105,6 @@ public class AbilityService {
                 applyAbilities(player, false);
             }
         }, intervaloRenovacion, intervaloRenovacion).getTaskId();
-        
-        plugin.getLogger().info("[Abilities] Task de renovación iniciado (cada " + (intervaloRenovacion / 20) + "s)");
     }
     
     /**
@@ -128,10 +124,6 @@ public class AbilityService {
     public void applyAbilities(Player player, boolean notify) {
         MissionRank rank = plugin.getRankService().getRank(player);
         List<RankAbility> abilities = abilitiesByRank.get(rank);
-        
-        // Debug log
-        plugin.getLogger().info("[Abilities] Aplicando habilidades para " + player.getName() + 
-            " - Rango: " + rank.name() + " - Habilidades: " + (abilities != null ? abilities.size() : 0));
         
         if (abilities == null || abilities.isEmpty()) {
             return;

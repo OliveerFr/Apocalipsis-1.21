@@ -40,10 +40,7 @@ public class ExperienceListener implements Listener {
             return;
         }
         
-        boolean success = plugin.getExperienceService().addMobKillXP(killer, entityType);
-        
-        // Log para debug
-        plugin.getLogger().info("[XP-Debug] " + killer.getName() + " mató " + entityType.name() + " - XP otorgado: " + (success ? "SI" : "NO"));
+        plugin.getExperienceService().addMobKillXP(killer, entityType);
     }
     
     /**
@@ -56,12 +53,7 @@ public class ExperienceListener implements Listener {
         
         // Filtrar bloques que no son naturales (colocados por jugadores)
         // Esto se puede mejorar con el BlockTrackListener existente
-        boolean success = plugin.getExperienceService().addMiningXP(player, material);
-        
-        // Log para debug (solo materiales importantes)
-        if (success && (material == Material.DIAMOND_ORE || material == Material.DEEPSLATE_DIAMOND_ORE)) {
-            plugin.getLogger().info("[XP] " + player.getName() + " ganó XP por minar " + material.name());
-        }
+        plugin.getExperienceService().addMiningXP(player, material);
     }
     
     /**

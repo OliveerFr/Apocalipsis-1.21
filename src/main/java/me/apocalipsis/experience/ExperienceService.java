@@ -45,8 +45,6 @@ public class ExperienceService {
         FileConfiguration config = plugin.getConfigManager().getRecompensasConfig();
         nivelInicial = config.getInt("experiencia.nivel_inicial", 100);
         multiplicador = config.getInt("experiencia.multiplicador", 50);
-        
-        plugin.getLogger().info("[XP] Configuración cargada - Nivel inicial: " + nivelInicial + ", Multiplicador: " + multiplicador);
     }
     
     /**
@@ -54,7 +52,6 @@ public class ExperienceService {
      */
     private void loadData() {
         if (!dataFile.exists()) {
-            plugin.getLogger().info("[XP] No se encontró experience_data.yml, creando nuevo...");
             return;
         }
         
@@ -70,8 +67,6 @@ public class ExperienceService {
             
             playerData.put(uuid, new PlayerExperienceData(xp, nivel));
         }
-        
-        plugin.getLogger().info("[XP] Datos cargados para " + playerData.size() + " jugadores");
     }
     
     /**
@@ -154,11 +149,15 @@ public class ExperienceService {
         int newLevel = calculateLevel(xp);
         data.setNivel(newLevel);
         
+        // Sincronizar PS con XP cuando se establece manualmente
+        if (plugin.getMissionService() != null) {
+            plugin.getMissionService().setPS(uuid, xp);
+        }
+        
         // Notificar si cambió de nivel
         if (newLevel != oldLevel) {
             player.sendMessage("§e§l⬆ §6¡NIVEL ACTUALIZADO! §e§l⬆");
             player.sendMessage("§7Nuevo nivel: §bNivel " + newLevel + " §8(§e" + xp + " XP§8)");
-            plugin.getLogger().info("[XP-Admin] " + player.getName() + " nivel actualizado: " + oldLevel + " → " + newLevel);
         }
         
         saveData();
@@ -207,6 +206,11 @@ public class ExperienceService {
         // Añadir XP
         data.addXp(xp);
         
+        // Sincronizar PS con XP (XP = PS)
+        if (plugin.getMissionService() != null) {
+            plugin.getMissionService().addPS(uuid, xp, source);
+        }
+        
         // Verificar subida de nivel
         int newLevel = calculateLevel(data.getXp());
         boolean leveledUp = false;
@@ -224,9 +228,6 @@ public class ExperienceService {
             // Para XP pequeño, usar action bar (menos intrusivo)
             player.sendActionBar("§a+" + xp + " XP §7(" + source + ")");
         }
-        
-        // Log para debug (puedes comentar después)
-        plugin.getLogger().info("[XP] " + player.getName() + " ganó " + xp + " XP (" + source + ") - Total: " + data.getXp() + " XP");
         
         // Guardar datos
         saveData();
@@ -298,9 +299,6 @@ public class ExperienceService {
         player.sendMessage("§e§l¡NIVEL " + newLevel + "!");
         player.sendMessage("§7Has alcanzado el nivel §e" + newLevel + "§7!");
         player.sendMessage("§6§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
-        
-        // Log
-        plugin.getLogger().info("[XP] " + player.getName() + " subió del nivel " + oldLevel + " al " + newLevel);
     }
     
     /**
