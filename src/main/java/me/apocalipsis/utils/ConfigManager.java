@@ -245,4 +245,24 @@ public class ConfigManager {
     }
     
     // ═══════════════════════════════════════════════════════════════════
+    // SISTEMA DE EVASIÓN
+    // ═══════════════════════════════════════════════════════════════════
+    
+    public boolean isEvasionEnabled() {
+        return config.getBoolean("evasion.enabled", true);
+    }
+    
+    public int getEvasionMinTiempoSegundos() {
+        return config.getInt("evasion.min_tiempo_segundos", 60);
+    }
+    
+    public boolean isEvasionCastigosFisicosEnabled() {
+        return config.getBoolean("evasion.castigos_fisicos_enabled", false);
+    }
+    
+    public boolean isEvasionSoloPerdidaPS() {
+        return config.getBoolean("evasion.solo_perdida_ps", true);
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════
 }

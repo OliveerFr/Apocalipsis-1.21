@@ -134,8 +134,10 @@ public class DisasterEvasionTracker {
         int currentPs = plugin.getMissionService().getPlayerPs(player);
         int psLoss = 0;
         
-        // Programar castigos físicos para cuando el jugador vuelva a conectarse
-        scheduleReconnectPunishment(uuid, evasions);
+        // Programar castigos físicos solo si están habilitados
+        if (plugin.getConfigManager().isEvasionCastigosFisicosEnabled()) {
+            scheduleReconnectPunishment(uuid, evasions);
+        }
         
         // Aplicar penalización según número de evasiones
         if (evasions == 1) {
@@ -397,8 +399,31 @@ public class DisasterEvasionTracker {
             return; // No tiene castigos pendientes
         }
         
+        // Verificar si los castigos físicos están habilitados
+        if (!plugin.getConfigManager().isEvasionCastigosFisicosEnabled()) {
+            // Solo notificar sin aplicar castigos físicos
+            pendingPunishment.remove(uuid);
+            saveData();
+            
+            player.sendMessage("");
+            player.sendMessage("§e§l⚠ ════════════════════════════════════ ⚠");
+            player.sendMessage("§e§l   ADVERTENCIA POR EVASIÓN DE DESASTRE");
+            player.sendMessage("§e§l⚠ ════════════════════════════════════ ⚠");
+            player.sendMessage("");
+            player.sendMessage("§7Se detectó que te desconectaste durante un desastre.");
+            player.sendMessage("§7Ya has recibido la penalización de §cPS§7 y §cmisiones§7.");
+            player.sendMessage("");
+            player.sendMessage("§7Nivel de evasión: §c" + punishmentLevel);
+            player.sendMessage("§a✓ Los castigos físicos están desactivados.");
+            player.sendMessage("");
+            player.sendMessage("§e§l⚠ ════════════════════════════════════ ⚠");
+            player.sendMessage("");
+            return;
+        }
+        
         // Remover el castigo pendiente
         pendingPunishment.remove(uuid);
+        saveData();
         
         // Mensaje de advertencia INMEDIATO al conectarse
         player.sendMessage("");

@@ -48,3 +48,12 @@ tiempo_jugado:
   ps_por_intervalo: 1            # 1 PS cada intervalo
   intervalo_minutos: 30          # Cada 30 minutos
   notificacion: "§7[§ePS§7] §a+1 PS §7por tiempo jugado"
+
+# ═══════════════════════════════════════════════════════════════════
+# SISTEMA DE EVASIÓN DE DESASTRES
+# ═══════════════════════════════════════════════════════════════════
+evasion:
+  enabled: true                   # Activar sistema de evasión
+  min_tiempo_segundos: 60         # Tiempo mínimo en desastre (60s)
+  castigos_fisicos_enabled: false # Castigos físicos al reconectar (rayos, meteoritos, etc)
+  solo_perdida_ps: true           # Solo aplicar pérdida de PS y misiones fallidas
