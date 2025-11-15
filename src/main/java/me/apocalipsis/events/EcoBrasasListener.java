@@ -1,8 +1,10 @@
 package me.apocalipsis.events;
 
 import org.bukkit.*;
+import org.bukkit.block.Block;
 import org.bukkit.entity.*;
 import org.bukkit.event.*;
+import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.player.PlayerInteractAtEntityEvent;
@@ -16,6 +18,36 @@ public class EcoBrasasListener implements Listener {
     
     public EcoBrasasListener(EcoBrasasEvent ecoBrasas) {
         this.ecoBrasas = ecoBrasas;
+    }
+    
+    /**
+     * Prevenir rotura de bloques del evento hasta que se complete cada fase
+     */
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onBlockBreak(BlockBreakEvent event) {
+        if (event.isCancelled()) return; // Respetar otras protecciones
+        
+        Block block = event.getBlock();
+        Material type = block.getType();
+        
+        // Lista de bloques protegidos del evento
+        if (type == Material.MAGMA_BLOCK ||           // Grietas
+            type == Material.RESPAWN_ANCHOR ||        // Anclas
+            type == Material.END_STONE ||             // Base anclas
+            type == Material.END_ROD ||               // Decoración anclas/altar
+            type == Material.GLOWSTONE ||             // Decoración anclas
+            type == Material.BEACON ||                // Altar
+            type == Material.OBSIDIAN ||              // Base altar
+            type == Material.PURPLE_CANDLE ||         // Decoración altar
+            type == Material.SOUL_LANTERN ||          // Decoración altar
+            type == Material.WITHER_SKELETON_SKULL) { // Decoración altar
+            
+            // Verificar si el bloque puede romperse (ha sido liberado por completar fase)
+            if (!ecoBrasas.puedeRomperseBloque(block.getLocation())) {
+                event.setCancelled(true);
+                event.getPlayer().sendMessage("§c§l[Eco de Brasas] §7Este bloque está protegido hasta completar la fase");
+            }
+        }
     }
     
     /**

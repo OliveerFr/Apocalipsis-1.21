@@ -247,6 +247,9 @@ public class EcoBrasasEvent extends EventBase {
     private static final int GRIETA_MAX_HEALTH = 100; // Golpes necesarios para cerrar
     private static final int GRIETA_TIMEOUT_TICKS = 6000; // 5 min (300 seg)
     
+    // Set de ubicaciones de bloques que ya pueden romperse (después de completar fase)
+    private java.util.Set<org.bukkit.Location> bloquesRompibles = new java.util.HashSet<>();
+    
     private void tickFaseRecoleccion() {
         // Spawn de primera grieta al inicio
         if (ticksEnFase == 1) {
@@ -1411,6 +1414,10 @@ public class EcoBrasasEvent extends EventBase {
         faseActual = Fase.VICTORIA;
         ticksEnFase = 0;
         
+        // LIMPIEZA: Eliminar todas las entidades visuales del altar y enemigos
+        limpiarEntidadesAltar();
+        enemigosOleada.clear();
+        
         ConfigurationSection vic = config.getConfigurationSection("narrativa.victoria");
         if (vic == null) {
             plugin.getLogger().info("[EcoBrasas] Victoria - config no encontrada");
@@ -1829,6 +1836,9 @@ public class EcoBrasasEvent extends EventBase {
             messageBus.broadcast("§6§l✓ ¡TODAS LAS GRIETAS CERRADAS!", "fase1_completa");
             messageBus.broadcast("§7Transicionando a §dFase 2§7...", "transicion");
             
+            // LIMPIEZA: Eliminar todas las entidades visuales restantes
+            limpiarEntidadesGrietas();
+            
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 transicionarFase(Fase.ESTABILIZACION);
             }, 100L); // 5 segundos
@@ -1979,6 +1989,9 @@ public class EcoBrasasEvent extends EventBase {
         if (todasCompletas) {
             messageBus.broadcast("§d§l[Eco de Brasas] §6¡Todas las anclas estabilizadas!", "transicion_fase3");
             messageBus.broadcast("§d§l[Eco de Brasas] §7Preparando ritual final...", "transicion_fase3_2");
+            
+            // LIMPIEZA: Eliminar todas las entidades visuales de anclas
+            limpiarEntidadesAnclas();
             
             // Transicionar a Fase 3 después de 5 segundos
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
@@ -2615,8 +2628,142 @@ public class EcoBrasasEvent extends EventBase {
     }
     
     // ═══════════════════════════════════════════════════════════════════
+    // MÉTODOS DE LIMPIEZA DE ENTIDADES
+    // ═══════════════════════════════════════════════════════════════════
+    
+    /**
+     * Limpia todas las entidades visuales de grietas (ArmorStands, hitboxes)
+     */
+    private void limpiarEntidadesGrietas() {
+        plugin.getLogger().info("[EcoBrasas] Limpiando entidades de grietas...");
+        
+        // Marcar ubicaciones de grietas como rompibles
+        for (Location loc : grietasActivas.keySet()) {
+            if (loc != null) {
+                // Marcar el bloque de la grieta como rompible
+                bloquesRompibles.add(loc.clone());
+            }
+        }
+        
+        // Eliminar todos los ArmorStands de grietas
+        for (org.bukkit.entity.ArmorStand marker : grietasActivas.values()) {
+            if (marker != null && !marker.isDead()) {
+                // Eliminar ArmorStands visuales cercanos (el item flotante)
+                marker.getWorld().getNearbyEntities(marker.getLocation(), 3, 3, 3).stream()
+                    .filter(e -> e instanceof org.bukkit.entity.ArmorStand)
+                    .filter(e -> e.getScoreboardTags().contains("eco_grieta"))
+                    .forEach(org.bukkit.entity.Entity::remove);
+                
+                marker.remove();
+            }
+        }
+        
+        // Eliminar todos los Shulkers (hitboxes) con tag eco_grieta_hitbox
+        for (Location loc : grietasActivas.keySet()) {
+            if (loc != null && loc.getWorld() != null) {
+                loc.getWorld().getNearbyEntities(loc, 5, 5, 5).stream()
+                    .filter(e -> e instanceof org.bukkit.entity.Shulker)
+                    .filter(e -> e.getScoreboardTags().contains("eco_grieta_hitbox"))
+                    .forEach(org.bukkit.entity.Entity::remove);
+            }
+        }
+        
+        grietasActivas.clear();
+        plugin.getLogger().info("[EcoBrasas] Limpieza de grietas completada - bloques ahora rompibles");
+    }
+    
+    /**
+     * Limpia todas las entidades visuales de anclas (ArmorStands)
+     */
+    private void limpiarEntidadesAnclas() {
+        plugin.getLogger().info("[EcoBrasas] Limpiando entidades de anclas...");
+        
+        // Marcar todas las ubicaciones de anclas (3x3 + estructuras) como rompibles
+        for (Location anclaLoc : anclas.values()) {
+            if (anclaLoc != null) {
+                World world = anclaLoc.getWorld();
+                int x = anclaLoc.getBlockX();
+                int y = anclaLoc.getBlockY();
+                int z = anclaLoc.getBlockZ();
+                
+                // Marcar todos los bloques de la estructura del ancla (3x3 base + decoraciones)
+                for (int dx = -1; dx <= 1; dx++) {
+                    for (int dz = -1; dz <= 1; dz++) {
+                        bloquesRompibles.add(new Location(world, x+dx, y, z+dz));
+                        bloquesRompibles.add(new Location(world, x+dx, y+1, z+dz));
+                    }
+                }
+            }
+        }
+        
+        // Eliminar todos los ArmorStands de anclas
+        for (org.bukkit.entity.ArmorStand marker : anclaMarkers.values()) {
+            if (marker != null && !marker.isDead()) {
+                // Eliminar ArmorStands visuales cercanos (el item flotante + instrucciones)
+                marker.getWorld().getNearbyEntities(marker.getLocation(), 3, 3, 3).stream()
+                    .filter(e -> e instanceof org.bukkit.entity.ArmorStand)
+                    .filter(e -> e.getScoreboardTags().contains("eco_ancla"))
+                    .forEach(org.bukkit.entity.Entity::remove);
+                
+                marker.remove();
+            }
+        }
+        
+        anclaMarkers.clear();
+        plugin.getLogger().info("[EcoBrasas] Limpieza de anclas completada - bloques ahora rompibles");
+    }
+    
+    /**
+     * Limpia todas las entidades visuales del altar (ArmorStands)
+     */
+    private void limpiarEntidadesAltar() {
+        plugin.getLogger().info("[EcoBrasas] Limpiando entidades del altar...");
+        
+        if (altarLocation != null && altarLocation.getWorld() != null) {
+            World world = altarLocation.getWorld();
+            int x = altarLocation.getBlockX();
+            int y = altarLocation.getBlockY();
+            int z = altarLocation.getBlockZ();
+            
+            // Marcar todos los bloques de la estructura del altar (5x5 base + 3 niveles) como rompibles
+            for (int dx = -2; dx <= 2; dx++) {
+                for (int dz = -2; dz <= 2; dz++) {
+                    bloquesRompibles.add(new Location(world, x+dx, y, z+dz));     // Base obsidiana
+                    bloquesRompibles.add(new Location(world, x+dx, y+1, z+dz));   // Nivel 1
+                    bloquesRompibles.add(new Location(world, x+dx, y+2, z+dz));   // Nivel 2 (beacon + decoraciones)
+                }
+            }
+            
+            // Eliminar todos los ArmorStands con tags de altar
+            altarLocation.getWorld().getNearbyEntities(altarLocation, 10, 10, 10).stream()
+                .filter(e -> e instanceof org.bukkit.entity.ArmorStand)
+                .filter(e -> e.getScoreboardTags().contains("eco_altar"))
+                .forEach(org.bukkit.entity.Entity::remove);
+        }
+        
+        plugin.getLogger().info("[EcoBrasas] Limpieza del altar completada - bloques ahora rompibles");
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════
     // API PÚBLICA (para comandos)
     // ═══════════════════════════════════════════════════════════════════
+    
+    /**
+     * Verifica si un bloque del evento puede ser roto
+     * @param blockLoc Ubicación del bloque
+     * @return true si el bloque puede romperse (ha sido liberado), false si está protegido
+     */
+    public boolean puedeRomperseBloque(org.bukkit.Location blockLoc) {
+        // Normalizar la ubicación (solo coordenadas de bloque)
+        org.bukkit.Location normalized = new org.bukkit.Location(
+            blockLoc.getWorld(),
+            blockLoc.getBlockX(),
+            blockLoc.getBlockY(),
+            blockLoc.getBlockZ()
+        );
+        
+        return bloquesRompibles.contains(normalized);
+    }
     
     public String getFaseActual() {
         return faseActual.name();
