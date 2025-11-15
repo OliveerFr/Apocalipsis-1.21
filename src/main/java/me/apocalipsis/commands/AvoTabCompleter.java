@@ -31,7 +31,7 @@ public class AvoTabCompleter implements TabCompleter {
                 "newday", "endday", "status", "setxp", "mission",
                 "tps", "stats", "backup", "cooldown", "debug", "test", "test-alert",
                 "reload", "admin", "escanear", "protecciones", "eco",
-                "xp", "experience", "nivel", "level"
+                "xp", "experience", "nivel", "level", "evasion", "evasiones"
             );
             
             return subcommands.stream()
@@ -97,6 +97,13 @@ public class AvoTabCompleter implements TabCompleter {
                 case "experience":
                     // Sugerir subcomandos de xp
                     return Arrays.asList("get", "add", "set", "reset").stream()
+                        .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
+                        .collect(Collectors.toList());
+                
+                case "evasion":
+                case "evasiones":
+                    // Sugerir subcomandos de evasion
+                    return Arrays.asList("check", "clear").stream()
                         .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
                         .collect(Collectors.toList());
                 
@@ -178,6 +185,24 @@ public class AvoTabCompleter implements TabCompleter {
                 if (xpSubCmd.equals("get") || xpSubCmd.equals("add") || xpSubCmd.equals("set") || xpSubCmd.equals("reset")) {
                     return plugin.getServer().getOnlinePlayers().stream()
                         .map(Player::getName)
+                        .filter(s -> s.toLowerCase().startsWith(args[2].toLowerCase()))
+                        .collect(Collectors.toList());
+                }
+            }
+            
+            // /avo evasion check|clear <jugador|all>
+            if ((subCmd.equals("evasion") || subCmd.equals("evasiones"))) {
+                String evasionSubCmd = args[1].toLowerCase();
+                if (evasionSubCmd.equals("check") || evasionSubCmd.equals("clear")) {
+                    List<String> suggestions = new ArrayList<>(
+                        plugin.getServer().getOnlinePlayers().stream()
+                            .map(Player::getName)
+                            .collect(Collectors.toList())
+                    );
+                    if (evasionSubCmd.equals("clear")) {
+                        suggestions.add("all");
+                    }
+                    return suggestions.stream()
                         .filter(s -> s.toLowerCase().startsWith(args[2].toLowerCase()))
                         .collect(Collectors.toList());
                 }

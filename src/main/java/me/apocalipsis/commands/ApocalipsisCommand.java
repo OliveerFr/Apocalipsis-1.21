@@ -86,6 +86,7 @@ public class ApocalipsisCommand implements CommandExecutor {
             sender.sendMessage("§e/avo debug <on|off|status|missions> §7- Control de logs");
             sender.sendMessage("§e/avo test-alert <jugador> §7- Prueba notificaciones");
             sender.sendMessage("§e/avo admin <add|remove|list> §7- Gestionar excepciones");
+            sender.sendMessage("§e/avo evasion <check|clear> [jugador] §7- Gestionar evasiones");
             return true;
         }
 
@@ -152,6 +153,10 @@ public class ApocalipsisCommand implements CommandExecutor {
                 break;
             case "admin":
                 cmdAdmin(sender, args);
+                break;
+            case "evasion":
+            case "evasiones":
+                cmdEvasion(sender, args);
                 break;
             case "escanear":
                 cmdEscanear(sender);
@@ -1944,6 +1949,79 @@ public class ApocalipsisCommand implements CommandExecutor {
         sender.sendMessage(progressBar.toString());
         sender.sendMessage("§7" + xpProgress + " / " + xpNeeded + " XP §8(§e" + String.format("%.1f", progress * 100) + "%§8)");
         sender.sendMessage("§e▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+    }
+    
+    /**
+     * Comando para gestionar evasiones de desastres
+     * /avo evasion <check|clear> [jugador|all]
+     */
+    private void cmdEvasion(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("avo.admin")) {
+            sender.sendMessage("§cNo tienes permisos.");
+            return;
+        }
+        
+        if (args.length < 2) {
+            sender.sendMessage("§c§lGestión de Evasiones");
+            sender.sendMessage("§e/avo evasion check <jugador> §7- Ver evasiones de un jugador");
+            sender.sendMessage("§e/avo evasion clear <jugador> §7- Limpiar evasiones de un jugador");
+            sender.sendMessage("§e/avo evasion clear all §7- Limpiar todas las evasiones");
+            return;
+        }
+        
+        String subCmd = args[1].toLowerCase();
+        
+        switch (subCmd) {
+            case "check":
+                if (args.length < 3) {
+                    sender.sendMessage("§cUso: /avo evasion check <jugador>");
+                    return;
+                }
+                
+                Player target = plugin.getServer().getPlayer(args[2]);
+                if (target == null) {
+                    sender.sendMessage("§cJugador no encontrado.");
+                    return;
+                }
+                
+                String info = plugin.getDisasterEvasionTracker().getPlayerEvasionInfo(target.getUniqueId());
+                sender.sendMessage("§e▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+                sender.sendMessage("§6Evasiones de §f" + target.getName());
+                sender.sendMessage("");
+                sender.sendMessage(info);
+                sender.sendMessage("§e▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+                break;
+                
+            case "clear":
+                if (args.length < 3) {
+                    sender.sendMessage("§cUso: /avo evasion clear <jugador|all>");
+                    return;
+                }
+                
+                if (args[2].equalsIgnoreCase("all")) {
+                    plugin.getDisasterEvasionTracker().clearAllEvasions();
+                    sender.sendMessage("§a✓ Todas las evasiones y castigos han sido limpiados.");
+                    messageBus.broadcast("§e⚠ Todas las evasiones de desastres han sido perdonadas", "evasion_clear");
+                } else {
+                    Player targetClear = plugin.getServer().getPlayer(args[2]);
+                    if (targetClear == null) {
+                        sender.sendMessage("§cJugador no encontrado.");
+                        return;
+                    }
+                    
+                    plugin.getDisasterEvasionTracker().clearPlayerEvasions(targetClear.getUniqueId());
+                    sender.sendMessage("§a✓ Evasiones y castigos de §f" + targetClear.getName() + " §alimpiados.");
+                    
+                    if (targetClear.isOnline()) {
+                        targetClear.sendMessage("§a✓ Tus evasiones y castigos pendientes han sido perdonados.");
+                    }
+                }
+                break;
+                
+            default:
+                sender.sendMessage("§cSubcomando desconocido. Usa: check o clear");
+                break;
+        }
     }
 }
 

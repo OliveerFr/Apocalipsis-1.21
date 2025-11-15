@@ -652,4 +652,59 @@ public class DisasterEvasionTracker {
     public int getPendingPunishmentLevel(UUID uuid) {
         return pendingPunishment.getOrDefault(uuid, 0);
     }
+    
+    /**
+     * Limpia todas las evasiones y castigos pendientes de un jugador específico
+     */
+    public void clearPlayerEvasions(UUID uuid) {
+        evasionCount.remove(uuid);
+        lastEvasionTime.remove(uuid);
+        pendingPunishment.remove(uuid);
+        playerJoinTime.remove(uuid);
+        saveData();
+        
+        plugin.getLogger().info("[EvasionTracker] Evasiones limpiadas para UUID: " + uuid);
+    }
+    
+    /**
+     * Limpia todas las evasiones y castigos pendientes de todos los jugadores
+     */
+    public void clearAllEvasions() {
+        int count = evasionCount.size() + pendingPunishment.size();
+        
+        evasionCount.clear();
+        lastEvasionTime.clear();
+        pendingPunishment.clear();
+        playerJoinTime.clear();
+        saveData();
+        
+        plugin.getLogger().info("[EvasionTracker] Todas las evasiones limpiadas (" + count + " registros)");
+    }
+    
+    /**
+     * Obtiene información de evasiones de un jugador
+     */
+    public String getPlayerEvasionInfo(UUID uuid) {
+        int evasions = evasionCount.getOrDefault(uuid, 0);
+        int pendingLevel = pendingPunishment.getOrDefault(uuid, 0);
+        Long lastTime = lastEvasionTime.get(uuid);
+        
+        if (evasions == 0 && pendingLevel == 0) {
+            return "§aSin evasiones registradas";
+        }
+        
+        StringBuilder info = new StringBuilder();
+        info.append("§7Evasiones totales: §c").append(evasions);
+        
+        if (pendingLevel > 0) {
+            info.append("\n§7Castigo pendiente: §c").append("Nivel ").append(pendingLevel);
+        }
+        
+        if (lastTime != null) {
+            long hoursAgo = (System.currentTimeMillis() - lastTime) / 3600000;
+            info.append("\n§7Última evasión: §e").append(hoursAgo).append("h atrás");
+        }
+        
+        return info.toString();
+    }
 }
