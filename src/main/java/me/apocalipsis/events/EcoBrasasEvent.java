@@ -61,6 +61,7 @@ public class EcoBrasasEvent extends EventBase {
     
     // Tareas programadas
     private BukkitTask dialogoTask;
+    private boolean eventoActivo = false;
     
     // Datos temporales para cinematics
     private List<String> mensajesPendientes;
@@ -99,6 +100,7 @@ public class EcoBrasasEvent extends EventBase {
     
     @Override
     public void onStart() {
+        eventoActivo = true;
         faseActual = Fase.INTRO;
         ticksEnFase = 0;
         ticksTotales = 0;
@@ -114,6 +116,7 @@ public class EcoBrasasEvent extends EventBase {
     
     @Override
     public void onStop() {
+        eventoActivo = false;
         plugin.getLogger().info("[EcoBrasas] Evento detenido");
         
         // Cancelar tareas
@@ -2811,6 +2814,11 @@ public class EcoBrasasEvent extends EventBase {
      * @return true si el bloque puede romperse (ha sido liberado), false si está protegido
      */
     public boolean puedeRomperseBloque(org.bukkit.Location blockLoc) {
+        // Si el evento NO está activo, todos los bloques pueden romperse
+        if (!eventoActivo) {
+            return true;
+        }
+        
         // Normalizar la ubicación (solo coordenadas de bloque)
         org.bukkit.Location normalized = new org.bukkit.Location(
             blockLoc.getWorld(),
@@ -2820,6 +2828,14 @@ public class EcoBrasasEvent extends EventBase {
         );
         
         return bloquesRompibles.contains(normalized);
+    }
+    
+    /**
+     * Verifica si el evento está actualmente activo
+     * @return true si el evento está activo
+     */
+    public boolean isEventoActivo() {
+        return eventoActivo;
     }
     
     public String getFaseActual() {
