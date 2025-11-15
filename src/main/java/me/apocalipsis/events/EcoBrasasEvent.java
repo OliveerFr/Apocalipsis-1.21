@@ -13,6 +13,8 @@ import org.bukkit.scheduler.BukkitTask;
 import me.apocalipsis.Apocalipsis;
 import me.apocalipsis.ui.MessageBus;
 import me.apocalipsis.ui.SoundUtil;
+import me.apocalipsis.experience.ExperienceService;
+import me.apocalipsis.missions.MissionRank;
 
 /**
  * Eco de Brasas - Evento narrativo cooperativo con 3 fases
@@ -343,6 +345,28 @@ public class EcoBrasasEvent extends EventBase {
         // Registrar grieta
         grietasActivas.put(spawnLoc, marker);
         grietaHealth.put(spawnLoc, GRIETA_MAX_HEALTH);
+        
+        int x = spawnLoc.getBlockX();
+        int z = spawnLoc.getBlockZ();
+        plugin.getLogger().info(String.format("[EcoBrasas] Grieta spawneada en X: %d Z: %d (Health: %d)", x, z, GRIETA_MAX_HEALTH));
+        
+        // NOTIFICAR a todos los jugadores sobre la nueva grieta con coordenadas
+        double distanciaMinJugador = Double.MAX_VALUE;
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            double dist = p.getLocation().distance(spawnLoc);
+            if (dist < distanciaMinJugador) {
+                distanciaMinJugador = dist;
+            }
+        }
+        
+        String coordsShort = String.format("§c[X: %d, Z: %d]", x, z);
+        String distMsg = distanciaMinJugador > 200 ? " §7(§c" + (int)distanciaMinJugador + "m§7)" : "";
+        messageBus.broadcast("§c§l⚠ GRIETA §7spawneada " + coordsShort + distMsg, "grieta_spawn");
+        
+        // Sonido de alerta para todos
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            p.playSound(p.getLocation(), Sound.BLOCK_BELL_USE, 0.7f, 0.8f);
+        }
         
         // Efectos visuales iniciales mejorados
         world.spawnParticle(Particle.EXPLOSION, spawnLoc.clone().add(0, 1, 0), 15, 2, 2, 2, 0);
@@ -870,10 +894,20 @@ public class EcoBrasasEvent extends EventBase {
                 loc.getWorld().playSound(loc, Sound.BLOCK_RESPAWN_ANCHOR_SET_SPAWN, 1.5f, 1.0f);
                 loc.getWorld().playSound(loc, Sound.BLOCK_BEACON_ACTIVATE, 1.0f, 1.2f);
                 
-                String coords = String.format("X: %d, Y: %d, Z: %d", 
-                    loc.getBlockX(), loc.getBlockY(), loc.getBlockZ());
+                // NOTIFICAR coordenadas del ancla con distancia
+                int x = loc.getBlockX();
+                int z = loc.getBlockZ();
+                double distanciaMinJugador = Double.MAX_VALUE;
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    double dist = p.getLocation().distance(loc);
+                    if (dist < distanciaMinJugador) {
+                        distanciaMinJugador = dist;
+                    }
+                }
+                String coords = String.format("X: %d, Z: %d", x, z);
+                String distMsg = distanciaMinJugador > 150 ? " (§e" + (int)distanciaMinJugador + "m§7)" : "";
                 
-                messageBus.broadcast(String.format("§7  %d. §d[%s]", i, coords), "ancla_spawn_" + i);
+                messageBus.broadcast(String.format("§7  %d. §d[%s]%s", i, coords, distMsg), "ancla_spawn_" + i);
             }
         }
         
@@ -1723,6 +1757,12 @@ public class EcoBrasasEvent extends EventBase {
         UUID uuid = player.getUniqueId();
         participacionGrietas.put(uuid, participacionGrietas.getOrDefault(uuid, 0) + 1);
         
+        // RECOMPENSA XP: 50 XP por cerrar grieta
+        ExperienceService expService = plugin.getExperienceService();
+        if (expService != null) {
+            expService.addXP(player, 50, "Grieta Cerrada", false);
+        }
+        
         // Eliminar marker (ArmorStand label)
         if (marker != null && !marker.isDead()) {
             marker.remove();
@@ -1888,6 +1928,12 @@ public class EcoBrasasEvent extends EventBase {
             // TRACKING: Registrar participación del jugador
             UUID uuid = player.getUniqueId();
             participacionAnclas.put(uuid, participacionAnclas.getOrDefault(uuid, 0) + 1);
+            
+            // RECOMPENSA XP: 100 XP por completar ancla
+            ExperienceService expService = plugin.getExperienceService();
+            if (expService != null) {
+                expService.addXP(player, 100, "Ancla Completada", false);
+            }
             
             // RECOMPENSA: Cristal de Ancla (ítem coleccionable)
             ItemStack cristal = EcoBrasasItems.createCristalAncla(1);
@@ -2060,19 +2106,31 @@ public class EcoBrasasEvent extends EventBase {
             spawnLoc.clone().subtract(0, 1, 0).getBlock().getType(),
             world.isChunkLoaded(spawnLoc.getBlockX() >> 4, spawnLoc.getBlockZ() >> 4)));
         
+        // Calcular nivel promedio de jugadores para escalar dificultad
+        int nivelPromedio = calcularNivelPromedioJugadores();
+        double hpBase = 200; // 100 corazones base
+        double hpMultiplier = 1.0 + (nivelPromedio / 15.0); // +6.67% por nivel
+        double damageBase = 10;
+        double damageMultiplier = 1.0 + (nivelPromedio / 25.0); // +4% por nivel
+        
+        int nivelGuardian = 50 + (nivelPromedio * 2); // Nivel visual del guardián
+        
         // Spawn Wither Skeleton como guardián usando spawn consumer para configurar ANTES del spawn
         org.bukkit.entity.WitherSkeleton guardian = world.spawn(spawnLoc, org.bukkit.entity.WitherSkeleton.class, (entity) -> {
             // Configurar INMEDIATAMENTE al crear (antes de que aparezca en el mundo)
-            entity.getAttribute(Attribute.MAX_HEALTH).setBaseValue(200); // 100 corazones
-            entity.setHealth(200);
-            entity.customName(net.kyori.adventure.text.Component.text("§c§lGuardián del Eco"));
+            double hpFinal = hpBase * hpMultiplier;
+            entity.getAttribute(Attribute.MAX_HEALTH).setBaseValue(hpFinal);
+            entity.setHealth(hpFinal);
+            entity.customName(net.kyori.adventure.text.Component.text(
+                String.format("§4§l⚔ Guardián del Eco §c[Lv.%d]", nivelGuardian)
+            ));
             entity.setCustomNameVisible(true);
             entity.addScoreboardTag("eco_guardian");
             entity.setRemoveWhenFarAway(false);
             entity.setPersistent(true);
-            entity.setInvulnerable(false); // Asegurar que NO sea invulnerable (queremos que sea atacable)
-            entity.getAttribute(Attribute.ATTACK_DAMAGE).setBaseValue(10);
-            entity.getAttribute(Attribute.MOVEMENT_SPEED).setBaseValue(0.3);
+            entity.setInvulnerable(false);
+            entity.getAttribute(Attribute.ATTACK_DAMAGE).setBaseValue(damageBase * damageMultiplier);
+            entity.getAttribute(Attribute.MOVEMENT_SPEED).setBaseValue(0.3 + (nivelPromedio / 200.0));
         });
         
         plugin.getLogger().info(String.format("[EcoBrasas] Guardián creado - UUID: %s, isDead: %b, health: %.1f/%.1f",
@@ -2174,10 +2232,14 @@ public class EcoBrasasEvent extends EventBase {
         oleadaState = OleadaState.ACTIVA;
         enemigosOleada.clear();
         
-        // Calcular cantidad y tipo de enemigos según intensidad (0-100)
+        // Calcular nivel promedio de jugadores
+        int nivelPromedio = calcularNivelPromedioJugadores();
+        
+        // Calcular cantidad y tipo de enemigos según intensidad (0-100) Y nivel de jugadores
         intensidadRitual = (int) ((pulsoActual / (double) pulsoMaximo) * 100);
         
-        int cantidadEnemigos = 2 + (intensidadRitual / 20); // 2-7 enemigos
+        // Base + intensidad + nivel jugadores (más desafío)
+        int cantidadEnemigos = 2 + (intensidadRitual / 20) + (nivelPromedio / 10); // 2-12+ enemigos
         World world = altarLocation.getWorld();
         
         // Anunciar oleada
@@ -2217,16 +2279,26 @@ public class EcoBrasasEvent extends EventBase {
             org.bukkit.entity.Entity spawnedEntity = world.spawnEntity(spawnLoc, tipoEnemigo);
             
             if (spawnedEntity instanceof org.bukkit.entity.LivingEntity living) {
-                // Configurar HP según intensidad
-                double hpMultiplier = 1.0 + (intensidadRitual / 100.0);
+                // Configurar HP según intensidad Y nivel de jugadores (más desafío)
+                double hpMultiplier = 1.0 + (intensidadRitual / 100.0) + (nivelPromedio / 20.0);
+                double damageMultiplier = 1.0 + (nivelPromedio / 30.0);
+                
                 living.getAttribute(Attribute.MAX_HEALTH).setBaseValue(
                     living.getAttribute(Attribute.MAX_HEALTH).getValue() * hpMultiplier
                 );
                 living.setHealth(living.getAttribute(Attribute.MAX_HEALTH).getValue());
                 
-                // Nombre personalizado
+                // Aumentar daño según nivel
+                if (living.getAttribute(Attribute.ATTACK_DAMAGE) != null) {
+                    living.getAttribute(Attribute.ATTACK_DAMAGE).setBaseValue(
+                        living.getAttribute(Attribute.ATTACK_DAMAGE).getValue() * damageMultiplier
+                    );
+                }
+                
+                // Nombre personalizado con nivel efectivo
+                int nivelEnemigo = oleadaActual + (nivelPromedio / 5);
                 living.customName(net.kyori.adventure.text.Component.text(
-                    String.format("§c⚔ Defensor Lv.%d", oleadaActual)
+                    String.format("§c⚔ Defensor Lv.%d", nivelEnemigo)
                 ));
                 living.setCustomNameVisible(true);
                 
@@ -2237,6 +2309,26 @@ public class EcoBrasasEvent extends EventBase {
                 world.spawnParticle(Particle.SOUL_FIRE_FLAME, spawnLoc.clone().add(0, 1, 0), 30, 0.5, 1, 0.5, 0.05);
             }
         }
+    }
+    
+    /**
+     * Calcula el nivel promedio de todos los jugadores online
+     */
+    private int calcularNivelPromedioJugadores() {
+        ExperienceService expService = plugin.getExperienceService();
+        if (expService == null) {
+            return 1; // Fallback nivel básico
+        }
+        
+        int totalNivel = 0;
+        int count = 0;
+        
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            totalNivel += expService.getLevel(p);
+            count++;
+        }
+        
+        return count > 0 ? (totalNivel / count) : 1;
     }
     
     /**
@@ -2419,16 +2511,32 @@ public class EcoBrasasEvent extends EventBase {
         
         // Recompensas finales (después del diálogo)
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            ExperienceService expService = plugin.getExperienceService();
+            
             for (Player player : Bukkit.getOnlinePlayers()) {
                 UUID uuid = player.getUniqueId();
                 
-                // Calcular PS por participación
-                int psGanados = calcularPSPorParticipacion(uuid);
+                int grietas = participacionGrietas.getOrDefault(uuid, 0);
+                int anclasCompletadas = participacionAnclas.getOrDefault(uuid, 0);
+                boolean guardiàn = participacionGuardian.getOrDefault(uuid, false);
                 
-                // Dar PS
+                // XP base + bonos
+                int xpTotal = 200; // Base por completar evento
+                xpTotal += grietas * 30; // +30 XP por grieta
+                xpTotal += anclasCompletadas * 50; // +50 XP por ancla
+                if (guardiàn) xpTotal += 150; // +150 XP por guardián
+                
+                // Dar XP
+                if (expService != null && xpTotal > 0) {
+                    expService.addXP(player, xpTotal, "Eco de Brasas Completado", false);
+                    player.sendMessage(String.format("§e§l[XP] §a+%d XP §7por participación en el evento", xpTotal));
+                }
+                
+                // PS = XP (sincronizado)
+                int psGanados = xpTotal;
                 if (psGanados > 0) {
                     plugin.getMissionService().addPS(uuid, psGanados, "Evento: Eco de Brasas");
-                    player.sendMessage(String.format("§e§l[PS] §a+%d PS §7por participación en el evento", psGanados));
+                    player.sendMessage(String.format("§e§l[PS] §a+%d PS §7(sincronizado con XP)", psGanados));
                 }
                 
                 // Luz Templada (útil)
@@ -2444,7 +2552,7 @@ public class EcoBrasasEvent extends EventBase {
                 player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
             }
             
-            messageBus.broadcast("§e§l✦ §7Todos recibieron §e§lLuz Templada§7, §e§lEmblema §7y §aPS por participación §e§l✦", "recompensa");
+            messageBus.broadcast("§e§l✦ §7Todos recibieron §e§lLuz Templada§7, §e§lEmblema§7, §aXP§7 y §aPS §7por participación §e§l✦", "recompensa");
         }, 260L); // 13 segundos después (10s más que el diálogo)
         
         // Transicionar a VICTORIA y detener evento

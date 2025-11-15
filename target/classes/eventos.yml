@@ -347,7 +347,7 @@ eventos:
       
       altar:
         spawn_cercano_jugadores: true  # Spawn cerca del jugador más central
-        pulsos_requeridos: 20    # 20 pulsos para completar ritual
+        pulsos_requeridos: 100    # 100 pulsos para completar ritual
         
         particulas:
           tipo: "SOUL_FIRE_FLAME"
@@ -414,7 +414,7 @@ eventos:
         # NOTA: spawn_en_pulso se calcula automáticamente como 75% de pulsos_requeridos si no se especifica
         # Ejemplo: Si pulsos_requeridos=20, spawn en pulso 15 (75%)
         # Ejemplo: Si pulsos_requeridos=8, spawn en pulso 6 (75%)
-        spawn_en_pulso: 17       # O deja que se calcule automáticamente
+        spawn_en_pulso: 95       # O deja que se calcule automáticamente
         tipo: "WITHER_SKELETON"
         nombre: "§c§lGuardián del Eco"
         
