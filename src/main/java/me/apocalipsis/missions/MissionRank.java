@@ -94,6 +94,21 @@ public enum MissionRank {
         }
         return result;
     }
+    
+    /**
+     * Determina el rango según el nivel de XP del jugador
+     * Mapeo aproximado: cada 5 niveles = 1 rango
+     */
+    public static MissionRank fromLevel(int level) {
+        if (level < 5) return NOVATO;           // Nivel 1-4
+        if (level < 10) return EXPLORADOR;      // Nivel 5-9
+        if (level < 15) return SOBREVIVIENTE;   // Nivel 10-14
+        if (level < 20) return VETERANO;        // Nivel 15-19
+        if (level < 25) return LEYENDA;         // Nivel 20-24
+        if (level < 30) return MAESTRO;         // Nivel 25-29
+        if (level < 35) return TITAN;           // Nivel 30-34
+        return ABSOLUTO;                        // Nivel 35+
+    }
 
     /**
      * Obtiene el siguiente rango (null si es el máximo)

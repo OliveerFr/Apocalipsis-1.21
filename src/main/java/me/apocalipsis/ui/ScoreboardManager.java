@@ -155,12 +155,24 @@ public class ScoreboardManager {
         
         content.append(" \n"); // Línea vacía
         
-        // Progreso de rango
+        // Progreso de rango (basado en XP/nivel)
         if (!rankService.isMaxRank(player)) {
-            int nextThreshold = rankService.getNextRankThreshold(player);
             double progress = rankService.getProgressToNextRank(player);
             content.append("§7Progreso de rango:\n");
-            content.append(buildProgressBar(progress)).append(" §7").append(ps).append("/").append(nextThreshold).append(" PS\n");
+            
+            if (plugin.getExperienceService() != null) {
+                int xp = plugin.getExperienceService().getXP(player);
+                int nivel = plugin.getExperienceService().getLevel(player);
+                int xpForNext = plugin.getExperienceService().getXPForLevel(nivel + 1);
+                int xpCurrent = plugin.getExperienceService().getXPForLevel(nivel);
+                int xpProgress = xp - xpCurrent;
+                int xpNeeded = xpForNext - xpCurrent;
+                content.append(buildProgressBar(progress)).append(" §7").append(xpProgress).append("/").append(xpNeeded).append(" XP\n");
+            } else {
+                // Fallback a PS si no hay ExperienceService
+                int nextThreshold = rankService.getNextRankThreshold(player);
+                content.append(buildProgressBar(progress)).append(" §7").append(ps).append("/").append(nextThreshold).append(" PS\n");
+            }
         } else {
             content.append("§6§l★ RANGO MÁXIMO ★\n");
         }

@@ -30,7 +30,8 @@ public class AvoTabCompleter implements TabCompleter {
                 "start", "stop", "force", "skip", "preparacion", "time",
                 "newday", "endday", "status", "setps", "mission",
                 "tps", "stats", "backup", "cooldown", "debug", "test", "test-alert",
-                "reload", "admin", "escanear", "protecciones", "eco"
+                "reload", "admin", "escanear", "protecciones", "eco",
+                "xp", "experience", "nivel", "level"
             );
             
             return subcommands.stream()
@@ -88,6 +89,21 @@ public class AvoTabCompleter implements TabCompleter {
                 case "eco":
                     // Sugerir subcomandos de eco
                     return Arrays.asList("start", "stop", "fase", "next", "info", "pulso", "ancla").stream()
+                        .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
+                        .collect(Collectors.toList());
+                
+                case "xp":
+                case "experience":
+                    // Sugerir subcomandos de xp
+                    return Arrays.asList("get", "add", "set", "reset").stream()
+                        .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
+                        .collect(Collectors.toList());
+                
+                case "nivel":
+                case "level":
+                    // Sugerir jugadores online
+                    return plugin.getServer().getOnlinePlayers().stream()
+                        .map(Player::getName)
                         .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
                         .collect(Collectors.toList());
             }
@@ -154,6 +170,17 @@ public class AvoTabCompleter implements TabCompleter {
                     .filter(s -> s.startsWith(args[2]))
                     .collect(Collectors.toList());
             }
+            
+            // /avo xp get|add|set|reset <jugador>
+            if ((subCmd.equals("xp") || subCmd.equals("experience"))) {
+                String xpSubCmd = args[1].toLowerCase();
+                if (xpSubCmd.equals("get") || xpSubCmd.equals("add") || xpSubCmd.equals("set") || xpSubCmd.equals("reset")) {
+                    return plugin.getServer().getOnlinePlayers().stream()
+                        .map(Player::getName)
+                        .filter(s -> s.toLowerCase().startsWith(args[2].toLowerCase()))
+                        .collect(Collectors.toList());
+                }
+            }
         }
         
         // args.length == 4: /avo mission give <jugador> <tipo>
@@ -186,6 +213,14 @@ public class AvoTabCompleter implements TabCompleter {
         // args.length == 6: /avo mission give <jugador> <tipo> <objetivo> <meta>
         if (args.length == 6 && "mission".equalsIgnoreCase(args[0]) && "give".equalsIgnoreCase(args[1])) {
             return Arrays.asList("1", "5", "10", "25", "50", "100");
+        }
+        
+        // args.length == 4: /avo xp add|set <jugador> <cantidad>
+        if (args.length == 4 && ("xp".equalsIgnoreCase(args[0]) || "experience".equalsIgnoreCase(args[0]))) {
+            String xpSubCmd = args[1].toLowerCase();
+            if (xpSubCmd.equals("add") || xpSubCmd.equals("set")) {
+                return Arrays.asList("10", "50", "100", "250", "500", "1000");
+            }
         }
 
         return completions;

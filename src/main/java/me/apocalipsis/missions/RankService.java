@@ -104,6 +104,12 @@ public class RankService {
      * Obtiene el rango actual del jugador según sus PS
      */
     public MissionRank getRank(Player player) {
+        // Usar nivel de XP en lugar de PS para determinar rango
+        if (plugin.getExperienceService() != null) {
+            int nivel = plugin.getExperienceService().getLevel(player);
+            return MissionRank.fromLevel(nivel);
+        }
+        // Fallback al sistema anterior si no hay ExperienceService
         int ps = getPS(player);
         return MissionRank.fromPs(ps);
     }
@@ -140,6 +146,12 @@ public class RankService {
             return 1.0;
         }
 
+        // Usar progreso de XP en lugar de PS
+        if (plugin.getExperienceService() != null) {
+            return plugin.getExperienceService().getProgressToNextLevel(player);
+        }
+        
+        // Fallback al sistema anterior si no hay ExperienceService
         MissionRank current = getRank(player);
         int ps = getPS(player);
         int currentMin = current.getPsRequired();
