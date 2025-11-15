@@ -420,74 +420,73 @@ public class EcoBrasasEvent extends EventBase {
     
     /**
      * Buscar ubicación lejos de jugadores (150-300 bloques)
-     * MEJORADO: Extiende el rango automáticamente si no encuentra superficie válida
+     * OPTIMIZADO: Solo verifica chunks ya cargados para evitar lag
      */
     private Location findRemoteLocationFar() {
         World world = Bukkit.getWorlds().get(0);
         int rangoMin = 150;
         int rangoMax = 300;
-        int incremento = 50; // Incrementar 50 bloques si no encuentra
-        int maxExtension = 1000; // Límite máximo de búsqueda
+        int maxIntentos = 50;
         
-        while (rangoMax <= maxExtension) {
-            // Intentar con el rango actual
-            for (int intento = 0; intento < 30; intento++) {
-                int distancia = random.nextInt(rangoMax - rangoMin + 1) + rangoMin;
-                double angulo = random.nextDouble() * 2 * Math.PI;
-                int x = (int) (distancia * Math.cos(angulo));
-                int z = (int) (distancia * Math.sin(angulo));
-                int y = world.getHighestBlockYAt(x, z);
-                
-                Location loc = new Location(world, x, y, z);
-                
-                // [VALIDACIÓN] Verificar que sea superficie sólida válida
-                if (!isValidSurfaceLocation(loc)) {
-                    continue;
-                }
-                
-                // Verificar que esté lejos de jugadores
-                boolean lejos = true;
-                for (Player player : Bukkit.getOnlinePlayers()) {
-                    double dist = player.getLocation().distance(loc);
-                    if (dist < rangoMin) {
-                        lejos = false;
-                        break;
-                    }
-                }
-                
-                if (lejos) {
-                    plugin.getLogger().info(String.format("[EcoBrasas] Grieta ubicación encontrada en rango %d-%d bloques", rangoMin, rangoMax));
-                    return loc.add(0, 1, 0);
+        // Intentar encontrar ubicación en chunks YA CARGADOS
+        for (int intento = 0; intento < maxIntentos; intento++) {
+            int distancia = random.nextInt(rangoMax - rangoMin + 1) + rangoMin;
+            double angulo = random.nextDouble() * 2 * Math.PI;
+            int x = (int) (distancia * Math.cos(angulo));
+            int z = (int) (distancia * Math.sin(angulo));
+            
+            // CRÍTICO: Solo verificar si el chunk está CARGADO
+            if (!world.isChunkLoaded(x >> 4, z >> 4)) {
+                continue;
+            }
+            
+            int y = world.getHighestBlockYAt(x, z);
+            Location loc = new Location(world, x, y, z);
+            
+            if (!isValidSurfaceLocation(loc)) {
+                continue;
+            }
+            
+            boolean lejos = true;
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                double dist = player.getLocation().distance(loc);
+                if (dist < rangoMin) {
+                    lejos = false;
+                    break;
                 }
             }
             
-            // No se encontró superficie válida, extender rango
-            plugin.getLogger().warning(String.format("[EcoBrasas] No se encontró superficie en rango %d-%d, extendiendo a %d-%d", 
-                rangoMin, rangoMax, rangoMin, rangoMax + incremento));
-            rangoMax += incremento;
+            if (lejos) {
+                plugin.getLogger().info("[EcoBrasas] Grieta encontrada en chunks cargados");
+                return loc.add(0, 1, 0);
+            }
         }
         
-        // Último recurso: buscar cualquier superficie válida cerca del spawn
-        plugin.getLogger().warning("[EcoBrasas] Usando fallback: spawn del mundo");
-        Location spawn = world.getSpawnLocation();
-        
-        // Buscar superficie válida cerca del spawn
-        for (int radio = 50; radio <= 200; radio += 50) {
-            for (int i = 0; i < 20; i++) {
+        // Fallback: Buscar cerca de jugadores (chunks cargados)
+        if (!Bukkit.getOnlinePlayers().isEmpty()) {
+            Player randomPlayer = (Player) Bukkit.getOnlinePlayers().toArray()[random.nextInt(Bukkit.getOnlinePlayers().size())];
+            Location playerLoc = randomPlayer.getLocation();
+            
+            for (int intento = 0; intento < 30; intento++) {
                 double angulo = random.nextDouble() * 2 * Math.PI;
-                int x = spawn.getBlockX() + (int) (radio * Math.cos(angulo));
-                int z = spawn.getBlockZ() + (int) (radio * Math.sin(angulo));
-                int y = world.getHighestBlockYAt(x, z);
-                Location fallbackLoc = new Location(world, x, y, z);
+                int offsetDist = rangoMin + random.nextInt(rangoMax - rangoMin);
+                int x = playerLoc.getBlockX() + (int) (offsetDist * Math.cos(angulo));
+                int z = playerLoc.getBlockZ() + (int) (offsetDist * Math.sin(angulo));
                 
-                if (isValidSurfaceLocation(fallbackLoc)) {
-                    plugin.getLogger().info("[EcoBrasas] Superficie válida encontrada a " + radio + " bloques del spawn");
-                    return fallbackLoc.add(0, 1, 0);
+                if (world.isChunkLoaded(x >> 4, z >> 4)) {
+                    int y = world.getHighestBlockYAt(x, z);
+                    Location loc = new Location(world, x, y, z);
+                    
+                    if (isValidSurfaceLocation(loc)) {
+                        plugin.getLogger().info("[EcoBrasas] Grieta spawneada cerca de jugador");
+                        return loc.add(0, 1, 0);
+                    }
                 }
             }
         }
         
-        return spawn;
+        plugin.getLogger().warning("[EcoBrasas] Grieta usando spawn");
+        return world.getSpawnLocation();
     }
     
     /**
@@ -609,70 +608,72 @@ public class EcoBrasasEvent extends EventBase {
     
     /**
      * Buscar ubicación lejos de jugadores (50+ bloques) para anclas
-     * MEJORADO: Extiende el rango automáticamente si no encuentra superficie válida
+     * OPTIMIZADO: Solo verifica chunks ya cargados para evitar lag
      */
     private Location findRemoteLocation() {
         World world = Bukkit.getWorlds().get(0);
         int rangoMin = 50;
         int rangoMax = 200;
-        int incremento = 50;
-        int maxExtension = 800;
+        int maxIntentos = 40;
         
-        while (rangoMax <= maxExtension) {
-            // Intentar con el rango actual
-            for (int intento = 0; intento < 25; intento++) {
-                int distancia = random.nextInt(rangoMax - rangoMin + 1) + rangoMin;
-                double angulo = random.nextDouble() * 2 * Math.PI;
-                int x = (int) (distancia * Math.cos(angulo));
-                int z = (int) (distancia * Math.sin(angulo));
-                int y = world.getHighestBlockYAt(x, z);
-                
-                Location loc = new Location(world, x, y, z);
-                
-                // [VALIDACIÓN] Verificar que sea superficie sólida válida
-                if (!isValidSurfaceLocation(loc)) {
-                    continue;
-                }
-                
-                // Verificar que esté lejos de jugadores
-                boolean lejos = true;
-                for (Player player : Bukkit.getOnlinePlayers()) {
-                    if (player.getLocation().distance(loc) < rangoMin) {
-                        lejos = false;
-                        break;
-                    }
-                }
-                
-                if (lejos) {
-                    plugin.getLogger().info(String.format("[EcoBrasas] Ancla ubicación encontrada en rango %d-%d bloques", rangoMin, rangoMax));
-                    return loc.add(0, 1, 0);
+        // Intentar en chunks YA CARGADOS
+        for (int intento = 0; intento < maxIntentos; intento++) {
+            int distancia = random.nextInt(rangoMax - rangoMin + 1) + rangoMin;
+            double angulo = random.nextDouble() * 2 * Math.PI;
+            int x = (int) (distancia * Math.cos(angulo));
+            int z = (int) (distancia * Math.sin(angulo));
+            
+            // CRÍTICO: Solo chunks cargados
+            if (!world.isChunkLoaded(x >> 4, z >> 4)) {
+                continue;
+            }
+            
+            int y = world.getHighestBlockYAt(x, z);
+            Location loc = new Location(world, x, y, z);
+            
+            if (!isValidSurfaceLocation(loc)) {
+                continue;
+            }
+            
+            boolean lejos = true;
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                if (player.getLocation().distance(loc) < rangoMin) {
+                    lejos = false;
+                    break;
                 }
             }
             
-            // No se encontró superficie válida, extender rango
-            plugin.getLogger().warning(String.format("[EcoBrasas] Ancla: No se encontró superficie en rango %d-%d, extendiendo a %d-%d", 
-                rangoMin, rangoMax, rangoMin, rangoMax + incremento));
-            rangoMax += incremento;
+            if (lejos) {
+                plugin.getLogger().info("[EcoBrasas] Ancla encontrada en chunks cargados");
+                return loc.add(0, 1, 0);
+            }
         }
         
-        // Fallback: buscar cualquier superficie válida
-        plugin.getLogger().warning("[EcoBrasas] Ancla usando fallback: búsqueda amplia");
-        for (int radio = 30; radio <= 500; radio += 30) {
-            for (int i = 0; i < 15; i++) {
+        // Fallback: Cerca de jugadores (chunks cargados)
+        if (!Bukkit.getOnlinePlayers().isEmpty()) {
+            Player randomPlayer = (Player) Bukkit.getOnlinePlayers().toArray()[random.nextInt(Bukkit.getOnlinePlayers().size())];
+            Location playerLoc = randomPlayer.getLocation();
+            
+            for (int intento = 0; intento < 20; intento++) {
                 double angulo = random.nextDouble() * 2 * Math.PI;
-                int x = (int) (radio * Math.cos(angulo));
-                int z = (int) (radio * Math.sin(angulo));
-                int y = world.getHighestBlockYAt(x, z);
-                Location fallbackLoc = new Location(world, x, y, z);
+                int dist = rangoMin + random.nextInt(rangoMax - rangoMin);
+                int x = playerLoc.getBlockX() + (int) (dist * Math.cos(angulo));
+                int z = playerLoc.getBlockZ() + (int) (dist * Math.sin(angulo));
                 
-                if (isValidSurfaceLocation(fallbackLoc)) {
-                    plugin.getLogger().info("[EcoBrasas] Ancla: Superficie encontrada a " + radio + " bloques");
-                    return fallbackLoc.add(0, 1, 0);
+                if (world.isChunkLoaded(x >> 4, z >> 4)) {
+                    int y = world.getHighestBlockYAt(x, z);
+                    Location loc = new Location(world, x, y, z);
+                    
+                    if (isValidSurfaceLocation(loc)) {
+                        plugin.getLogger().info("[EcoBrasas] Ancla spawneada cerca de jugador");
+                        return loc.add(0, 1, 0);
+                    }
                 }
             }
         }
         
-        return null;
+        plugin.getLogger().warning("[EcoBrasas] Ancla usando spawn");
+        return world.getSpawnLocation();
     }
     
     // ═══════════════════════════════════════════════════════════════════
@@ -1269,10 +1270,9 @@ public class EcoBrasasEvent extends EventBase {
     
     /**
      * Buscar ubicación central entre jugadores para el Altar
-     * MEJORADO: Extiende el radio de búsqueda hasta encontrar superficie válida
+     * OPTIMIZADO: Solo verifica chunks ya cargados para evitar lag
      */
     private Location findCentralLocation() {
-        // Buscar ubicación central entre todos los jugadores
         if (Bukkit.getOnlinePlayers().isEmpty()) {
             return Bukkit.getWorlds().get(0).getSpawnLocation();
         }
@@ -1291,56 +1291,74 @@ public class EcoBrasasEvent extends EventBase {
         World world = Bukkit.getOnlinePlayers().iterator().next().getWorld();
         int centerX = (int) (sumX / count);
         int centerZ = (int) (sumZ / count);
-        int centerY = world.getHighestBlockYAt(centerX, centerZ);
         
-        Location centerLoc = new Location(world, centerX, centerY, centerZ);
-        
-        // [VALIDACIÓN] Verificar que sea superficie sólida válida
-        if (isValidSurfaceLocation(centerLoc)) {
-            plugin.getLogger().info("[EcoBrasas] Altar ubicación encontrada en centro exacto de jugadores");
-            return centerLoc.add(0, 1, 0);
-        }
-        
-        // Si el centro no es válido, buscar en círculos cada vez más grandes
-        int radioMax = 200; // Extender hasta 200 bloques si es necesario
-        for (int radio = 10; radio <= radioMax; radio += 10) {
-            // Intentar 16 direcciones en cada círculo
-            for (int intento = 0; intento < 16; intento++) {
-                double angulo = (Math.PI * 2 * intento) / 16;
-                int offsetX = (int) (Math.cos(angulo) * radio);
-                int offsetZ = (int) (Math.sin(angulo) * radio);
-                
-                int testX = centerX + offsetX;
-                int testZ = centerZ + offsetZ;
-                int testY = world.getHighestBlockYAt(testX, testZ);
-                
-                Location testLoc = new Location(world, testX, testY, testZ);
-                if (isValidSurfaceLocation(testLoc)) {
-                    plugin.getLogger().info(String.format("[EcoBrasas] Altar ubicación encontrada a %d bloques del centro", radio));
-                    return testLoc.add(0, 1, 0);
-                }
+        // CRÍTICO: Verificar si el chunk central está cargado
+        if (world.isChunkLoaded(centerX >> 4, centerZ >> 4)) {
+            int centerY = world.getHighestBlockYAt(centerX, centerZ);
+            Location centerLoc = new Location(world, centerX, centerY, centerZ);
+            
+            if (isValidSurfaceLocation(centerLoc)) {
+                plugin.getLogger().info("[EcoBrasas] Altar en centro exacto");
+                return centerLoc.add(0, 1, 0);
             }
         }
         
-        // Si aún no se encuentra, buscar en modo espiral más denso
-        plugin.getLogger().warning("[EcoBrasas] Altar: Búsqueda extendida modo espiral");
-        for (int radio = 20; radio <= 300; radio += 20) {
-            for (int i = 0; i < 24; i++) {
-                double angulo = random.nextDouble() * 2 * Math.PI;
+        // Buscar en círculos, SOLO chunks cargados
+        for (int radio = 10; radio <= 100; radio += 10) {
+            for (int intento = 0; intento < 12; intento++) {
+                double angulo = (Math.PI * 2 * intento) / 12;
                 int testX = centerX + (int) (Math.cos(angulo) * radio);
                 int testZ = centerZ + (int) (Math.sin(angulo) * radio);
-                int testY = world.getHighestBlockYAt(testX, testZ);
                 
+                if (!world.isChunkLoaded(testX >> 4, testZ >> 4)) {
+                    continue;
+                }
+                
+                int testY = world.getHighestBlockYAt(testX, testZ);
                 Location testLoc = new Location(world, testX, testY, testZ);
+                
                 if (isValidSurfaceLocation(testLoc)) {
-                    plugin.getLogger().info("[EcoBrasas] Altar: Superficie encontrada en espiral a " + radio + " bloques");
+                    plugin.getLogger().info("[EcoBrasas] Altar encontrado a " + radio + " bloques");
                     return testLoc.add(0, 1, 0);
                 }
             }
         }
         
-        // Último recurso: spawn del mundo
-        plugin.getLogger().warning("[EcoBrasas] Altar usando fallback: spawn del mundo");
+        // Fallback: Cerca del jugador más cercano al centro
+        Player nearestPlayer = null;
+        double minDist = Double.MAX_VALUE;
+        Location centerPoint = new Location(world, centerX, 64, centerZ);
+        
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            double dist = player.getLocation().distance(centerPoint);
+            if (dist < minDist) {
+                minDist = dist;
+                nearestPlayer = player;
+            }
+        }
+        
+        if (nearestPlayer != null) {
+            Location playerLoc = nearestPlayer.getLocation();
+            for (int radio = 20; radio <= 80; radio += 20) {
+                for (int i = 0; i < 8; i++) {
+                    double angulo = (Math.PI * 2 * i) / 8;
+                    int x = playerLoc.getBlockX() + (int) (Math.cos(angulo) * radio);
+                    int z = playerLoc.getBlockZ() + (int) (Math.sin(angulo) * radio);
+                    
+                    if (world.isChunkLoaded(x >> 4, z >> 4)) {
+                        int y = world.getHighestBlockYAt(x, z);
+                        Location loc = new Location(world, x, y, z);
+                        
+                        if (isValidSurfaceLocation(loc)) {
+                            plugin.getLogger().info("[EcoBrasas] Altar cerca de jugador");
+                            return loc.add(0, 1, 0);
+                        }
+                    }
+                }
+            }
+        }
+        
+        plugin.getLogger().warning("[EcoBrasas] Altar usando spawn");
         return world.getSpawnLocation();
     }
     
