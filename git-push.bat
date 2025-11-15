@@ -15,6 +15,40 @@ for /f "tokens=2 delims=<>" %%a in ('findstr "<version>" pom.xml ^| findstr -v "
 echo Versión actual: %VERSION%
 echo.
 
+REM Verificar si hay cambios sin commitear
+git diff --quiet
+set DIFF_EXIT=%ERRORLEVEL%
+git diff --cached --quiet
+set CACHED_EXIT=%ERRORLEVEL%
+
+if %DIFF_EXIT% NEQ 0 (
+    echo ⚠️  ATENCIÓN: Se detectaron cambios sin commitear
+    echo.
+    git status --short
+    echo.
+    set /p CONTINUAR="¿Deseas continuar y commitear estos cambios? (S/N): "
+    if /i not "%CONTINUAR%"=="S" (
+        echo.
+        echo ❌ Operación cancelada por el usuario
+        pause
+        exit /b 0
+    )
+    echo.
+) else if %CACHED_EXIT% NEQ 0 (
+    echo ⚠️  ATENCIÓN: Se detectaron cambios en staging sin commitear
+    echo.
+    git status --short
+    echo.
+    set /p CONTINUAR="¿Deseas continuar y commitear estos cambios? (S/N): "
+    if /i not "%CONTINUAR%"=="S" (
+        echo.
+        echo ❌ Operación cancelada por el usuario
+        pause
+        exit /b 0
+    )
+    echo.
+)
+
 REM Pedir descripción
 set /p DESCRIPCION="Descripción del cambio: "
 
