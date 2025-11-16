@@ -395,6 +395,9 @@ public class DisasterEvasionTracker {
         UUID uuid = player.getUniqueId();
         Integer punishmentLevel = pendingPunishment.get(uuid);
         
+        // [DEBUG] Log para tracking
+        plugin.getLogger().info("[EvasionTracker] Login check para " + player.getName() + " - Castigo pendiente: " + (punishmentLevel != null ? "Nivel " + punishmentLevel : "Ninguno"));
+        
         if (punishmentLevel == null) {
             return; // No tiene castigos pendientes
         }
