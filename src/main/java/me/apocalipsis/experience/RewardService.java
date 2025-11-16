@@ -7,11 +7,14 @@ import me.apocalipsis.missions.MissionRank;
 import org.bukkit.*;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Firework;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.meta.FireworkMeta;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.*;
 
 /**
@@ -22,18 +25,52 @@ import java.util.*;
 public class RewardService {
     
     private final Apocalipsis plugin;
+    private final File dataFile;
     
     // Caché de recompensas por rango
     private final Map<MissionRank, RankReward> rewardsByRank = new HashMap<>();
     
-    // Registro de recompensas entregadas (para evitar duplicados)
+    // Registro de recompensas entregadas (para evitar duplicados) - PERSISTENTE
     private final Set<String> deliveredRewards = new HashSet<>();
     
     private final Random random = new Random();
     
     public RewardService(Apocalipsis plugin) {
         this.plugin = plugin;
+        this.dataFile = new File(plugin.getDataFolder(), "rewards_delivered.yml");
+        loadDeliveredRewards();
         loadRewards();
+    }
+    
+    /**
+     * Carga el registro de recompensas ya entregadas desde archivo
+     */
+    private void loadDeliveredRewards() {
+        if (!dataFile.exists()) {
+            return;
+        }
+        
+        try {
+            FileConfiguration config = YamlConfiguration.loadConfiguration(dataFile);
+            List<String> delivered = config.getStringList("delivered_rewards");
+            deliveredRewards.addAll(delivered);
+            plugin.getLogger().info("[Rewards] Cargadas " + deliveredRewards.size() + " recompensas ya entregadas");
+        } catch (Exception e) {
+            plugin.getLogger().warning("[Rewards] Error cargando rewards_delivered.yml: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Guarda el registro de recompensas entregadas a archivo
+     */
+    private void saveDeliveredRewards() {
+        try {
+            FileConfiguration config = new YamlConfiguration();
+            config.set("delivered_rewards", new ArrayList<>(deliveredRewards));
+            config.save(dataFile);
+        } catch (IOException e) {
+            plugin.getLogger().warning("[Rewards] Error guardando rewards_delivered.yml: " + e.getMessage());
+        }
     }
     
     /**
@@ -101,8 +138,9 @@ public class RewardService {
             player.sendMessage(message);
         }
         
-        // Marcar como entregado
+        // Marcar como entregado y guardar
         deliveredRewards.add(key);
+        saveDeliveredRewards();
         
         // Efectos visuales
         player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.5f);
@@ -114,19 +152,17 @@ public class RewardService {
     }
     
     /**
-     * Verifica y entrega todas las recompensas pendientes para un jugador
-     * (útil para cuando un jugador se une y tiene múltiples rangos sin reclamar)
+     * Verifica y entrega recompensas pendientes SOLO del rango actual
+     * (cuando el jugador sube de rango mientras está offline)
+     * Ya NO entrega recompensas de rangos anteriores al reconectar
      */
     public void checkAndDeliverPendingRewards(Player player) {
         MissionRank currentRank = plugin.getRankService().getRank(player);
         
-        // Verificar cada rango desde EXPLORADOR hasta el rango actual
-        for (MissionRank rank : MissionRank.values()) {
-            if (rank == MissionRank.NOVATO) continue;
-            if (rank.ordinal() > currentRank.ordinal()) break;
-            
-            // Intentar entregar recompensas (solo entregará si no las ha recibido)
-            deliverRewards(player, rank);
+        // Solo verificar el rango actual (por si subió mientras estaba offline)
+        if (currentRank != MissionRank.NOVATO) {
+            // Intentar entregar recompensas del rango actual (solo si no las ha recibido)
+            deliverRewards(player, currentRank);
         }
     }
     
@@ -168,6 +204,14 @@ public class RewardService {
      */
     public void reload() {
         loadRewards();
+    }
+    
+    /**
+     * Guarda los datos de recompensas entregadas
+     * Llamar al desactivar el plugin
+     */
+    public void saveData() {
+        saveDeliveredRewards();
     }
     
     /**

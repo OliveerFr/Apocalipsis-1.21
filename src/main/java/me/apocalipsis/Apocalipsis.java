@@ -183,6 +183,11 @@ public final class Apocalipsis extends JavaPlugin {
             experienceService.saveData();
         }
         
+        // Guardar datos de recompensas
+        if (rewardService != null) {
+            rewardService.saveData();
+        }
+        
         // Detener habilidades
         if (abilityService != null) {
             abilityService.stopTask();
