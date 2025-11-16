@@ -13,7 +13,7 @@ misiones:
   - id: "romper_madera_facil"
     nombre: "Talar árboles"
     tipo: "ROMPER"
-    objetivo: "OAK_LOG"
+    objetivo: "ANY_LOG"
     cantidad: 20
     dificultad: "FACIL"
     rangos: ["NOVATO", "EXPLORADOR"]

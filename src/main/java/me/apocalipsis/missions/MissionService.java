@@ -253,7 +253,22 @@ public class MissionService {
             if (assignment.isCompleted() || assignment.isFailed()) continue;
             
             MissionCatalog mission = assignment.getMission();
-            if (mission.getTipo() == type && mission.getObjetivo().equalsIgnoreCase(target)) {
+            
+            // [MEJORA] Matching flexible para troncos - cualquier log cuenta como madera
+            boolean matches = false;
+            if (mission.getTipo() == type) {
+                String objetivo = mission.getObjetivo();
+                
+                // Si la misión pide un log específico o "ANY_LOG", aceptar cualquier tronco
+                if (objetivo.equals("ANY_LOG") || objetivo.endsWith("_LOG")) {
+                    matches = isWoodLog(target) && (objetivo.equals("ANY_LOG") || objetivo.equalsIgnoreCase(target));
+                } else {
+                    // Match normal para otros materiales
+                    matches = objetivo.equalsIgnoreCase(target);
+                }
+            }
+            
+            if (matches) {
                 int oldProgress = assignment.getProgress();
                 assignment.addProgress(amount);
                 
@@ -779,6 +794,33 @@ public class MissionService {
                 Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
             }
         }
+    }
+    
+    /**
+     * [NUEVO] Verifica si un material es un tronco de árbol (cualquier tipo)
+     * Incluye: OAK, BIRCH, SPRUCE, JUNGLE, ACACIA, DARK_OAK, CRIMSON, WARPED, MANGROVE, CHERRY
+     */
+    private boolean isWoodLog(String material) {
+        return material.equals("OAK_LOG") ||
+               material.equals("BIRCH_LOG") ||
+               material.equals("SPRUCE_LOG") ||
+               material.equals("JUNGLE_LOG") ||
+               material.equals("ACACIA_LOG") ||
+               material.equals("DARK_OAK_LOG") ||
+               material.equals("CRIMSON_STEM") ||    // Nether
+               material.equals("WARPED_STEM") ||     // Nether
+               material.equals("MANGROVE_LOG") ||
+               material.equals("CHERRY_LOG") ||
+               material.equals("STRIPPED_OAK_LOG") ||
+               material.equals("STRIPPED_BIRCH_LOG") ||
+               material.equals("STRIPPED_SPRUCE_LOG") ||
+               material.equals("STRIPPED_JUNGLE_LOG") ||
+               material.equals("STRIPPED_ACACIA_LOG") ||
+               material.equals("STRIPPED_DARK_OAK_LOG") ||
+               material.equals("STRIPPED_CRIMSON_STEM") ||
+               material.equals("STRIPPED_WARPED_STEM") ||
+               material.equals("STRIPPED_MANGROVE_LOG") ||
+               material.equals("STRIPPED_CHERRY_LOG");
     }
     
     private Particle safeParticle(String name, Particle def) {

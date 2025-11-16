@@ -76,75 +76,98 @@ public class TablistManager {
         String perfState = getPerformanceStateDisplay();
         
         StringBuilder header = new StringBuilder();
-        header.append("§c§lAPOCALIPSIS §8(La Firma)\n");
-        header.append("§7Estado: §f").append(stateDisplay).append("  §8|  §7Desastre: §f").append(disasterName).append("\n");
-        header.append("§7Día §f#").append(day).append("  §8|  §7Online: §a").append(online).append("§7/§f").append(max)
-              .append("  §8|  §7TPS: ").append(tpsColor).append(String.format("%.1f", tps))
-              .append("  §8|  §7Perf: §f").append(perfState);
+        // Línea 1: Logo y título premium
+        header.append("\n§8§l╔═══════════════════════════════════════════╗\n");
+        header.append("    §c§l⚠ APOCALIPSIS §8§l» §7La Firma del Caos §c§l⚠\n");
+        header.append("§8§l╠═══════════════════════════════════════════╣\n");
         
-        // Footer: tiempo + próximo rango
+        // Línea 2: Estado y desastre con iconos
+        header.append("  §7Estado: ").append(stateDisplay)
+              .append("  §8┃  §7Desastre: ").append(disasterName).append("\n");
+        
+        // Línea 3: Stats del servidor
+        header.append("  §7Día: §f#").append(day)
+              .append("  §8┃  §7Players: §b").append(online).append("§7/§f").append(max)
+              .append("  §8┃  §7TPS: ").append(tpsColor).append(String.format("%.1f", tps))
+              .append("  §8┃  ").append(perfState).append("\n");
+        header.append("§8§l╚═══════════════════════════════════════════╝");
+        
+        // Footer: diseño premium con progreso visual
         StringBuilder footer = new StringBuilder();
+        footer.append("\n§8§l╔═══════════════════════════════════════════╗\n");
+        
+        // Línea 1: Tiempo/Estado
+        footer.append("  ");
         if (state == ServerState.ACTIVO) {
-            // [FIX] Leer tiempo desde state.yml (cero-drift)
             String timeDisplay = calculateTimeFromStateYml();
-            footer.append("\n§7Tiempo restante: §a").append(timeDisplay);
+            footer.append("§c⏱ §7Tiempo: §a§l").append(timeDisplay);
         } else if (state == ServerState.PREPARACION) {
-            // Verificar si es preparación forzada
             boolean prepForzada = stateManager.isPrepForzada();
             
             if (prepForzada) {
-                // Mostrar tiempo de ventana forzada
                 String timeDisplay = calculateTimeFromStateYml();
-                footer.append("\n§7Preparación: §e").append(timeDisplay);
+                footer.append("§e⚡ §7Preparación: §e§l").append(timeDisplay);
             } else {
-                // Mostrar cooldown en preparación normal
                 String cooldownDisplay = calculateCooldownFromStateYml();
                 if (!cooldownDisplay.equals("00:00")) {
-                    footer.append("\n§7Cooldown: §e").append(cooldownDisplay);
+                    footer.append("§e⏳ §7Cooldown: §e§l").append(cooldownDisplay);
                 } else {
-                    // Cooldown cumplido - verificar si hay bloqueo por jugadores
                     int minJugadores = plugin.getConfigManager().getMinJugadores();
                     if (online < minJugadores) {
-                        footer.append("\n§7Cooldown: §a¡Listo! §8(§e").append(online).append("§7/§f").append(minJugadores).append(" jugadores§8)");
+                        footer.append("§a✓ §7Cooldown listo §8(§e").append(online).append("§7/§f").append(minJugadores).append("§8)");
                     } else {
-                        footer.append("\n§7Cooldown: §a¡Listo!");
+                        footer.append("§a✓ §7Cooldown: §a§lLISTO");
                     }
                 }
             }
         } else if (state == ServerState.DETENIDO) {
-            // [FIX] Mostrar cooldown cuando está detenido
             String cooldownDisplay = calculateCooldownFromStateYml();
             if (!cooldownDisplay.equals("00:00")) {
-                footer.append("\n§7Cooldown: §e").append(cooldownDisplay);
+                footer.append("§7⏸ §7Detenido - CD: §e").append(cooldownDisplay);
             } else {
-                footer.append("\n§7Tiempo restante: §7---");
+                footer.append("§7⏸ §7Estado: §7DETENIDO");
             }
         } else {
-            footer.append("\n§7Tiempo restante: §7---");
+            footer.append("§7⏸ §7Estado: §8---");
         }
         
-        // [FIX] Usar nivel y XP en lugar de PS
+        footer.append("\n");
+        
+        // Línea 2: Rango y progreso XP con barra visual
+        footer.append("  ");
+        me.apocalipsis.missions.MissionRank currentRank = rankService.getRank(player);
+        String rankDisplay = rankService.getTabPrefix(player);
+        footer.append("§7Rango: ").append(rankDisplay);
+        
         if (plugin.getExperienceService() != null) {
             int currentLevel = plugin.getExperienceService().getLevel(player);
             int currentXP = plugin.getExperienceService().getXP(player);
             
             if (!rankService.isMaxRank(player)) {
                 int xpNeeded = plugin.getExperienceService().getXPForNextLevel(player);
-                footer.append("  §8|  §7Nivel: §a").append(currentLevel)
-                      .append("  §8|  §7XP: §a").append(currentXP).append("§7/§f").append(xpNeeded);
+                double percentage = (double) currentXP / xpNeeded * 100;
+                String progressBar = generateProgressBar(percentage, 15);
+                
+                footer.append("\n  §7Nivel: §b§l").append(currentLevel)
+                      .append("  §8┃  §7XP: §b").append(currentXP).append("§7/§f").append(xpNeeded)
+                      .append("  §8(§a").append(String.format("%.0f", percentage)).append("%§8)")
+                      .append("\n  ").append(progressBar);
             } else {
-                footer.append("  §8|  §7Nivel: §6").append(currentLevel).append("  §8|  §6§l★ RANGO MÁXIMO ★");
+                footer.append("\n  §7Nivel: §6§l").append(currentLevel)
+                      .append("  §8┃  §6§l★ RANGO MÁXIMO ALCANZADO ★");
             }
         } else {
-            // Fallback al sistema antiguo si ExperienceService no está disponible
+            // Fallback
             if (!rankService.isMaxRank(player)) {
                 int xp = rankService.getXP(player);
                 int nextThreshold = rankService.getNextRankThreshold(player);
-                footer.append("  §8|  §7Próx. rango: §a").append(xp).append("§7/§f").append(nextThreshold).append(" XP");
+                footer.append("\n  §7Próximo: §a").append(xp).append("§7/§f").append(nextThreshold).append(" XP");
             } else {
-                footer.append("  §8|  §6§l★ RANGO MÁXIMO ★");
+                footer.append("\n  §6§l★ RANGO MÁXIMO ★");
             }
         }
+        
+        footer.append("\n§8§l╚═══════════════════════════════════════════╝");
         
         player.sendPlayerListHeaderAndFooter(Component.text(header.toString()), Component.text(footer.toString()));
         
@@ -276,18 +299,19 @@ public class TablistManager {
     
     /**
      * [NUEVO] Genera nombre de team con prefijo numérico para ordenar por rango
-     * ABSOLUTO (1) aparece primero, NOVATO (8) aparece último
+     * ABSOLUTO (01) aparece primero, NOVATO (08) aparece último
+     * Usa 0X para mantener orden alfabético correcto
      */
     private String getRankedTeamName(me.apocalipsis.missions.MissionRank rank) {
         return switch (rank) {
-            case ABSOLUTO -> "rank_1_absoluto";
-            case TITAN -> "rank_2_titan";
-            case MAESTRO -> "rank_3_maestro";
-            case LEYENDA -> "rank_4_leyenda";
-            case VETERANO -> "rank_5_veterano";
-            case SOBREVIVIENTE -> "rank_6_sobreviviente";
-            case EXPLORADOR -> "rank_7_explorador";
-            case NOVATO -> "rank_8_novato";
+            case ABSOLUTO -> "01_absoluto";
+            case TITAN -> "02_titan";
+            case MAESTRO -> "03_maestro";
+            case LEYENDA -> "04_leyenda";
+            case VETERANO -> "05_veterano";
+            case SOBREVIVIENTE -> "06_sobreviviente";
+            case EXPLORADOR -> "07_explorador";
+            case NOVATO -> "08_novato";
         };
     }
 
@@ -374,6 +398,42 @@ public class TablistManager {
         int seconds = totalSeconds % 60;
         
         return String.format("%02d:%02d", minutes, seconds);
+    }
+    
+    /**
+     * Genera una barra de progreso visual para XP
+     * @param percentage Porcentaje completado (0-100)
+     * @param length Longitud de la barra en caracteres
+     * @return Barra de progreso coloreada
+     */
+    private String generateProgressBar(double percentage, int length) {
+        int filled = (int) (percentage / 100.0 * length);
+        int empty = length - filled;
+        
+        StringBuilder bar = new StringBuilder("§8[");
+        
+        // Determinar color según progreso
+        String barColor;
+        if (percentage >= 75) {
+            barColor = "§a"; // Verde
+        } else if (percentage >= 50) {
+            barColor = "§e"; // Amarillo
+        } else if (percentage >= 25) {
+            barColor = "§6"; // Naranja
+        } else {
+            barColor = "§c"; // Rojo
+        }
+        
+        // Construir barra
+        for (int i = 0; i < filled; i++) {
+            bar.append(barColor).append("█");
+        }
+        for (int i = 0; i < empty; i++) {
+            bar.append("§7§m "); // Gris tenue
+        }
+        
+        bar.append("§8]");
+        return bar.toString();
     }
     
     /**
