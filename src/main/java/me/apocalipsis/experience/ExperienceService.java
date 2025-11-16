@@ -423,6 +423,7 @@ public class ExperienceService {
         FileConfiguration config = plugin.getConfigManager().getRecompensasConfig();
         
         if (!config.getBoolean("fuentes_xp.minar_bloques.enabled", true)) {
+            plugin.getLogger().warning("[XP] minar_bloques está deshabilitado en config");
             return false;
         }
         
@@ -430,7 +431,16 @@ public class ExperienceService {
         
         if (xp > 0) {
             // Los valores pueden ser decimales (0.5), se acumulan
-            return addXP(player, (int) Math.ceil(xp), "Minería", true);
+            int xpAmount = (int) Math.ceil(xp);
+            plugin.getLogger().info("[XP] Otorgando " + xpAmount + " XP a " + 
+                player.getName() + " por minar " + material.name());
+            return addXP(player, xpAmount, "Minería", true);
+        } else {
+            // Debug: material no configurado
+            if (material.name().contains("_ORE") || material.name().contains("DEBRIS")) {
+                plugin.getLogger().warning("[XP] Material " + material.name() + 
+                    " no tiene XP configurado en recompensas.yml");
+            }
         }
         
         return false;

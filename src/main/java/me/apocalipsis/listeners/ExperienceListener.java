@@ -46,28 +46,34 @@ public class ExperienceListener implements Listener {
     }
     
     /**
-     * Otorga XP solo por minar minerales (ores)
+     * Otorga XP por minar bloques (principalmente minerales)
      */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
         Player player = event.getPlayer();
         Material material = event.getBlock().getType();
         
-        // Solo dar XP si es un mineral (ore)
-        if (!isOre(material)) {
-            return;
-        }
-        
-        // Verificar que no sea un bloque colocado por jugador (si el tracker está disponible)
+        // Verificar que no sea un bloque colocado por jugador
         if (plugin.getBlockTracker() != null) {
             UUID owner = plugin.getBlockTracker().getBlockOwner(event.getBlock());
             if (owner != null) {
-                // El bloque fue colocado por un jugador, no dar XP
-                return;
+                return; // Bloque colocado por jugador, no dar XP
             }
         }
         
-        plugin.getExperienceService().addMiningXP(player, material);
+        // Intentar dar XP (el servicio verifica si el bloque está configurado)
+        boolean xpGranted = plugin.getExperienceService().addMiningXP(player, material);
+        
+        // Debug logging para minerales
+        if (isOre(material)) {
+            if (xpGranted) {
+                plugin.getLogger().info("[XP-DEBUG] " + player.getName() + 
+                    " minó " + material.name() + " - XP otorgado");
+            } else {
+                plugin.getLogger().warning("[XP-DEBUG] " + player.getName() + 
+                    " minó " + material.name() + " - XP NO otorgado (verifica config)");
+            }
+        }
     }
     
     /**
