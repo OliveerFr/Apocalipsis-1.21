@@ -85,12 +85,13 @@ public class PlayerListener implements Listener {
             }
         }, 20L); // 1 segundo después de conectarse
         
-        // [RECOMPENSAS PENDIENTES] Verificar y entregar recompensas de rangos no reclamados
-        org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (plugin.getRewardService() != null) {
-                plugin.getRewardService().checkAndDeliverPendingRewards(player);
-            }
-        }, 40L); // 2 segundos después de conectarse
+        // [RECOMPENSAS] Las recompensas SOLO se entregan al subir de rango, 
+        // NO al reconectar (comentado para evitar duplicados)
+        // org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        //     if (plugin.getRewardService() != null) {
+        //         plugin.getRewardService().checkAndDeliverPendingRewards(player);
+        //     }
+        // }, 40L); // 2 segundos después de conectarse
         
         // [AUTOASIGNACIÓN] Late-join: asignar misiones si el jugador no tiene misiones activas
         // Esto permite que jugadores que entren durante un día activo reciban misiones
