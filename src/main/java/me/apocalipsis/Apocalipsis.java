@@ -81,6 +81,7 @@ public final class Apocalipsis extends JavaPlugin {
         saveResource("misiones_new.yml", false);
         saveResource("rangos.yml", false);
         saveResource("recompensas.yml", false);
+        saveResource("chat.yml", false);
 
         // Inicializar servicios
         configManager = new ConfigManager(this);
@@ -143,6 +144,7 @@ public final class Apocalipsis extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new me.apocalipsis.utils.ExplosionGuard(this), this);
         getServer().getPluginManager().registerEvents(new BlockTrackListener(this), this);
         getServer().getPluginManager().registerEvents(new DisasterEvasionListener(this), this);
+        getServer().getPluginManager().registerEvents(new me.apocalipsis.listeners.ChatListener(this), this);
 
         // Cargar estado
         stateManager.loadState();

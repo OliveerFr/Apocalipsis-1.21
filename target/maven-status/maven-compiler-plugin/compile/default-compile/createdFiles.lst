@@ -32,6 +32,7 @@ me\apocalipsis\experience\ExperienceService$PlayerExperienceData.class
 me\apocalipsis\commands\ApocalipsisCommand$WaterScanResult.class
 me\apocalipsis\ui\MessageBus.class
 me\apocalipsis\missions\MissionAssignment.class
+me\apocalipsis\listeners\ChatListener.class
 me\apocalipsis\state\ServerState.class
 me\apocalipsis\listeners\PlayerListener.class
 me\apocalipsis\experience\RewardService$RankReward.class

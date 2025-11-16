@@ -16,6 +16,7 @@ public class ConfigManager {
     private FileConfiguration misionesConfig;
     private FileConfiguration rangosConfig;
     private FileConfiguration recompensasConfig;
+    private FileConfiguration chatConfig;
 
     public ConfigManager(Apocalipsis plugin) {
         this.plugin = plugin;
@@ -29,6 +30,7 @@ public class ConfigManager {
         this.misionesConfig = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "misiones_new.yml"));
         this.rangosConfig = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "rangos.yml"));
         this.recompensasConfig = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "recompensas.yml"));
+        this.chatConfig = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "chat.yml"));
     }
 
     public FileConfiguration getConfig() {
@@ -53,6 +55,10 @@ public class ConfigManager {
 
     public FileConfiguration getRecompensasConfig() {
         return recompensasConfig;
+    }
+    
+    public FileConfiguration getChatConfig() {
+        return chatConfig;
     }
 
     public boolean isLluviaFuegoExtraLluvia() {
