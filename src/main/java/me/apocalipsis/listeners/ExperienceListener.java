@@ -1,6 +1,7 @@
 package me.apocalipsis.listeners;
 
-import me.apocalipsis.Apocalipsis;
+import java.util.UUID;
+
 import org.bukkit.Material;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
@@ -13,7 +14,7 @@ import org.bukkit.event.inventory.CraftItemEvent;
 import org.bukkit.event.player.PlayerFishEvent;
 import org.bukkit.event.player.PlayerHarvestBlockEvent;
 
-import java.util.UUID;
+import me.apocalipsis.Apocalipsis;
 
 /**
  * Listener que captura eventos para otorgar XP de múltiples fuentes

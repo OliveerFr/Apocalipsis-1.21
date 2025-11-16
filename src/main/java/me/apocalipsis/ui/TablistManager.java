@@ -76,68 +76,52 @@ public class TablistManager {
         String perfState = getPerformanceStateDisplay();
         
         StringBuilder header = new StringBuilder();
-        // Línea 1: Logo y título premium
-        header.append("\n§8§l╔═══════════════════════════════════════════╗\n");
-        header.append("    §c§l⚠ APOCALIPSIS §8§l» §7La Firma del Caos §c§l⚠\n");
-        header.append("§8§l╠═══════════════════════════════════════════╣\n");
         
-        // Línea 2: Estado y desastre con iconos
-        header.append("  §7Estado: ").append(stateDisplay)
-              .append("  §8┃  §7Desastre: ").append(disasterName).append("\n");
+        // Header compacto y limpio - 2 líneas
+        header.append("\n§c§l▸ APOCALIPSIS §8§l| §7Día §f").append(day)
+              .append(" §8| §7Players §b").append(online).append("§7/§f").append(max)
+              .append(" §8| §7TPS ").append(tpsColor).append(String.format("%.1f", tps));
         
-        // Línea 3: Stats del servidor
-        header.append("  §7Día: §f#").append(day)
-              .append("  §8┃  §7Players: §b").append(online).append("§7/§f").append(max)
-              .append("  §8┃  §7TPS: ").append(tpsColor).append(String.format("%.1f", tps))
-              .append("  §8┃  ").append(perfState).append("\n");
-        header.append("§8§l╚═══════════════════════════════════════════╝");
+        // Línea 2: Estado y desastre (solo si hay desastre activo)
+        header.append("\n§8▸ ").append(stateDisplay);
+        if (stateManager.getActiveDisasterId() != null) {
+            header.append(" §8| §c⚠ ").append(disasterName);
+        }
+        header.append("\n");
         
-        // Footer: diseño premium con progreso visual
+        // Footer: diseño limpio y compacto
         StringBuilder footer = new StringBuilder();
-        footer.append("\n§8§l╔═══════════════════════════════════════════╗\n");
+        footer.append("\n");
         
-        // Línea 1: Tiempo/Estado
-        footer.append("  ");
+        // Línea 1: Tiempo según estado (compacto)
         if (state == ServerState.ACTIVO) {
             String timeDisplay = calculateTimeFromStateYml();
-            footer.append("§c⏱ §7Tiempo: §a§l").append(timeDisplay);
+            footer.append("§a▸ §7Tiempo: §f").append(timeDisplay);
         } else if (state == ServerState.PREPARACION) {
             boolean prepForzada = stateManager.isPrepForzada();
             
             if (prepForzada) {
                 String timeDisplay = calculateTimeFromStateYml();
-                footer.append("§e⚡ §7Preparación: §e§l").append(timeDisplay);
+                footer.append("§e▸ §7Preparación: §f").append(timeDisplay);
             } else {
                 String cooldownDisplay = calculateCooldownFromStateYml();
                 if (!cooldownDisplay.equals("00:00")) {
-                    footer.append("§e⏳ §7Cooldown: §e§l").append(cooldownDisplay);
+                    footer.append("§e▸ §7Cooldown: §f").append(cooldownDisplay);
                 } else {
                     int minJugadores = plugin.getConfigManager().getMinJugadores();
-                    if (online < minJugadores) {
-                        footer.append("§a✓ §7Cooldown listo §8(§e").append(online).append("§7/§f").append(minJugadores).append("§8)");
-                    } else {
-                        footer.append("§a✓ §7Cooldown: §a§lLISTO");
-                    }
+                    footer.append("§a▸ §7Listo §8(").append(online).append("§7/§f").append(minJugadores).append("§8)");
                 }
             }
         } else if (state == ServerState.DETENIDO) {
-            String cooldownDisplay = calculateCooldownFromStateYml();
-            if (!cooldownDisplay.equals("00:00")) {
-                footer.append("§7⏸ §7Detenido - CD: §e").append(cooldownDisplay);
-            } else {
-                footer.append("§7⏸ §7Estado: §7DETENIDO");
-            }
+            footer.append("§7▸ §7Detenido");
         } else {
-            footer.append("§7⏸ §7Estado: §8---");
+            footer.append("§8▸ §7---");
         }
         
         footer.append("\n");
         
-        // Línea 2: Rango y progreso XP con barra visual
-        footer.append("  ");
-        me.apocalipsis.missions.MissionRank currentRank = rankService.getRank(player);
+        // Línea 2-3: Rango y XP
         String rankDisplay = rankService.getTabPrefix(player);
-        footer.append("§7Rango: ").append(rankDisplay);
         
         if (plugin.getExperienceService() != null) {
             int currentLevel = plugin.getExperienceService().getLevel(player);
@@ -146,28 +130,28 @@ public class TablistManager {
             if (!rankService.isMaxRank(player)) {
                 int xpNeeded = plugin.getExperienceService().getXPForNextLevel(player);
                 double percentage = (double) currentXP / xpNeeded * 100;
-                String progressBar = generateProgressBar(percentage, 15);
+                String progressBar = generateProgressBar(percentage, 12);  // Barra más corta
                 
-                footer.append("\n  §7Nivel: §b§l").append(currentLevel)
-                      .append("  §8┃  §7XP: §b").append(currentXP).append("§7/§f").append(xpNeeded)
-                      .append("  §8(§a").append(String.format("%.0f", percentage)).append("%§8)")
-                      .append("\n  ").append(progressBar);
+                footer.append(rankDisplay).append(" §8| §7Nivel §b").append(currentLevel)
+                      .append(" §8(").append(String.format("%.0f", percentage)).append("%§8)");
+                footer.append("\n").append(progressBar);
+                footer.append(" §7").append(currentXP).append("§8/§f").append(xpNeeded);
             } else {
-                footer.append("\n  §7Nivel: §6§l").append(currentLevel)
-                      .append("  §8┃  §6§l★ RANGO MÁXIMO ALCANZADO ★");
+                footer.append(rankDisplay).append(" §8| §6★ MÁXIMO");
+                footer.append("\n§7Nivel: §6§l").append(currentLevel);
             }
         } else {
-            // Fallback
+            footer.append(rankDisplay);
             if (!rankService.isMaxRank(player)) {
                 int xp = rankService.getXP(player);
                 int nextThreshold = rankService.getNextRankThreshold(player);
-                footer.append("\n  §7Próximo: §a").append(xp).append("§7/§f").append(nextThreshold).append(" XP");
+                footer.append("\n§7XP: §a").append(xp).append("§7/§f").append(nextThreshold);
             } else {
-                footer.append("\n  §6§l★ RANGO MÁXIMO ★");
+                footer.append(" §8| §6★ MÁXIMO");
             }
         }
         
-        footer.append("\n§8§l╚═══════════════════════════════════════════╝");
+        footer.append("\n");
         
         player.sendPlayerListHeaderAndFooter(Component.text(header.toString()), Component.text(footer.toString()));
         
