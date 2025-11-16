@@ -74,7 +74,7 @@ public class ApocalipsisCommand implements CommandExecutor {
             sender.sendMessage("§e/avo newday §7- Crea un nuevo día y asigna misiones");
             sender.sendMessage("§e/avo endday §7- Termina el día actual");
             sender.sendMessage("§e/avo status [jugador] §7- Muestra misiones activas");
-            sender.sendMessage("§e/avo setxp <jugador> <xp> §7- Ajusta XP de un jugador");
+            sender.sendMessage("§e/avo setxp <jugador> <xp|rango> §7- Ajusta XP (o asigna rango)");
             sender.sendMessage("§e/avo mission <give|complete|clear> §7- Gestión de misiones");
             sender.sendMessage("§6=== Sistema ===");
             sender.sendMessage("§e/avo tps §7- Ver TPS y rendimiento");
@@ -947,7 +947,8 @@ public class ApocalipsisCommand implements CommandExecutor {
     }
 
     /**
-     * /avo setxp <jugador> <xp> - Ajusta XP de un jugador manualmente
+     * /avo setxp <jugador> <xp|rango> - Ajusta XP de un jugador manualmente
+     * Soporta números directos o nombres de rangos (NOVATO, EXPLORADOR, etc.)
      */
     private void cmdSetXp(CommandSender sender, String[] args) {
         if (!sender.hasPermission("avo.admin")) {
@@ -956,7 +957,11 @@ public class ApocalipsisCommand implements CommandExecutor {
         }
 
         if (args.length < 3) {
-            sender.sendMessage("§cUso: /avo setxp <jugador> <xp>");
+            sender.sendMessage("§cUso: /avo setxp <jugador> <xp|rango>");
+            sender.sendMessage("§7Ejemplos:");
+            sender.sendMessage("§e  /avo setxp Steve 1000 §7- Asigna 1000 XP");
+            sender.sendMessage("§e  /avo setxp Steve VETERANO §7- XP del rango Veterano");
+            sender.sendMessage("§7Rangos disponibles: §eNOVATO, EXPLORADOR, SOBREVIVIENTE, VETERANO, LEYENDA, MAESTRO, TITAN, ABSOLUTO");
             return;
         }
 
@@ -967,11 +972,22 @@ public class ApocalipsisCommand implements CommandExecutor {
         }
 
         int xp;
+        String inputValue = args[2].toUpperCase();
+        
+        // Intentar parsear como rango primero
         try {
-            xp = Integer.parseInt(args[2]);
-        } catch (NumberFormatException e) {
-            sender.sendMessage("§cXP inválido: " + args[2]);
-            return;
+            me.apocalipsis.missions.MissionRank rank = me.apocalipsis.missions.MissionRank.valueOf(inputValue);
+            xp = plugin.getRankService().getXpForRank(rank);
+            sender.sendMessage("§7Asignando XP del rango §e" + rank.name() + "§7: §e" + xp + " XP");
+        } catch (IllegalArgumentException e) {
+            // No es un rango, intentar parsear como número
+            try {
+                xp = Integer.parseInt(args[2]);
+            } catch (NumberFormatException ex) {
+                sender.sendMessage("§cValor inválido: " + args[2]);
+                sender.sendMessage("§7Usa un número o un rango (NOVATO, EXPLORADOR, etc.)");
+                return;
+            }
         }
 
         if (xp < 0) {

@@ -6,7 +6,7 @@
 
     <groupId>me.apocalipsis</groupId>
     <artifactId>Apocalipsis</artifactId>
-    <version>1.0.1</version>
+    <version>1.12.3</version>
     <packaging>jar</packaging>
 
     <name>Apocalipsis</name>
@@ -34,10 +34,11 @@
                 <configuration>
                     <source>21</source>
                     <target>21</target>
-                    <fork>true</fork>
+                    <fork>false</fork>
+                    <showWarnings>true</showWarnings>
+                    <showDeprecation>true</showDeprecation>
                     <compilerArgs>
                         <arg>-Xlint:deprecation</arg>
-                        <arg>-J-Xmx1024m</arg>
                     </compilerArgs>
                 </configuration>
             </plugin>

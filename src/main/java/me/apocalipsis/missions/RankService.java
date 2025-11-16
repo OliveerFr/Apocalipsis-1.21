@@ -195,6 +195,14 @@ public class RankService {
         MissionRank rank = getRank(player);
         return rank.getDisplayName();
     }
+    
+    /**
+     * Obtiene el XP requerido para un rango específico
+     * Útil para comandos admin que asignan rangos directamente
+     */
+    public int getXpForRank(MissionRank rank) {
+        return rank.getXpRequired();
+    }
 
     /**
      * [FIX] Obtiene tab_prefix traducido desde rangos.yml

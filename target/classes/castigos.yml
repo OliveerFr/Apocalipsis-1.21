@@ -15,41 +15,53 @@ muerte_en_desastre:
   # Penalización base (se aplica SIEMPRE al morir en desastre activo)
   penalizacion_base:
     - tipo: "WEAKNESS"           # Debilidad
-      duracion_segundos: 45
+      duracion_segundos: 60
       amplificador: 1            # Nivel 2
     - tipo: "SLOW_DIGGING"       # Fatiga minera
-      duracion_segundos: 60
-      amplificador: 0            # Nivel 1
+      duracion_segundos: 90
+      amplificador: 1            # Nivel 2 (más fuerte)
   
   # Penalización adicional (probabilidad de recibir efectos extra)
   penalizacion_adicional:
-    probabilidad: 0.40           # 40% de chance
+    probabilidad: 0.55           # 55% de chance (aumentado)
     efectos:
       - tipo: "HUNGER"           # Hambre
-        duracion_segundos: 90
-        amplificador: 1          # Nivel 2
+        duracion_segundos: 120
+        amplificador: 2          # Nivel 3 (más fuerte)
       - tipo: "SLOW"             # Lentitud
-        duracion_segundos: 30
+        duracion_segundos: 45
+        amplificador: 1          # Nivel 2
+      - tipo: "POISON"           # Veneno leve
+        duracion_segundos: 20
         amplificador: 0          # Nivel 1
   
-  # Penalización severa (muy baja probabilidad, efectos graves)
+  # Penalización severa (baja probabilidad, efectos graves)
   penalizacion_severa:
-    probabilidad: 0.08           # 8% de chance
+    probabilidad: 0.12           # 12% de chance (aumentado)
     efectos:
       - tipo: "CONFUSION"        # Náusea/mareo
-        duracion_segundos: 15
+        duracion_segundos: 20
         amplificador: 0
       - tipo: "BLINDNESS"        # Ceguera
+        duracion_segundos: 15
+        amplificador: 0
+      - tipo: "WITHER"           # Marchitamiento
         duracion_segundos: 10
         amplificador: 0
+      - tipo: "UNLUCK"           # Mala suerte
+        duracion_segundos: 300   # 5 minutos
+        amplificador: 1
   
   # Pérdida de PS (puntos de supervivencia) escalado por rango
   perdida_ps:
-    NOVATO: 5
-    EXPLORADOR: 8
-    SOBREVIVIENTE: 12
-    VETERANO: 18
-    LEYENDA: 25
+    NOVATO: 8
+    EXPLORADOR: 12
+    SOBREVIVIENTE: 18
+    VETERANO: 25
+    LEYENDA: 35
+    MAESTRO: 50
+    TITAN: 75
+    ABSOLUTO: 100
   
   # Mensajes y efectos visuales
   mensajes:
