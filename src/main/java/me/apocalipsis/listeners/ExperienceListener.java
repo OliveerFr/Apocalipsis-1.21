@@ -13,6 +13,8 @@ import org.bukkit.event.inventory.CraftItemEvent;
 import org.bukkit.event.player.PlayerFishEvent;
 import org.bukkit.event.player.PlayerHarvestBlockEvent;
 
+import java.util.UUID;
+
 /**
  * Listener que captura eventos para otorgar XP de múltiples fuentes
  */
@@ -44,16 +46,59 @@ public class ExperienceListener implements Listener {
     }
     
     /**
-     * Otorga XP por minar bloques
+     * Otorga XP solo por minar minerales (ores)
      */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
         Player player = event.getPlayer();
         Material material = event.getBlock().getType();
         
-        // Filtrar bloques que no son naturales (colocados por jugadores)
-        // Esto se puede mejorar con el BlockTrackListener existente
+        // Solo dar XP si es un mineral (ore)
+        if (!isOre(material)) {
+            return;
+        }
+        
+        // Verificar que no sea un bloque colocado por jugador (si el tracker está disponible)
+        if (plugin.getBlockTracker() != null) {
+            UUID owner = plugin.getBlockTracker().getBlockOwner(event.getBlock());
+            if (owner != null) {
+                // El bloque fue colocado por un jugador, no dar XP
+                return;
+            }
+        }
+        
         plugin.getExperienceService().addMiningXP(player, material);
+    }
+    
+    /**
+     * Verifica si un material es un mineral (ore)
+     */
+    private boolean isOre(Material material) {
+        switch (material) {
+            // Minerales vanilla
+            case COAL_ORE:
+            case DEEPSLATE_COAL_ORE:
+            case IRON_ORE:
+            case DEEPSLATE_IRON_ORE:
+            case COPPER_ORE:
+            case DEEPSLATE_COPPER_ORE:
+            case GOLD_ORE:
+            case DEEPSLATE_GOLD_ORE:
+            case REDSTONE_ORE:
+            case DEEPSLATE_REDSTONE_ORE:
+            case EMERALD_ORE:
+            case DEEPSLATE_EMERALD_ORE:
+            case LAPIS_ORE:
+            case DEEPSLATE_LAPIS_ORE:
+            case DIAMOND_ORE:
+            case DEEPSLATE_DIAMOND_ORE:
+            case NETHER_GOLD_ORE:
+            case NETHER_QUARTZ_ORE:
+            case ANCIENT_DEBRIS:
+                return true;
+            default:
+                return false;
+        }
     }
     
     /**
