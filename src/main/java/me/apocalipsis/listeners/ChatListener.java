@@ -140,8 +140,9 @@ public class ChatListener implements Listener {
         separator = translateColors(separator);
         messageColor = translateColors(messageColor);
         
-        // Construir formato final
-        return badge + " " + playerName + " " + levelBadge + " " + separator + " " + messageColor + message;
+        // Construir formato final con placeholder %1$s para el mensaje
+        // %1$s es reemplazado por Minecraft con el mensaje del jugador
+        return badge + " " + playerName + " " + levelBadge + " " + separator + " " + messageColor + "%1$s";
     }
     
     /**

@@ -147,7 +147,7 @@ moderation:
   caps_warning: "&eEvita escribir todo en MAYÚSCULAS."
   
   # Anti-spam (mensajes repetidos)
-  anti_spam_enabled: true
+  anti_spam_enabled: false
   spam_warning: "&cNo envíes el mismo mensaje repetidamente."
 
 # ═══════════════════════════════════════════════════════════════════

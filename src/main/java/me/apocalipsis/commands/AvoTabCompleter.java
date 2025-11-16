@@ -179,6 +179,18 @@ public class AvoTabCompleter implements TabCompleter {
                     .collect(Collectors.toList());
             }
             
+            // /avo setxp <jugador> (tercer argumento puede ser rango o número)
+            if (subCmd.equals("setxp") || subCmd.equals("setps")) {
+                // Sugerir rangos y algunos valores comunes de XP
+                List<String> suggestions = new ArrayList<>();
+                suggestions.addAll(Arrays.asList("NOVATO", "EXPLORADOR", "SOBREVIVIENTE", "VETERANO", 
+                                                  "LEYENDA", "MAESTRO", "TITAN", "ABSOLUTO"));
+                suggestions.addAll(Arrays.asList("100", "500", "1000", "2500", "5000"));
+                return suggestions.stream()
+                    .filter(s -> s.toLowerCase().startsWith(args[2].toLowerCase()))
+                    .collect(Collectors.toList());
+            }
+            
             // /avo xp get|add|set|reset <jugador>
             if ((subCmd.equals("xp") || subCmd.equals("experience"))) {
                 String xpSubCmd = args[1].toLowerCase();
