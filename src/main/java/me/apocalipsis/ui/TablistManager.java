@@ -277,7 +277,7 @@ public class TablistManager {
         String teamName = getRankedTeamName(rank);
         org.bukkit.scoreboard.Scoreboard board = getPluginMainBoard();
         org.bukkit.scoreboard.Team team = ensureRankTeam(board, teamName, prefix);
-        removeFromOtherRankTeams(board, p.getName(), "rank_");
+        removeFromOtherRankTeams(board, p.getName());
         team.addEntry(p.getName());
     }
     
@@ -332,11 +332,14 @@ public class TablistManager {
 
     /**
      * [FIX] Quita al jugador de todos los teams de rango excepto el actual
+     * Detecta teams con formato numérico: 01_absoluto, 02_titan, etc.
      */
     private void removeFromOtherRankTeams(org.bukkit.scoreboard.Scoreboard scoreboard, 
-                                          String playerName, String rankTeamPrefix) {
+                                          String playerName) {
         for (org.bukkit.scoreboard.Team team : scoreboard.getTeams()) {
-            if (team.getName().startsWith(rankTeamPrefix) && team.hasEntry(playerName)) {
+            String teamName = team.getName();
+            // Detectar teams de rango: empiezan con 2 dígitos seguidos de _
+            if (teamName.matches("\\d{2}_.*") && team.hasEntry(playerName)) {
                 team.removeEntry(playerName);
             }
         }
