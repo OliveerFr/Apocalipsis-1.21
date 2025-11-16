@@ -37,7 +37,9 @@ public abstract class DisasterBase implements Disaster {
         this.id = id;
         this.instanceId = INSTANCE_COUNTER.incrementAndGet();
         
-        plugin.getLogger().info("[DisasterBase] Creada instancia #" + instanceId + " de " + id);
+        if (plugin.getConfigManager().isDebugCiclo()) {
+            plugin.getLogger().info("[DisasterBase] Creada instancia #" + instanceId + " de " + id);
+        }
     }
     
     /**
@@ -78,18 +80,24 @@ public abstract class DisasterBase implements Disaster {
         
         this.active = true;
         this.tickCounter = 0;
-        plugin.getLogger().info("[Disaster] START: " + id + " #" + instanceId);
+        if (plugin.getConfigManager().isDebugCiclo()) {
+            plugin.getLogger().info("[Disaster] START: " + id + " #" + instanceId);
+        }
         onStart();
     }
 
     @Override
     public void stop() {
         if (!active) {
-            plugin.getLogger().warning("[Disaster] Intento de detener " + id + " #" + instanceId + " que ya está inactivo - IGNORADO");
+            if (plugin.getConfigManager().isDebugCiclo()) {
+                plugin.getLogger().warning("[Disaster] Intento de detener " + id + " #" + instanceId + " que ya está inactivo - IGNORADO");
+            }
             return;
         }
         
-        plugin.getLogger().info("[Disaster] STOP: " + id + " #" + instanceId);
+        if (plugin.getConfigManager().isDebugCiclo()) {
+            plugin.getLogger().info("[Disaster] STOP: " + id + " #" + instanceId);
+        }
         this.active = false;
         onStop();
     }
@@ -106,7 +114,9 @@ public abstract class DisasterBase implements Disaster {
         // Early return si el estado NO es ACTIVO (leer desde state.yml)
         String estado = plugin.getStateManager().getEstado();
         if (!"ACTIVO".equals(estado)) {
-            plugin.getLogger().info("[Disaster] STOP automático: " + id + " #" + instanceId + " estado=" + estado);
+            if (plugin.getConfigManager().isDebugCiclo()) {
+                plugin.getLogger().info("[Disaster] STOP automático: " + id + " #" + instanceId + " estado=" + estado);
+            }
             stop();
             return;
         }

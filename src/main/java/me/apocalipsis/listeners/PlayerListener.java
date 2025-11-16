@@ -347,9 +347,11 @@ public class PlayerListener implements Listener {
                         // Dar PS
                         plugin.getMissionService().addPS(uuid, PS_PER_INTERVAL, "Tiempo jugado (30min)");
                         
-                        // Notificar discretamente
-                        player.sendMessage("§7[§ePS§7] §a+1 PS §7por tiempo jugado");
-                        player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.3f, 1.5f);
+                        // Notificar discretamente solo si debug está activo
+                        if (plugin.getConfigManager().isDebugCiclo()) {
+                            player.sendMessage("§7[§ePS§7] §a+1 PS §7por tiempo jugado");
+                            player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.3f, 1.5f);
+                        }
                         
                         // Actualizar tiempo base para próxima recompensa
                         playerJoinTime.put(uuid, currentTime);
