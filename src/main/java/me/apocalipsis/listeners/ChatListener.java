@@ -28,7 +28,7 @@ public class ChatListener implements Listener {
         this.plugin = plugin;
     }
     
-    @EventHandler(priority = EventPriority.HIGHEST)
+    @EventHandler(priority = EventPriority.LOWEST)
     public void onPlayerChat(AsyncPlayerChatEvent event) {
         if (event.isCancelled()) return;
         
@@ -42,6 +42,9 @@ public class ChatListener implements Listener {
         if (!config.getBoolean("enabled", true)) {
             return;
         }
+        
+        // Cancelar el evento y rebroadcastear manualmente para evitar formato por defecto
+        event.setCancelled(true);
         
         // Obtener rango del jugador
         MissionRank rank = plugin.getRankService().getRank(player);
@@ -106,13 +109,21 @@ public class ChatListener implements Listener {
         // Formatear mensaje según rango y config
         String formattedMessage = formatChatMessage(player, rank, level, message, config);
         
-        // Establecer el formato del chat
-        event.setFormat(formattedMessage);
-        
         // Sistema de menciones
         if (config.getBoolean("mentions.enabled", true)) {
-            handleMentions(event, config);
+            message = applyMentions(message, player, config);
         }
+        
+        // Reemplazar %1$s con el mensaje procesado
+        formattedMessage = formattedMessage.replace("%1$s", message);
+        
+        // Enviar mensaje formateado a todos los jugadores
+        for (Player recipient : plugin.getServer().getOnlinePlayers()) {
+            recipient.sendMessage(formattedMessage);
+        }
+        
+        // Log a consola
+        plugin.getLogger().info(org.bukkit.ChatColor.stripColor(formattedMessage));
     }
     
     /**
@@ -146,16 +157,15 @@ public class ChatListener implements Listener {
     }
     
     /**
-     * Maneja el sistema de menciones (resalta nombres y notifica)
+     * Aplica el sistema de menciones y retorna el mensaje procesado
      */
-    private void handleMentions(AsyncPlayerChatEvent event, FileConfiguration config) {
-        String message = event.getMessage();
+    private String applyMentions(String message, Player sender, FileConfiguration config) {
         String mentionColor = config.getString("mentions.mention_color", "&e&l");
         
         for (Player online : plugin.getServer().getOnlinePlayers()) {
             if (message.toLowerCase().contains(online.getName().toLowerCase())) {
                 // Notificar al jugador mencionado
-                if (!online.equals(event.getPlayer())) {
+                if (!online.equals(sender)) {
                     String soundName = config.getString("mentions.mention_sound", "BLOCK_NOTE_BLOCK_PLING");
                     float volume = (float) config.getDouble("mentions.mention_volume", 0.8);
                     float pitch = (float) config.getDouble("mentions.mention_pitch", 1.5);
@@ -172,7 +182,7 @@ public class ChatListener implements Listener {
             }
         }
         
-        event.setMessage(message);
+        return message;
     }
     
     /**
