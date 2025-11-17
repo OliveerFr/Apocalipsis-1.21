@@ -163,12 +163,11 @@ fuentes_xp:
       xp: 100
       cooldown: 0
     
-  # Minar bloques - Todos los minerales configurados
+  # Minar bloques - Todos los minerales configurados (SIN PIEDRA)
   minar_bloques:
     enabled: true
     bloques:
-      # Minerales vanilla
-      STONE: 0.5               # 2 piedras = 1 XP
+      # Minerales vanilla (STONE eliminado - solo ores)
       COAL_ORE: 1
       DEEPSLATE_COAL_ORE: 1
       IRON_ORE: 2
