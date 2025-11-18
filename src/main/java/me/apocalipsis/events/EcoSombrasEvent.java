@@ -117,6 +117,9 @@ public class EcoSombrasEvent extends EventBase {
     private me.apocalipsis.events.gameplay.EventLootSystem.Difficulty difficulty;
     private boolean eventoFinalizado = false;
     
+    // Sistema cinematógrafico
+    private me.apocalipsis.events.gameplay.CinematicSystem cinematicSystem;
+    
     // ═══════════════════════════════════════════════════════════════════
     // CONSTRUCTOR
     // ═══════════════════════════════════════════════════════════════════
@@ -141,6 +144,9 @@ public class EcoSombrasEvent extends EventBase {
         // Inicializar sistema de loot
         difficulty = me.apocalipsis.events.gameplay.EventLootSystem.Difficulty.NORMAL;
         lootSystem = new me.apocalipsis.events.gameplay.EventLootSystem(difficulty);
+        
+        // Inicializar sistema cinematógrafico
+        cinematicSystem = new me.apocalipsis.events.gameplay.CinematicSystem(plugin);
     }
     
     private void loadConfig() {
@@ -226,6 +232,9 @@ public class EcoSombrasEvent extends EventBase {
         
         // Limpiar entidades
         cleanup();
+        
+        // Limpiar sistema cinematográfico
+        cinematicSystem.cleanupAll();
     }
     
     @Override
@@ -276,8 +285,17 @@ public class EcoSombrasEvent extends EventBase {
     private void iniciarActoActivacion() {
         plugin.getLogger().info("[EcoSombras] Iniciando Acto 0: Activación");
         
-        // 🎬 FADE IN CINEMATOGRÁFICO desde negro total
+        // 🎬 CINEMATOGRAFfromA: Zoom + Letterbox para todos
         for (Player p : Bukkit.getOnlinePlayers()) {
+            // Zoom in cinematógrafico (0.5 = alejado)
+            cinematicSystem.smoothZoom(p, 0.6f, 100);
+            
+            // Letterbox de 5 segundos
+            cinematicSystem.showLetterbox(p, 100);
+            
+            // Blur inicial
+            cinematicSystem.applyBlur(p, 2, 60);
+            
             // Fade desde negro (blindness largo)
             p.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 100, 2, false, false));
             p.sendTitle("§0§l━━━━━━━━━━━━━━━", "§8§o...", 10, 60, 30);
@@ -295,7 +313,7 @@ public class EcoSombrasEvent extends EventBase {
             }
         }
         
-        // Efecto de oscurecimiento
+        // Efectode oscurecimiento
         ConfigurationSection efectos = config.getConfigurationSection("actos.acto_0_activacion.efectos.oscurecimiento");
         if (efectos != null && efectos.getBoolean("enabled", true)) {
             aplicarOscurecimiento(efectos);
@@ -666,6 +684,17 @@ public class EcoSombrasEvent extends EventBase {
             for (Player p : Bukkit.getOnlinePlayers()) {
                 p.sendTitle("§5§lUna raíz de la sombra", "§7ha despertado", 10, 60, 20);
                 p.playSound(p.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 1.0f, 0.5f);
+                
+                // 🎬 CINEMATOGRAFÍA: Camera shake + Orbit alrededor del núcleo
+                cinematicSystem.cameraShake(p, 
+                    me.apocalipsis.events.gameplay.CinematicSystem.ShakeIntensity.MEDIUM, 60);
+                
+                // Orbit camera alrededor del núcleo (3 segundos, 90°/s, radio 8)
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    if (p.isOnline() && nucleoEntity != null && nucleoEntity.isValid()) {
+                        cinematicSystem.orbitCamera(p, nucleoLocation, 90, 3, 8, 5);
+                    }
+                }, 60L);
             }
             
             String mensaje = config.getString("actos.acto_3_nucleo.mensajes.aparicion.chat");
@@ -1308,8 +1337,41 @@ public class EcoSombrasEvent extends EventBase {
         
         guardianSpawneado = true;
         
-        // 🎬 SLOW MOTION GLOBAL A TODOS (5 segundos congelados)
+        // 🎬 CINEMATOGRÁFICO COMPLETO: Slow motion + Freeze + Shake
         for (Player p : Bukkit.getOnlinePlayers()) {
+            // Freeze frame inicial (2 segundos)
+            cinematicSystem.freezeFrame(p, 40);
+            
+            // Slow motion al descongelar
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (p.isOnline()) {
+                    cinematicSystem.slowMotion(p, 60);
+                }
+            }, 40L);
+            
+            // Letterbox + Zoom in al boss
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (p.isOnline()) {
+                    cinematicSystem.showLetterbox(p, 100);
+                    cinematicSystem.smoothZoom(p, 0.3f, 80); // Zoom muy cercano
+                }
+            }, 60L);
+            
+            // Camera shake extremo al spawn
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (p.isOnline()) {
+                    cinematicSystem.cameraShake(p, 
+                        me.apocalipsis.events.gameplay.CinematicSystem.ShakeIntensity.EXTREME, 40);
+                }
+            }, 100L);
+            
+            // Reset gradual al final
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (p.isOnline()) {
+                    cinematicSystem.resetZoom(p);
+                }
+            }, 200L);
+            
             p.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 100, 9, false, false));
             p.addPotionEffect(new PotionEffect(PotionEffectType.MINING_FATIGUE, 100, 9, false, false));
             p.addPotionEffect(new PotionEffect(PotionEffectType.JUMP_BOOST, 100, 250, false, false));

@@ -29,6 +29,8 @@ me\apocalipsis\disaster\Disaster.class
 me\apocalipsis\events\gameplay\FeedbackSystem$ComboTracker.class
 me\apocalipsis\listeners\ExperienceListener.class
 me\apocalipsis\disaster\adapters\PerformanceAdapter.class
+me\apocalipsis\events\gameplay\CinematicSystem.class
+me\apocalipsis\events\gameplay\CinematicSystem$2.class
 me\apocalipsis\events\gameplay\ParticleEffectSystem$1.class
 me\apocalipsis\ui\FeedbackSystem$2.class
 me\apocalipsis\events\EventBase.class
@@ -42,11 +44,13 @@ me\apocalipsis\listeners\ChatListener.class
 me\apocalipsis\events\EcoSombrasEvent$4.class
 me\apocalipsis\events\gameplay\QTESystem$InputType.class
 me\apocalipsis\ui\UIManager$3.class
+me\apocalipsis\events\gameplay\CinematicSystem$ShakeIntensity.class
 me\apocalipsis\events\gameplay\GuardianPhaseSystem$6.class
 me\apocalipsis\disaster\adapters\PerformanceAdapter$PerformanceState.class
 me\apocalipsis\missions\MissionService$1.class
 me\apocalipsis\events\gameplay\TelegraphedAttack$6$1.class
 me\apocalipsis\events\EcoBrasasListener.class
+me\apocalipsis\events\gameplay\CinematicSystem$1.class
 me\apocalipsis\events\gameplay\TelegraphedAttack$1.class
 me\apocalipsis\missions\MissionRank.class
 me\apocalipsis\ui\UIManager.class
@@ -68,6 +72,7 @@ me\apocalipsis\utils\DisasterDamage.class
 me\apocalipsis\events\gameplay\TelegraphedAttack$3.class
 me\apocalipsis\missions\MissionService.class
 me\apocalipsis\events\EcoBrasasEvent$Fase.class
+me\apocalipsis\events\gameplay\CinematicSystem$3.class
 me\apocalipsis\disaster\LluviaFuegoNew.class
 me\apocalipsis\disaster\DisasterEvasionTracker.class
 me\apocalipsis\events\gameplay\ParticleEffectSystem.class
@@ -79,6 +84,7 @@ me\apocalipsis\events\gameplay\TelegraphedAttack$6.class
 me\apocalipsis\events\gameplay\GuardianPhaseSystem.class
 me\apocalipsis\events\gameplay\ParticleEffectSystem$5.class
 me\apocalipsis\events\gameplay\QTESystem$ActiveQTE$2.class
+me\apocalipsis\events\gameplay\CinematicSystem$6.class
 me\apocalipsis\events\gameplay\EventLootSystem$Difficulty.class
 me\apocalipsis\events\gameplay\GuardianPhaseSystem$3.class
 me\apocalipsis\missions\MissionType.class
@@ -93,6 +99,7 @@ me\apocalipsis\events\EcoSombrasListener.class
 me\apocalipsis\missions\MissionRenderer.class
 me\apocalipsis\events\gameplay\GuardianPhaseSystem$9.class
 me\apocalipsis\ui\MessageBus.class
+me\apocalipsis\events\gameplay\CinematicSystem$5.class
 me\apocalipsis\events\gameplay\ParticleEffectSystem$3.class
 me\apocalipsis\events\gameplay\ParticleEffectSystem$ParticleTrailType.class
 me\apocalipsis\events\gameplay\QTESystem$QTECallback.class
@@ -124,6 +131,7 @@ me\apocalipsis\events\EcoBrasasItems.class
 me\apocalipsis\events\gameplay\GuardianPhaseSystem$8.class
 me\apocalipsis\events\gameplay\ParticleEffectSystem$2.class
 me\apocalipsis\events\gameplay\QTESystem$CooperativeQTE.class
+me\apocalipsis\events\gameplay\CinematicSystem$4.class
 me\apocalipsis\events\gameplay\ParticleEffectSystem$SymbolType.class
 me\apocalipsis\events\gameplay\TelegraphedAttack$AttackCallback.class
 me\apocalipsis\missions\MissionCatalog.class
