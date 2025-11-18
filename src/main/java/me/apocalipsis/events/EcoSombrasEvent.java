@@ -110,6 +110,7 @@ public class EcoSombrasEvent extends EventBase {
     private me.apocalipsis.ui.UIManager uiManager;
     private me.apocalipsis.ui.FeedbackSystem feedbackSystem;
     private me.apocalipsis.events.gameplay.GuardianPhaseSystem guardianPhaseSystem;
+    private me.apocalipsis.events.gameplay.ParticleEffectSystem particleSystem;
     
     // ═══════════════════════════════════════════════════════════════════
     // CONSTRUCTOR
@@ -130,6 +131,7 @@ public class EcoSombrasEvent extends EventBase {
         // Inicializar UI y feedback
         uiManager = new me.apocalipsis.ui.UIManager(plugin);
         feedbackSystem = new me.apocalipsis.ui.FeedbackSystem(plugin);
+        particleSystem = new me.apocalipsis.events.gameplay.ParticleEffectSystem(plugin);
     }
     
     private void loadConfig() {
@@ -348,6 +350,11 @@ public class EcoSombrasEvent extends EventBase {
     private void iniciarActoManchas() {
         plugin.getLogger().info("[EcoSombras] Iniciando Acto 1: Manchas de Sombra");
         
+        // 🎨 PARTÍCULAS AMBIENTALES
+        Location center = Bukkit.getWorlds().get(0).getSpawnLocation();
+        particleSystem.startAmbientParticles(center, 50, 
+            me.apocalipsis.events.gameplay.ParticleEffectSystem.AmbientStyle.DUST_MOTES);
+        
         ConfigurationSection manchasConfig = config.getConfigurationSection("actos.acto_1_manchas.manchas_sombra");
         if (manchasConfig == null || !manchasConfig.getBoolean("enabled", true)) {
             transicionarActo(Acto.SOMBRAS_LARGAS);
@@ -492,6 +499,9 @@ public class EcoSombrasEvent extends EventBase {
         configurarSombraLarga(sombra, mobConfig);
         entidadesEvento.add(sombra.getUniqueId());
         
+        // 🎨 TRAIL Y AURA DE SOMBRA
+        particleSystem.startShadowTrail(sombra, me.apocalipsis.events.gameplay.ParticleEffectSystem.ParticleTrailType.SHADOW);
+        
         // 🎬 Partículas de spawn MASIVAS con distorsión
         spawnLoc.getWorld().spawnParticle(Particle.LARGE_SMOKE, spawnLoc, 50, 1, 2, 1, 0.15);
         spawnLoc.getWorld().spawnParticle(Particle.SQUID_INK, spawnLoc, 30, 0.8, 1.5, 0.8, 0.1);
@@ -577,6 +587,11 @@ public class EcoSombrasEvent extends EventBase {
     private void iniciarActoNucleo() {
         plugin.getLogger().info("[EcoSombras] Iniciando Acto 3: Núcleo");
         
+        // 🎨 CAMBIAR PARTÍCULAS AMBIENTALES A MÁS INTENSAS
+        Location center = Bukkit.getWorlds().get(0).getSpawnLocation();
+        particleSystem.startAmbientParticles(center, 60, 
+            me.apocalipsis.events.gameplay.ParticleEffectSystem.AmbientStyle.VOID_PARTICLES);
+        
         // 🎬 FADE TO BLACK TOTAL (3 segundos de oscuridad completa)
         for (Player p : Bukkit.getOnlinePlayers()) {
             p.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 100, 5, false, false));
@@ -629,6 +644,14 @@ public class EcoSombrasEvent extends EventBase {
             
             nucleoEntity = nucleo;
             entidadesEvento.add(nucleo.getUniqueId());
+            
+            // 🎨 AURA PULSANTE MÍSTICA DEL NÚCLEO
+            particleSystem.startPulsingAura(nucleo, 
+                me.apocalipsis.events.gameplay.ParticleEffectSystem.AuraStyle.MYSTIC, 8);
+            
+            // 🎨 SÍMBOLO FLOTANTE DE PENTAGRAM
+            particleSystem.createFloatingSymbol(nucleoLocation.clone().add(0, 3, 0), 
+                me.apocalipsis.events.gameplay.ParticleEffectSystem.SymbolType.PENTAGRAM, 120);
             
             // Mensaje dramático
             for (Player p : Bukkit.getOnlinePlayers()) {
@@ -1148,6 +1171,14 @@ public class EcoSombrasEvent extends EventBase {
         // Generar estructura de arena (círculo de bloques)
         generarArenaRitual();
         
+        // 🎨 PARTÍCULAS AMBIENTALES INTENSAS EN ARENA
+        particleSystem.startAmbientParticles(arenaCenter, 30, 
+            me.apocalipsis.events.gameplay.ParticleEffectSystem.AmbientStyle.EMBERS);
+        
+        // 🎨 CÍRCULO RITUAL EN EL SUELO
+        particleSystem.createFloatingSymbol(arenaCenter.clone().add(0, 0.5, 0), 
+            me.apocalipsis.events.gameplay.ParticleEffectSystem.SymbolType.CIRCLE, 600);
+        
         // Mensaje inicial
         String inicioMsg = ritualConfig.getString("mensajes.inicio.texto",
             "§5§l⚠ EL RITUAL COMIENZA ⚠");
@@ -1396,6 +1427,18 @@ public class EcoSombrasEvent extends EventBase {
                 guardian, 
                 arenaCenter
             );
+            
+            // 🎨 AURA CORRUPTA DEL GUARDIÁN
+            particleSystem.startPulsingAura(guardian, 
+                me.apocalipsis.events.gameplay.ParticleEffectSystem.AuraStyle.CORRUPTED, 12);
+            
+            // 🎨 TRAIL DE SOMBRA AL MOVERSE
+            particleSystem.startShadowTrail(guardian, 
+                me.apocalipsis.events.gameplay.ParticleEffectSystem.ParticleTrailType.FLAME);
+            
+            // 🎨 RUNAS FLOTANTES ALREDEDOR
+            particleSystem.createFloatingSymbol(guardian.getLocation().clone().add(0, 10, 0), 
+                me.apocalipsis.events.gameplay.ParticleEffectSystem.SymbolType.RUNES, 600);
             
             // Mensaje dramático
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
@@ -1862,6 +1905,13 @@ public class EcoSombrasEvent extends EventBase {
                 }
             }
         }
+        
+        // 🎨 LIMPIAR TODOS LOS EFECTOS DE PARTÍCULAS
+        particleSystem.cleanupAll();
+        
+        // Limpiar sistemas de UI
+        uiManager.cleanupAll();
+        feedbackSystem.cleanupAll();
         
         entidadesEvento.clear();
         manchasLocations.clear();
