@@ -11,7 +11,7 @@ metadata:
   version: "1.0.0"
   enabled: true
   duracion_total_seg: 7200  # 2 horas máximo
-  jugadores_minimos: 3
+  jugadores_minimos: 1
   jugadores_maximos: 6
   descripcion: "Un eco desconocido despierta. Las sombras se alargan. Algo viene de más lejos."
 

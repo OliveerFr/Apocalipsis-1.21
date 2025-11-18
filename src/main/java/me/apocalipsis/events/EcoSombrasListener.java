@@ -14,6 +14,8 @@ import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
 
+import me.apocalipsis.events.gameplay.QTESystem;
+
 import java.util.List;
 
 /**
@@ -75,17 +77,34 @@ public class EcoSombrasListener implements Listener {
     }
     
     /**
-     * Maneja el sellado de Anclas del Mundo
+     * Maneja el sellado de Anclas del Mundo y detección de clicks para QTE
      */
     @EventHandler(priority = EventPriority.HIGH)
     public void onPlayerInteract(PlayerInteractEvent event) {
-        // Solo click derecho
-        if (event.getAction() != Action.RIGHT_CLICK_BLOCK) {
+        Player player = event.getPlayer();
+        
+        // 🎮 REGISTRAR CLICKS PARA QTE SYSTEM
+        // Detectar tipo de input
+        QTESystem.InputType inputType = null;
+        
+        if (event.getAction() == Action.LEFT_CLICK_AIR || event.getAction() == Action.LEFT_CLICK_BLOCK) {
+            inputType = QTESystem.InputType.LEFT_CLICK;
+        } else if (event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK) {
+            inputType = QTESystem.InputType.RIGHT_CLICK;
+        }
+        
+        // Registrar input en el sistema QTE (si hay QTE activo para el jugador)
+        if (inputType != null) {
+            evento.getQTESystem().registerInput(player, inputType);
+        }
+        
+        // SELLADO DE ANCLAS - Solo durante acto de anclas
+        if (evento.getActoActual() != EcoSombrasEvent.Acto.ANCLAS) {
             return;
         }
         
-        // Solo durante acto de anclas
-        if (evento.getActoActual() != EcoSombrasEvent.Acto.ANCLAS) {
+        // Solo click derecho en bloques
+        if (event.getAction() != Action.RIGHT_CLICK_BLOCK) {
             return;
         }
         
@@ -96,7 +115,6 @@ public class EcoSombrasListener implements Listener {
         }
         
         Location clickedLoc = event.getClickedBlock().getLocation();
-        Player player = event.getPlayer();
         
         // Buscar qué ancla es
         List<Location> anclas = evento.getAnclaLocations();

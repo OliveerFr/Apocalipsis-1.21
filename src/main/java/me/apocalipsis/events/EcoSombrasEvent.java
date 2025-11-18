@@ -20,6 +20,8 @@ import org.bukkit.util.Vector;
 import me.apocalipsis.Apocalipsis;
 import me.apocalipsis.ui.MessageBus;
 import me.apocalipsis.ui.SoundUtil;
+import me.apocalipsis.events.gameplay.QTESystem;
+import me.apocalipsis.events.gameplay.TelegraphedAttack;
 
 /**
  * El Eco de las Sombras Largas - Evento cinematográfico de 2-3 horas
@@ -99,6 +101,11 @@ public class EcoSombrasEvent extends EventBase {
     private EcoSombrasListener listener;
     private EcoSombrasItems items;
     
+    // Sistemas de gameplay interactivo
+    private QTESystem qteSystem;
+    private TelegraphedAttack telegraphedAttack;
+    private Map<UUID, Integer> playerQTEScores = new HashMap<>();
+    
     // ═══════════════════════════════════════════════════════════════════
     // CONSTRUCTOR
     // ═══════════════════════════════════════════════════════════════════
@@ -110,6 +117,10 @@ public class EcoSombrasEvent extends EventBase {
         items = new EcoSombrasItems();
         listener = new EcoSombrasListener(this, items);
         Bukkit.getPluginManager().registerEvents(listener, plugin);
+        
+        // Inicializar sistemas de gameplay
+        qteSystem = new QTESystem(plugin);
+        telegraphedAttack = new TelegraphedAttack(plugin);
     }
     
     private void loadConfig() {
@@ -158,6 +169,31 @@ public class EcoSombrasEvent extends EventBase {
         iniciarActoActivacion();
     }
     
+    /**
+     * Obtiene el nombre en español de un tipo de ataque
+     */
+    private String getAttackName(TelegraphedAttack.AttackType type) {
+        switch (type) {
+            case SLAM:
+                return "GOLPE AL SUELO";
+            case BEAM:
+                return "RAYO LÁSER";
+            case CONE:
+                return "BARRIDO FRONTAL";
+            case PULSE:
+                return "ONDA EXPANSIVA";
+            case RAIN:
+                return "LLUVIA DE PROYECTILES";
+            case CHARGE:
+                return "EMBESTIDA";
+            default:
+                return "ATAQUE DESCONOCIDO";
+        }
+    }
+    
+    /**
+     * Limpia todos los sistemas de gameplay al detener el evento
+     */
     @Override
     public void onStop() {
         plugin.getLogger().info("[EcoSombras] Deteniendo evento...");
@@ -824,6 +860,42 @@ public class EcoSombrasEvent extends EventBase {
     public void sellarAncla(int id, Player jugador) {
         if (anclasSelladas.contains(id)) return;
         
+        // 🎮 MINI-JUEGO QTE: Secuencia de clicks para sellar
+        iniciarMiniJuegoAncla(id, jugador);
+    }
+    
+    private void iniciarMiniJuegoAncla(int id, Player jugador) {
+        Location anclaLoc = anclaLocations.get(id);
+        
+        // Efectos pre-QTE
+        jugador.sendTitle("§5§l⚡ SELLA EL ANCLA", "§7¡Completa la secuencia!", 5, 40, 10);
+        anclaLoc.getWorld().playSound(anclaLoc, Sound.BLOCK_BEACON_ACTIVATE, 1.5f, 1.5f);
+        
+        // Iniciar QTE de secuencia
+        qteSystem.startQTE(jugador, QTESystem.QTEType.SEQUENCE, 100, new QTESystem.QTECallback() {
+            @Override
+            public void onSuccess(Player player, int score) {
+                // Registrar score
+                playerQTEScores.merge(player.getUniqueId(), score, Integer::sum);
+                
+                // Completar sellado
+                completarSelladoAncla(id, jugador);
+            }
+            
+            @Override
+            public void onFailure(Player player) {
+                player.sendMessage("§c✗ No pudiste sellar el ancla. ¡Inténtalo de nuevo!");
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 0.8f);
+            }
+            
+            @Override
+            public void onCooperativeComplete(Collection<Player> players, int successCount) {
+                // No usado aquí
+            }
+        });
+    }
+    
+    private void completarSelladoAncla(int id, Player jugador) {
         anclasSelladas.add(id);
         
         // Incrementar participación
@@ -1304,7 +1376,45 @@ public class EcoSombrasEvent extends EventBase {
     }
     
     private void iniciarHabilidadesGuardian(Giant guardian) {
-        // Pulso de Sombra cada 15 segundos
+        // 🎮 SISTEMA DE ATAQUES TELEGRAFADOS
+        // El Guardián alterna entre diferentes ataques cada 12 segundos
+        List<TelegraphedAttack.AttackType> attackRotation = Arrays.asList(
+            TelegraphedAttack.AttackType.SLAM,
+            TelegraphedAttack.AttackType.PULSE,
+            TelegraphedAttack.AttackType.BEAM,
+            TelegraphedAttack.AttackType.CONE
+        );
+        
+        BukkitTask attackTask = Bukkit.getScheduler().runTaskTimer(plugin, new Runnable() {
+            private int attackIndex = 0;
+            
+            @Override
+            public void run() {
+                if (!guardian.isValid()) {
+                    return;
+                }
+                
+                // Seleccionar ataque de la rotación
+                TelegraphedAttack.AttackType currentAttack = attackRotation.get(attackIndex % attackRotation.size());
+                attackIndex++;
+                
+                // Mensaje de advertencia
+                String attackName = getAttackName(currentAttack);
+                messageBus.broadcast("§c§l⚠ " + attackName + " ⚠", "eco_sombras");
+                
+                // Ejecutar ataque telegrafado
+                telegraphedAttack.executeAttack(guardian, currentAttack, (type, hitPlayers) -> {
+                    // Callback cuando el ataque termina
+                    if (hitPlayers.isEmpty()) {
+                        messageBus.broadcast("§7Todos esquivaron el ataque...", "eco_sombras");
+                    } else {
+                        messageBus.broadcast("§c" + hitPlayers.size() + " jugadores fueron golpeados.", "eco_sombras");
+                    }
+                });
+            }
+        }, 240L, 240L);  // Cada 12 segundos
+        
+        // Pulso de Sombra cada 15 segundos (ataque adicional no telegrafado para presión)
         BukkitTask pulsoTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
             if (!guardian.isValid()) {
                 return;
@@ -1713,6 +1823,14 @@ public class EcoSombrasEvent extends EventBase {
     
     public EcoSombrasItems getItems() {
         return items;
+    }
+    
+    public QTESystem getQTESystem() {
+        return qteSystem;
+    }
+    
+    public TelegraphedAttack getTelegraphedAttack() {
+        return telegraphedAttack;
     }
     
     public int getJugadoresMinimos() {
