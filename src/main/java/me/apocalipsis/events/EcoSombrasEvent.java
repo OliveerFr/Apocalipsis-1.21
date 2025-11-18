@@ -1810,16 +1810,76 @@ public class EcoSombrasEvent extends EventBase {
         ConfigurationSection cliffConfig = config.getConfigurationSection("actos.acto_6_cliffhanger");
         if (cliffConfig == null) return;
         
-        // Momento 1: Formación del símbolo (primeros 10 segundos)
+        // ═══════════════════════════════════════════════════════════════════
+        // 🎬 MOMENTO 1: VICTORIA CINEMATOGRÁFICA (0-4 segundos)
+        // ═══════════════════════════════════════════════════════════════════
+        
         if (ticksEnActo == 20) {
-            generarSimboloFinal();
+            // Slow-motion dramático + zoom
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                if (participacionGuardian.getOrDefault(p.getUniqueId(), false)) {
+                    cinematicSystem.smoothZoom(p, 0.5f, 80);
+                    cinematicSystem.slowMotion(p, 80);
+                    p.sendTitle("§5§l⬢ VICTORIA ⬢", "§7El Guardián ha caído", 10, 60, 20);
+                    audioSystem.playStinger(p, EventAudioSystem.StingerType.VICTORY);
+                }
+            }
             
+            // Efectos de partículas épicos
+            if (arenaCenter != null) {
+                final World world = arenaCenter.getWorld();
+                BukkitTask particleTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+                    if (world != null) {
+                        world.spawnParticle(Particle.PORTAL, arenaCenter, 50, 2, 2, 2, 0.5);
+                        world.spawnParticle(Particle.END_ROD, arenaCenter, 30, 1, 1, 1, 0.2);
+                        world.spawnParticle(Particle.TOTEM_OF_UNDYING, arenaCenter, 20, 1.5, 1.5, 1.5, 0.1);
+                    }
+                }, 0L, 5L);
+                Bukkit.getScheduler().runTaskLater(plugin, particleTask::cancel, 80L);
+            }
+        }
+        
+        // ═══════════════════════════════════════════════════════════════════
+        // 🎁 MOMENTO 2: DROPS LEGENDARIOS + AGRADECIMIENTOS (3-6 segundos)
+        // ═══════════════════════════════════════════════════════════════════
+        
+        if (ticksEnActo == 60) {
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                if (participacionGuardian.getOrDefault(p.getUniqueId(), false)) {
+                    // Drop legendario único del Guardián
+                    ItemStack legendaryDrop = lootSystem.generateGuardianLegendaryDrop(p);
+                    lootSystem.giveRewards(p, Arrays.asList(legendaryDrop));
+                    
+                    // Recompensas de agradecimiento
+                    List<ItemStack> thankYouRewards = lootSystem.generateThankYouRewards();
+                    lootSystem.giveRewards(p, thankYouRewards);
+                    
+                    p.sendMessage("");
+                    p.sendMessage("§5§l━━━━━━━ §d§lGRACIAS POR JUGAR §5§l━━━━━━━");
+                    p.sendMessage("§7Has recibido recompensas especiales");
+                    p.sendMessage("§7como agradecimiento por participar en");
+                    p.sendMessage("§5§l✦ El Eco de las Sombras Largas ✦");
+                    p.sendMessage("§5§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                    p.sendMessage("");
+                }
+            }
+        }
+        
+        // ═══════════════════════════════════════════════════════════════════
+        // 📖 MOMENTO 3: NARRATIVA - Formación del símbolo (10 segundos)
+        // ═══════════════════════════════════════════════════════════════════
+        
+        if (ticksEnActo == 200) {
+            generarSimboloFinal();
             String simboloMsg = cliffConfig.getString("mensajes.simbolo.texto",
                 "§7§oLos fragmentos se reorganizan en el aire...");
             messageBus.broadcast(simboloMsg, "eco_sombras");
         }
         
-        // Momento 2: Monólogo del Observador (15-45 segundos)
+        // ═══════════════════════════════════════════════════════════════════
+        // 📖 MOMENTO 4: NARRATIVA - Monólogo del Observador (15-45 segundos)
+        // ═══════════════════════════════════════════════════════════════════
+        
         if (ticksEnActo == 300) {
             String obs1 = cliffConfig.getString("mensajes.observador_1.texto",
                 "§7§o\"Han sellado la grieta... pero no la fuente.\"");
@@ -1838,12 +1898,33 @@ public class EcoSombrasEvent extends EventBase {
             messageBus.broadcast(obs3, "eco_sombras");
         }
         
-        // Momento 3: Aparición de la figura misteriosa (60 segundos)
+        // ═══════════════════════════════════════════════════════════════════
+        // 📖 MOMENTO 5: NARRATIVA - Aparición figura misteriosa (60 segundos)
+        // ═══════════════════════════════════════════════════════════════════
+        
         if (ticksEnActo == 1200) {
             aparicionFiguraMisteriosa();
         }
         
-        // Finalizar evento (90 segundos)
+        // ═══════════════════════════════════════════════════════════════════
+        // 🧹 MOMENTO 6: CLEANUP DE SISTEMAS (80 segundos)
+        // ═══════════════════════════════════════════════════════════════════
+        
+        if (ticksEnActo == 1600) {
+            messageBus.broadcast("§7§oLas sombras se desvanecen...", "eco_sombras");
+            
+            // Cleanup completo de todos los sistemas
+            audioSystem.cleanupAll();
+            environmentSystem.cleanupAll();
+            cinematicSystem.cleanupAll();
+            
+            messageBus.broadcast("§7§oEl mundo vuelve a la normalidad.", "eco_sombras");
+        }
+        
+        // ═══════════════════════════════════════════════════════════════════
+        // 🏁 FINALIZACIÓN DEL EVENTO (90 segundos)
+        // ═══════════════════════════════════════════════════════════════════
+        
         if (ticksEnActo >= 1800) {
             finalizarEvento();
         }
@@ -2126,143 +2207,29 @@ public class EcoSombrasEvent extends EventBase {
     
     /**
      * Notifica que el Guardián del Umbral ha sido derrotado
-     * ═══════════════════════════════════════════════════════════════════
-     * 🏆 VICTORIA: Cinematografía + Cleanup + Recompensas + Finalización
-     * ═══════════════════════════════════════════════════════════════════
+     * Transiciona al Acto 6 (CLIFFHANGER) donde ocurre la victoria
      */
     public void onGuardianDerrotado() {
         if (!guardianSpawneado) return;
         
         // Registrar participación de todos los jugadores cercanos
-        Location guardianLoc = null;
         if (guardianEntity != null) {
-            guardianLoc = guardianEntity.getLocation().clone();
+            Location loc = guardianEntity.getLocation();
             for (Player p : Bukkit.getOnlinePlayers()) {
-                if (p.getWorld().equals(guardianLoc.getWorld()) && p.getLocation().distance(guardianLoc) < 100) {
+                if (p.getWorld().equals(loc.getWorld()) && p.getLocation().distance(loc) < 100) {
                     participacionGuardian.put(p.getUniqueId(), true);
                 }
             }
         }
         
-        final Location finalGuardianLoc = guardianLoc;
+        // Mensaje de transición
+        efectoCinematico("§8§l... El silencio ...", 10, 100, 30);
         
-        // ═══════════════════════════════════════════════════════════════════
-        // 🎬 CINEMATOGRAFÍA DE VICTORIA
-        // ═══════════════════════════════════════════════════════════════════
-        
-        // Slow-motion dramático
-        for (Player p : Bukkit.getOnlinePlayers()) {
-            if (participacionGuardian.getOrDefault(p.getUniqueId(), false)) {
-                // Cinematic zoom + slow motion (0.5 = zoom in)
-                cinematicSystem.smoothZoom(p, 0.5f, 80);
-                cinematicSystem.slowMotion(p, 80);
-                
-                // Título de victoria
-                p.sendTitle("§5§l⬢ VICTORIA ⬢", "§7El Guardián ha caído", 10, 60, 20);
-            }
-        }
-        
-        // 🎵 AUDIO: Stinger de victoria épico
-        for (Player p : Bukkit.getOnlinePlayers()) {
-            if (participacionGuardian.getOrDefault(p.getUniqueId(), false)) {
-                audioSystem.playStinger(p, EventAudioSystem.StingerType.VICTORY);
-            }
-        }
-        
-        // 🎨 Efectos de partículas épicos en la ubicación del Guardián
-        if (finalGuardianLoc != null) {
-            final World world = finalGuardianLoc.getWorld();
-            BukkitTask particleTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
-                if (world != null) {
-                    world.spawnParticle(Particle.PORTAL, finalGuardianLoc, 50, 2, 2, 2, 0.5);
-                    world.spawnParticle(Particle.END_ROD, finalGuardianLoc, 30, 1, 1, 1, 0.2);
-                    world.spawnParticle(Particle.TOTEM_OF_UNDYING, finalGuardianLoc, 20, 1.5, 1.5, 1.5, 0.1);
-                }
-            }, 0L, 5L);
-            
-            // Cancelar después de 80 ticks
-            Bukkit.getScheduler().runTaskLater(plugin, particleTask::cancel, 80L);
-        }
-        
-        // ═══════════════════════════════════════════════════════════════════
-        // 🎁 DROPS DEL GUARDIÁN (LEGENDARIOS + AGRADECIMIENTOS)
-        // ═══════════════════════════════════════════════════════════════════
-        
+        // TRANSICIÓN AUTOMÁTICA: Guardián muerto → CLIFFHANGER (Acto 6 - Victoria)
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            for (Player p : Bukkit.getOnlinePlayers()) {
-                if (participacionGuardian.getOrDefault(p.getUniqueId(), false)) {
-                    
-                    // 1. Drop legendario único del Guardián (one-time)
-                    ItemStack legendaryDrop = lootSystem.generateGuardianLegendaryDrop(p);
-                    lootSystem.giveRewards(p, Arrays.asList(legendaryDrop));
-                    
-                    // Notificar drop legendario
-                    if (lootSystem.hasReceivedUniqueItem(p, "guardian_legendary_artifact")) {
-                        p.sendMessage("§5§l✦ §dHas obtenido: §5§l✦ Estrella del Umbral ✦");
-                        p.sendMessage("§7§oUn artefacto legendario del Guardián del Umbral");
-                    } else {
-                        p.sendMessage("§d§l✦ §7Has obtenido una recompensa épica del Guardián");
-                    }
-                    
-                    // 2. Recompensas de agradecimiento por jugar
-                    List<ItemStack> thankYouRewards = lootSystem.generateThankYouRewards();
-                    lootSystem.giveRewards(p, thankYouRewards);
-                    
-                    p.sendMessage("");
-                    p.sendMessage("§5§l━━━━━━━ §d§lGRACIAS POR JUGAR §5§l━━━━━━━");
-                    p.sendMessage("§7Has recibido recompensas especiales");
-                    p.sendMessage("§7como agradecimiento por participar en");
-                    p.sendMessage("§5§l✦ El Eco de las Sombras Largas ✦");
-                    p.sendMessage("§5§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-                    p.sendMessage("");
-                }
-            }
-        }, 60L);
-        
-        // ═══════════════════════════════════════════════════════════════════
-        // 🧹 CLEANUP DE SISTEMAS
-        // ═══════════════════════════════════════════════════════════════════
-        
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            // Mensaje de cierre
-            efectoCinematico("§8§l... El silencio regresa ...", 10, 60, 30);
-            
-            // Limpiar entidades del acto anterior
             limpiarEntidadesActoAnterior();
-            
-            // Cleanup completo de todos los sistemas
-            messageBus.broadcast("§7§oLas sombras se desvanecen...", "eco_sombras");
-            
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                // Audio cleanup
-                audioSystem.cleanupAll();
-                
-                // Environment cleanup  
-                environmentSystem.cleanupAll();
-                
-                // Cinematic cleanup
-                cinematicSystem.cleanupAll();
-                
-                messageBus.broadcast("§7§oEl mundo vuelve a la normalidad.", "eco_sombras");
-                
-            }, 40L);
-            
-        }, 100L);
-        
-        // ═══════════════════════════════════════════════════════════════════
-        // 🏁 FINALIZAR EVENTO
-        // ═══════════════════════════════════════════════════════════════════
-        
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            // Transicionar a CLIFFHANGER (manteniendo consistencia con narrativa)
             transicionarActo(Acto.CLIFFHANGER);
-            
-            // Finalizar evento después del cliffhanger
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                finalizarEvento();
-            }, 100L);
-            
-        }, 160L);
+        }, 100L);
     }
     
     private void cleanup() {

@@ -78,9 +78,9 @@ public class EnvironmentSystem {
      * Intensidades de niebla
      */
     public enum FogIntensity {
-        LIGHT("Ligera", 0.3f, 5, 10),
-        MEDIUM("Media", 0.5f, 3, 8),
-        DENSE("Densa", 0.8f, 1, 6);
+        LIGHT("Ligera", 0.3f, 8, 10),
+        MEDIUM("Media", 0.5f, 5, 8),
+        DENSE("Densa", 0.8f, 3, 6);
         
         private final String displayName;
         private final float densityFactor;
