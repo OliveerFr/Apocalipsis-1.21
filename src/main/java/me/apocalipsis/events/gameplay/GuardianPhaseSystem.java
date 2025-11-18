@@ -28,7 +28,7 @@ import java.util.*;
 public class GuardianPhaseSystem {
     
     private final Apocalipsis plugin;
-    private final Giant guardian;
+    private final LivingEntity guardian;  // Cambiar a LivingEntity para soportar múltiples tipos
     private final Location arenaCenter;
     
     private PhaseType currentPhase = PhaseType.PHASE_1;
@@ -39,7 +39,8 @@ public class GuardianPhaseSystem {
     private static final int ENRAGE_TIME_SECONDS = 600; // 10 minutos
     private boolean isEnraged = false;
     
-    public GuardianPhaseSystem(Apocalipsis plugin, Giant guardian, Location arenaCenter) {
+    // Constructor que acepta cualquier LivingEntity
+    public GuardianPhaseSystem(Apocalipsis plugin, LivingEntity guardian, Location arenaCenter) {
         this.plugin = plugin;
         this.guardian = guardian;
         this.arenaCenter = arenaCenter;

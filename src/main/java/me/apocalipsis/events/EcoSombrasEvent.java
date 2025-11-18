@@ -112,6 +112,11 @@ public class EcoSombrasEvent extends EventBase {
     private me.apocalipsis.events.gameplay.GuardianPhaseSystem guardianPhaseSystem;
     private me.apocalipsis.events.gameplay.ParticleEffectSystem particleSystem;
     
+    // Sistema de recompensas y dificultad
+    private me.apocalipsis.events.gameplay.EventLootSystem lootSystem;
+    private me.apocalipsis.events.gameplay.EventLootSystem.Difficulty difficulty;
+    private boolean eventoFinalizado = false;
+    
     // ═══════════════════════════════════════════════════════════════════
     // CONSTRUCTOR
     // ═══════════════════════════════════════════════════════════════════
@@ -132,6 +137,10 @@ public class EcoSombrasEvent extends EventBase {
         uiManager = new me.apocalipsis.ui.UIManager(plugin);
         feedbackSystem = new me.apocalipsis.ui.FeedbackSystem(plugin);
         particleSystem = new me.apocalipsis.events.gameplay.ParticleEffectSystem(plugin);
+        
+        // Inicializar sistema de loot
+        difficulty = me.apocalipsis.events.gameplay.EventLootSystem.Difficulty.NORMAL;
+        lootSystem = new me.apocalipsis.events.gameplay.EventLootSystem(difficulty);
     }
     
     private void loadConfig() {
@@ -892,6 +901,18 @@ public class EcoSombrasEvent extends EventBase {
     public void sellarAncla(int id, Player jugador) {
         if (anclasSelladas.contains(id)) return;
         
+        // Validar que las anclas existen y el ID es válido
+        if (anclaLocations.isEmpty()) {
+            jugador.sendMessage("§c¡Las anclas aún no han sido generadas!");
+            plugin.getLogger().warning("[EcoSombras] Intento de sellar ancla antes de ser generadas");
+            return;
+        }
+        
+        if (id < 0 || id >= anclaLocations.size()) {
+            jugador.sendMessage("§c¡ID de ancla inválido!");
+            return;
+        }
+        
         // 🎮 MINI-JUEGO QTE: Secuencia de clicks para sellar
         iniciarMiniJuegoAncla(id, jugador);
     }
@@ -1358,24 +1379,36 @@ public class EcoSombrasEvent extends EventBase {
         // 🎬 SPAWN del Guardian con delay dramático
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             Location spawnLoc = arenaCenter.clone().add(0, 1, 0);
-            Giant guardian = (Giant) spawnLoc.getWorld().spawnEntity(spawnLoc, EntityType.GIANT);
+            
+            // USAR WITHER SKELETON GRANDE EN LUGAR DE GIANT (tiene IA funcional)
+            WitherSkeleton guardian = (WitherSkeleton) spawnLoc.getWorld().spawnEntity(spawnLoc, EntityType.WITHER_SKELETON);
             
             // Configuración
             String nombre = "§5§l§n⬢ GUARDIÁN DEL UMBRAL ⬢";
-            guardian.setCustomName(nombre);
+            guardian.customName(net.kyori.adventure.text.Component.text(nombre));
             guardian.setCustomNameVisible(true);
             guardian.setRemoveWhenFarAway(false);
             guardian.setAI(true);
             
-            // Atributos épicos (para Netherite Prot 4)
-            guardian.getAttribute(Attribute.MAX_HEALTH).setBaseValue(800.0);  // 400 corazones
-            guardian.setHealth(800.0);
+            // Calcular atributos según número de jugadores y dificultad
+            int numJugadores = Math.max(1, participantesOriginales.size());
+            double diffMultiplier = difficulty.multiplier;
+            double playerScaling = 1.0 + (numJugadores - 1) * 0.3; // +30% stats por jugador extra
             
-            guardian.getAttribute(Attribute.ATTACK_DAMAGE).setBaseValue(24.0);  // ~8 corazones con Prot 4
-            guardian.getAttribute(Attribute.MOVEMENT_SPEED).setBaseValue(0.35);  // Rápido para su tamaño
-            guardian.getAttribute(Attribute.ARMOR).setBaseValue(20.0);  // Resistencia alta
-            guardian.getAttribute(Attribute.ARMOR_TOUGHNESS).setBaseValue(12.0);
-            guardian.getAttribute(Attribute.KNOCKBACK_RESISTANCE).setBaseValue(0.8);  // Muy difícil de empujar
+            // Atributos épicos escalados (para Netherite Prot 4)
+            double baseHealth = 400.0 * diffMultiplier * playerScaling;  // 400-3600 corazones
+            guardian.getAttribute(Attribute.MAX_HEALTH).setBaseValue(baseHealth);
+            guardian.setHealth(baseHealth);
+            
+            double baseDamage = 12.0 * diffMultiplier * playerScaling;  // Escalado por dificultad
+            guardian.getAttribute(Attribute.ATTACK_DAMAGE).setBaseValue(baseDamage);
+            
+            double baseSpeed = 0.30 * Math.min(1.5, diffMultiplier);  // Velocidad moderada
+            guardian.getAttribute(Attribute.MOVEMENT_SPEED).setBaseValue(baseSpeed);
+            
+            guardian.getAttribute(Attribute.ARMOR).setBaseValue(15.0 + (diffMultiplier * 5));
+            guardian.getAttribute(Attribute.ARMOR_TOUGHNESS).setBaseValue(8.0 + (diffMultiplier * 4));
+            guardian.getAttribute(Attribute.KNOCKBACK_RESISTANCE).setBaseValue(0.7 + (diffMultiplier * 0.1));
             
             // Equipamiento Netherite completo
             EntityEquipment equip = guardian.getEquipment();
@@ -1440,9 +1473,10 @@ public class EcoSombrasEvent extends EventBase {
             particleSystem.createFloatingSymbol(guardian.getLocation().clone().add(0, 10, 0), 
                 me.apocalipsis.events.gameplay.ParticleEffectSystem.SymbolType.RUNES, 600);
             
-            // Mensaje dramático
+            // Mensaje dramático con stats
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 messageBus.broadcast("§8§o\"Ro… po… sis… ten…\"", "eco_sombras");
+                messageBus.broadcast("§7Jugadores: §e" + numJugadores + " §7| Dificultad: " + difficulty.displayName, "eco_sombras");
                 arenaCenter.getWorld().playSound(arenaCenter, Sound.ENTITY_WARDEN_ROAR, 2.0f, 0.3f);
             }, 40L);
             
@@ -1482,7 +1516,7 @@ public class EcoSombrasEvent extends EventBase {
         }, 60L); // Spawn después de 3 segundos de oscuridad
     }
     
-    private void iniciarHabilidadesGuardian(Giant guardian) {
+    private void iniciarHabilidadesGuardian(LivingEntity guardian) {
         // 🎮 SISTEMA DE ATAQUES TELEGRAFADOS
         // El Guardián alterna entre diferentes ataques cada 12 segundos
         List<TelegraphedAttack.AttackType> attackRotation = Arrays.asList(
@@ -1792,6 +1826,12 @@ public class EcoSombrasEvent extends EventBase {
     }
     
     private void finalizarEvento() {
+        // Prevenir ejecución múltiple
+        if (eventoFinalizado) {
+            return;
+        }
+        eventoFinalizado = true;
+        
         // Calcular y otorgar recompensas
         otorgarRecompensasFinales();
         
@@ -1832,7 +1872,8 @@ public class EcoSombrasEvent extends EventBase {
             psTotal += anclas * psPorAncla;
             
             // PS por derrotar al guardián
-            if (participacionGuardian.getOrDefault(uuid, false)) {
+            boolean mateGuardian = participacionGuardian.getOrDefault(uuid, false);
+            if (mateGuardian) {
                 psTotal += psPorGuardian;
             }
             
@@ -1840,6 +1881,32 @@ public class EcoSombrasEvent extends EventBase {
             if (participantesOriginales.size() >= 3) {
                 psTotal += psBonusGrupal;
             }
+            
+            // ═══════════════════════════════════════════════════════════
+            // 🎁 SISTEMA DE LOOT ITEMS
+            // ═══════════════════════════════════════════════════════════
+            
+            // Calcular participación (0-100)
+            int participationScore = Math.min(100, 
+                (sombras * 5) +  // Cada sombra = 5 puntos
+                (anclas * 15) +   // Cada ancla = 15 puntos
+                (mateGuardian ? 30 : 0)  // Guardián = 30 puntos
+            );
+            
+            // Items por participación general
+            List<org.bukkit.inventory.ItemStack> rewards = lootSystem.generateParticipationReward(participationScore);
+            
+            // Items extra por matar al Guardián
+            if (mateGuardian) {
+                rewards.addAll(lootSystem.generateBossKillerReward());
+            }
+            
+            // Otorgar items
+            lootSystem.giveRewards(p, rewards);
+            
+            // Experiencia extra
+            int xpAmount = (int) (500 * difficulty.multiplier * (participationScore / 100.0));
+            p.giveExp(xpAmount);
             
             // Otorgar PS (integración con sistema de misiones)
             // TODO: Integrar con MissionService o sistema de economía
@@ -1849,9 +1916,14 @@ public class EcoSombrasEvent extends EventBase {
             p.sendMessage("§7PS Base: §e+" + psBase);
             if (sombras > 0) p.sendMessage("§7Sombras eliminadas: §e+" + (sombras * psPorSombra) + " §8(" + sombras + " sombras)");
             if (anclas > 0) p.sendMessage("§7Anclas selladas: §e+" + (anclas * psPorAncla) + " §8(" + anclas + " anclas)");
-            if (participacionGuardian.getOrDefault(uuid, false)) p.sendMessage("§7Guardián derrotado: §e+" + psPorGuardian);
+            if (mateGuardian) {
+                p.sendMessage("§7Guardián derrotado: §e+" + psPorGuardian);
+                p.sendMessage("§6§l✦ LOOT DE BOSS: " + rewards.size() + " items legendarios");
+            }
             if (participantesOriginales.size() >= 3) p.sendMessage("§7Bonus grupal: §e+" + psBonusGrupal);
-            p.sendMessage("§5§lTOTAL: §e§l+" + psTotal + " PS");
+            p.sendMessage("§d§lEXPERIENCIA: §a+" + xpAmount + " XP");
+            p.sendMessage("§5§lTOTAL PS: §e§l+" + psTotal + " PS");
+            p.sendMessage("§7Participación: §b" + participationScore + "§7/§b100");
             p.sendMessage("§5§l━━━━━━━━━━━━━━━━━━━━━━━━━");
             
             // Sonido de recompensa
@@ -1863,8 +1935,19 @@ public class EcoSombrasEvent extends EventBase {
         sombrasLargasMuertas++;
         if (killer != null) {
             participacionSombras.merge(killer.getUniqueId(), 1, Integer::sum);
+            
+            // Drop chance de items por mob
+            List<org.bukkit.inventory.ItemStack> mobDrops = lootSystem.generateMobKillReward();
+            if (!mobDrops.isEmpty()) {
+                lootSystem.giveRewards(killer, mobDrops);
+                killer.sendMessage("§8§l⬢ §7Has obtenido: §8" + mobDrops.get(0).getItemMeta().getDisplayName());
+            }
+            
+            // Experiencia por kill
+            killer.giveExp((int) (10 * difficulty.multiplier));
+            
             // Sonido
-            killer.playSound(killer.getLocation(), Sound.valueOf("ENTITY_PHANTOM_DEATH"), 0.8f, 0.5f);
+            killer.playSound(killer.getLocation(), Sound.ENTITY_PHANTOM_DEATH, 0.8f, 0.5f);
             
             // Efecto visual de muerte
             Location loc = killer.getLocation();

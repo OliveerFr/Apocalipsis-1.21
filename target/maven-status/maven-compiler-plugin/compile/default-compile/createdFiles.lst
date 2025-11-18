@@ -1,3 +1,4 @@
+me\apocalipsis\events\gameplay\EventLootSystem$Rarity.class
 me\apocalipsis\utils\ParticleCompat.class
 me\apocalipsis\experience\AbilityService$RankAbility.class
 me\apocalipsis\ui\FeedbackSystem$IndicatorType.class
@@ -78,6 +79,7 @@ me\apocalipsis\events\gameplay\TelegraphedAttack$6.class
 me\apocalipsis\events\gameplay\GuardianPhaseSystem.class
 me\apocalipsis\events\gameplay\ParticleEffectSystem$5.class
 me\apocalipsis\events\gameplay\QTESystem$ActiveQTE$2.class
+me\apocalipsis\events\gameplay\EventLootSystem$Difficulty.class
 me\apocalipsis\events\gameplay\GuardianPhaseSystem$3.class
 me\apocalipsis\missions\MissionType.class
 me\apocalipsis\commands\ApocalipsisCommand.class
@@ -114,6 +116,7 @@ me\apocalipsis\Apocalipsis.class
 me\apocalipsis\listeners\DisasterEvasionListener.class
 me\apocalipsis\events\gameplay\ParticleEffectSystem$DistortionType.class
 me\apocalipsis\events\gameplay\TelegraphedAttack.class
+me\apocalipsis\events\gameplay\EventLootSystem.class
 me\apocalipsis\utils\ExplosionGuard.class
 me\apocalipsis\events\EcoBrasasEvent$OleadaState.class
 me\apocalipsis\events\EcoSombrasItems.class
