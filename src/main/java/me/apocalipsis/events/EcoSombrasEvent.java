@@ -106,6 +106,11 @@ public class EcoSombrasEvent extends EventBase {
     private TelegraphedAttack telegraphedAttack;
     private Map<UUID, Integer> playerQTEScores = new HashMap<>();
     
+    // Sistemas avanzados de UI y feedback
+    private me.apocalipsis.ui.UIManager uiManager;
+    private me.apocalipsis.ui.FeedbackSystem feedbackSystem;
+    private me.apocalipsis.events.gameplay.GuardianPhaseSystem guardianPhaseSystem;
+    
     // ═══════════════════════════════════════════════════════════════════
     // CONSTRUCTOR
     // ═══════════════════════════════════════════════════════════════════
@@ -121,6 +126,10 @@ public class EcoSombrasEvent extends EventBase {
         // Inicializar sistemas de gameplay
         qteSystem = new QTESystem(plugin);
         telegraphedAttack = new TelegraphedAttack(plugin);
+        
+        // Inicializar UI y feedback
+        uiManager = new me.apocalipsis.ui.UIManager(plugin);
+        feedbackSystem = new me.apocalipsis.ui.FeedbackSystem(plugin);
     }
     
     private void loadConfig() {
@@ -1000,7 +1009,16 @@ public class EcoSombrasEvent extends EventBase {
         actoActual = nuevoActo;
         ticksEnActo = 0;
         
+        // Actualizar UI global con progreso
+        String actName = getActoName(nuevoActo);
+        float progress = getActoProgress(nuevoActo);
+        net.kyori.adventure.bossbar.BossBar.Color color = getActoColor(nuevoActo);
+        
+        uiManager.updateBossbar(actName, progress, color);
+        
         switch (nuevoActo) {
+            case ACTIVACION:
+                break;
             case MANCHAS:
                 iniciarActoManchas();
                 break;
@@ -1019,6 +1037,45 @@ public class EcoSombrasEvent extends EventBase {
             case CLIFFHANGER:
                 iniciarActoCliffhanger();
                 break;
+        }
+    }
+    
+    private String getActoName(Acto acto) {
+        switch (acto) {
+            case ACTIVACION: return "ACTIVACIÓN";
+            case MANCHAS: return "MANCHAS";
+            case SOMBRAS_LARGAS: return "SOMBRAS LARGAS";
+            case NUCLEO: return "NÚCLEO";
+            case ANCLAS: return "ANCLAS";
+            case RITUAL: return "RITUAL";
+            case CLIFFHANGER: return "CIERRE";
+            default: return "DESCONOCIDO";
+        }
+    }
+    
+    private float getActoProgress(Acto acto) {
+        switch (acto) {
+            case ACTIVACION: return 0.05f;
+            case MANCHAS: return 0.2f;
+            case SOMBRAS_LARGAS: return 0.4f;
+            case NUCLEO: return 0.6f;
+            case ANCLAS: return 0.75f;
+            case RITUAL: return 0.9f;
+            case CLIFFHANGER: return 1.0f;
+            default: return 0.0f;
+        }
+    }
+    
+    private net.kyori.adventure.bossbar.BossBar.Color getActoColor(Acto acto) {
+        switch (acto) {
+            case ACTIVACION: return net.kyori.adventure.bossbar.BossBar.Color.WHITE;
+            case MANCHAS: return net.kyori.adventure.bossbar.BossBar.Color.BLUE;
+            case SOMBRAS_LARGAS: return net.kyori.adventure.bossbar.BossBar.Color.PURPLE;
+            case NUCLEO: return net.kyori.adventure.bossbar.BossBar.Color.RED;
+            case ANCLAS: return net.kyori.adventure.bossbar.BossBar.Color.PINK;
+            case RITUAL: return net.kyori.adventure.bossbar.BossBar.Color.RED;
+            case CLIFFHANGER: return net.kyori.adventure.bossbar.BossBar.Color.WHITE;
+            default: return net.kyori.adventure.bossbar.BossBar.Color.WHITE;
         }
     }
     
@@ -1332,6 +1389,13 @@ public class EcoSombrasEvent extends EventBase {
             
             guardianEntity = guardian;
             entidadesEvento.add(guardian.getUniqueId());
+            
+            // 🎮 INICIALIZAR SISTEMA DE FASES
+            guardianPhaseSystem = new me.apocalipsis.events.gameplay.GuardianPhaseSystem(
+                plugin, 
+                guardian, 
+                arenaCenter
+            );
             
             // Mensaje dramático
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
@@ -1831,6 +1895,14 @@ public class EcoSombrasEvent extends EventBase {
     
     public TelegraphedAttack getTelegraphedAttack() {
         return telegraphedAttack;
+    }
+    
+    public me.apocalipsis.ui.FeedbackSystem getFeedbackSystem() {
+        return feedbackSystem;
+    }
+    
+    public me.apocalipsis.events.gameplay.GuardianPhaseSystem getGuardianPhaseSystem() {
+        return guardianPhaseSystem;
     }
     
     public int getJugadoresMinimos() {

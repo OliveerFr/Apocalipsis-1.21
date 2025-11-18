@@ -4,12 +4,15 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.Giant;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Zombie;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
@@ -29,6 +32,60 @@ public class EcoSombrasListener implements Listener {
     public EcoSombrasListener(EcoSombrasEvent evento, EcoSombrasItems items) {
         this.evento = evento;
         this.items = items;
+    }
+    
+    /**
+     * Maneja daño para feedback visual y sistema de fases del Guardián
+     */
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onEntityDamage(EntityDamageByEntityEvent event) {
+        Entity damaged = event.getEntity();
+        Entity damager = event.getDamager();
+        
+        // Si un jugador golpea al Guardián
+        if (damaged instanceof Giant && damaged.getCustomName() != null && 
+            damaged.getCustomName().contains("Guardián del Umbral") && damager instanceof Player) {
+            
+            Player attacker = (Player) damager;
+            
+            // Procesar daño con el sistema de fases
+            if (evento.getGuardianPhaseSystem() != null) {
+                evento.getGuardianPhaseSystem().processDamage(event);
+            }
+            
+            // Registrar hit para combo system
+            if (evento.getFeedbackSystem() != null && !event.isCancelled()) {
+                evento.getFeedbackSystem().registerHit(attacker);
+                
+                // Determinar si fue crítico (20% chance)
+                boolean isCritical = Math.random() < 0.2;
+                evento.getFeedbackSystem().showHitMarker(attacker, isCritical);
+            }
+        }
+        
+        // Si el Guardián o una sombra golpea a un jugador
+        if (damaged instanceof Player && damager instanceof LivingEntity) {
+            Player player = (Player) damaged;
+            
+            // Mostrar indicador direccional de daño
+            if (evento.getFeedbackSystem() != null && evento.getEntidadesEvento().contains(damager.getUniqueId())) {
+                evento.getFeedbackSystem().showDirectionalDamageIndicator(player, damager.getLocation());
+            }
+        }
+        
+        // Si un jugador mata una sombra larga (mostrar damage number)
+        if (damaged instanceof Zombie && damager instanceof Player) {
+            Player attacker = (Player) damager;
+            
+            if (evento.getFeedbackSystem() != null && evento.getEntidadesEvento().contains(damaged.getUniqueId())) {
+                boolean isCritical = Math.random() < 0.15;
+                evento.getFeedbackSystem().showDamageNumber(
+                    damaged.getLocation().add(0, 1, 0), 
+                    event.getFinalDamage(), 
+                    isCritical
+                );
+            }
+        }
     }
     
     /**
