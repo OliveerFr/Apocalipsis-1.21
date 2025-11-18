@@ -464,10 +464,14 @@ public class EcoSombrasEvent extends EventBase {
             messageBus.broadcast(mensaje, "eco_sombras");
         }
         
-        // Transición al matar 15 sombras
-        if (sombrasLargasMuertas >= 15) {
+        // TRANSICIÓN AUTOMÁTICA al matar 20 sombras
+        if (sombrasLargasMuertas >= 20) {
             if (spawnTask != null) spawnTask.cancel();
-            transicionarActo(Acto.NUCLEO);
+            efectoCinematico("§5§l⚡ LAS ANCLAS DIMENSIONALES SE REVELAN", 10, 60, 20);
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                limpiarEntidadesActoAnterior();
+                transicionarActo(Acto.ANCLAS);
+            }, 60L);
         }
     }
     
@@ -551,15 +555,17 @@ public class EcoSombrasEvent extends EventBase {
             return;
         }
         
-        // Check teleporte
-        double vidaActual = ((LivingEntity) nucleoEntity).getHealth();
-        double vidaMax = ((LivingEntity) nucleoEntity).getAttribute(Attribute.MAX_HEALTH).getValue();
-        double porcentaje = (vidaActual / vidaMax) * 100;
+        LivingEntity nucleo = (LivingEntity) nucleoEntity;
+        double vidaActual = nucleo.getHealth();
         
-        // Al 40% de vida, spawn anclas
-        if (porcentaje <= 40 && anclaLocations.isEmpty()) {
+        // TRANSICIÓN AUTOMÁTICA: Núcleo destruido → RITUAL
+        if (vidaActual <= 0 || !nucleo.isValid()) {
             if (spawnTask != null) spawnTask.cancel();
-            transicionarActo(Acto.ANCLAS);
+            efectoCinematico("§5§l⚡ EL RITUAL COMIENZA ⚡", 10, 60, 20);
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                limpiarEntidadesActoAnterior();
+                transicionarActo(Acto.RITUAL);
+            }, 60L);
             return;
         }
         
@@ -725,6 +731,15 @@ public class EcoSombrasEvent extends EventBase {
                     "§7§o\"Sellan la herida, pero no la causa…\"");
                 messageBus.broadcast(obs, "eco_sombras");
             }, 40L);
+        }
+        
+        // TRANSICIÓN AUTOMÁTICA: 5 anclas selladas → NUCLEO
+        if (anclasSelladas.size() >= 5) {
+            efectoCinematico("§8§l⬢ EL NÚCLEO SE MANIFIESTA", 10, 60, 20);
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                limpiarEntidadesActoAnterior();
+                transicionarActo(Acto.NUCLEO);
+            }, 60L);
         }
     }
     
@@ -1273,7 +1288,37 @@ public class EcoSombrasEvent extends EventBase {
         sombrasLargasMuertas++;
         if (killer != null) {
             participacionSombras.merge(killer.getUniqueId(), 1, Integer::sum);
+            // Sonido
+            killer.playSound(killer.getLocation(), Sound.valueOf("ENTITY_PHANTOM_DEATH"), 0.8f, 0.5f);
+            
+            // Efecto visual de muerte
+            Location loc = killer.getLocation();
+            loc.getWorld().spawnParticle(Particle.SMOKE, loc, 20, 0.5, 0.5, 0.5, 0.1);
         }
+    }
+    
+    /**
+     * Notifica que el Guardián del Umbral ha sido derrotado
+     */
+    public void onGuardianDerrotado() {
+        if (!guardianSpawneado) return;
+        
+        // Registrar participación de todos los jugadores cercanos
+        if (guardianEntity != null) {
+            Location loc = guardianEntity.getLocation();
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                if (p.getWorld().equals(loc.getWorld()) && p.getLocation().distance(loc) < 100) {
+                    participacionGuardian.put(p.getUniqueId(), true);
+                }
+            }
+        }
+        
+        // TRANSICIÓN AUTOMÁTICA: Guardián muerto → CLIFFHANGER
+        efectoCinematico("§8§l... El silencio ...", 10, 100, 30);
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            limpiarEntidadesActoAnterior();
+            transicionarActo(Acto.CLIFFHANGER);
+        }, 100L);
     }
     
     private void cleanup() {
@@ -1366,6 +1411,23 @@ public class EcoSombrasEvent extends EventBase {
         
         transicionarActo(nuevoActo);
         plugin.getLogger().info("[EcoSombras] Acto forzado a: " + nuevoActo);
+    }
+    
+    /**
+     * Efecto cinematográfico con título en pantalla, pantalla negra y sonidos
+     */
+    private void efectoCinematico(String titulo, int fadeIn, int stay, int fadeOut) {
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            p.sendTitle(titulo, "", fadeIn, stay, fadeOut);
+            
+            // Screen shake simulado con movimiento de cámara
+            Location loc = p.getLocation();
+            p.playSound(loc, Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 0.5f, 0.8f);
+            p.playSound(loc, Sound.AMBIENT_CAVE, 1.0f, 0.5f);
+            
+            // Efecto de partículas locales
+            loc.getWorld().spawnParticle(Particle.LARGE_SMOKE, loc, 30, 2, 1, 2, 0.1);
+        }
     }
     
     /**

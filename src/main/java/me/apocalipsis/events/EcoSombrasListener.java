@@ -30,7 +30,7 @@ public class EcoSombrasListener implements Listener {
     }
     
     /**
-     * Maneja la muerte de Sombras Largas
+     * Maneja la muerte de Sombras Largas y Guardian
      */
     @EventHandler(priority = EventPriority.HIGH)
     public void onEntityDeath(EntityDeathEvent event) {
@@ -41,12 +41,19 @@ public class EcoSombrasListener implements Listener {
             return;
         }
         
+        Player killer = event.getEntity().getKiller();
+        
+        // Verificar si es el Guardian
+        if (entity.getCustomName() != null && entity.getCustomName().contains("Guardián del Umbral")) {
+            evento.onGuardianDerrotado();
+            event.getDrops().clear();
+            return;
+        }
+        
         // Solo procesar Zombies (Sombras Largas)
         if (!(entity instanceof Zombie)) {
             return;
         }
-        
-        Player killer = event.getEntity().getKiller();
         
         // Notificar al evento
         evento.onSombraLargaMuerta(killer);
