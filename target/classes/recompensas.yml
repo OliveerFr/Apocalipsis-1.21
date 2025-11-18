@@ -17,14 +17,14 @@ recompensas_por_mision:
   por_dificultad:
     FACIL:
       # Probabilidad de recompensa (0.0 - 1.0)
-      probabilidad: 0.30          # 30% de chance
+      probabilidad: 0.20          # 20% de chance (antes 30%)
       items:
         - "give %player% minecraft:bread 2"
         - "give %player% minecraft:cooked_beef 1"
       mensaje: "&a¡Bonus! &7+2 Pan"
       
     MEDIA:
-      probabilidad: 0.40          # 40% de chance
+      probabilidad: 0.30          # 30% de chance (antes 40%)
       items:
         - "give %player% minecraft:iron_ingot 2"
         - "give %player% minecraft:gold_ingot 1"
@@ -32,7 +32,7 @@ recompensas_por_mision:
       mensaje: "&a¡Bonus! &7+2 Hierro, +1 Oro, +8 Flechas"
       
     DIFICIL:
-      probabilidad: 0.50          # 50% de chance
+      probabilidad: 0.40          # 40% de chance (antes 50%)
       items:
         - "give %player% minecraft:diamond 1"
         - "give %player% minecraft:golden_apple 1"
@@ -49,9 +49,9 @@ recompensas_diarias_completas:
   # Recompensas base (siempre se dan)
   recompensas_base:
     comandos:
-      - "give %player% minecraft:diamond 3"
-      - "give %player% minecraft:golden_apple 2"
-      - "give %player% minecraft:experience_bottle 5"
+      - "give %player% minecraft:diamond 5"              # Antes 3
+      - "give %player% minecraft:golden_apple 3"         # Antes 2
+      - "give %player% minecraft:experience_bottle 8"    # Antes 5
     mensaje: "&6&l★ ¡MISIONES DIARIAS COMPLETADAS! &r&7Has recibido recompensas especiales"
     
   # Recompensas adicionales según el rango del jugador
@@ -124,12 +124,12 @@ recompensas_diarias_completas:
 # ═══════════════════════════════════════════════════════════════
 
 # Fórmula para XP necesario por nivel: base + (nivel * multiplicador)
-# ⚠️ AJUSTADO PARA SERIE DE 30 DÍAS (jugadores muy activos alcanzan ABSOLUTO en ~20 días)
+# ⚠️ AJUSTADO PARA SERIE DE 75 DÍAS (jugadores muy activos alcanzan ABSOLUTO en ~75 días)
 experiencia:
-  nivel_inicial: 140           # XP necesario para nivel 2 (aumentado de 100 → 140)
-  multiplicador: 70            # XP adicional por cada nivel (aumentado de 50 → 70)
-  # Ejemplo: Nivel 2 = 140, Nivel 3 = 210, Nivel 4 = 280, etc.
-  # Total para nivel 35 (ABSOLUTO): ~44,030 XP
+  nivel_inicial: 200           # XP necesario para nivel 2 (antes 140)
+  multiplicador: 150            # XP adicional por cada nivel (antes 70)
+  # Ejemplo: Nivel 2 = 200, Nivel 3 = 350, Nivel 4 = 500, etc.
+  # Total para nivel 50 (ABSOLUTO): ~110,075 XP
 
 # Fuentes de experiencia
 fuentes_xp:
@@ -137,30 +137,30 @@ fuentes_xp:
   misiones:
     enabled: true
     por_dificultad:
-      FACIL: 100               # ~10-16 misiones/día para novatos
-      MEDIA: 200               # ~6-8 misiones/día
-      DIFICIL: 400             # ~4-5 misiones/día
-    multiplicador_por_rango:   # Bonus XP por rango alto
+      FACIL: 80                # ~12 misiones/día para novatos (antes 100)
+      MEDIA: 150               # ~8-10 misiones/día (antes 200)
+      DIFICIL: 300             # ~4-6 misiones/día (antes 400)
+    multiplicador_por_rango:   # Bonus XP por rango alto (reducido para evitar snowball)
       NOVATO: 1.0
       EXPLORADOR: 1.0
-      SOBREVIVIENTE: 1.05
-      VETERANO: 1.10
-      LEYENDA: 1.15
-      MAESTRO: 1.20
-      TITAN: 1.25
-      ABSOLUTO: 1.30
+      SOBREVIVIENTE: 1.02      # Antes 1.05
+      VETERANO: 1.05           # Antes 1.10
+      LEYENDA: 1.08            # Antes 1.15
+      MAESTRO: 1.10            # Antes 1.20
+      TITAN: 1.12              # Antes 1.25
+      ABSOLUTO: 1.15           # Antes 1.30
 
   # Matar mobs - SECUNDARIO (para jugadores 24/7)
   matar_mobs:
     enabled: true
     hostiles:                  # Mobs hostiles (zombies, skeletons, etc.)
-      xp: 2
+      xp: 1                    # Antes 2
       cooldown: 0              # Sin cooldown
     pasivos:                   # Animales (vacas, cerdos, etc.)
-      xp: 1
+      xp: 0                    # Antes 1 (eliminado para evitar farming)
       cooldown: 0
     jefes:                     # Wither, Dragon, etc.
-      xp: 100
+      xp: 75                   # Antes 100
       cooldown: 0
     
   # Minar bloques - Todos los minerales configurados (SIN PIEDRA)
@@ -168,125 +168,143 @@ fuentes_xp:
     enabled: true
     bloques:
       # Minerales vanilla (STONE eliminado - solo ores)
-      COAL_ORE: 1
-      DEEPSLATE_COAL_ORE: 1
-      IRON_ORE: 2
-      DEEPSLATE_IRON_ORE: 2
-      COPPER_ORE: 1
-      DEEPSLATE_COPPER_ORE: 1
-      GOLD_ORE: 3
-      DEEPSLATE_GOLD_ORE: 3
-      REDSTONE_ORE: 2
-      DEEPSLATE_REDSTONE_ORE: 2
-      EMERALD_ORE: 5
-      DEEPSLATE_EMERALD_ORE: 5
-      LAPIS_ORE: 2
-      DEEPSLATE_LAPIS_ORE: 2
-      DIAMOND_ORE: 5
-      DEEPSLATE_DIAMOND_ORE: 5
+      COAL_ORE: 0.5            # Antes 1
+      DEEPSLATE_COAL_ORE: 0.5
+      IRON_ORE: 1              # Antes 2
+      DEEPSLATE_IRON_ORE: 1
+      COPPER_ORE: 0.5          # Antes 1
+      DEEPSLATE_COPPER_ORE: 0.5
+      GOLD_ORE: 2              # Antes 3
+      DEEPSLATE_GOLD_ORE: 2
+      REDSTONE_ORE: 1          # Antes 2
+      DEEPSLATE_REDSTONE_ORE: 1
+      EMERALD_ORE: 4           # Antes 5
+      DEEPSLATE_EMERALD_ORE: 4
+      LAPIS_ORE: 1             # Antes 2
+      DEEPSLATE_LAPIS_ORE: 1
+      DIAMOND_ORE: 4           # Antes 5
+      DEEPSLATE_DIAMOND_ORE: 4
       # Minerales del Nether
-      NETHER_GOLD_ORE: 3
-      NETHER_QUARTZ_ORE: 2
-      ANCIENT_DEBRIS: 10
-    cooldown_segundos: 0       # Sin cooldown para que funcione bien
+      NETHER_GOLD_ORE: 2       # Antes 3
+      NETHER_QUARTZ_ORE: 1     # Antes 2
+      ANCIENT_DEBRIS: 8        # Antes 10
+    cooldown_segundos: 3       # Antes 0 (añadido para evitar spam)
 
   # Farming/Cosecha - MUY BAJO
   cosechar:
     enabled: true
-    xp: 0.5                    # 2 crops = 1 XP
-    cooldown_segundos: 5
+    xp: 0.3                    # 3 crops = 1 XP (antes 0.5)
+    cooldown_segundos: 10      # Antes 5
 
   # Craftear items - MUY BAJO
   craftear:
     enabled: true
     items:
-      STONE_PICKAXE: 1
-      IRON_PICKAXE: 2
-      DIAMOND_PICKAXE: 5
-      NETHERITE_PICKAXE: 10
-    cooldown_segundos: 10
+      STONE_PICKAXE: 0.5       # Antes 1
+      IRON_PICKAXE: 1          # Antes 2
+      DIAMOND_PICKAXE: 4       # Antes 5
+      NETHERITE_PICKAXE: 8     # Antes 10
+    cooldown_segundos: 15      # Antes 10
 
   # Pescar - MUY BAJO
   pescar:
     enabled: true
-    xp: 2
-    cooldown_segundos: 15
+    xp: 1.5                    # Antes 2
+    cooldown_segundos: 20      # Antes 15
 
 # ═══════════════════════════════════════════════════════════════
-# RECOMPENSAS POR SUBIDA DE RANGO
+# RECOMPENSAS POR SUBIDA DE RANGO (ÉPICAS - EVENTOS MEMORABLES)
 # ═══════════════════════════════════════════════════════════════
 
 recompensas_por_rango:
-  # Al alcanzar EXPLORADOR
+  # Al alcanzar EXPLORADOR (~Día 3-5)
   EXPLORADOR:
     comandos:
       - "protectionstones give 15 %player%"                    # 1 bloque de protección
-      - "give %player% minecraft:diamond 5"                    # 5 diamantes
-      - "give %player% minecraft:golden_apple 3"               # 3 manzanas doradas
+      - "give %player% minecraft:diamond 8"                    # 8 diamantes (antes 5)
+      - "give %player% minecraft:golden_apple 5"               # 5 manzanas doradas (antes 3)
+      - "give %player% minecraft:iron_block 16"                # 16 bloques de hierro (nuevo)
     mensaje: "&b¡Has alcanzado el rango EXPLORADOR! &7Recompensas entregadas"
     
-  # Al alcanzar SOBREVIVIENTE
+  # Al alcanzar SOBREVIVIENTE (~Día 10-12)
   SOBREVIVIENTE:
     comandos:
-      - "protectionstones give 15 %player%"                   # 1 bloque de protección
-      - "give %player% minecraft:diamond 10"                   # 10 diamantes
-      - "give %player% minecraft:golden_apple 5"               # 5 manzanas doradas
-      - "give %player% minecraft:ender_pearl 16"               # 16 perlas de ender
+      - "protectionstones give 15 %player%"                    # 1 bloque de protección
+      - "give %player% minecraft:diamond 15"                   # 15 diamantes (antes 10)
+      - "give %player% minecraft:golden_apple 8"               # 8 manzanas doradas (antes 5)
+      - "give %player% minecraft:ender_pearl 32"               # 32 perlas de ender (antes 16)
+      - "give %player% minecraft:enchanted_book 1"             # Libro encantado (nuevo)
     mensaje: "&e¡Has alcanzado el rango SOBREVIVIENTE! &7Recompensas entregadas"
     
-  # Al alcanzar VETERANO
+  # Al alcanzar VETERANO (~Día 20-25)
   VETERANO:
     comandos:
-      - "protectionstones give 15 %player%"                    # 1 bloque de protección
-      - "give %player% minecraft:diamond 20"                   # 20 diamantes
-      - "give %player% minecraft:enchanted_golden_apple 2"     # 2 manzanas encantadas
-      - "give %player% minecraft:ender_pearl 32"               # 32 perlas de ender
-      - "give %player% minecraft:totem_of_undying 1"           # 1 tótem de inmortalidad
+      - "protectionstones give 15 %player%"                    # 2 bloques (antes 1)
+      - "protectionstones give 15 %player%"
+      - "give %player% minecraft:diamond 25"                   # 25 diamantes (antes 20)
+      - "give %player% minecraft:enchanted_golden_apple 3"     # 3 manzanas encantadas (antes 2)
+      - "give %player% minecraft:ender_pearl 64"               # 64 perlas de ender (antes 32)
+      - "give %player% minecraft:totem_of_undying 2"           # 2 tótems (antes 1)
+      - "give %player% minecraft:diamond_block 8"              # 8 bloques de diamante (nuevo)
     mensaje: "&6¡Has alcanzado el rango VETERANO! &7Recompensas entregadas"
     
-  # Al alcanzar LEYENDA
+  # Al alcanzar LEYENDA (~Día 35-40)
   LEYENDA:
     comandos:
-      - "protectionstones give 15 %player%"                    # 1 bloque de protección
-      - "give %player% minecraft:netherite_ingot 5"            # 5 lingotes de netherite
-      - "give %player% minecraft:enchanted_golden_apple 3"     # 3 manzanas encantadas
-      - "give %player% minecraft:totem_of_undying 2"           # 2 tótems de inmortalidad
+      - "protectionstones give 15 %player%"                    # 2 bloques
+      - "protectionstones give 15 %player%"
+      - "give %player% minecraft:netherite_ingot 8"            # 8 lingotes (antes 5)
+      - "give %player% minecraft:enchanted_golden_apple 5"     # 5 manzanas encantadas (antes 3)
+      - "give %player% minecraft:totem_of_undying 3"           # 3 tótems (antes 2)
       - "give %player% minecraft:elytra 1"                     # 1 élitro
+      - "give %player% minecraft:dragon_head 1"                # Cabeza de dragón (nuevo)
     mensaje: "&c¡Has alcanzado el rango LEYENDA! &7Recompensas entregadas"
     
-  # Al alcanzar MAESTRO
+  # Al alcanzar MAESTRO (~Día 50-55)
   MAESTRO:
     comandos:
-      - "protectionstones give 15 %player%"                    # 1 bloque de protección
-      - "give %player% minecraft:netherite_ingot 10"           # 10 lingotes de netherite
-      - "give %player% minecraft:enchanted_golden_apple 5"     # 5 manzanas encantadas
-      - "give %player% minecraft:totem_of_undying 3"           # 3 tótems de inmortalidad
-      - "give %player% minecraft:nether_star 2"                # 2 estrellas del nether
+      - "protectionstones give 15 %player%"                    # 3 bloques (antes 1)
+      - "protectionstones give 15 %player%"
+      - "protectionstones give 15 %player%"
+      - "give %player% minecraft:netherite_ingot 15"           # 15 lingotes (antes 10)
+      - "give %player% minecraft:enchanted_golden_apple 8"     # 8 manzanas encantadas (antes 5)
+      - "give %player% minecraft:totem_of_undying 5"           # 5 tótems (antes 3)
+      - "give %player% minecraft:nether_star 3"                # 3 estrellas (antes 2)
+      - "give %player% minecraft:netherite_block 4"            # 4 bloques netherite (nuevo)
     mensaje: "&5¡Has alcanzado el rango MAESTRO! &7Recompensas entregadas"
     
-  # Al alcanzar TITAN
+  # Al alcanzar TITAN (~Día 65-70)
   TITAN:
     comandos:
-      - "protectionstones give 15 %player%"                    # 1 bloque de protección
-      - "give %player% minecraft:netherite_ingot 20"           # 20 lingotes de netherite
-      - "give %player% minecraft:enchanted_golden_apple 8"     # 8 manzanas encantadas
-      - "give %player% minecraft:totem_of_undying 5"           # 5 tótems de inmortalidad
-      - "give %player% minecraft:nether_star 3"                # 3 estrellas del nether
+      - "protectionstones give 15 %player%"                    # 3 bloques
+      - "protectionstones give 15 %player%"
+      - "protectionstones give 15 %player%"
+      - "give %player% minecraft:netherite_ingot 25"           # 25 lingotes (antes 20)
+      - "give %player% minecraft:enchanted_golden_apple 12"    # 12 manzanas encantadas (antes 8)
+      - "give %player% minecraft:totem_of_undying 8"           # 8 tótems (antes 5)
+      - "give %player% minecraft:nether_star 5"                # 5 estrellas (antes 3)
+      - "give %player% minecraft:beacon 1"                     # 1 faro (nuevo)
     mensaje: "&4¡Has alcanzado el rango TITAN! &7Recompensas entregadas"
     
-  # Al alcanzar ABSOLUTO
+  # Al alcanzar ABSOLUTO (~Día 75) - ¡ÉPICO!
   ABSOLUTO:
     comandos:
-      - "protectionstones give 15 %player%"                   # 1 bloque de protección
-      - "give %player% minecraft:netherite_ingot 32"           # 32 lingotes de netherite
-      - "give %player% minecraft:enchanted_golden_apple 16"    # 16 manzanas encantadas
-      - "give %player% minecraft:totem_of_undying 10"          # 10 tótems de inmortalidad
-      - "give %player% minecraft:nether_star 5"                # 5 estrellas del nether
-      - "give %player% minecraft:beacon 1"                     # 1 faro
+      - "protectionstones give 15 %player%"                    # 5 bloques (antes 1)
+      - "protectionstones give 15 %player%"
+      - "protectionstones give 15 %player%"
+      - "protectionstones give 15 %player%"
+      - "protectionstones give 15 %player%"
+      - "give %player% minecraft:netherite_ingot 48"           # 48 lingotes (antes 32)
+      - "give %player% minecraft:enchanted_golden_apple 32"    # 32 manzanas encantadas (antes 16)
+      - "give %player% minecraft:totem_of_undying 15"          # 15 tótems (antes 10)
+      - "give %player% minecraft:nether_star 10"               # 10 estrellas (antes 5)
+      - "give %player% minecraft:beacon 2"                     # 2 faros (antes 1)
+      - "give %player% minecraft:dragon_egg 1"                 # HUEVO DE DRAGÓN (nuevo)
+      - "give %player% minecraft:netherite_block 16"           # 16 bloques netherite (nuevo)
     mensaje: "&f&l¡Has alcanzado el rango ABSOLUTO! &7¡Eres una leyenda viviente!"
 
 # ═══════════════════════════════════════════════════════════════
-# HABILIDADES PASIVAS POR RANGO
+# HABILIDADES PASIVAS POR RANGO (BALANCEADAS)
 # Las habilidades se activan automáticamente al tener el rango
 # ═══════════════════════════════════════════════════════════════
 
@@ -328,14 +346,14 @@ habilidades_por_rango:
         level: 1
         descripcion: "&aSaciedad mejorada"
     
-  # Leyenda - Fuerza añadida
+  # Leyenda - Fuerza añadida, Regen II
   LEYENDA:
     habilidades:
       - type: "SPEED"
         level: 1
         descripcion: "&bVelocidad I &7permanente"
       - type: "REGENERATION"
-        level: 2                 # Regeneration II
+        level: 2                 # Regeneration II (antes en Maestro)
         descripcion: "&eRegeneración II &7permanente"
       - type: "DAMAGE_RESISTANCE"
         level: 1
@@ -347,18 +365,18 @@ habilidades_por_rango:
         level: 1                 # Strength I permanente
         descripcion: "&cFuerza I &7permanente"
     
-  # Maestro - Mejoras en todo
+  # Maestro - Speed II, Haste I
   MAESTRO:
     habilidades:
       - type: "SPEED"
-        level: 2                 # Speed II
+        level: 2                 # Speed II (upgrade)
         descripcion: "&bVelocidad II &7permanente"
       - type: "REGENERATION"
         level: 2
         descripcion: "&eRegeneración II &7permanente"
       - type: "DAMAGE_RESISTANCE"
-        level: 2                 # Resistance II
-        descripcion: "&6Resistencia II &7permanente"
+        level: 1                 # Resistance I (antes II)
+        descripcion: "&6Resistencia I &7permanente"
       - type: "SATURATION"
         level: 1
         descripcion: "&aSaciedad mejorada"
@@ -369,48 +387,48 @@ habilidades_por_rango:
         level: 1
         descripcion: "&7Prisa I &7permanente"
     
-  # Titan - Poder masivo
+  # Titan - Resistance II, Haste II, Health Boost V
   TITAN:
     habilidades:
       - type: "SPEED"
         level: 2
         descripcion: "&bVelocidad II &7permanente"
       - type: "REGENERATION"
-        level: 3                 # Regeneration III
-        descripcion: "&eRegeneración III &7permanente"
+        level: 2                 # Regen II (antes III, más balanceado)
+        descripcion: "&eRegeneración II &7permanente"
       - type: "DAMAGE_RESISTANCE"
-        level: 2
+        level: 2                 # Resistance II (upgrade)
         descripcion: "&6Resistencia II &7permanente"
       - type: "SATURATION"
         level: 1
         descripcion: "&aSaciedad mejorada"
       - type: "INCREASE_DAMAGE"
-        level: 2                 # Strength II
-        descripcion: "&cFuerza II &7permanente"
+        level: 1                 # Strength I (antes II, más balanceado)
+        descripcion: "&cFuerza I &7permanente"
       - type: "FAST_DIGGING"
-        level: 2                 # Haste II
+        level: 2                 # Haste II (upgrade)
         descripcion: "&7Prisa II &7permanente"
       - type: "HEALTH_BOOST"     # +10 corazones permanentes
         level: 5
         descripcion: "&4Vida extra (+10 ❤)"
     
-  # Absoluto - Dios entre mortales
+  # Absoluto - El máximo poder (pero balanceado)
   ABSOLUTO:
     habilidades:
       - type: "SPEED"
         level: 2
         descripcion: "&bVelocidad II &7permanente"
       - type: "REGENERATION"
-        level: 4                 # Regeneration IV (máximo)
-        descripcion: "&eRegeneración IV &7permanente"
+        level: 3                 # Regen III (antes IV, más balanceado)
+        descripcion: "&eRegeneración III &7permanente"
       - type: "DAMAGE_RESISTANCE"
-        level: 3                 # Resistance III
-        descripcion: "&6Resistencia III &7permanente"
+        level: 2                 # Resistance II (antes III, más balanceado)
+        descripcion: "&6Resistencia II &7permanente"
       - type: "SATURATION"
         level: 1
         descripcion: "&aSaciedad mejorada"
       - type: "INCREASE_DAMAGE"
-        level: 2
+        level: 2                 # Strength II
         descripcion: "&cFuerza II &7permanente"
       - type: "FAST_DIGGING"
         level: 2
@@ -427,6 +445,9 @@ habilidades_por_rango:
       - type: "NIGHT_VISION"     # Visión nocturna
         level: 1
         descripcion: "&7Visión nocturna"
+      - type: "LUCK"             # Suerte I (nuevo)
+        level: 1
+        descripcion: "&asuerte I"
 
 # Configuración de aplicación de habilidades
 habilidades_config:
@@ -446,15 +467,37 @@ habilidades_config:
   mensaje_aplicacion: "&aHabilidades de rango &e%rango% &aaplicadas"
 
 # ═══════════════════════════════════════════════════════════════
-# NOTAS DE BALANCE - AJUSTADO PARA SERIE DE 30 DÍAS
+# NOTAS DE BALANCE - SISTEMA AJUSTADO PARA 2.5 MESES (75 DÍAS)
 # ═══════════════════════════════════════════════════════════════
-# - Las misiones dan ~1000-2000 XP/día (dependiendo del rango)
-# - Matar mobs da ~2 XP/mob (~100-200 XP/día para jugadores activos)
-# - Minar/farming da ~0.5-2 XP/acción (~50-100 XP/día con cooldowns)
-# - Total jugador muy activo (24/7): ~1,750-2,900 XP/día → Lvl 35 en ~20 días ✨
-# - Total jugador activo (solo misiones + algo): ~1,200-1,800 XP/día → Lvl 35 en ~29 días ✨
-# - Total jugador casual (solo misiones): ~750-1,000 XP/día → Lvl 35 en ~49 días
-# - Las habilidades NO son rotas pero SÍ valiosas (speed, regen, resistencia)
-# - El sistema incentiva hacer misiones pero permite progreso alternativo
-# - Con estos valores, jugadores muy activos alcanzarán ABSOLUTO hacia el final del mes
+# - Las misiones dan ~1,000-1,200 XP/día (fuente principal 75-80%)
+# - Matar mobs da ~1 XP/mob (~50-100 XP/día para jugadores activos)
+# - Minado da ~0.5-4 XP/ore con cooldown 3s (~80-120 XP/día)
+# - Farming/craft/pesca da ~50-80 XP/día con cooldowns incrementados
+# Total jugador muy activo (24/7): ~1,400-1,500 XP/día → Lvl 50 en ~75 días ✨
+# Total jugador activo (solo misiones + algo): ~1,100-1,300 XP/día → Lvl 50 en ~100 días ✨
+# Total jugador casual (solo misiones): ~700-900 XP/día → Lvl 36-43 en ~100 días
+# 
+# CURVA DE PROGRESIÓN (2.5x más lenta que v1.14.x):
+# - Formula XP: base 200 + (nivel * 150) [antes: base 140 + (nivel * 70)]
+# - Nivel máximo aumentado: 50 (antes 35)
+# - XP total necesario: 110,075 XP (antes 44,030 XP)
+# - Tiempo objetivo: 75 días (antes 20-30 días)
+# 
+# ANTI-GRIND MECHANICS:
+# - Cooldown minado: 3s (antes 0s) → Evita spam con Fortune/Silk Touch
+# - XP mobs pasivos: 0 (antes 1) → Elimina farming de animales
+# - XP reducido en general: -20% a -50% según fuente
+# - Multiplicadores por rango reducidos: 1.15x max (antes 1.30x)
+# 
+# RECOMPENSAS ÉPICAS:
+# - Subir de rango ahora es EVENTO memorable (cada ~7-15 días)
+# - Recompensas +50% de valor (ej: 8 diamantes en vez de 5)
+# - Items únicos añadidos (Dragon Egg, Beacons, etc.)
+# - Habilidades pasivas más graduales pero no rotas
+# 
+# BALANCE PHILOSOPHY:
+# El sistema incentiva hacer misiones pero permite progreso alternativo.
+# Jugadores muy activos alcanzarán ABSOLUTO en ~75 días (objetivo cumplido).
+# Jugadores activos tardarán ~100 días (3.3 meses).
+# Jugadores casuales tardarán 5+ meses, pero seguirán progresando.
 # ═══════════════════════════════════════════════════════════════

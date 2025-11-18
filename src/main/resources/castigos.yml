@@ -53,15 +53,16 @@ muerte_en_desastre:
         amplificador: 1
   
   # Pérdida de PS (puntos de supervivencia) escalado por rango
+  # Ajustado para sistema de 75 días (pérdidas proporcionales)
   perdida_ps:
-    NOVATO: 8
-    EXPLORADOR: 12
-    SOBREVIVIENTE: 18
-    VETERANO: 25
-    LEYENDA: 35
-    MAESTRO: 50
-    TITAN: 75
-    ABSOLUTO: 100
+    NOVATO: 10           # Antes 8 (+25%)
+    EXPLORADOR: 15       # Antes 12 (+25%)
+    SOBREVIVIENTE: 25    # Antes 18 (+39%)
+    VETERANO: 40         # Antes 25 (+60%)
+    LEYENDA: 60          # Antes 35 (+71%)
+    MAESTRO: 85          # Antes 50 (+70%)
+    TITAN: 120           # Antes 75 (+60%)
+    ABSOLUTO: 150        # Antes 100 (+50%)
   
   # Mensajes y efectos visuales
   mensajes:
@@ -116,11 +117,12 @@ mision_fallida:
         amplificador: 1
   
   # Pérdida de PS por misión fallida (escalado por dificultad)
+  # Reducido porque hay más misiones/día ahora
   perdida_ps_por_dificultad:
-    FACIL: 3
-    NORMAL: 6
-    DIFICIL: 10
-    EXTREMA: 15
+    FACIL: 2             # Antes 3 (-33%)
+    NORMAL: 5            # Antes 6 (-17%)
+    DIFICIL: 8           # Antes 10 (-20%)
+    EXTREMA: 12          # Antes 15 (-20%)
   
   mensajes:
     mision_fallida: "&7Misión fallida: &c%mision% &7(-&c%ps% PS&7)"
