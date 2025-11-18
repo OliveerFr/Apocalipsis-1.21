@@ -1,0 +1,884 @@
+# ═══════════════════════════════════════════════════════════════════
+# ECO DE LAS SOMBRAS LARGAS - Evento Narrativo Cinematográfico
+# ═══════════════════════════════════════════════════════════════════
+# Evento único de 2-3 horas para 3-6 jugadores
+# Inicio manual con: /avo eco_sombras start
+# ═══════════════════════════════════════════════════════════════════
+
+metadata:
+  event_id: "eco_sombras"
+  nombre_display: "§8§lEl Eco de las Sombras Largas"
+  version: "1.0.0"
+  enabled: true
+  duracion_total_seg: 7200  # 2 horas máximo
+  jugadores_minimos: 3
+  jugadores_maximos: 6
+  descripcion: "Un eco desconocido despierta. Las sombras se alargan. Algo viene de más lejos."
+
+# ═══════════════════════════════════════════════════════════════════
+# SISTEMA DE ACTOS - 6 Fases Cinematográficas
+# ═══════════════════════════════════════════════════════════════════
+actos:
+  acto_0_activacion:
+    nombre: "Activación Silenciosa"
+    duracion_seg: 60
+    trigger_type: "manual"  # Inicia al ejecutar comando
+    
+    efectos:
+      oscurecimiento:
+        enabled: true
+        duracion_seg: 5
+        tiempo_minecraft: 13000  # Atardecer
+        restaurar_tiempo: true
+      
+      particulas_globales:
+        tipo: "ASH"
+        cantidad: 50
+        radio: 100
+    
+    sonidos:
+      inicial:
+        tipo: "ENTITY_WARDEN_HEARTBEAT"
+        volumen: 1.0
+        pitch: 0.5
+    
+    mensajes:
+      inicial:
+        texto: "§8Un eco desconocido se ha registrado en el mundo…"
+        delay_seg: 2
+        tipo: "chat"
+      
+      silencio:
+        duracion_seg: 30
+        mostrar_puntos: false
+  
+  acto_1_manchas:
+    nombre: "Algo se mueve debajo"
+    duracion_seg: 900  # 15 minutos
+    trigger_type: "tiempo"  # Inicia automáticamente tras acto 0
+    
+    manchas_sombra:
+      enabled: true
+      cantidad_simultanea: 5-8
+      radio_spawn: 10-30
+      tipo_visual: "particulas"  # Usar partículas en vez de armor stands
+      particulas:
+        tipo: "SQUID_INK"
+        cantidad: 20
+        forma: "circular"
+      
+      ia_huida:
+        enabled: true
+        radio_deteccion: 5
+        distancia_huida: 15-20
+        sonido_huida:
+          tipo: "ENTITY_ENDERMAN_TELEPORT"
+          volumen: 0.5
+          pitch: 0.3
+        particulas_huida:
+          tipo: "SMOKE_NORMAL"
+          cantidad: 10
+    
+    mensajes:
+      observador:
+        texto: "§7§o\"No deberían moverse solas… eso pasó antes… y terminó mal.\""
+        delay_seg: 20
+        tipo: "chat"
+        sonido:
+          tipo: "BLOCK_SCULK_SENSOR_CLICKING"
+          volumen: 0.3
+          pitch: 0.8
+  
+  acto_2_sombras_largas:
+    nombre: "Las Sombras Largas"
+    duracion_seg: 1200  # 20 minutos
+    trigger_type: "condicion"  # Tras matar primeras manchas
+    condicion: "manchas_activas < 3"
+    
+    spawn_sombras:
+      enabled: true
+      tipo_mob: "ZOMBIE"
+      spawn_inteligente: true
+      radio_spawn: 10-40
+      intervalo_spawn_seg: 15-20
+      maximo_activas: 10-15
+      
+      configuracion_mob:
+        nombre: "§8Sombra Larga"
+        invisible: true
+        silencioso: true
+        equipamiento:
+          cabeza: "LEATHER_HELMET:dyed:0,0,0"  # Negro
+        atributos:
+          vida: 35
+          danio: 7
+          velocidad: 0.23  # Normal
+          armadura: 5
+        
+        efectos_visuales:
+          particulas_pies:
+            tipo: "SQUID_INK"
+            cantidad: 2
+            frecuencia_ticks: 10
+          
+          sonido_ambiental:
+            tipo: "BLOCK_SCULK_SENSOR_CLICKING"
+            volumen: 0.3
+            pitch: 0.5
+            frecuencia_seg: 5
+        
+        particulas_spawn:
+          tipo: "SMOKE_LARGE"
+          cantidad: 20
+          velocidad: 0.1
+        
+        particulas_muerte:
+          tipo: "SOUL"
+          cantidad: 30
+          direccion: "arriba"
+          velocidad: 0.2
+      
+      drops:
+        fragmento_sombra:
+          probabilidad: 100
+          cantidad_min: 1
+          cantidad_max: 2
+    
+    mensajes:
+      observador:
+        texto: "§7§o\"Estiran su forma buscando un anfitrión… como lo hicieron en aquel mundo…\""
+        delay_seg: 0
+        trigger: "sombras_muertas >= 5"
+        tipo: "chat"
+  
+  acto_3_nucleo:
+    nombre: "El Núcleo de Sombra Larga"
+    duracion_seg: 1200  # 20 minutos
+    trigger_type: "condicion"
+    condicion: "sombras_muertas >= 15"
+    
+    nucleo:
+      enabled: true
+      tipo_entidad: "SHULKER"
+      nombre: "§5§l§nNúcleo de Sombra Larga"
+      
+      spawn:
+        altura_sobre_suelo: 3
+        buscar_posicion_valida: true
+        radio_busqueda: 50
+      
+      atributos:
+        vida: 250
+        no_ataca: true
+        flotante: true
+        invulnerable_a:
+          - "FALL"
+          - "DROWNING"
+          - "FIRE"
+      
+      visual:
+        rotacion_continua: true
+        velocidad_rotacion: 2.0
+        particulas:
+          - tipo: "PORTAL"
+            cantidad: 5
+            radio: 2.0
+            frecuencia_ticks: 5
+          - tipo: "REVERSE_PORTAL"
+            cantidad: 3
+            radio: 1.5
+            frecuencia_ticks: 10
+        
+        sonido_ambiental:
+          tipo: "BLOCK_PORTAL_AMBIENT"
+          volumen: 0.8
+          pitch: 0.7
+          loop: true
+        
+        efecto_latido:
+          enabled: true
+          frecuencia_seg: 2
+          escala_min: 0.9
+          escala_max: 1.1
+      
+      teletransporte:
+        enabled: true
+        trigger_danio: 50  # Cada 50 HP de daño
+        trigger_tiempo_seg: 25  # O cada 25 segundos
+        distancia: 30-50
+        validar_suelo: true
+        
+        efectos_tp:
+          pre_particulas:
+            tipo: "PORTAL"
+            cantidad: 50
+          post_particulas:
+            tipo: "EXPLOSION_HUGE"
+            cantidad: 1
+          sonido:
+            tipo: "ENTITY_ENDERMAN_TELEPORT"
+            volumen: 1.5
+            pitch: 0.5
+          invulnerabilidad_seg: 2
+      
+      al_debilitar:
+        vida_porcentaje: 40  # Al llegar a 40% de vida
+        accion: "spawn_anclas"
+    
+    mensajes:
+      aparicion:
+        titulo: "§5§lUna raíz de la sombra"
+        subtitulo: "§7ha despertado"
+        chat: "§5§lUna raíz de la sombra ha despertado.\n§5§lEl Núcleo de la Sombra Larga ha emergido."
+        sonido:
+          tipo: "ENTITY_WITHER_SPAWN"
+          volumen: 1.0
+          pitch: 0.8
+  
+  acto_4_anclas:
+    nombre: "Las Anclas del Mundo"
+    duracion_seg: 900  # 15 minutos
+    trigger_type: "condicion"
+    condicion: "nucleo_vida <= 40%"
+    
+    anclas:
+      cantidad: 5
+      radio_spawn: 40-80
+      centrado_en: "nucleo"
+      validar_suelo: true
+      
+      estructura:
+        base:
+          - material: "DEEPSLATE_TILES"
+            patron: "3x3"
+            altura: 0
+        centro:
+          - material: "RESPAWN_ANCHOR"
+            posicion: "0,1,0"
+        decoracion:
+          - material: "PURPLE_CANDLE"
+            posiciones:
+              - "1,1,1"
+              - "1,1,-1"
+              - "-1,1,1"
+              - "-1,1,-1"
+            encendida: true
+        
+        proteccion:
+          indestructible: true
+          no_interacciones: true  # Excepto sellado
+        
+        visual:
+          particulas:
+            tipo: "END_ROD"
+            cantidad: 3
+            altura: 1-4
+            frecuencia_ticks: 10
+            direccion: "vertical"
+      
+      sellado:
+        item_requerido: "fragmento_sombra"
+        cantidad_requerida: 5
+        interaccion: "click_derecho"
+        validar_inventario: true
+        consumir_items: true
+        
+        efectos_sellado:
+          particulas:
+            tipo: "END_ROD"
+            cantidad: 50
+            direccion: "arriba"
+            altura: 20
+            velocidad: 0.3
+          sonido:
+            tipo: "BLOCK_RESPAWN_ANCHOR_CHARGE"
+            volumen: 1.5
+            pitch: 0.5
+          iluminacion:
+            aumentar_nivel: 1
+          
+          visual_completada:
+            brillo: true
+            particulas_continuas:
+              tipo: "WAX_ON"
+              cantidad: 2
+              frecuencia_ticks: 20
+        
+        mensaje_sellado:
+          texto: "§5Ancla %numero%/%total% sellada"
+          broadcast: true
+          sonido:
+            tipo: "BLOCK_NOTE_BLOCK_BELL"
+            volumen: 1.0
+            pitch: 1.5
+      
+      al_completar_todas:
+        accion: "nucleo_vulnerable"
+        mensaje: "§5§lTodas las anclas han sido selladas.\n§7El Núcleo es vulnerable."
+    
+    mensajes:
+      observador:
+        texto: "§7§o\"Sellan la herida, pero no la causa…\""
+        trigger: "anclas_selladas >= 1"
+        tipo: "chat"
+  
+  acto_5_ritual:
+    nombre: "Ritual de Estabilidad"
+    duracion_seg: 1800  # 30 minutos máximo
+    trigger_type: "condicion"
+    condicion: "anclas_selladas == 5 AND nucleo_muerto == true"
+    
+    arena_ritual:
+      generar: true
+      forma: "circular"
+      radio: 18
+      centrado_en: "nucleo_muerte"
+      
+      materiales:
+        suelo: "DEEPSLATE_BRICKS"
+        borde: "CHISELED_DEEPSLATE"
+        centro:
+          material: "LODESTONE"
+          posicion: "0,0,0"
+      
+      particulas_perimetro:
+        tipo: "END_ROD"
+        cantidad: 72  # 1 cada 5 grados
+        altura: 0-4
+        frecuencia_ticks: 5
+        animacion: "vertical_onda"
+      
+      proteccion:
+        indestructible: true
+        anti_explosiones: true
+      
+      zona_activa:
+        detectar_jugadores: true
+        frecuencia_check_ticks: 20
+        
+        jugador_fuera:
+          advertencia:
+            texto: "§c¡No abandones el círculo!"
+            tipo: "actionbar"
+            sonido:
+              tipo: "BLOCK_NOTE_BLOCK_BASS"
+              volumen: 1.0
+              pitch: 0.5
+          
+          penalizacion:
+            tiempo_fuera_seg: 5
+            efectos:
+              - tipo: "WEAKNESS"
+                duracion_seg: 10
+                nivel: 1
+              - tipo: "SLOWNESS"
+                duracion_seg: 10
+                nivel: 1
+    
+    oleadas:
+      cantidad_total: 5
+      duracion_por_oleada_seg: 50
+      pausa_entre_oleadas_seg: 12
+      
+      escala_jugadores:
+        multiplicador_mobs: 1.5  # +50% mobs por jugador extra
+      
+      configuracion_oleadas:
+        oleada_1:
+          nombre: "§7Primera Ola"
+          duracion_seg: 50
+          mobs:
+            - tipo: "sombra_larga"
+              cantidad_base: 10
+              spawn_intervalo_seg: 5
+        
+        oleada_2:
+          nombre: "§7Segunda Ola"
+          duracion_seg: 50
+          mobs:
+            - tipo: "sombra_rapida"
+              cantidad_base: 15
+              spawn_intervalo_seg: 3
+              modificadores:
+                velocidad: 1.3
+        
+        oleada_3:
+          nombre: "§7Tercera Ola"
+          duracion_seg: 55
+          mobs:
+            - tipo: "sombra_larga"
+              cantidad_base: 12
+              spawn_intervalo_seg: 4
+            - tipo: "sombra_doble"
+              cantidad_base: 3
+              spawn_intervalo_seg: 15
+              modificadores:
+                vida: 2.0
+        
+        oleada_4:
+          nombre: "§8Cuarta Ola"
+          duracion_seg: 60
+          mobs:
+            - tipo: "sombra_rapida"
+              cantidad_base: 18
+              spawn_intervalo_seg: 3
+            - tipo: "sombra_doble"
+              cantidad_base: 4
+              spawn_intervalo_seg: 12
+        
+        oleada_5:
+          nombre: "§8§lÚltima Ola"
+          duracion_seg: 65
+          mobs:
+            - tipo: "sombra_larga"
+              cantidad_base: 15
+              spawn_intervalo_seg: 3
+            - tipo: "sombra_rapida"
+              cantidad_base: 10
+              spawn_intervalo_seg: 4
+            - tipo: "sombra_doble"
+              cantidad_base: 6
+              spawn_intervalo_seg: 10
+      
+      efectos_visuales:
+        cambio_iluminacion: true
+        particulas_por_oleada:
+          - tipo: "SQUID_INK"
+            cantidad: 100
+            radio: 20
+        
+        inicio_oleada:
+          mensaje: "§8§l▂▂▂ OLEADA %numero%/%total% ▂▂▂"
+          titulo: "§8Oleada %numero%"
+          subtitulo: "§7Resistid"
+          sonido:
+            tipo: "ENTITY_WITHER_AMBIENT"
+            volumen: 1.0
+            pitch: 0.7
+    
+    guardian:
+      spawn_tras: "oleada_5_completada"
+      
+      configuracion:
+        tipo_mob: "IRON_GOLEM"
+        nombre: "§8§l§nGuardián de la Sombra Larga"
+        
+        atributos:
+          vida_base: 600
+          escala_jugadores: 100  # +100 HP por jugador
+          danio: 15
+          velocidad: 0.25
+          armor: 10
+          knockback_resistance: 0.8
+        
+        visual:
+          tamano: 1.8
+          particulas_continuas:
+            - tipo: "SQUID_INK"
+              cantidad: 5
+              radio: 2
+              frecuencia_ticks: 5
+            - tipo: "SOUL"
+              cantidad: 2
+              radio: 1
+              frecuencia_ticks: 15
+          
+          brillo: true
+          color_brillo: "DARK_PURPLE"
+        
+        habilidades:
+          pulso_sombra:
+            cooldown_seg: 15
+            radio: 10
+            danio: 8
+            efectos:
+              - tipo: "WITHER"
+                duracion_seg: 5
+                nivel: 1
+            empuje:
+              fuerza: 1.5
+              direccion: "radial"
+            visual:
+              particulas:
+                tipo: "SQUID_INK"
+                cantidad: 200
+                radio: 10
+              sonido:
+                tipo: "ENTITY_WARDEN_SONIC_BOOM"
+                volumen: 1.0
+                pitch: 0.5
+          
+          invocacion_menor:
+            cooldown_seg: 30
+            cantidad_mobs: 4
+            tipo_mob: "sombra_larga"
+            radio_spawn: 8
+            mensaje: "§8El Guardián invoca refuerzos…"
+          
+          fase_furia:
+            trigger_vida_porcentaje: 30
+            activar_una_vez: true
+            modificadores:
+              velocidad: 1.3
+              danio: 1.2
+              cooldown_habilidades: 0.7
+            visual:
+              particulas_extra:
+                tipo: "DAMAGE_INDICATOR"
+                cantidad: 10
+                frecuencia_ticks: 5
+            mensaje: "§c§l¡El Guardián entra en furia!"
+        
+        dialogos:
+          spawn:
+            texto: "§8§o\"Ro… po… sis… ten…\""
+            delay_seg: 2
+            sonido:
+              tipo: "ENTITY_WARDEN_ROAR"
+              volumen: 1.5
+              pitch: 0.3
+          
+          vida_75:
+            texto: "§8§o\"El… eco… debe… ce… rrar…\""
+            trigger_vida: 75
+          
+          vida_50:
+            texto: "§8§o\"No… merecen… la… sombra…\""
+            trigger_vida: 50
+          
+          vida_25:
+            texto: "§8§o\"Debe… olvidar… se…\""
+            trigger_vida: 25
+        
+        entrada_dramatica:
+          oscurecimiento_seg: 3
+          rayo_visual: true
+          rayo_danio: false
+          particulas_spawn:
+            tipo: "EXPLOSION_HUGE"
+            cantidad: 5
+          mensaje_titulo:
+            titulo: "§8§lGuardián de la Sombra Larga"
+            subtitulo: "§7Enfrentad vuestro destino"
+            duracion_ticks: 60
+        
+        muerte:
+          animacion_lenta: true
+          duracion_muerte_seg: 5
+          efectos:
+            particulas:
+              - tipo: "SOUL"
+                cantidad: 300
+                direccion: "arriba"
+                velocidad: 0.3
+                duracion_seg: 5
+              - tipo: "EXPLOSION_HUGE"
+                cantidad: 3
+                delay_seg: 2
+            
+            onda_choque:
+              radio: 20
+              particulas:
+                tipo: "SQUID_INK"
+                cantidad: 500
+              limpiar_mobs: true
+              sonido:
+                tipo: "ENTITY_WITHER_DEATH"
+                volumen: 2.0
+                pitch: 0.5
+          
+          drops:
+            eco_resonante:
+              cantidad: 1
+              para_grupo: true  # Solo 1 drop para distribuir
+    
+    mensajes:
+      inicio:
+        titulo: "§5§lRitual de Estabilidad"
+        subtitulo: "§7No abandonen el círculo"
+        chat: "§5§lEl Ritual de Estabilidad ha comenzado.\n§7No abandonen el círculo."
+        sonido:
+          tipo: "ITEM_GOAT_HORN_SOUND_0"
+          volumen: 1.5
+          pitch: 1.0
+  
+  acto_6_cliffhanger:
+    nombre: "El Despertar"
+    duracion_seg: 120
+    trigger_type: "condicion"
+    condicion: "guardian_muerto == true"
+    
+    simbolo:
+      generar: true
+      delay_spawn_seg: 5
+      posicion: "guardian_muerte"
+      duracion_seg: 60
+      
+      patron:
+        tipo: "geometrico_custom"
+        radio: 4
+        materiales:
+          - material: "BLACK_CONCRETE"
+            patron: "anillo_exterior"
+          - material: "PURPLE_STAINED_GLASS"
+            patron: "cruz_central"
+          - material: "CRYING_OBSIDIAN"
+            patron: "vertices"
+        altura: 0
+        
+        proteccion:
+          indestructible: true
+          no_interacciones: true
+      
+      visual:
+        rotacion: true
+        velocidad_rotacion: 1.0
+        particulas:
+          tipo: "PORTAL"
+          cantidad: 20
+          altura: 0-2
+          frecuencia_ticks: 5
+          patron: "espiral"
+        
+        sonido_ambiental:
+          tipo: "BLOCK_SCULK_SHRIEKER_SHRIEK"
+          volumen: 0.5
+          pitch: 0.3
+          loop: true
+      
+      desaparicion:
+        automatica: true
+        delay_seg: 60
+        efectos:
+          particulas:
+            tipo: "SMOKE_LARGE"
+            cantidad: 100
+          sonido:
+            tipo: "ENTITY_ENDERMAN_TELEPORT"
+            volumen: 1.0
+            pitch: 0.1
+    
+    observador_monologo:
+      enabled: true
+      mensajes:
+        - texto: "§7§o\"Eso… no debería existir.\""
+          delay_seg: 10
+          sonido:
+            tipo: "BLOCK_SCULK_SHRIEKER_SHRIEK"
+            volumen: 0.3
+            pitch: 0.8
+        
+        - texto: "§7§o\"Ya dejó sombra. Lo siguiente será… forma.\""
+          delay_seg: 25
+        
+        - texto: "§7§o\"El mundo no recuerda así. Esto viene de más lejos.\""
+          delay_seg: 40
+    
+    figura_misteriosa:
+      enabled: true
+      delay_spawn_seg: 55
+      
+      posicion:
+        tipo: "horizonte"
+        distancia_bloques: 300
+        direccion: "aleatoria"
+        validar_linea_vision: true
+      
+      visual:
+        tipo: "armor_stand"
+        invisible_base: true
+        tamano: 3.0
+        particulas_forma:
+          tipo: "SQUID_INK"
+          cantidad: 100
+          forma: "silueta_humanoide"
+          altura: 6
+        
+        caracteristicas:
+          alto: true
+          delgado: true
+          inmovil: true
+      
+      duracion_visible_seg: 1.5
+      
+      aparicion:
+        sonido:
+          tipo: "ENTITY_WARDEN_AMBIENT"
+          volumen: 2.0
+          pitch: 0.1
+        particulas:
+          tipo: "SOUL"
+          cantidad: 50
+          radio: 10
+      
+      desaparicion:
+        tipo: "fade"
+        duracion_seg: 0.5
+        particulas:
+          tipo: "SMOKE_LARGE"
+          cantidad: 30
+    
+    mensajes:
+      final:
+        delay_seg: 60
+        titulo: "§4§lAlgo desconocido"
+        subtitulo: "§8ha despertado"
+        chat: "§4§lAlgo desconocido ha despertado."
+        sonido:
+          tipo: "ENTITY_ENDER_DRAGON_GROWL"
+          volumen: 2.0
+          pitch: 0.3
+        
+        pausa_antes_limpieza_seg: 5
+    
+    finalizacion:
+      limpiar_mobs: true
+      mantener_estructuras:
+        - "anclas"
+        - "arena_ritual"
+      remover_temporal:
+        - "simbolo"
+      estado_evento: "COMPLETADO"
+      otorgar_recompensas: true
+
+# ═══════════════════════════════════════════════════════════════════
+# ITEMS DEL EVENTO
+# ═══════════════════════════════════════════════════════════════════
+items:
+  fragmento_sombra:
+    material: "ECHO_SHARD"
+    nombre: "§8Fragmento de Sombra"
+    lore:
+      - "§7Resto de una sombra larga."
+      - "§7"
+      - "§7Parece moverse si no lo miras."
+      - "§8\"La sombra recuerda su forma.\""
+    glow: true
+    custom_model_data: 0
+    flags:
+      - "HIDE_ATTRIBUTES"
+      - "HIDE_ENCHANTS"
+  
+  eco_resonante:
+    material: "NETHER_STAR"
+    nombre: "§5§l✦ Eco Resonante ✦"
+    lore:
+      - "§7Recompensa del Guardián"
+      - "§7"
+      - "§dUn fragmento de algo antiguo."
+      - "§dResuena con memorias olvidadas."
+      - "§7"
+      - "§8\"El eco persiste tras el silencio.\""
+      - "§8\"Lo que viene no tiene forma… aún.\""
+    glow: true
+    enchants:
+      - "DURABILITY:1"  # Solo visual
+    custom_model_data: 0
+    flags:
+      - "HIDE_ATTRIBUTES"
+      - "HIDE_ENCHANTS"
+
+# ═══════════════════════════════════════════════════════════════════
+# SISTEMA DE RECOMPENSAS
+# ═══════════════════════════════════════════════════════════════════
+recompensas:
+  ps_puntos_supervivencia:
+    base_completar: 100
+    por_sombra_larga: 5
+    por_ancla_sellada: 20
+    por_guardian: 50
+    bonus_grupo_completo: 25  # Si todos sobreviven
+    # Total posible: 100 + (15*5) + (5*20) + 50 + 25 = 350 PS
+  
+  xp_experiencia:
+    base: 500
+    por_participacion: 100
+    por_boss: 200
+    # Total: 800 XP
+  
+  distribucion:
+    tipo: "individual"  # Cada uno recibe según su participación
+    requisito_minimo:
+      sombras_muertas: 5
+      tiempo_participacion_min: 60  # minutos
+      completar_evento: true
+
+# ═══════════════════════════════════════════════════════════════════
+# CONFIGURACIÓN DE MOBS VARIANTES
+# ═══════════════════════════════════════════════════════════════════
+mobs:
+  sombra_larga:
+    tipo_base: "ZOMBIE"
+    nombre: "§8Sombra Larga"
+    vida: 35
+    danio: 7
+    velocidad: 0.23
+    invisible: true
+    silencioso: true
+    equipamiento:
+      cabeza: "LEATHER_HELMET:dyed:0,0,0"
+  
+  sombra_rapida:
+    tipo_base: "ZOMBIE"
+    nombre: "§8Sombra Veloz"
+    vida: 30
+    danio: 6
+    velocidad: 0.30  # +30% velocidad
+    invisible: true
+    silencioso: true
+    equipamiento:
+      cabeza: "LEATHER_HELMET:dyed:20,20,20"
+  
+  sombra_doble:
+    tipo_base: "ZOMBIE"
+    nombre: "§8§lSombra Profunda"
+    vida: 70  # Doble
+    danio: 10
+    velocidad: 0.23
+    invisible: true
+    silencioso: true
+    equipamiento:
+      cabeza: "LEATHER_HELMET:dyed:0,0,0"
+      pecho: "LEATHER_CHESTPLATE:dyed:0,0,0"
+
+# ═══════════════════════════════════════════════════════════════════
+# MENSAJES Y TEXTOS
+# ═══════════════════════════════════════════════════════════════════
+mensajes:
+  comandos:
+    no_permisos: "§cNo tienes permisos para usar este comando."
+    evento_ya_activo: "§cEl evento Eco de Sombras ya está activo."
+    otro_evento_activo: "§cNo se puede iniciar, hay otro evento activo: %evento%"
+    jugadores_insuficientes: "§cSe requieren mínimo %min% jugadores online. Actual: %actual%"
+    evento_iniciado: "§aEvento §8Eco de Sombras §ainiciado correctamente."
+    evento_no_activo: "§cEl evento Eco de Sombras no está activo."
+    evento_detenido: "§aEvento detenido y limpiado."
+    fase_cambiada: "§aFase cambiada a: §e%fase%"
+    fase_invalida: "§cFase inválida. Usa: 1-6"
+    ancla_completada: "§aAncla %numero% marcada como completada."
+    info_header: "§8§l═══ ECO DE SOMBRAS ═══"
+    info_activo: "§7Estado: §aActivo"
+    info_inactivo: "§7Estado: §cInactivo"
+    info_fase: "§7Fase actual: §e%fase%"
+    info_acto: "§7Acto: §e%acto%"
+    info_participantes: "§7Participantes: §e%jugadores%"
+    info_anclas: "§7Anclas selladas: §e%selladas%/%total%"
+    info_oleada: "§7Oleada: §e%actual%/%total%"
+  
+  errors:
+    config_no_cargada: "§c[EcoSombras] Error al cargar configuración. Usando valores por defecto."
+    spawn_invalido: "§c[EcoSombras] No se pudo encontrar posición válida para spawn."
+    mob_no_spawneado: "§c[EcoSombras] Error al spawnear mob: %tipo%"
+    estructura_no_generada: "§c[EcoSombras] Error al generar estructura: %estructura%"
+
+# ═══════════════════════════════════════════════════════════════════
+# CONFIGURACIÓN DE DEPURACIÓN
+# ═══════════════════════════════════════════════════════════════════
+debug:
+  enabled: false
+  log_fases: true
+  log_spawns: true
+  log_interacciones: true
+  log_recompensas: true
+  mostrar_hitboxes: false
+  particulas_debug: false

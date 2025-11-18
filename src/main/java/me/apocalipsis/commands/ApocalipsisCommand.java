@@ -70,6 +70,11 @@ public class ApocalipsisCommand implements CommandExecutor {
             sender.sendMessage("§e/avo eco info §7- Info detallada del evento");
             sender.sendMessage("§e/avo eco pulso <add|set> <valor> §7- Ajusta pulso");
             sender.sendMessage("§e/avo eco ancla <1-3> §7- Completa ancla");
+            sender.sendMessage("§6=== Evento Eco de Sombras Largas ===");
+            sender.sendMessage("§e/avo eco_sombras start §7- Inicia el evento");
+            sender.sendMessage("§e/avo eco_sombras stop §7- Detiene el evento");
+            sender.sendMessage("§e/avo eco_sombras fase <1-6> §7- Fuerza acto");
+            sender.sendMessage("§e/avo eco_sombras info §7- Info del evento");
             sender.sendMessage("§6=== Misiones ===");
             sender.sendMessage("§e/avo newday §7- Crea un nuevo día y asigna misiones");
             sender.sendMessage("§e/avo endday §7- Termina el día actual");
@@ -166,6 +171,9 @@ public class ApocalipsisCommand implements CommandExecutor {
                 break;
             case "eco":
                 cmdEco(sender, args);
+                break;
+            case "eco_sombras":
+                cmdEcoSombras(sender, args);
                 break;
             case "xp":
             case "experience":
@@ -1679,6 +1687,265 @@ public class ApocalipsisCommand implements CommandExecutor {
             default:
                 sender.sendMessage("§cSubcomando desconocido: §f" + subCmd);
                 sender.sendMessage("§7Usa §e/avo eco §7para ver comandos disponibles.");
+                break;
+        }
+    }
+
+    /**
+     * /avo eco_sombras <subcomando> - Gestión del evento El Eco de las Sombras Largas
+     */
+    private void cmdEcoSombras(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("avo.admin")) {
+            sender.sendMessage("§cNo tienes permisos.");
+            return;
+        }
+        
+        if (args.length < 2) {
+            sender.sendMessage("§8§l=== ECO DE LAS SOMBRAS LARGAS - COMANDOS ===");
+            sender.sendMessage("§e/avo eco_sombras start §7- Inicia el evento");
+            sender.sendMessage("§e/avo eco_sombras stop §7- Detiene el evento");
+            sender.sendMessage("§e/avo eco_sombras fase <1-6> §7- Fuerza acto específico");
+            sender.sendMessage("§e/avo eco_sombras next §7- Avanza al siguiente acto");
+            sender.sendMessage("§e/avo eco_sombras info §7- Muestra información detallada");
+            sender.sendMessage("§e/avo eco_sombras ancla <1-5> §7- Sella ancla específica");
+            sender.sendMessage("§e/avo eco_sombras nucleo spawn §7- Fuerza spawn del núcleo");
+            return;
+        }
+        
+        String subCmd = args[1].toLowerCase();
+        
+        // Obtener instancia del evento desde EventController
+        me.apocalipsis.events.EcoSombrasEvent ecoSombras = null;
+        if (eventController.hasActiveEvent() && 
+            eventController.getActiveEvent() instanceof me.apocalipsis.events.EcoSombrasEvent) {
+            ecoSombras = (me.apocalipsis.events.EcoSombrasEvent) eventController.getActiveEvent();
+        }
+        
+        switch (subCmd) {
+            case "start":
+            case "iniciar":
+                // Verificar si hay desastre activo
+                if (disasterController.hasActiveDisaster()) {
+                    sender.sendMessage("§cYa hay un desastre activo. Usa §e/avo stop §cprimero.");
+                    return;
+                }
+                
+                // Verificar si ya hay evento activo
+                if (eventController.hasActiveEvent()) {
+                    String eventoActivo = eventController.getActiveEvent().getEventId();
+                    sender.sendMessage("§cYa hay un evento activo: §f" + eventoActivo);
+                    sender.sendMessage("§7Usa §e/avo eco" + (eventoActivo.equals("eco_brasas") ? "" : "_sombras") + " stop §7primero.");
+                    return;
+                }
+                
+                // Verificar SAFE_MODE
+                if (stateManager.isSafeModeActive()) {
+                    sender.sendMessage("§cNo se puede iniciar en SAFE_MODE (TPS bajo).");
+                    return;
+                }
+                
+                // Obtener configuración de jugadores mínimos desde el evento
+                me.apocalipsis.events.EventBase eventoBase = eventController.getEvent("eco_sombras");
+                int jugadoresMinimos = 3; // Valor por defecto
+                
+                if (eventoBase instanceof me.apocalipsis.events.EcoSombrasEvent) {
+                    me.apocalipsis.events.EcoSombrasEvent evento = (me.apocalipsis.events.EcoSombrasEvent) eventoBase;
+                    jugadoresMinimos = evento.getJugadoresMinimos();
+                }
+                
+                // Verificar jugadores mínimos
+                int jugadoresOnline = plugin.getServer().getOnlinePlayers().size();
+                if (jugadoresOnline < jugadoresMinimos) {
+                    sender.sendMessage("§cSe requieren mínimo " + jugadoresMinimos + " jugadores online para iniciar el evento.");
+                    sender.sendMessage("§7Jugadores actuales: §e" + jugadoresOnline);
+                    return;
+                }
+                
+                // Iniciar Eco de Sombras usando EventController
+                if (eventController.startEvent("eco_sombras")) {
+                    sender.sendMessage("§a✓ Evento §8§lEco de las Sombras Largas §ainiciado");
+                    sender.sendMessage("§7Un eco desconocido se registra en el mundo...");
+                    plugin.getLogger().info(String.format("[EcoSombras] Iniciado por %s", sender.getName()));
+                } else {
+                    sender.sendMessage("§cNo se pudo iniciar el evento. Verifica la consola.");
+                }
+                break;
+                
+            case "stop":
+            case "detener":
+                if (ecoSombras == null) {
+                    sender.sendMessage("§cEl evento Eco de Sombras no está activo.");
+                    return;
+                }
+                
+                eventController.stopActiveEvent();
+                sender.sendMessage("§7✓ Evento §8Eco de Sombras §7detenido y limpiado");
+                
+                plugin.getLogger().info(String.format("[EcoSombras] Detenido por %s", sender.getName()));
+                break;
+                
+            case "fase":
+            case "acto":
+                if (ecoSombras == null) {
+                    sender.sendMessage("§cEl evento Eco de Sombras no está activo.");
+                    return;
+                }
+                
+                if (args.length < 3) {
+                    sender.sendMessage("§cUso: /avo eco_sombras fase <0-6>");
+                    sender.sendMessage("§7  0 = Activación");
+                    sender.sendMessage("§7  1 = Manchas de Sombra");
+                    sender.sendMessage("§7  2 = Sombras Largas");
+                    sender.sendMessage("§7  3 = Núcleo de Sombra");
+                    sender.sendMessage("§7  4 = Anclas del Mundo");
+                    sender.sendMessage("§7  5 = Ritual");
+                    sender.sendMessage("§7  6 = Cliffhanger");
+                    return;
+                }
+                
+                try {
+                    int faseNum = Integer.parseInt(args[2]);
+                    if (faseNum < 0 || faseNum > 6) {
+                        sender.sendMessage("§cFase inválida. Usa un número entre 0 y 6.");
+                        return;
+                    }
+                    
+                    ecoSombras.forzarActo(faseNum);
+                    sender.sendMessage("§a✓ Forzada transición al acto: §e" + ecoSombras.getActoActual());
+                    plugin.getLogger().info(String.format("[EcoSombras] %s forzó acto: %d (%s)", 
+                        sender.getName(), faseNum, ecoSombras.getActoActual()));
+                    
+                } catch (NumberFormatException e) {
+                    sender.sendMessage("§cNúmero de fase inválido: " + args[2]);
+                }
+                break;
+                
+            case "next":
+            case "siguiente":
+                if (ecoSombras == null) {
+                    sender.sendMessage("§cEl evento Eco de Sombras no está activo.");
+                    return;
+                }
+                
+                me.apocalipsis.events.EcoSombrasEvent.Acto actoAnterior = ecoSombras.getActoActual();
+                ecoSombras.avanzarActo();
+                
+                sender.sendMessage("§a✓ Avanzado al siguiente acto");
+                sender.sendMessage("§7De: §e" + actoAnterior + " §7→ §e" + ecoSombras.getActoActual());
+                plugin.getLogger().info(String.format("[EcoSombras] %s avanzó de %s a %s", 
+                    sender.getName(), actoAnterior, ecoSombras.getActoActual()));
+                break;
+                
+            case "info":
+            case "status":
+                if (ecoSombras == null) {
+                    sender.sendMessage("§8§l=== ECO DE SOMBRAS - INFO ===");
+                    sender.sendMessage("§7Estado: §cInactivo");
+                    sender.sendMessage("§7Usa §e/avo eco_sombras start §7para iniciarlo.");
+                    return;
+                }
+                
+                sender.sendMessage("§8§l=== ECO DE SOMBRAS - INFO ===");
+                sender.sendMessage("§7Estado: §aActivo");
+                sender.sendMessage("§7Acto actual: §e" + ecoSombras.getActoActual());
+                sender.sendMessage("§7Participantes: §e" + plugin.getServer().getOnlinePlayers().size());
+                
+                // Info específica por acto
+                String actoActual = ecoSombras.getActoActual().toString();
+                if (actoActual.equals("SOMBRAS_LARGAS") || actoActual.equals("NUCLEO") || actoActual.equals("ANCLAS")) {
+                    sender.sendMessage("§7Sombras eliminadas: §e" + ecoSombras.getSombrasLargasMuertas());
+                }
+                
+                if (actoActual.equals("ANCLAS")) {
+                    sender.sendMessage("§7Anclas selladas: §e" + ecoSombras.getAnclasSelladas() + "/5");
+                }
+                
+                if (actoActual.equals("RITUAL")) {
+                    sender.sendMessage("§7Oleada actual: §e" + ecoSombras.getOleadaActual() + "/3");
+                }
+                
+                sender.sendMessage("§8§m                        ");
+                break;
+                
+            case "ancla":
+                if (ecoSombras == null) {
+                    sender.sendMessage("§cEl evento Eco de Sombras no está activo.");
+                    return;
+                }
+                
+                if (args.length < 3) {
+                    sender.sendMessage("§cUso: /avo eco_sombras ancla <1-5>");
+                    sender.sendMessage("§7Sella forzadamente el ancla especificada");
+                    return;
+                }
+                
+                try {
+                    int anclaId = Integer.parseInt(args[2]) - 1; // 0-indexed internamente
+                    
+                    if (anclaId < 0 || anclaId >= 5) {
+                        sender.sendMessage("§cID de ancla inválido. Usa 1-5.");
+                        return;
+                    }
+                    
+                    Player ejecutor = (sender instanceof Player) ? (Player) sender : null;
+                    if (ejecutor != null) {
+                        ecoSombras.sellarAncla(anclaId, ejecutor);
+                        sender.sendMessage("§a✓ Ancla #" + (anclaId + 1) + " sellada forzadamente");
+                        plugin.getLogger().info(String.format("[EcoSombras] %s selló ancla #%d", sender.getName(), anclaId + 1));
+                    } else {
+                        sender.sendMessage("§cDebes ser un jugador para ejecutar este comando.");
+                    }
+                    
+                } catch (NumberFormatException e) {
+                    sender.sendMessage("§cID de ancla inválido: " + args[2]);
+                }
+                break;
+                
+            case "nucleo":
+                if (ecoSombras == null) {
+                    sender.sendMessage("§cEl evento Eco de Sombras no está activo.");
+                    return;
+                }
+                
+                if (args.length < 3) {
+                    sender.sendMessage("§cUso: /avo eco_sombras nucleo <spawn|teleport|damage>");
+                    return;
+                }
+                
+                String nucleoAction = args[2].toLowerCase();
+                switch (nucleoAction) {
+                    case "spawn":
+                        sender.sendMessage("§a✓ Forzando spawn del Núcleo...");
+                        // TODO: Implementar forzado de spawn
+                        break;
+                    case "teleport":
+                    case "tp":
+                        sender.sendMessage("§a✓ Forzando teleporte del Núcleo...");
+                        // TODO: Implementar forzado de TP
+                        break;
+                    case "damage":
+                    case "danio":
+                        if (args.length < 4) {
+                            sender.sendMessage("§cUso: /avo eco_sombras nucleo damage <cantidad>");
+                            return;
+                        }
+                        try {
+                            int damage = Integer.parseInt(args[3]);
+                            sender.sendMessage("§a✓ Aplicando " + damage + " de daño al Núcleo...");
+                            // TODO: Implementar daño forzado
+                        } catch (NumberFormatException e) {
+                            sender.sendMessage("§cCantidad de daño inválida: " + args[3]);
+                        }
+                        break;
+                    default:
+                        sender.sendMessage("§cAcción desconocida: " + nucleoAction);
+                        break;
+                }
+                break;
+                
+            default:
+                sender.sendMessage("§cSubcomando desconocido: §f" + subCmd);
+                sender.sendMessage("§7Usa §e/avo eco_sombras §7para ver comandos disponibles.");
                 break;
         }
     }

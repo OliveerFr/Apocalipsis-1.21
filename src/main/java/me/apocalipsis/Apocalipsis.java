@@ -16,6 +16,7 @@ import me.apocalipsis.disaster.DisasterEvasionTracker;
 import me.apocalipsis.disaster.DisasterRegistry;
 import me.apocalipsis.disaster.adapters.PerformanceAdapter;
 import me.apocalipsis.events.EcoBrasasEvent;
+import me.apocalipsis.events.EcoSombrasEvent;
 import me.apocalipsis.events.EventController;
 import me.apocalipsis.experience.AbilityService;
 import me.apocalipsis.experience.ExperienceService;
@@ -129,7 +130,11 @@ public final class Apocalipsis extends JavaPlugin {
         // Registrar eventos narrativos
         EcoBrasasEvent ecoBrasasEvent = new EcoBrasasEvent(this, messageBus, soundUtil);
         eventController.registerEvent(ecoBrasasEvent);
-        getLogger().info("[EventController] ✓ Eventos narrativos registrados");
+        
+        EcoSombrasEvent ecoSombrasEvent = new EcoSombrasEvent(this, messageBus, soundUtil);
+        eventController.registerEvent(ecoSombrasEvent);
+        
+        getLogger().info("[EventController] ✓ Eventos narrativos registrados (Eco de Brasas, Eco de Sombras)");
 
         // Registrar comandos y tab completer
         getCommand("avo").setExecutor(new ApocalipsisCommand(this, stateManager, disasterController, eventController, missionService, timeService, messageBus));

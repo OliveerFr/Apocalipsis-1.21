@@ -34,11 +34,14 @@
                 <configuration>
                     <source>21</source>
                     <target>21</target>
-                    <fork>false</fork>
+                    <fork>true</fork>
+                    <maxmem>2048m</maxmem>
+                    <meminitial>1024m</meminitial>
                     <showWarnings>true</showWarnings>
                     <showDeprecation>true</showDeprecation>
                     <compilerArgs>
                         <arg>-Xlint:deprecation</arg>
+                        <arg>-J-XX:+UseParallelGC</arg>
                     </compilerArgs>
                 </configuration>
             </plugin>

@@ -5,6 +5,7 @@ me\apocalipsis\experience\AbilityService$RankAbility.class
 me\apocalipsis\events\EcoBrasasEvent$Fase.class
 me\apocalipsis\disaster\HuracanNew$1.class
 me\apocalipsis\ui\TablistManager$1.class
+me\apocalipsis\events\EcoSombrasEvent.class
 me\apocalipsis\disaster\LluviaFuegoNew.class
 me\apocalipsis\ui\SoundUtil.class
 me\apocalipsis\disaster\DisasterEvasionTracker.class
@@ -25,6 +26,7 @@ me\apocalipsis\disaster\Disaster.class
 me\apocalipsis\listeners\ExperienceListener.class
 me\apocalipsis\disaster\adapters\PerformanceAdapter.class
 me\apocalipsis\events\EventController.class
+me\apocalipsis\events\EcoSombrasListener.class
 me\apocalipsis\events\EventBase.class
 me\apocalipsis\experience\ExperienceService.class
 me\apocalipsis\missions\MissionRenderer.class
@@ -34,10 +36,12 @@ me\apocalipsis\ui\MessageBus.class
 me\apocalipsis\missions\MissionAssignment.class
 me\apocalipsis\listeners\ChatListener.class
 me\apocalipsis\state\ServerState.class
+me\apocalipsis\events\EcoSombrasEvent$1.class
 me\apocalipsis\listeners\PlayerListener.class
 me\apocalipsis\experience\RewardService$RankReward.class
 me\apocalipsis\listeners\MissionListener.class
 me\apocalipsis\listeners\BlockTrackListener.class
+me\apocalipsis\events\EcoSombrasEvent$Acto.class
 me\apocalipsis\listeners\ExperienceListener$1.class
 me\apocalipsis\disaster\adapters\PerformanceAdapter$PerformanceState.class
 me\apocalipsis\missions\MissionService$1.class
@@ -52,6 +56,7 @@ me\apocalipsis\ui\TablistManager.class
 me\apocalipsis\utils\ExplosionGuard.class
 me\apocalipsis\commands\AvoTabCompleter.class
 me\apocalipsis\events\EcoBrasasEvent$OleadaState.class
+me\apocalipsis\events\EcoSombrasItems.class
 me\apocalipsis\events\EcoBrasasItems.class
 me\apocalipsis\missions\MissionCatalog.class
 me\apocalipsis\disaster\DisasterBase.class

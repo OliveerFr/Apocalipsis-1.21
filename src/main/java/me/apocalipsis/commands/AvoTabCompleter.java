@@ -30,7 +30,7 @@ public class AvoTabCompleter implements TabCompleter {
                 "start", "stop", "force", "skip", "preparacion", "time",
                 "newday", "endday", "status", "setxp", "mission",
                 "tps", "stats", "backup", "cooldown", "debug", "test", "test-alert",
-                "reload", "admin", "escanear", "protecciones", "eco",
+                "reload", "admin", "escanear", "protecciones", "eco", "eco_sombras",
                 "xp", "experience", "nivel", "level", "evasion", "evasiones"
             );
             
@@ -90,6 +90,12 @@ public class AvoTabCompleter implements TabCompleter {
                 case "eco":
                     // Sugerir subcomandos de eco
                     return Arrays.asList("start", "stop", "fase", "next", "info", "pulso", "ancla").stream()
+                        .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
+                        .collect(Collectors.toList());
+                
+                case "eco_sombras":
+                    // Sugerir subcomandos de eco_sombras
+                    return Arrays.asList("start", "stop", "fase", "next", "info", "ancla", "nucleo").stream()
                         .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
                         .collect(Collectors.toList());
                 
@@ -175,6 +181,27 @@ public class AvoTabCompleter implements TabCompleter {
             // /avo eco ancla <1|2|3>
             if (subCmd.equals("eco") && args[1].equalsIgnoreCase("ancla")) {
                 return Arrays.asList("1", "2", "3").stream()
+                    .filter(s -> s.startsWith(args[2]))
+                    .collect(Collectors.toList());
+            }
+            
+            // /avo eco_sombras fase <1-6>
+            if (subCmd.equals("eco_sombras") && args[1].equalsIgnoreCase("fase")) {
+                return Arrays.asList("1", "2", "3", "4", "5", "6").stream()
+                    .filter(s -> s.startsWith(args[2]))
+                    .collect(Collectors.toList());
+            }
+            
+            // /avo eco_sombras ancla <1-5>
+            if (subCmd.equals("eco_sombras") && args[1].equalsIgnoreCase("ancla")) {
+                return Arrays.asList("1", "2", "3", "4", "5").stream()
+                    .filter(s -> s.startsWith(args[2]))
+                    .collect(Collectors.toList());
+            }
+            
+            // /avo eco_sombras nucleo <spawn|teleport|damage>
+            if (subCmd.equals("eco_sombras") && args[1].equalsIgnoreCase("nucleo")) {
+                return Arrays.asList("spawn", "teleport", "damage").stream()
                     .filter(s -> s.startsWith(args[2]))
                     .collect(Collectors.toList());
             }
