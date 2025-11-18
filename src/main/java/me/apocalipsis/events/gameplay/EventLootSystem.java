@@ -55,6 +55,9 @@ public class EventLootSystem {
     private final Random random = new Random();
     private Difficulty difficulty;
     
+    // 🎁 TRACKING DE ITEMS ÚNICOS (evitar duplicados)
+    private final Map<UUID, Set<String>> uniqueItemsReceived = new HashMap<>();
+    
     public EventLootSystem(Difficulty difficulty) {
         this.difficulty = difficulty;
     }
@@ -462,5 +465,137 @@ public class EventLootSystem {
         player.spawnParticle(Particle.END_ROD, playerLoc.clone().add(0, 1, 0), 20, 0.3, 1, 0.3, 0.05);
         player.playSound(playerLoc, Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
         player.playSound(playerLoc, Sound.BLOCK_ENCHANTMENT_TABLE_USE, 1.0f, 1.2f);
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // 🎁 SISTEMA DE ITEMS ÚNICOS (ONE-TIME DROPS)
+    // ═══════════════════════════════════════════════════════════════════
+    
+    /**
+     * Verifica si un jugador ya recibió un item único específico
+     */
+    public boolean hasReceivedUniqueItem(Player player, String itemId) {
+        Set<String> playerItems = uniqueItemsReceived.get(player.getUniqueId());
+        return playerItems != null && playerItems.contains(itemId);
+    }
+    
+    /**
+     * Marca que un jugador recibió un item único
+     */
+    public void markUniqueItemReceived(Player player, String itemId) {
+        uniqueItemsReceived.computeIfAbsent(player.getUniqueId(), k -> new HashSet<>()).add(itemId);
+    }
+    
+    /**
+     * Genera drop legendario exclusivo del Guardián (ONE-TIME)
+     * Solo se puede obtener una vez por jugador
+     */
+    public ItemStack generateGuardianLegendaryDrop(Player player) {
+        String itemId = "guardian_legendary_artifact";
+        
+        // Verificar si ya lo tiene
+        if (hasReceivedUniqueItem(player, itemId)) {
+            // Si ya lo tiene, dar recompensa alternativa épica
+            return generateEnchantedBook(Rarity.EPIC);
+        }
+        
+        // Crear el artefacto legendario único
+        ItemStack artifact = new ItemStack(Material.NETHER_STAR);
+        ItemMeta meta = artifact.getItemMeta();
+        
+        if (meta != null) {
+            meta.setDisplayName("§5§l✦ Estrella del Umbral ✦");
+            meta.setLore(Arrays.asList(
+                "§7Un fragmento cristalizado del poder",
+                "§7del Guardián del Umbral.",
+                "",
+                "§d⚡ Habilidad Especial:",
+                "§7- Shift + Click Derecho: §5Onda Umbral",
+                "§7  Daña y ralentiza enemigos cercanos",
+                "§7  Cooldown: 30 segundos",
+                "",
+                "§8▸ Solo puede obtenerse una vez",
+                "§8▸ Item único del Guardián",
+                "",
+                Rarity.LEGENDARY.color + "❖ " + Rarity.LEGENDARY.displayName + " ❖",
+                "§8Dificultad: " + difficulty.displayName
+            ));
+            artifact.setItemMeta(meta);
+        }
+        
+        // Marcar como recibido
+        markUniqueItemReceived(player, itemId);
+        
+        return artifact;
+    }
+    
+    /**
+     * Genera recompensas de agradecimiento para todos los participantes
+     * Items útiles como agradecimiento por jugar el evento
+     */
+    public List<ItemStack> generateThankYouRewards() {
+        List<ItemStack> rewards = new ArrayList<>();
+        
+        // ═══ ITEMS ÚTILES DE AGRADECIMIENTO ═══
+        
+        // 1. Golden Apples para supervivencia
+        ItemStack gapples = new ItemStack(Material.GOLDEN_APPLE, (int) (4 * difficulty.multiplier));
+        rewards.add(gapples);
+        
+        // 2. Ender Pearls para movilidad
+        ItemStack pearls = new ItemStack(Material.ENDER_PEARL, (int) (8 * difficulty.multiplier));
+        rewards.add(pearls);
+        
+        // 3. Bloques de construcción premium
+        ItemStack obsidian = new ItemStack(Material.OBSIDIAN, (int) (16 * difficulty.multiplier));
+        rewards.add(obsidian);
+        
+        // 4. Recursos de farmeo
+        ItemStack diamonds = new ItemStack(Material.DIAMOND, (int) (8 * difficulty.multiplier));
+        rewards.add(diamonds);
+        
+        ItemStack emeralds = new ItemStack(Material.EMERALD, (int) (12 * difficulty.multiplier));
+        rewards.add(emeralds);
+        
+        // 5. Experiencia embotellada
+        ItemStack xpBottles = new ItemStack(Material.EXPERIENCE_BOTTLE, (int) (16 * difficulty.multiplier));
+        rewards.add(xpBottles);
+        
+        // 6. Totem of Undying (en dificultades altas)
+        if (difficulty == Difficulty.HARD || difficulty == Difficulty.MYTHIC) {
+            ItemStack totem = new ItemStack(Material.TOTEM_OF_UNDYING);
+            rewards.add(totem);
+        }
+        
+        // 7. Elytras reparadas (solo Mítico)
+        if (difficulty == Difficulty.MYTHIC) {
+            ItemStack elytra = new ItemStack(Material.ELYTRA);
+            elytra.addEnchantment(Enchantment.UNBREAKING, 3);
+            elytra.addEnchantment(Enchantment.MENDING, 1);
+            rewards.add(elytra);
+        }
+        
+        // 8. Token de agradecimiento especial (cosmético)
+        ItemStack token = new ItemStack(Material.AMETHYST_SHARD);
+        ItemMeta tokenMeta = token.getItemMeta();
+        
+        if (tokenMeta != null) {
+            tokenMeta.setDisplayName("§d§l⬡ Token de las Sombras ⬡");
+            tokenMeta.setLore(Arrays.asList(
+                "§7Gracias por participar en",
+                "§5El Eco de las Sombras Largas",
+                "",
+                "§7Este token simboliza tu valentía",
+                "§7al enfrentar las sombras.",
+                "",
+                "§8Item conmemorativo",
+                "§d✦ Gracias por jugar ✦"
+            ));
+            token.setItemMeta(tokenMeta);
+        }
+        token.setAmount((int) (3 * difficulty.multiplier));
+        rewards.add(token);
+        
+        return rewards;
     }
 }
