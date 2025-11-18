@@ -19,7 +19,7 @@ ranks:
   NOVATO:
     display_name: "&aNovato"
     xp_required: 0
-    misiones_diarias: 12
+    misiones_diarias: 10
     tab_prefix: "&a[N] "
     tab_suffix: ""
     chat_prefix: "&aN&7| "

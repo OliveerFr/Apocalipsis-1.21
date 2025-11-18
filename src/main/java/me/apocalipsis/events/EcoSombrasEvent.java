@@ -220,6 +220,25 @@ public class EcoSombrasEvent extends EventBase {
     private void iniciarActoActivacion() {
         plugin.getLogger().info("[EcoSombras] Iniciando Acto 0: Activación");
         
+        // 🎬 FADE IN CINEMATOGRÁFICO desde negro total
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            // Fade desde negro (blindness largo)
+            p.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 100, 2, false, false));
+            p.sendTitle("§0§l━━━━━━━━━━━━━━━", "§8§o...", 10, 60, 30);
+            
+            // Respiración profunda continua
+            Location loc = p.getLocation();
+            for (int i = 0; i < 5; i++) {
+                final int index = i;
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    p.playSound(loc, Sound.ENTITY_WARDEN_HEARTBEAT, 1.5f, 0.3f);
+                    // Partículas de portal flotando
+                    loc.getWorld().spawnParticle(Particle.PORTAL, loc.clone().add(0, 2, 0), 30, 3, 2, 3, 0.2);
+                    loc.getWorld().spawnParticle(Particle.SMOKE, loc, 15, 2, 1, 2, 0.05);
+                }, index * 30L);
+            }
+        }
+        
         // Efecto de oscurecimiento
         ConfigurationSection efectos = config.getConfigurationSection("actos.acto_0_activacion.efectos.oscurecimiento");
         if (efectos != null && efectos.getBoolean("enabled", true)) {
@@ -407,6 +426,20 @@ public class EcoSombrasEvent extends EventBase {
         
         if (spawnLoc == null) return;
         
+        // 🎬 SLOW MOTION a todos los jugadores cerca (2 segundos congelados)
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (p.getLocation().distance(spawnLoc) < 30) {
+                p.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 40, 9, false, false));
+                p.addPotionEffect(new PotionEffect(PotionEffectType.MINING_FATIGUE, 40, 5, false, false));
+                p.addPotionEffect(new PotionEffect(PotionEffectType.JUMP_BOOST, 40, 250, false, false)); // No puede saltar
+                
+                // Susurros distorsionados
+                p.playSound(p.getLocation(), Sound.ENTITY_PHANTOM_AMBIENT, 0.8f, 0.3f);
+                p.playSound(p.getLocation(), Sound.AMBIENT_CAVE, 1.0f, 0.4f);
+                p.sendTitle("", "§8§o...algo emerge...", 5, 30, 10);
+            }
+        }
+        
         // Spawn del mob
         ConfigurationSection mobConfig = config.getConfigurationSection("actos.acto_2_sombras_largas.spawn_sombras.configuracion_mob");
         Zombie sombra = (Zombie) spawnLoc.getWorld().spawnEntity(spawnLoc, EntityType.ZOMBIE);
@@ -414,8 +447,22 @@ public class EcoSombrasEvent extends EventBase {
         configurarSombraLarga(sombra, mobConfig);
         entidadesEvento.add(sombra.getUniqueId());
         
-        // Partículas de spawn
-        spawnLoc.getWorld().spawnParticle(Particle.LARGE_SMOKE, spawnLoc, 20, 0.5, 1, 0.5, 0.1);
+        // 🎬 Partículas de spawn MASIVAS con distorsión
+        spawnLoc.getWorld().spawnParticle(Particle.LARGE_SMOKE, spawnLoc, 50, 1, 2, 1, 0.15);
+        spawnLoc.getWorld().spawnParticle(Particle.SQUID_INK, spawnLoc, 30, 0.8, 1.5, 0.8, 0.1);
+        spawnLoc.getWorld().spawnParticle(Particle.PORTAL, spawnLoc, 40, 1, 1, 1, 0.5);
+        spawnLoc.getWorld().spawnParticle(Particle.END_ROD, spawnLoc, 20, 0.5, 1, 0.5, 0.1);
+        
+        // Explosión visual sin daño
+        spawnLoc.getWorld().spawnParticle(Particle.EXPLOSION, spawnLoc, 3, 0.5, 0.5, 0.5, 0);
+        spawnLoc.getWorld().playSound(spawnLoc, Sound.ENTITY_WITHER_SPAWN, 0.5f, 0.5f);
+        
+        // Partículas de sombra proyectada en el suelo
+        for (int i = 0; i < 20; i++) {
+            double angle = (Math.PI * 2 / 20) * i;
+            Location groundLoc = spawnLoc.clone().add(Math.cos(angle) * 2, -0.5, Math.sin(angle) * 2);
+            spawnLoc.getWorld().spawnParticle(Particle.SQUID_INK, groundLoc, 5, 0.1, 0, 0.1, 0);
+        }
     }
     
     private void configurarSombraLarga(Zombie sombra, ConfigurationSection config) {
@@ -485,38 +532,75 @@ public class EcoSombrasEvent extends EventBase {
     private void iniciarActoNucleo() {
         plugin.getLogger().info("[EcoSombras] Iniciando Acto 3: Núcleo");
         
-        // Spawn del Núcleo
-        List<Player> jugadores = new ArrayList<>(Bukkit.getOnlinePlayers());
-        if (jugadores.isEmpty()) return;
-        
-        Player target = jugadores.get(random.nextInt(jugadores.size()));
-        nucleoLocation = encontrarPosicionSpawn(target.getLocation(), 20, 50);
-        
-        if (nucleoLocation == null) return;
-        
-        // Elevar 3 bloques
-        nucleoLocation.add(0, 3, 0);
-        
-        // Spawn Shulker como base
-        Shulker nucleo = (Shulker) nucleoLocation.getWorld().spawnEntity(nucleoLocation, EntityType.SHULKER);
-        configurarNucleo(nucleo);
-        
-        nucleoEntity = nucleo;
-        entidadesEvento.add(nucleo.getUniqueId());
-        
-        // Mensaje dramático
+        // 🎬 FADE TO BLACK TOTAL (3 segundos de oscuridad completa)
         for (Player p : Bukkit.getOnlinePlayers()) {
-            p.sendTitle("§5§lUna raíz de la sombra", "§7ha despertado", 10, 60, 20);
+            p.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 100, 5, false, false));
+            p.sendTitle("§0§l━━━━━━━━━━━━━━━", "", 10, 60, 30);
+            
+            // Corazón latiendo en la oscuridad
+            for (int i = 0; i < 6; i++) {
+                final int index = i;
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    p.playSound(p.getLocation(), Sound.ENTITY_WARDEN_HEARTBEAT, 2.0f, 0.4f);
+                }, index * 15L);
+            }
         }
         
-        String mensaje = config.getString("actos.acto_3_nucleo.mensajes.aparicion.chat");
-        messageBus.broadcast(mensaje, "eco_sombras");
-        
-        // Sonido
-        nucleoLocation.getWorld().playSound(nucleoLocation, Sound.ENTITY_WITHER_SPAWN, 1.0f, 0.8f);
-        
-        // Efectos visuales periódicos
-        iniciarEfectosNucleo();
+        // Spawn del Núcleo después de la oscuridad
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            List<Player> jugadores = new ArrayList<>(Bukkit.getOnlinePlayers());
+            if (jugadores.isEmpty()) return;
+            
+            Player target = jugadores.get(random.nextInt(jugadores.size()));
+            nucleoLocation = encontrarPosicionSpawn(target.getLocation(), 20, 50);
+            
+            if (nucleoLocation == null) return;
+            
+            // Elevar 3 bloques
+            nucleoLocation.add(0, 3, 0);
+            
+            // 🎬 EXPLOSIÓN DE LUZ al aparecer
+            for (int i = 0; i < 360; i += 15) {
+                double radians = Math.toRadians(i);
+                for (int r = 1; r <= 10; r++) {
+                    Location particleLoc = nucleoLocation.clone().add(
+                        Math.cos(radians) * r,
+                        0,
+                        Math.sin(radians) * r
+                    );
+                    nucleoLocation.getWorld().spawnParticle(Particle.FLASH, particleLoc, 1, 0, 0, 0, 0);
+                    nucleoLocation.getWorld().spawnParticle(Particle.END_ROD, particleLoc, 2, 0.1, 0.1, 0.1, 0);
+                }
+            }
+            
+            // Partículas verticales masivas
+            for (int y = 0; y < 30; y++) {
+                nucleoLocation.getWorld().spawnParticle(Particle.REVERSE_PORTAL, nucleoLocation.clone().add(0, y, 0), 10, 0.5, 0, 0.5, 0.1);
+            }
+            
+            // Spawn Shulker como base
+            Shulker nucleo = (Shulker) nucleoLocation.getWorld().spawnEntity(nucleoLocation, EntityType.SHULKER);
+            configurarNucleo(nucleo);
+            
+            nucleoEntity = nucleo;
+            entidadesEvento.add(nucleo.getUniqueId());
+            
+            // Mensaje dramático
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                p.sendTitle("§5§lUna raíz de la sombra", "§7ha despertado", 10, 60, 20);
+                p.playSound(p.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 1.0f, 0.5f);
+            }
+            
+            String mensaje = config.getString("actos.acto_3_nucleo.mensajes.aparicion.chat");
+            messageBus.broadcast(mensaje, "eco_sombras");
+            
+            // Sonidos superpuestos
+            nucleoLocation.getWorld().playSound(nucleoLocation, Sound.ENTITY_WITHER_SPAWN, 1.5f, 0.6f);
+            nucleoLocation.getWorld().playSound(nucleoLocation, Sound.BLOCK_RESPAWN_ANCHOR_DEPLETE, 1.0f, 0.3f);
+            
+            // Efectos visuales periódicos
+            iniciarEfectosNucleo();
+        }, 80L); // Después de 4 segundos de oscuridad
     }
     
     private void configurarNucleo(Shulker nucleo) {
@@ -648,6 +732,18 @@ public class EcoSombrasEvent extends EventBase {
     private void generarEstructuraAncla(Location center, int id) {
         World world = center.getWorld();
         
+        // 🎬 RAYO DEL CIELO al spawn (múltiples explosiones verticales)
+        for (int y = 100; y >= center.getY(); y -= 5) {
+            Location rayLoc = center.clone();
+            rayLoc.setY(y);
+            world.spawnParticle(Particle.FLASH, rayLoc, 3, 0.2, 0.2, 0.2, 0);
+            world.spawnParticle(Particle.EXPLOSION, rayLoc, 1, 0, 0, 0, 0);
+        }
+        
+        // Sonido de trueno al spawn
+        world.playSound(center, Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 2.0f, 0.8f);
+        world.playSound(center, Sound.ITEM_TRIDENT_THUNDER, 1.5f, 1.2f);
+        
         // Base 3x3 de DEEPSLATE_TILES
         for (int x = -1; x <= 1; x++) {
             for (int z = -1; z <= 1; z++) {
@@ -675,15 +771,34 @@ public class EcoSombrasEvent extends EventBase {
             velaLoc.getBlock().setBlockData(candle);
         }
         
-        // Efectos visuales periódicos
+        // 🎬 BEAM DE LUZ vertical continuo + Pulso de energía
         Bukkit.getScheduler().runTaskTimer(plugin, () -> {
             if (anclasSelladas.contains(id) || actoActual != Acto.ANCLAS) {
                 return;
             }
             
-            // Partículas verticales
-            for (int y = 1; y <= 4; y++) {
-                world.spawnParticle(Particle.END_ROD, center.clone().add(0, y, 0), 3, 0.2, 0.2, 0.2, 0);
+            // Beam vertical hasta el cielo
+            for (int y = 1; y <= 50; y++) {
+                if (y % 2 == 0) { // Optimizado: solo cada 2 bloques
+                    world.spawnParticle(Particle.END_ROD, center.clone().add(0, y, 0), 1, 0.1, 0, 0.1, 0);
+                    world.spawnParticle(Particle.REVERSE_PORTAL, center.clone().add(0, y, 0), 2, 0.15, 0, 0.15, 0);
+                }
+            }
+            
+            // 🎬 Pulso de energía radial (cada 2 segundos)
+            if (ticksEnActo % 40 == 0) {
+                for (int angle = 0; angle < 360; angle += 30) {
+                    double radians = Math.toRadians(angle);
+                    for (double r = 0; r <= 5; r += 0.5) {
+                        Location pulseLoc = center.clone().add(
+                            Math.cos(radians) * r,
+                            0.5,
+                            Math.sin(radians) * r
+                        );
+                        world.spawnParticle(Particle.SONIC_BOOM, pulseLoc, 1, 0, 0, 0, 0);
+                    }
+                }
+                world.playSound(center, Sound.BLOCK_RESPAWN_ANCHOR_AMBIENT, 0.5f, 1.5f);
             }
         }, 0L, 10L);
     }
@@ -716,8 +831,31 @@ public class EcoSombrasEvent extends EventBase {
         
         // Efectos
         Location anclaLoc = anclaLocations.get(id);
-        anclaLoc.getWorld().spawnParticle(Particle.END_ROD, anclaLoc.clone().add(0, 1, 0), 50, 0.5, 20, 0.5, 0.3);
-        anclaLoc.getWorld().playSound(anclaLoc, Sound.BLOCK_RESPAWN_ANCHOR_CHARGE, 1.5f, 0.5f);
+        
+        // 🎬 SCREEN SHAKE FUERTE a todos los jugadores
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            for (int i = 0; i < 10; i++) {
+                final int index = i;
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    Vector shake = new Vector(
+                        (random.nextDouble() - 0.5) * 0.5,
+                        (random.nextDouble() - 0.5) * 0.3,
+                        (random.nextDouble() - 0.5) * 0.5
+                    );
+                    p.setVelocity(shake);
+                }, index * 1L);
+            }
+        }
+        
+        // Explosión visual masiva
+        anclaLoc.getWorld().spawnParticle(Particle.END_ROD, anclaLoc.clone().add(0, 1, 0), 100, 1, 20, 1, 0.5);
+        anclaLoc.getWorld().spawnParticle(Particle.FLASH, anclaLoc.clone().add(0, 1, 0), 10, 0.5, 1, 0.5, 0);
+        anclaLoc.getWorld().spawnParticle(Particle.EXPLOSION, anclaLoc.clone().add(0, 10, 0), 5, 2, 2, 2, 0);
+        
+        // Sonidos superpuestos
+        anclaLoc.getWorld().playSound(anclaLoc, Sound.BLOCK_RESPAWN_ANCHOR_CHARGE, 2.0f, 0.5f);
+        anclaLoc.getWorld().playSound(anclaLoc, Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 1.5f, 1.0f);
+        anclaLoc.getWorld().playSound(anclaLoc, Sound.BLOCK_BEACON_ACTIVATE, 1.0f, 1.8f);
         
         // Mensaje
         String msg = String.format("§5Ancla %d/%d sellada", anclasSelladas.size(), anclaLocations.size());
@@ -725,7 +863,7 @@ public class EcoSombrasEvent extends EventBase {
         
         // Sonido global
         for (Player p : Bukkit.getOnlinePlayers()) {
-            p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_BELL, 1.0f, 1.5f);
+            p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_BELL, 1.5f, 1.5f);
         }
         
         // Mensaje del Observador (primera vez)
@@ -737,8 +875,21 @@ public class EcoSombrasEvent extends EventBase {
             }, 40L);
         }
         
-        // TRANSICIÓN AUTOMÁTICA: 5 anclas selladas → NUCLEO
+        // 🎬 FADE TO WHITE al sellar la 5ta ancla + CÁMARA LENTA
         if (anclasSelladas.size() >= 5) {
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                // Fade a blanco con Glowing + Blindness
+                p.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 60, 0, false, false));
+                p.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 60, 3, false, false));
+                
+                // Cámara lenta extrema
+                p.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 60, 9, false, false));
+                p.addPotionEffect(new PotionEffect(PotionEffectType.MINING_FATIGUE, 60, 9, false, false));
+                
+                p.sendTitle("§f§l━━━━━━━━━━━━━━━", "§7§oLas anclas han sido selladas...", 10, 40, 20);
+                p.playSound(p.getLocation(), Sound.BLOCK_BEACON_POWER_SELECT, 2.0f, 2.0f);
+            }
+            
             efectoCinematico("§8§l⬢ EL NÚCLEO SE MANIFIESTA", 10, 60, 20);
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 limpiarEntidadesActoAnterior();
@@ -976,47 +1127,99 @@ public class EcoSombrasEvent extends EventBase {
         
         guardianSpawneado = true;
         
-        // Efecto cinematográfico de spawn
-        efectoCinematico("§5§l⚔ GUARDIÁN DEL UMBRAL ⚔", 10, 80, 20);
-        arenaCenter.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, arenaCenter.clone().add(0, 5, 0), 10, 2, 2, 2);
-        arenaCenter.getWorld().playSound(arenaCenter, Sound.ENTITY_WITHER_SPAWN, 2.0f, 0.5f);
-        arenaCenter.getWorld().playSound(arenaCenter, Sound.ENTITY_ENDER_DRAGON_GROWL, 2.0f, 0.3f);
-        
-        // Rayo visual dramático (sin daño)
-        for (int i = 0; i < 5; i++) {
-            Location rayLoc = arenaCenter.clone().add(
-                (Math.random() - 0.5) * 10,
-                0,
-                (Math.random() - 0.5) * 10
-            );
-            rayLoc.setY(rayLoc.getWorld().getHighestBlockYAt(rayLoc));
-            rayLoc.getWorld().strikeLightningEffect(rayLoc);
+        // 🎬 SLOW MOTION GLOBAL A TODOS (5 segundos congelados)
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            p.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 100, 9, false, false));
+            p.addPotionEffect(new PotionEffect(PotionEffectType.MINING_FATIGUE, 100, 9, false, false));
+            p.addPotionEffect(new PotionEffect(PotionEffectType.JUMP_BOOST, 100, 250, false, false));
+            
+            // Blindness inicial para fade in
+            p.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 40, 5, false, false));
         }
         
-        // Spawn del Guardian (Giant Zombie para mayor imponencia)
-        Location spawnLoc = arenaCenter.clone().add(0, 1, 0);
-        Giant guardian = (Giant) spawnLoc.getWorld().spawnEntity(spawnLoc, EntityType.GIANT);
+        // Oscurecer el mundo temporalmente
+        World world = arenaCenter.getWorld();
+        long tiempoOriginal = world.getTime();
+        world.setTime(18000); // Medianoche
         
-        // Configuración
-        String nombre = "§5§l§n⬢ GUARDIÁN DEL UMBRAL ⬢";
-        guardian.setCustomName(nombre);
-        guardian.setCustomNameVisible(true);
-        guardian.setRemoveWhenFarAway(false);
-        guardian.setAI(true);
+        // 🎬 Secuencia de efectos superpuestos
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            // Explosión de partículas masiva
+            for (int i = 0; i < 360; i += 10) {
+                double radians = Math.toRadians(i);
+                for (int r = 1; r <= 15; r++) {
+                    Location particleLoc = arenaCenter.clone().add(
+                        Math.cos(radians) * r,
+                        5,
+                        Math.sin(radians) * r
+                    );
+                    world.spawnParticle(Particle.SOUL_FIRE_FLAME, particleLoc, 3, 0.2, 0.2, 0.2, 0.05);
+                    world.spawnParticle(Particle.SQUID_INK, particleLoc, 2, 0.1, 0.1, 0.1, 0);
+                }
+            }
+            
+            // Efecto cinematográfico con título
+            efectoCinematico("§5§l⚔ GUARDIÁN DEL UMBRAL ⚔", 10, 80, 20);
+            
+            // Partículas verticales masivas
+            for (int y = 0; y < 50; y++) {
+                world.spawnParticle(Particle.REVERSE_PORTAL, arenaCenter.clone().add(0, y, 0), 20, 0.5, 0, 0.5, 0.3);
+                world.spawnParticle(Particle.END_ROD, arenaCenter.clone().add(0, y, 0), 10, 0.3, 0, 0.3, 0.1);
+            }
+            
+            world.spawnParticle(Particle.EXPLOSION_EMITTER, arenaCenter.clone().add(0, 5, 0), 15, 3, 3, 3);
+            
+            // 🎬 Sonidos superpuestos cinematográficos
+            world.playSound(arenaCenter, Sound.ENTITY_WITHER_SPAWN, 2.0f, 0.4f);
+            world.playSound(arenaCenter, Sound.ENTITY_ENDER_DRAGON_GROWL, 2.5f, 0.2f);
+            world.playSound(arenaCenter, Sound.ENTITY_WARDEN_SONIC_BOOM, 2.0f, 0.5f);
+            world.playSound(arenaCenter, Sound.AMBIENT_BASALT_DELTAS_MOOD, 2.0f, 0.3f);
+            
+            // Sonidos a cada jugador para efecto 3D
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                p.playSound(p.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 1.5f, 0.6f);
+                p.playSound(p.getLocation(), Sound.BLOCK_RESPAWN_ANCHOR_DEPLETE, 1.0f, 0.2f);
+            }
+        }, 20L); // Después de 1 segundo
         
-        // Atributos épicos (para Netherite Prot 4)
-        guardian.getAttribute(Attribute.MAX_HEALTH).setBaseValue(800.0);  // 400 corazones
-        guardian.setHealth(800.0);
+        // Rayo visual dramático (sin daño) con delay
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            for (int i = 0; i < 5; i++) {
+                Location rayLoc = arenaCenter.clone().add(
+                    (Math.random() - 0.5) * 10,
+                    0,
+                    (Math.random() - 0.5) * 10
+                );
+                rayLoc.setY(rayLoc.getWorld().getHighestBlockYAt(rayLoc));
+                rayLoc.getWorld().strikeLightningEffect(rayLoc);
+            }
+        }, 30L);
         
-        guardian.getAttribute(Attribute.ATTACK_DAMAGE).setBaseValue(24.0);  // ~8 corazones con Prot 4
-        guardian.getAttribute(Attribute.MOVEMENT_SPEED).setBaseValue(0.35);  // Rápido para su tamaño
-        guardian.getAttribute(Attribute.ARMOR).setBaseValue(20.0);  // Resistencia alta
-        guardian.getAttribute(Attribute.ARMOR_TOUGHNESS).setBaseValue(12.0);
-        guardian.getAttribute(Attribute.KNOCKBACK_RESISTANCE).setBaseValue(0.8);  // Muy difícil de empujar
-        
-        // Equipamiento Netherite completo
-        EntityEquipment equip = guardian.getEquipment();
-        if (equip != null) {
+        // 🎬 SPAWN del Guardian con delay dramático
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            Location spawnLoc = arenaCenter.clone().add(0, 1, 0);
+            Giant guardian = (Giant) spawnLoc.getWorld().spawnEntity(spawnLoc, EntityType.GIANT);
+            
+            // Configuración
+            String nombre = "§5§l§n⬢ GUARDIÁN DEL UMBRAL ⬢";
+            guardian.setCustomName(nombre);
+            guardian.setCustomNameVisible(true);
+            guardian.setRemoveWhenFarAway(false);
+            guardian.setAI(true);
+            
+            // Atributos épicos (para Netherite Prot 4)
+            guardian.getAttribute(Attribute.MAX_HEALTH).setBaseValue(800.0);  // 400 corazones
+            guardian.setHealth(800.0);
+            
+            guardian.getAttribute(Attribute.ATTACK_DAMAGE).setBaseValue(24.0);  // ~8 corazones con Prot 4
+            guardian.getAttribute(Attribute.MOVEMENT_SPEED).setBaseValue(0.35);  // Rápido para su tamaño
+            guardian.getAttribute(Attribute.ARMOR).setBaseValue(20.0);  // Resistencia alta
+            guardian.getAttribute(Attribute.ARMOR_TOUGHNESS).setBaseValue(12.0);
+            guardian.getAttribute(Attribute.KNOCKBACK_RESISTANCE).setBaseValue(0.8);  // Muy difícil de empujar
+            
+            // Equipamiento Netherite completo
+            EntityEquipment equip = guardian.getEquipment();
+            if (equip != null) {
             // Armadura Netherite encantada
             ItemStack helmet = new ItemStack(Material.NETHERITE_HELMET);
             helmet.addEnchantment(Enchantment.PROTECTION, 4);
@@ -1053,47 +1256,51 @@ public class EcoSombrasEvent extends EventBase {
             equip.setLeggingsDropChance(0);
             equip.setBootsDropChance(0);
             equip.setItemInMainHandDropChance(0);
-        }
-        
-        guardianEntity = guardian;
-        entidadesEvento.add(guardian.getUniqueId());
-        
-        // Mensaje dramático
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            messageBus.broadcast("§8§o\"Ro… po… sis… ten…\"", "eco_sombras");
-            arenaCenter.getWorld().playSound(arenaCenter, Sound.ENTITY_WARDEN_ROAR, 2.0f, 0.3f);
-        }, 40L);
-        
-        // Efecto de aura constante con partículas épicas
-        BukkitTask auraTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
-            if (guardian.isValid()) {
-                Location loc = guardian.getLocation();
-                // Aura de sombras
-                loc.getWorld().spawnParticle(Particle.SQUID_INK, loc.clone().add(0, 3, 0), 15, 1.5, 3, 1.5, 0.05);
-                loc.getWorld().spawnParticle(Particle.SOUL_FIRE_FLAME, loc.clone().add(0, 2, 0), 10, 1, 2, 1, 0.03);
-                loc.getWorld().spawnParticle(Particle.SMOKE, loc.clone().add(0, 1, 0), 8, 1, 1.5, 1, 0.02);
-                
-                // Efecto de respiración (cada 3 segundos)
-                if (ticksEnActo % 60 == 0) {
-                    loc.getWorld().playSound(loc, Sound.ENTITY_WARDEN_HEARTBEAT, 1.5f, 0.5f);
-                }
-                
-                // Aplicar efectos a jugadores cercanos
-                for (Player p : Bukkit.getOnlinePlayers()) {
-                    if (p.getWorld().equals(loc.getWorld()) && p.getLocation().distance(loc) < 15) {
-                        // Debuff leve cerca del guardián
-                        p.addPotionEffect(new org.bukkit.potion.PotionEffect(
-                            org.bukkit.potion.PotionEffectType.WEAKNESS, 60, 0, false, false
-                        ));
+            }
+            
+            guardianEntity = guardian;
+            entidadesEvento.add(guardian.getUniqueId());
+            
+            // Mensaje dramático
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                messageBus.broadcast("§8§o\"Ro… po… sis… ten…\"", "eco_sombras");
+                arenaCenter.getWorld().playSound(arenaCenter, Sound.ENTITY_WARDEN_ROAR, 2.0f, 0.3f);
+            }, 40L);
+            
+            // Efecto de aura constante con partículas épicas
+            BukkitTask auraTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+                if (guardian.isValid()) {
+                    Location loc = guardian.getLocation();
+                    // Aura de sombras
+                    loc.getWorld().spawnParticle(Particle.SQUID_INK, loc.clone().add(0, 3, 0), 15, 1.5, 3, 1.5, 0.05);
+                    loc.getWorld().spawnParticle(Particle.SOUL_FIRE_FLAME, loc.clone().add(0, 2, 0), 10, 1, 2, 1, 0.03);
+                    loc.getWorld().spawnParticle(Particle.SMOKE, loc.clone().add(0, 1, 0), 8, 1, 1.5, 1, 0.02);
+                    
+                    // Efecto de respiración (cada 3 segundos)
+                    if (ticksEnActo % 60 == 0) {
+                        loc.getWorld().playSound(loc, Sound.ENTITY_WARDEN_HEARTBEAT, 1.5f, 0.5f);
+                    }
+                    
+                    // Aplicar efectos a jugadores cercanos
+                    for (Player p : Bukkit.getOnlinePlayers()) {
+                        if (p.getWorld().equals(loc.getWorld()) && p.getLocation().distance(loc) < 15) {
+                            // Debuff leve cerca del guardián
+                            p.addPotionEffect(new org.bukkit.potion.PotionEffect(
+                                org.bukkit.potion.PotionEffectType.WEAKNESS, 60, 0, false, false
+                            ));
+                        }
                     }
                 }
-            }
-        }, 0L, 20L);  // Cada segundo
-        
-        oleadaTask = auraTask;
-        
-        // Habilidades especiales del Guardián
-        iniciarHabilidadesGuardian(guardian);
+            }, 0L, 20L);  // Cada segundo
+            
+            oleadaTask = auraTask;
+            
+            // Habilidades especiales del Guardián
+            iniciarHabilidadesGuardian(guardian);
+            
+            // Restaurar tiempo del mundo
+            world.setTime(tiempoOriginal);
+        }, 60L); // Spawn después de 3 segundos de oscuridad
     }
     
     private void iniciarHabilidadesGuardian(Giant guardian) {
@@ -1571,13 +1778,37 @@ public class EcoSombrasEvent extends EventBase {
         for (Player p : Bukkit.getOnlinePlayers()) {
             p.sendTitle(titulo, "", fadeIn, stay, fadeOut);
             
-            // Screen shake simulado con movimiento de cámara
             Location loc = p.getLocation();
-            p.playSound(loc, Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 0.5f, 0.8f);
-            p.playSound(loc, Sound.AMBIENT_CAVE, 1.0f, 0.5f);
             
-            // Efecto de partículas locales
-            loc.getWorld().spawnParticle(Particle.LARGE_SMOKE, loc, 30, 2, 1, 2, 0.1);
+            // SCREEN SHAKE real con velocidad
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                for (int i = 0; i < 5; i++) {
+                    final int index = i;
+                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                        Vector shake = new Vector(
+                            (random.nextDouble() - 0.5) * 0.3,
+                            (random.nextDouble() - 0.5) * 0.2,
+                            (random.nextDouble() - 0.5) * 0.3
+                        );
+                        p.setVelocity(shake);
+                    }, index * 2L);
+                }
+            }, fadeIn);
+            
+            // FADE TO BLACK/WHITE con Blindness
+            p.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, fadeIn + stay + fadeOut, 0, false, false));
+            
+            // Sonidos superpuestos cinematográficos
+            p.playSound(loc, Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 0.8f, 0.7f);
+            p.playSound(loc, Sound.AMBIENT_CAVE, 1.2f, 0.4f);
+            p.playSound(loc, Sound.ENTITY_WARDEN_HEARTBEAT, 0.6f, 0.5f);
+            p.playSound(loc, Sound.BLOCK_RESPAWN_ANCHOR_DEPLETE, 0.4f, 0.3f);
+            
+            // Partículas masivas superpuestas
+            loc.getWorld().spawnParticle(Particle.LARGE_SMOKE, loc, 50, 3, 2, 3, 0.15);
+            loc.getWorld().spawnParticle(Particle.SQUID_INK, loc, 30, 2, 1.5, 2, 0.1);
+            loc.getWorld().spawnParticle(Particle.ASH, loc.clone().add(0, 10, 0), 40, 5, 3, 5, 0.05);
+            loc.getWorld().spawnParticle(Particle.REVERSE_PORTAL, loc, 20, 1, 1, 1, 0.3);
         }
     }
     
