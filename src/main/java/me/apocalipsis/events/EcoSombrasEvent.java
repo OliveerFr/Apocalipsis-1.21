@@ -23,6 +23,7 @@ import me.apocalipsis.ui.SoundUtil;
 import me.apocalipsis.events.gameplay.QTESystem;
 import me.apocalipsis.events.gameplay.TelegraphedAttack;
 import me.apocalipsis.events.gameplay.EventAudioSystem;
+import me.apocalipsis.events.gameplay.EnvironmentSystem;
 
 /**
  * El Eco de las Sombras Largas - Evento cinematográfico de 2-3 horas
@@ -124,6 +125,9 @@ public class EcoSombrasEvent extends EventBase {
     // Sistema de audio avanzado
     private EventAudioSystem audioSystem;
     
+    // Sistema de ambiente inmersivo
+    private EnvironmentSystem environmentSystem;
+    
     // ═══════════════════════════════════════════════════════════════════
     // CONSTRUCTOR
     // ═══════════════════════════════════════════════════════════════════
@@ -154,6 +158,9 @@ public class EcoSombrasEvent extends EventBase {
         
         // Inicializar sistema de audio
         audioSystem = new EventAudioSystem(plugin);
+        
+        // Inicializar sistema de ambiente
+        environmentSystem = new EnvironmentSystem(plugin);
     }
     
     private void loadConfig() {
@@ -245,6 +252,9 @@ public class EcoSombrasEvent extends EventBase {
         
         // 🎵 AUDIO: Limpiar sistema de audio
         audioSystem.cleanupAll();
+        
+        // 🌫️ AMBIENTE: Restaurar ambiente completo
+        environmentSystem.cleanupAll();
     }
     
     @Override
@@ -294,6 +304,12 @@ public class EcoSombrasEvent extends EventBase {
     
     private void iniciarActoActivacion() {
         plugin.getLogger().info("[EcoSombras] Iniciando Acto 0: Activación");
+        
+        // 🌫️ AMBIENTE: Tormenta oscura + niebla densa
+        World world = Bukkit.getWorlds().get(0);
+        environmentSystem.setDynamicWeather(world, EnvironmentSystem.WeatherType.DARK_STORM, 0);
+        environmentSystem.createVolumetricFog(world, EnvironmentSystem.FogIntensity.DENSE, 0);
+        environmentSystem.adjustWorldLighting(world, 18000, true); // Medianoche bloqueada
         
         // 🎬 CINEMATOGRAFfromA: Zoom + Letterbox para todos
         for (Player p : Bukkit.getOnlinePlayers()) {
@@ -703,6 +719,15 @@ public class EcoSombrasEvent extends EventBase {
             for (Player p : Bukkit.getOnlinePlayers()) {
                 p.sendTitle("§5§lUna raíz de la sombra", "§7ha despertado", 10, 60, 20);
                 p.playSound(p.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 1.0f, 0.5f);
+                
+                // 🌫️ AMBIENTE: Transición a ceniza + corrupción
+                World world = nucleoLocation.getWorld();
+                environmentSystem.setDynamicWeather(world, EnvironmentSystem.WeatherType.ASHEN_FOG, 0);
+                environmentSystem.spawnAtmosphericEffect(world, EnvironmentSystem.AtmosphericEffect.ASH_FALL, 0);
+                
+                // Corrupción del terreno alrededor del núcleo
+                environmentSystem.alterWorldTemporarily(nucleoLocation, 15, 
+                    EnvironmentSystem.CorruptionType.NETHERRACK_SPREAD);
                 
                 // 🎵 AUDIO: Transición a música de núcleo épica
                 audioSystem.playActMusic(p, EventAudioSystem.MusicTrack.NUCLEUS);
@@ -1380,6 +1405,16 @@ public class EcoSombrasEvent extends EventBase {
         if (arenaCenter == null) return;
         
         guardianSpawneado = true;
+        
+        // 🌫️ AMBIENTE: Lluvia sangrienta + grietas del vacío + corrupción extrema
+        World bossWorld = arenaCenter.getWorld();
+        environmentSystem.setDynamicWeather(bossWorld, EnvironmentSystem.WeatherType.BLOOD_RAIN, 0);
+        environmentSystem.spawnAtmosphericEffect(bossWorld, EnvironmentSystem.AtmosphericEffect.VOID_CRACKS, 0);
+        environmentSystem.spawnAtmosphericEffect(bossWorld, EnvironmentSystem.AtmosphericEffect.CORRUPTION_SPREAD, 0);
+        
+        // Corrupción masiva del terreno (void corruption)
+        environmentSystem.alterWorldTemporarily(arenaCenter, 25, 
+            EnvironmentSystem.CorruptionType.VOID_CORRUPTION);
         
         // 🎬 CINEMATOGRÁFICO COMPLETO: Slow motion + Freeze + Shake
         for (Player p : Bukkit.getOnlinePlayers()) {

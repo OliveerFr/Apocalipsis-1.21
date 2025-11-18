@@ -1,4 +1,5 @@
 me\apocalipsis\events\gameplay\EventLootSystem$Rarity.class
+me\apocalipsis\events\gameplay\EnvironmentSystem$1.class
 me\apocalipsis\utils\ParticleCompat.class
 me\apocalipsis\experience\AbilityService$RankAbility.class
 me\apocalipsis\ui\FeedbackSystem$IndicatorType.class
@@ -9,6 +10,7 @@ me\apocalipsis\events\EcoSombrasEvent.class
 me\apocalipsis\events\gameplay\FeedbackSystem$2.class
 me\apocalipsis\events\gameplay\GuardianPhaseSystem$7.class
 me\apocalipsis\events\gameplay\FeedbackSystem.class
+me\apocalipsis\events\gameplay\EnvironmentSystem$4.class
 me\apocalipsis\ui\SoundUtil.class
 me\apocalipsis\events\gameplay\QTESystem$CooperativeQTE$1.class
 me\apocalipsis\events\EcoSombrasEvent$3.class
@@ -41,9 +43,11 @@ me\apocalipsis\experience\ExperienceService$PlayerExperienceData.class
 me\apocalipsis\events\gameplay\ParticleEffectSystem$AmbientStyle.class
 me\apocalipsis\commands\ApocalipsisCommand$WaterScanResult.class
 me\apocalipsis\missions\MissionAssignment.class
+me\apocalipsis\events\gameplay\EnvironmentSystem$AtmosphericEffect.class
 me\apocalipsis\events\gameplay\QTESystem.class
 me\apocalipsis\listeners\ChatListener.class
 me\apocalipsis\events\EcoSombrasEvent$4.class
+me\apocalipsis\events\gameplay\EnvironmentSystem$3.class
 me\apocalipsis\events\gameplay\QTESystem$InputType.class
 me\apocalipsis\ui\UIManager$3.class
 me\apocalipsis\events\gameplay\CinematicSystem$ShakeIntensity.class
@@ -72,6 +76,7 @@ me\apocalipsis\events\gameplay\GuardianPhaseSystem$5.class
 me\apocalipsis\ui\UIManager$1.class
 me\apocalipsis\ui\UIManager$NotificationType.class
 me\apocalipsis\utils\DisasterDamage.class
+me\apocalipsis\events\gameplay\EnvironmentSystem$WeatherType.class
 me\apocalipsis\events\gameplay\TelegraphedAttack$3.class
 me\apocalipsis\missions\MissionService.class
 me\apocalipsis\events\EcoBrasasEvent$Fase.class
@@ -90,6 +95,7 @@ me\apocalipsis\events\gameplay\ParticleEffectSystem$5.class
 me\apocalipsis\events\gameplay\QTESystem$ActiveQTE$2.class
 me\apocalipsis\events\gameplay\CinematicSystem$6.class
 me\apocalipsis\events\gameplay\EventAudioSystem$6.class
+me\apocalipsis\events\gameplay\EnvironmentSystem.class
 me\apocalipsis\events\gameplay\EventLootSystem$Difficulty.class
 me\apocalipsis\events\gameplay\GuardianPhaseSystem$3.class
 me\apocalipsis\missions\MissionType.class
@@ -104,6 +110,8 @@ me\apocalipsis\events\EventController.class
 me\apocalipsis\events\EcoSombrasListener.class
 me\apocalipsis\events\gameplay\EventAudioSystem$MusicTrack.class
 me\apocalipsis\missions\MissionRenderer.class
+me\apocalipsis\events\gameplay\EnvironmentSystem$2.class
+me\apocalipsis\events\gameplay\EnvironmentSystem$5.class
 me\apocalipsis\events\gameplay\EventAudioSystem$1.class
 me\apocalipsis\events\gameplay\GuardianPhaseSystem$9.class
 me\apocalipsis\ui\MessageBus.class
@@ -120,6 +128,7 @@ me\apocalipsis\ui\FeedbackSystem$3.class
 me\apocalipsis\events\EcoSombrasEvent$1.class
 me\apocalipsis\listeners\PlayerListener.class
 me\apocalipsis\events\gameplay\ParticleEffectSystem$AuraStyle.class
+me\apocalipsis\events\gameplay\EnvironmentSystem$CorruptionType.class
 me\apocalipsis\experience\RewardService$RankReward.class
 me\apocalipsis\listeners\MissionListener.class
 me\apocalipsis\events\gameplay\TelegraphedAttack$4$1.class
@@ -132,8 +141,10 @@ me\apocalipsis\Apocalipsis.class
 me\apocalipsis\events\gameplay\EventAudioSystem$SoundType.class
 me\apocalipsis\events\gameplay\EventAudioSystem$StingerType.class
 me\apocalipsis\listeners\DisasterEvasionListener.class
+me\apocalipsis\events\gameplay\EnvironmentSystem$6.class
 me\apocalipsis\events\gameplay\ParticleEffectSystem$DistortionType.class
 me\apocalipsis\events\gameplay\TelegraphedAttack.class
+me\apocalipsis\events\gameplay\EnvironmentSystem$7.class
 me\apocalipsis\events\gameplay\EventLootSystem.class
 me\apocalipsis\utils\ExplosionGuard.class
 me\apocalipsis\events\EcoBrasasEvent$OleadaState.class
@@ -148,6 +159,7 @@ me\apocalipsis\events\gameplay\ParticleEffectSystem$SymbolType.class
 me\apocalipsis\events\gameplay\TelegraphedAttack$AttackCallback.class
 me\apocalipsis\missions\MissionCatalog.class
 me\apocalipsis\disaster\DisasterBase.class
+me\apocalipsis\events\gameplay\EnvironmentSystem$FogIntensity.class
 me\apocalipsis\experience\ExperienceService$1.class
 me\apocalipsis\events\gameplay\EventAudioSystem$2.class
 me\apocalipsis\experience\RewardService.class
