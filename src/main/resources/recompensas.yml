@@ -220,7 +220,7 @@ recompensas_por_rango:
   # Al alcanzar EXPLORADOR (~Día 3-5)
   EXPLORADOR:
     comandos:
-      - "protectionstones give 15 %player%"                    # 1 bloque de protección
+      - "ps give %player% 15"                                # 1 bloque de protección
       - "give %player% minecraft:diamond 8"                    # 8 diamantes (antes 5)
       - "give %player% minecraft:golden_apple 5"               # 5 manzanas doradas (antes 3)
       - "give %player% minecraft:iron_block 16"                # 16 bloques de hierro (nuevo)
@@ -229,7 +229,7 @@ recompensas_por_rango:
   # Al alcanzar SOBREVIVIENTE (~Día 10-12)
   SOBREVIVIENTE:
     comandos:
-      - "protectionstones give 15 %player%"                    # 1 bloque de protección
+      - "ps give %player% 15"                                # 1 bloque de protección
       - "give %player% minecraft:diamond 15"                   # 15 diamantes (antes 10)
       - "give %player% minecraft:golden_apple 8"               # 8 manzanas doradas (antes 5)
       - "give %player% minecraft:ender_pearl 32"               # 32 perlas de ender (antes 16)
@@ -239,8 +239,7 @@ recompensas_por_rango:
   # Al alcanzar VETERANO (~Día 20-25)
   VETERANO:
     comandos:
-      - "protectionstones give 15 %player%"                    # 2 bloques (antes 1)
-      - "protectionstones give 15 %player%"
+      - "ps give %player% 15 2"                              # 2 bloques de protección
       - "give %player% minecraft:diamond 25"                   # 25 diamantes (antes 20)
       - "give %player% minecraft:enchanted_golden_apple 3"     # 3 manzanas encantadas (antes 2)
       - "give %player% minecraft:ender_pearl 64"               # 64 perlas de ender (antes 32)
@@ -251,8 +250,7 @@ recompensas_por_rango:
   # Al alcanzar LEYENDA (~Día 35-40)
   LEYENDA:
     comandos:
-      - "protectionstones give 15 %player%"                    # 2 bloques
-      - "protectionstones give 15 %player%"
+      - "ps give %player% 15 2"                              # 2 bloques de protección
       - "give %player% minecraft:netherite_ingot 8"            # 8 lingotes (antes 5)
       - "give %player% minecraft:enchanted_golden_apple 5"     # 5 manzanas encantadas (antes 3)
       - "give %player% minecraft:totem_of_undying 3"           # 3 tótems (antes 2)
@@ -263,9 +261,7 @@ recompensas_por_rango:
   # Al alcanzar MAESTRO (~Día 50-55)
   MAESTRO:
     comandos:
-      - "protectionstones give 15 %player%"                    # 3 bloques (antes 1)
-      - "protectionstones give 15 %player%"
-      - "protectionstones give 15 %player%"
+      - "ps give %player% 15 3"                              # 3 bloques de protección
       - "give %player% minecraft:netherite_ingot 15"           # 15 lingotes (antes 10)
       - "give %player% minecraft:enchanted_golden_apple 8"     # 8 manzanas encantadas (antes 5)
       - "give %player% minecraft:totem_of_undying 5"           # 5 tótems (antes 3)
@@ -276,9 +272,7 @@ recompensas_por_rango:
   # Al alcanzar TITAN (~Día 65-70)
   TITAN:
     comandos:
-      - "protectionstones give 15 %player%"                    # 3 bloques
-      - "protectionstones give 15 %player%"
-      - "protectionstones give 15 %player%"
+      - "ps give %player% 15 3"                              # 3 bloques de protección
       - "give %player% minecraft:netherite_ingot 25"           # 25 lingotes (antes 20)
       - "give %player% minecraft:enchanted_golden_apple 12"    # 12 manzanas encantadas (antes 8)
       - "give %player% minecraft:totem_of_undying 8"           # 8 tótems (antes 5)
@@ -289,11 +283,7 @@ recompensas_por_rango:
   # Al alcanzar ABSOLUTO (~Día 75) - ¡ÉPICO!
   ABSOLUTO:
     comandos:
-      - "protectionstones give 15 %player%"                    # 5 bloques (antes 1)
-      - "protectionstones give 15 %player%"
-      - "protectionstones give 15 %player%"
-      - "protectionstones give 15 %player%"
-      - "protectionstones give 15 %player%"
+      - "ps give %player% 15 5"                              # 5 bloques de protección
       - "give %player% minecraft:netherite_ingot 48"           # 48 lingotes (antes 32)
       - "give %player% minecraft:enchanted_golden_apple 32"    # 32 manzanas encantadas (antes 16)
       - "give %player% minecraft:totem_of_undying 15"          # 15 tótems (antes 10)
