@@ -22,6 +22,7 @@ import me.apocalipsis.ui.MessageBus;
 import me.apocalipsis.ui.SoundUtil;
 import me.apocalipsis.events.gameplay.QTESystem;
 import me.apocalipsis.events.gameplay.TelegraphedAttack;
+import me.apocalipsis.events.gameplay.EventAudioSystem;
 
 /**
  * El Eco de las Sombras Largas - Evento cinematográfico de 2-3 horas
@@ -120,6 +121,9 @@ public class EcoSombrasEvent extends EventBase {
     // Sistema cinematógrafico
     private me.apocalipsis.events.gameplay.CinematicSystem cinematicSystem;
     
+    // Sistema de audio avanzado
+    private EventAudioSystem audioSystem;
+    
     // ═══════════════════════════════════════════════════════════════════
     // CONSTRUCTOR
     // ═══════════════════════════════════════════════════════════════════
@@ -147,6 +151,9 @@ public class EcoSombrasEvent extends EventBase {
         
         // Inicializar sistema cinematógrafico
         cinematicSystem = new me.apocalipsis.events.gameplay.CinematicSystem(plugin);
+        
+        // Inicializar sistema de audio
+        audioSystem = new EventAudioSystem(plugin);
     }
     
     private void loadConfig() {
@@ -235,6 +242,9 @@ public class EcoSombrasEvent extends EventBase {
         
         // Limpiar sistema cinematográfico
         cinematicSystem.cleanupAll();
+        
+        // 🎵 AUDIO: Limpiar sistema de audio
+        audioSystem.cleanupAll();
     }
     
     @Override
@@ -287,6 +297,15 @@ public class EcoSombrasEvent extends EventBase {
         
         // 🎬 CINEMATOGRAFfromA: Zoom + Letterbox para todos
         for (Player p : Bukkit.getOnlinePlayers()) {
+            // 🎵 AUDIO: Música de activación tensa
+            audioSystem.playActMusic(p, EventAudioSystem.MusicTrack.ACTIVATION);
+            
+            // 🎵 AUDIO: Ambiente de tensión
+            audioSystem.startAmbientTension(p);
+            
+            // 🎵 AUDIO: Iniciar heartbeat system
+            audioSystem.startHeartbeat(p);
+            
             // Zoom in cinematógrafico (0.5 = alejado)
             cinematicSystem.smoothZoom(p, 0.6f, 100);
             
@@ -685,6 +704,21 @@ public class EcoSombrasEvent extends EventBase {
                 p.sendTitle("§5§lUna raíz de la sombra", "§7ha despertado", 10, 60, 20);
                 p.playSound(p.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 1.0f, 0.5f);
                 
+                // 🎵 AUDIO: Transición a música de núcleo épica
+                audioSystem.playActMusic(p, EventAudioSystem.MusicTrack.NUCLEUS);
+                
+                // 🎵 AUDIO: Sonido posicional del spawn con reverb TEMPLE
+                audioSystem.playPositionalSoundWithReverb(p, nucleoLocation, 
+                    EventAudioSystem.SoundType.NUCLEUS_SPAWN, 64.0, 
+                    EventAudioSystem.ReverbType.TEMPLE);
+                
+                // 🎵 AUDIO: Stinger musical de núcleo
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    if (p.isOnline()) {
+                        audioSystem.playStinger(p, EventAudioSystem.StingerType.NUCLEUS_SPAWNED);
+                    }
+                }, 20L);
+                
                 // 🎬 CINEMATOGRAFÍA: Camera shake + Orbit alrededor del núcleo
                 cinematicSystem.cameraShake(p, 
                     me.apocalipsis.events.gameplay.CinematicSystem.ShakeIntensity.MEDIUM, 60);
@@ -985,6 +1019,16 @@ public class EcoSombrasEvent extends EventBase {
         
         // Efectos
         Location anclaLoc = anclaLocations.get(id);
+        
+        // 🎵 AUDIO: Sonido posicional del ancla sellada con reverb
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            audioSystem.playPositionalSoundWithReverb(p, anclaLoc, 
+                EventAudioSystem.SoundType.ANCHOR_SEALED, 48.0, 
+                EventAudioSystem.ReverbType.TEMPLE);
+            
+            // Stinger musical de ancla
+            audioSystem.playStinger(p, EventAudioSystem.StingerType.ANCHOR_SEALED);
+        }
         
         // 🎬 SCREEN SHAKE FUERTE a todos los jugadores
         for (Player p : Bukkit.getOnlinePlayers()) {
@@ -1339,6 +1383,21 @@ public class EcoSombrasEvent extends EventBase {
         
         // 🎬 CINEMATOGRÁFICO COMPLETO: Slow motion + Freeze + Shake
         for (Player p : Bukkit.getOnlinePlayers()) {
+            // 🎵 AUDIO: Transición a música de boss épica
+            audioSystem.playActMusic(p, EventAudioSystem.MusicTrack.GUARDIAN);
+            
+            // 🎵 AUDIO: Sonido posicional del guardián spawn con reverb CAVE
+            audioSystem.playPositionalSoundWithReverb(p, arenaCenter, 
+                EventAudioSystem.SoundType.GUARDIAN_SPAWN, 96.0, 
+                EventAudioSystem.ReverbType.CAVE);
+            
+            // 🎵 AUDIO: Stinger épico de guardián
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (p.isOnline()) {
+                    audioSystem.playStinger(p, EventAudioSystem.StingerType.GUARDIAN_SPAWNED);
+                }
+            }, 40L);
+            
             // Freeze frame inicial (2 segundos)
             cinematicSystem.freezeFrame(p, 40);
             
@@ -2007,6 +2066,19 @@ public class EcoSombrasEvent extends EventBase {
             
             // Experiencia por kill
             killer.giveExp((int) (10 * difficulty.multiplier));
+            
+            // 🎵 AUDIO: Sonido posicional de muerte con reverb
+            Location deathLoc = killer.getLocation();
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                if (p.getWorld().equals(deathLoc.getWorld())) {
+                    audioSystem.playPositionalSoundWithReverb(p, deathLoc, 
+                        EventAudioSystem.SoundType.SHADOW_DEATH, 32.0, 
+                        audioSystem.detectReverbType(p, deathLoc));
+                }
+            }
+            
+            // Stinger sutil de kill
+            audioSystem.playStinger(killer, EventAudioSystem.StingerType.SHADOW_KILLED);
             
             // Sonido
             killer.playSound(killer.getLocation(), Sound.ENTITY_PHANTOM_DEATH, 0.8f, 0.5f);

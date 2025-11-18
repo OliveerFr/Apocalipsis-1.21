@@ -15,6 +15,7 @@ me\apocalipsis\events\EcoSombrasEvent$3.class
 me\apocalipsis\events\gameplay\FeedbackSystem$IndicatorType.class
 me\apocalipsis\disaster\DisasterRegistry.class
 me\apocalipsis\events\gameplay\GuardianPhaseSystem$1.class
+me\apocalipsis\events\gameplay\EventAudioSystem$7.class
 me\apocalipsis\disaster\TerremotoNew$AbsorptionInfo.class
 me\apocalipsis\disaster\DisasterController.class
 me\apocalipsis\events\gameplay\TelegraphedAttack$4.class
@@ -26,6 +27,7 @@ me\apocalipsis\events\EcoBrasasEvent.class
 me\apocalipsis\events\gameplay\QTESystem$ActiveQTE.class
 me\apocalipsis\missions\MissionDifficulty.class
 me\apocalipsis\disaster\Disaster.class
+me\apocalipsis\events\gameplay\EventAudioSystem$4.class
 me\apocalipsis\events\gameplay\FeedbackSystem$ComboTracker.class
 me\apocalipsis\listeners\ExperienceListener.class
 me\apocalipsis\disaster\adapters\PerformanceAdapter.class
@@ -65,6 +67,7 @@ me\apocalipsis\events\gameplay\QTESystem$ActiveQTE$1.class
 me\apocalipsis\ui\UIManager$4.class
 me\apocalipsis\events\gameplay\ParticleEffectSystem$6.class
 me\apocalipsis\disaster\HuracanNew.class
+me\apocalipsis\events\gameplay\EventAudioSystem$5.class
 me\apocalipsis\events\gameplay\GuardianPhaseSystem$5.class
 me\apocalipsis\ui\UIManager$1.class
 me\apocalipsis\ui\UIManager$NotificationType.class
@@ -79,15 +82,18 @@ me\apocalipsis\events\gameplay\ParticleEffectSystem.class
 me\apocalipsis\disaster\LluviaFuegoNew$WaterProtection.class
 me\apocalipsis\ui\FeedbackSystem$1.class
 me\apocalipsis\commands\ApocalipsisCommand$1.class
+me\apocalipsis\events\gameplay\EventAudioSystem$3.class
 me\apocalipsis\experience\AbilityService.class
 me\apocalipsis\events\gameplay\TelegraphedAttack$6.class
 me\apocalipsis\events\gameplay\GuardianPhaseSystem.class
 me\apocalipsis\events\gameplay\ParticleEffectSystem$5.class
 me\apocalipsis\events\gameplay\QTESystem$ActiveQTE$2.class
 me\apocalipsis\events\gameplay\CinematicSystem$6.class
+me\apocalipsis\events\gameplay\EventAudioSystem$6.class
 me\apocalipsis\events\gameplay\EventLootSystem$Difficulty.class
 me\apocalipsis\events\gameplay\GuardianPhaseSystem$3.class
 me\apocalipsis\missions\MissionType.class
+me\apocalipsis\events\gameplay\EventAudioSystem.class
 me\apocalipsis\commands\ApocalipsisCommand.class
 me\apocalipsis\utils\BlockOwnershipTracker.class
 me\apocalipsis\state\StateManager.class
@@ -96,7 +102,9 @@ me\apocalipsis\ui\FeedbackSystem.class
 me\apocalipsis\events\EcoSombrasEvent$2.class
 me\apocalipsis\events\EventController.class
 me\apocalipsis\events\EcoSombrasListener.class
+me\apocalipsis\events\gameplay\EventAudioSystem$MusicTrack.class
 me\apocalipsis\missions\MissionRenderer.class
+me\apocalipsis\events\gameplay\EventAudioSystem$1.class
 me\apocalipsis\events\gameplay\GuardianPhaseSystem$9.class
 me\apocalipsis\ui\MessageBus.class
 me\apocalipsis\events\gameplay\CinematicSystem$5.class
@@ -104,6 +112,7 @@ me\apocalipsis\events\gameplay\ParticleEffectSystem$3.class
 me\apocalipsis\events\gameplay\ParticleEffectSystem$ParticleTrailType.class
 me\apocalipsis\events\gameplay\QTESystem$QTECallback.class
 me\apocalipsis\events\gameplay\QTESystem$QTEResult.class
+me\apocalipsis\events\gameplay\EventAudioSystem$ReverbType.class
 me\apocalipsis\events\gameplay\QTESystem$QTEType.class
 me\apocalipsis\state\ServerState.class
 me\apocalipsis\events\gameplay\GuardianPhaseSystem$2.class
@@ -120,6 +129,8 @@ me\apocalipsis\events\gameplay\TelegraphedAttack$AttackType.class
 me\apocalipsis\listeners\ExperienceListener$1.class
 me\apocalipsis\state\TimeService.class
 me\apocalipsis\Apocalipsis.class
+me\apocalipsis\events\gameplay\EventAudioSystem$SoundType.class
+me\apocalipsis\events\gameplay\EventAudioSystem$StingerType.class
 me\apocalipsis\listeners\DisasterEvasionListener.class
 me\apocalipsis\events\gameplay\ParticleEffectSystem$DistortionType.class
 me\apocalipsis\events\gameplay\TelegraphedAttack.class
@@ -132,11 +143,13 @@ me\apocalipsis\events\gameplay\GuardianPhaseSystem$8.class
 me\apocalipsis\events\gameplay\ParticleEffectSystem$2.class
 me\apocalipsis\events\gameplay\QTESystem$CooperativeQTE.class
 me\apocalipsis\events\gameplay\CinematicSystem$4.class
+me\apocalipsis\events\gameplay\EventAudioSystem$6$1.class
 me\apocalipsis\events\gameplay\ParticleEffectSystem$SymbolType.class
 me\apocalipsis\events\gameplay\TelegraphedAttack$AttackCallback.class
 me\apocalipsis\missions\MissionCatalog.class
 me\apocalipsis\disaster\DisasterBase.class
 me\apocalipsis\experience\ExperienceService$1.class
+me\apocalipsis\events\gameplay\EventAudioSystem$2.class
 me\apocalipsis\experience\RewardService.class
 me\apocalipsis\utils\EffectUtil.class
 me\apocalipsis\events\gameplay\TelegraphedAttack$5.class
