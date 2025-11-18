@@ -8,6 +8,7 @@ import org.bukkit.attribute.Attribute;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.*;
 import org.bukkit.inventory.EntityEquipment;
 import org.bukkit.inventory.ItemStack;
@@ -422,11 +423,13 @@ public class EcoSombrasEvent extends EventBase {
         sombra.setCustomName(config.getString("nombre", "§8Sombra Larga"));
         sombra.setCustomNameVisible(false);
         
-        // Atributos
-        sombra.getAttribute(Attribute.MAX_HEALTH).setBaseValue(config.getDouble("atributos.vida", 35));
+        // Atributos mejorados para Netherite Prot 4
+        sombra.getAttribute(Attribute.MAX_HEALTH).setBaseValue(config.getDouble("atributos.vida", 60));
         sombra.setHealth(sombra.getAttribute(Attribute.MAX_HEALTH).getValue());
-        sombra.getAttribute(Attribute.ATTACK_DAMAGE).setBaseValue(config.getDouble("atributos.danio", 7));
-        sombra.getAttribute(Attribute.MOVEMENT_SPEED).setBaseValue(config.getDouble("atributos.velocidad", 0.23));
+        sombra.getAttribute(Attribute.ATTACK_DAMAGE).setBaseValue(config.getDouble("atributos.danio", 14));
+        sombra.getAttribute(Attribute.MOVEMENT_SPEED).setBaseValue(config.getDouble("atributos.velocidad", 0.26));
+        sombra.getAttribute(Attribute.ARMOR).setBaseValue(config.getDouble("atributos.armadura", 8));
+        sombra.getAttribute(Attribute.KNOCKBACK_RESISTANCE).setBaseValue(config.getDouble("atributos.knockback_resistance", 0.3));
         
         // Visual
         sombra.setInvisible(config.getBoolean("invisible", true));
@@ -525,7 +528,8 @@ public class EcoSombrasEvent extends EventBase {
         nucleo.setGravity(false);
         nucleo.setInvulnerable(false);
         
-        double vida = config.getDouble("atributos.vida", 250);
+        // Vida aumentada para desafío con Netherite
+        double vida = config.getDouble("atributos.vida", 400);
         nucleo.getAttribute(Attribute.MAX_HEALTH).setBaseValue(vida);
         nucleo.setHealth(vida);
         nucleoVidaActual = vida;
@@ -972,44 +976,77 @@ public class EcoSombrasEvent extends EventBase {
         
         guardianSpawneado = true;
         
-        ConfigurationSection guardianConfig = config.getConfigurationSection("mobs.guardian");
-        if (guardianConfig == null) return;
-        
-        // Spawn 5 bloques sobre el centro
-        Location spawnLoc = arenaCenter.clone().add(0, 5, 0);
-        
-        // Efectos pre-spawn
-        arenaCenter.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, spawnLoc, 5);
+        // Efecto cinematográfico de spawn
+        efectoCinematico("§5§l⚔ GUARDIÁN DEL UMBRAL ⚔", 10, 80, 20);
+        arenaCenter.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, arenaCenter.clone().add(0, 5, 0), 10, 2, 2, 2);
         arenaCenter.getWorld().playSound(arenaCenter, Sound.ENTITY_WITHER_SPAWN, 2.0f, 0.5f);
+        arenaCenter.getWorld().playSound(arenaCenter, Sound.ENTITY_ENDER_DRAGON_GROWL, 2.0f, 0.3f);
         
-        // Spawn del Guardian (Wither Skeleton con atributos custom)
-        WitherSkeleton guardian = (WitherSkeleton) spawnLoc.getWorld().spawnEntity(spawnLoc, EntityType.WITHER_SKELETON);
+        // Rayo visual dramático (sin daño)
+        for (int i = 0; i < 5; i++) {
+            Location rayLoc = arenaCenter.clone().add(
+                (Math.random() - 0.5) * 10,
+                0,
+                (Math.random() - 0.5) * 10
+            );
+            rayLoc.setY(rayLoc.getWorld().getHighestBlockYAt(rayLoc));
+            rayLoc.getWorld().strikeLightningEffect(rayLoc);
+        }
+        
+        // Spawn del Guardian (Giant Zombie para mayor imponencia)
+        Location spawnLoc = arenaCenter.clone().add(0, 1, 0);
+        Giant guardian = (Giant) spawnLoc.getWorld().spawnEntity(spawnLoc, EntityType.GIANT);
         
         // Configuración
-        String nombre = guardianConfig.getString("nombre", "§5§l§nGuardián de las Sombras Largas");
+        String nombre = "§5§l§n⬢ GUARDIÁN DEL UMBRAL ⬢";
         guardian.setCustomName(nombre);
         guardian.setCustomNameVisible(true);
         guardian.setRemoveWhenFarAway(false);
+        guardian.setAI(true);
         
-        // Atributos
-        double vida = guardianConfig.getDouble("atributos.vida", 500);
-        guardian.getAttribute(Attribute.MAX_HEALTH).setBaseValue(vida);
-        guardian.setHealth(vida);
+        // Atributos épicos (para Netherite Prot 4)
+        guardian.getAttribute(Attribute.MAX_HEALTH).setBaseValue(800.0);  // 400 corazones
+        guardian.setHealth(800.0);
         
-        double danio = guardianConfig.getDouble("atributos.danio", 15);
-        guardian.getAttribute(Attribute.ATTACK_DAMAGE).setBaseValue(danio);
+        guardian.getAttribute(Attribute.ATTACK_DAMAGE).setBaseValue(24.0);  // ~8 corazones con Prot 4
+        guardian.getAttribute(Attribute.MOVEMENT_SPEED).setBaseValue(0.35);  // Rápido para su tamaño
+        guardian.getAttribute(Attribute.ARMOR).setBaseValue(20.0);  // Resistencia alta
+        guardian.getAttribute(Attribute.ARMOR_TOUGHNESS).setBaseValue(12.0);
+        guardian.getAttribute(Attribute.KNOCKBACK_RESISTANCE).setBaseValue(0.8);  // Muy difícil de empujar
         
-        double velocidad = guardianConfig.getDouble("atributos.velocidad", 0.28);
-        guardian.getAttribute(Attribute.MOVEMENT_SPEED).setBaseValue(velocidad);
-        
-        // Equipamiento
+        // Equipamiento Netherite completo
         EntityEquipment equip = guardian.getEquipment();
         if (equip != null) {
-            equip.setHelmet(new ItemStack(Material.NETHERITE_HELMET));
-            equip.setChestplate(new ItemStack(Material.NETHERITE_CHESTPLATE));
-            equip.setLeggings(new ItemStack(Material.NETHERITE_LEGGINGS));
-            equip.setBoots(new ItemStack(Material.NETHERITE_BOOTS));
-            equip.setItemInMainHand(new ItemStack(Material.NETHERITE_SWORD));
+            // Armadura Netherite encantada
+            ItemStack helmet = new ItemStack(Material.NETHERITE_HELMET);
+            helmet.addEnchantment(Enchantment.PROTECTION, 4);
+            helmet.addEnchantment(Enchantment.UNBREAKING, 3);
+            
+            ItemStack chestplate = new ItemStack(Material.NETHERITE_CHESTPLATE);
+            chestplate.addEnchantment(Enchantment.PROTECTION, 4);
+            chestplate.addEnchantment(Enchantment.UNBREAKING, 3);
+            
+            ItemStack leggings = new ItemStack(Material.NETHERITE_LEGGINGS);
+            leggings.addEnchantment(Enchantment.PROTECTION, 4);
+            leggings.addEnchantment(Enchantment.UNBREAKING, 3);
+            
+            ItemStack boots = new ItemStack(Material.NETHERITE_BOOTS);
+            boots.addEnchantment(Enchantment.PROTECTION, 4);
+            boots.addEnchantment(Enchantment.UNBREAKING, 3);
+            boots.addEnchantment(Enchantment.FEATHER_FALLING, 4);
+            
+            // Espada Netherite mejorada
+            ItemStack sword = new ItemStack(Material.NETHERITE_SWORD);
+            sword.addEnchantment(Enchantment.SHARPNESS, 5);
+            sword.addEnchantment(Enchantment.KNOCKBACK, 2);
+            sword.addEnchantment(Enchantment.FIRE_ASPECT, 2);
+            sword.addEnchantment(Enchantment.UNBREAKING, 3);
+            
+            equip.setHelmet(helmet);
+            equip.setChestplate(chestplate);
+            equip.setLeggings(leggings);
+            equip.setBoots(boots);
+            equip.setItemInMainHand(sword);
             
             equip.setHelmetDropChance(0);
             equip.setChestplateDropChance(0);
@@ -1022,23 +1059,137 @@ public class EcoSombrasEvent extends EventBase {
         entidadesEvento.add(guardian.getUniqueId());
         
         // Mensaje dramático
-        String guardianMsg = guardianConfig.getString("spawn_mensaje",
-            "§5§l⚠ EL GUARDIÁN HA DESPERTADO ⚠");
-        messageBus.broadcast(guardianMsg, "eco_sombras");
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            messageBus.broadcast("§8§o\"Ro… po… sis… ten…\"", "eco_sombras");
+            arenaCenter.getWorld().playSound(arenaCenter, Sound.ENTITY_WARDEN_ROAR, 2.0f, 0.3f);
+        }, 40L);
         
-        // Efecto de aura constante
+        // Efecto de aura constante con partículas épicas
         BukkitTask auraTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
             if (guardian.isValid()) {
                 Location loc = guardian.getLocation();
-                loc.getWorld().spawnParticle(Particle.SMOKE, loc.clone().add(0, 1, 0), 10, 0.5, 1, 0.5, 0.05);
-                loc.getWorld().spawnParticle(Particle.SOUL, loc.clone().add(0, 1, 0), 5, 0.3, 0.5, 0.3, 0.02);
-            } else {
-                // Cancelar tarea si el guardián murió
-                if (oleadaTask != null) oleadaTask.cancel();
+                // Aura de sombras
+                loc.getWorld().spawnParticle(Particle.SQUID_INK, loc.clone().add(0, 3, 0), 15, 1.5, 3, 1.5, 0.05);
+                loc.getWorld().spawnParticle(Particle.SOUL_FIRE_FLAME, loc.clone().add(0, 2, 0), 10, 1, 2, 1, 0.03);
+                loc.getWorld().spawnParticle(Particle.SMOKE, loc.clone().add(0, 1, 0), 8, 1, 1.5, 1, 0.02);
+                
+                // Efecto de respiración (cada 3 segundos)
+                if (ticksEnActo % 60 == 0) {
+                    loc.getWorld().playSound(loc, Sound.ENTITY_WARDEN_HEARTBEAT, 1.5f, 0.5f);
+                }
+                
+                // Aplicar efectos a jugadores cercanos
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    if (p.getWorld().equals(loc.getWorld()) && p.getLocation().distance(loc) < 15) {
+                        // Debuff leve cerca del guardián
+                        p.addPotionEffect(new org.bukkit.potion.PotionEffect(
+                            org.bukkit.potion.PotionEffectType.WEAKNESS, 60, 0, false, false
+                        ));
+                    }
+                }
             }
-        }, 0L, 10L);
+        }, 0L, 20L);  // Cada segundo
         
         oleadaTask = auraTask;
+        
+        // Habilidades especiales del Guardián
+        iniciarHabilidadesGuardian(guardian);
+    }
+    
+    private void iniciarHabilidadesGuardian(Giant guardian) {
+        // Pulso de Sombra cada 15 segundos
+        BukkitTask pulsoTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            if (!guardian.isValid()) {
+                return;
+            }
+            
+            Location loc = guardian.getLocation();
+            
+            // Efecto visual
+            loc.getWorld().spawnParticle(Particle.SQUID_INK, loc.clone().add(0, 3, 0), 200, 10, 3, 10, 0.1);
+            loc.getWorld().spawnParticle(Particle.SONIC_BOOM, loc.clone().add(0, 3, 0), 1);
+            loc.getWorld().playSound(loc, Sound.ENTITY_WARDEN_SONIC_BOOM, 2.0f, 0.5f);
+            
+            // Daño en área
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                if (p.getWorld().equals(loc.getWorld()) && p.getLocation().distance(loc) < 12) {
+                    p.damage(12.0);  // 6 corazones
+                    p.addPotionEffect(new org.bukkit.potion.PotionEffect(
+                        org.bukkit.potion.PotionEffectType.WITHER, 100, 1
+                    ));
+                    
+                    // Empuje radial
+                    org.bukkit.util.Vector direction = p.getLocation().toVector()
+                        .subtract(loc.toVector()).normalize();
+                    p.setVelocity(direction.multiply(1.5).setY(0.8));
+                }
+            }
+            
+            messageBus.broadcast("§8§l⚡ PULSO DE SOMBRA ⚡", "eco_sombras");
+            
+        }, 300L, 300L);  // Cada 15 segundos
+        
+        // Invocar refuerzos cada 30 segundos
+        BukkitTask invocacionTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            if (!guardian.isValid()) {
+                return;
+            }
+            
+            Location loc = guardian.getLocation();
+            messageBus.broadcast("§8El Guardián invoca refuerzos…", "eco_sombras");
+            
+            for (int i = 0; i < 4; i++) {
+                double angulo = (2 * Math.PI / 4) * i;
+                Location spawnLoc = loc.clone().add(
+                    Math.cos(angulo) * 8,
+                    0,
+                    Math.sin(angulo) * 8
+                );
+                
+                // Spawn una sombra larga simple
+                Zombie sombra = (Zombie) spawnLoc.getWorld().spawnEntity(spawnLoc, EntityType.ZOMBIE);
+                ConfigurationSection mobConfig = config.getConfigurationSection("actos.acto_2_sombras_largas.spawn_sombras.configuracion_mob");
+                if (mobConfig != null) {
+                    configurarSombraLarga(sombra, mobConfig);
+                    entidadesEvento.add(sombra.getUniqueId());
+                }
+            }
+            
+        }, 600L, 600L);  // Cada 30 segundos
+        
+        // Fase de furia al 30% de vida
+        BukkitTask furiaCheck = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            if (!guardian.isValid()) {
+                return;
+            }
+            
+            double vidaActual = guardian.getHealth();
+            double vidaMax = guardian.getAttribute(Attribute.MAX_HEALTH).getValue();
+            double porcentaje = (vidaActual / vidaMax) * 100;
+            
+            if (porcentaje <= 30 && porcentaje > 29) {
+                // Activar furia
+                messageBus.broadcast("§c§l⚠ ¡EL GUARDIÁN ENTRA EN FURIA! ⚠", "eco_sombras");
+                
+                Location loc = guardian.getLocation();
+                loc.getWorld().spawnParticle(Particle.DAMAGE_INDICATOR, loc.clone().add(0, 3, 0), 100, 2, 3, 2, 0.5);
+                loc.getWorld().playSound(loc, Sound.ENTITY_ENDER_DRAGON_GROWL, 2.0f, 0.5f);
+                
+                // Aumentar stats
+                guardian.getAttribute(Attribute.MOVEMENT_SPEED).setBaseValue(0.45);
+                guardian.getAttribute(Attribute.ATTACK_DAMAGE).setBaseValue(30.0);
+                
+                // Efecto visual permanente de furia
+                BukkitTask furiaVisual = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+                    if (guardian.isValid()) {
+                        Location l = guardian.getLocation();
+                        l.getWorld().spawnParticle(Particle.LAVA, l.clone().add(0, 3, 0), 5, 1, 2, 1, 0);
+                        l.getWorld().spawnParticle(Particle.FLAME, l.clone().add(0, 2, 0), 10, 1.5, 2, 1.5, 0.1);
+                    }
+                }, 0L, 10L);
+            }
+            
+        }, 20L, 20L);  // Cada segundo
     }
     
     private void tickActoCliffhanger() {

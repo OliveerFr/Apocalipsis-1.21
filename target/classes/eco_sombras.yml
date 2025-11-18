@@ -110,10 +110,11 @@ actos:
         equipamiento:
           cabeza: "LEATHER_HELMET:dyed:0,0,0"  # Negro
         atributos:
-          vida: 35
-          danio: 7
-          velocidad: 0.23  # Normal
-          armadura: 5
+          vida: 60  # Aumentado para Netherite Prot 4
+          danio: 14  # Aumentado para penetrar armadura
+          velocidad: 0.26  # Ligeramente más rápido
+          armadura: 8  # Más resistencia
+          knockback_resistance: 0.3  # Resistencia al empuje
         
         efectos_visuales:
           particulas_pies:
@@ -168,13 +169,14 @@ actos:
         radio_busqueda: 50
       
       atributos:
-        vida: 250
+        vida: 400  # Aumentado significativamente
         no_ataca: true
         flotante: true
         invulnerable_a:
           - "FALL"
           - "DROWNING"
           - "FIRE"
+          - "PROJECTILE"  # Resistente a flechas (50% reducción)
       
       visual:
         rotacion_continua: true
