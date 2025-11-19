@@ -1,8 +1,32 @@
 # 📊 CHECKLIST DE MEJORAS: Scoreboard
 
 **Fecha:** 19 de Noviembre de 2025  
-**Versión Target:** 1.16.3  
-**Prioridad:** 🟡 MEDIA
+**Versión Target:** 1.16.4  
+**Prioridad:** ✅ COMPLETADA  
+**Estado:** Sprint 1, 2, 3 y 4 completados
+
+---
+
+## ✅ IMPLEMENTACIONES COMPLETADAS EN v1.16.4
+
+### 🎯 Sprint 1 (v1.16.3): Quick Wins - Mejoras Visuales Básicas
+- ✅ Barra de progreso reducida de 20 a 10 caracteres
+- ✅ Iconos Unicode agregados (⚔ ★ ◈ ☠ ⏱ ✎ 👥 ✦)
+- ✅ Separadores visuales con `━━━━━━━━━━━━━`
+- ✅ Display compacto de PS + Nivel en una línea
+- ✅ Constantes extraídas para configuración
+
+### 🎯 Sprint 2 (v1.16.4): Mejoras Visuales Avanzadas
+- ✅ Display de eventos activos (Eco de Sombras, Eco de Brasas)
+- ✅ Icono específico para eventos (✦)
+
+### 🎯 Sprint 3 (v1.16.4): Optimizaciones
+- ✅ Sistema de caché de misiones (5 segundos)
+- ✅ Reducción de llamadas a `getActiveAssignments()`
+
+### 🎯 Sprint 4 (v1.16.4): Polish & Animaciones
+- ✅ Título animado del scoreboard (alternancia de colores §4 ↔ §c)
+- ✅ Contador de animación (`titleAnimationTick`)
 
 ---
 
@@ -20,7 +44,7 @@
 ## 🎨 SECCIÓN 1: MEJORAS VISUALES
 
 ### ✅ Tarea 1.1: Reducir tamaño de barra de progreso
-**Estado:** ⏳ PENDIENTE  
+**Estado:** ✅ COMPLETADO (v1.16.3)  
 **Prioridad:** 🔴 ALTA  
 **Archivo:** `src/main/java/me/apocalipsis/ui/ScoreboardManager.java`
 
@@ -40,7 +64,7 @@ private String buildProgressBar(double progress) {
 ---
 
 ### ✅ Tarea 1.2: Mejorar separadores visuales
-**Estado:** ⏳ PENDIENTE  
+**Estado:** ✅ COMPLETADO (v1.16.3)  
 **Prioridad:** 🟡 MEDIA  
 **Archivo:** `src/main/java/me/apocalipsis/ui/ScoreboardManager.java`
 
@@ -58,7 +82,7 @@ content.append("§e§lMisiones:\n");
 ---
 
 ### ✅ Tarea 1.3: Añadir iconos Unicode
-**Estado:** ⏳ PENDIENTE  
+**Estado:** ✅ COMPLETADO (v1.16.3)  
 **Prioridad:** 🟡 MEDIA  
 **Archivo:** `src/main/java/me/apocalipsis/ui/ScoreboardManager.java`
 

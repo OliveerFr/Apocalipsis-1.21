@@ -11,8 +11,11 @@ import org.bukkit.scoreboard.DisplaySlot;
 import org.bukkit.scoreboard.Objective;
 import org.bukkit.scoreboard.Scoreboard;
 
+import net.kyori.adventure.text.Component;
+
 import me.apocalipsis.Apocalipsis;
 import me.apocalipsis.disaster.DisasterController;
+import me.apocalipsis.events.EventBase;
 import me.apocalipsis.missions.MissionRank;
 import me.apocalipsis.missions.MissionService;
 import me.apocalipsis.missions.RankService;
@@ -37,6 +40,7 @@ public class ScoreboardManager {
     private static final String ICON_TIME = "⏱";
     private static final String ICON_MISSIONS = "✎";
     private static final String ICON_ONLINE = "👥";
+    private static final String ICON_EVENT = "✦";
     
     private final Apocalipsis plugin;
     private final StateManager stateManager;
@@ -45,7 +49,14 @@ public class ScoreboardManager {
 
     private final Map<UUID, Scoreboard> playerScoreboards = new HashMap<>();
     private final Map<UUID, String> lastContentCache = new HashMap<>(); // Cache para evitar spam de paquetes
+    
+    // Cache de misiones para optimización (Sprint 3)
+    private final Map<UUID, Long> lastMissionUpdate = new HashMap<>();
+    private final Map<UUID, String> cachedMissions = new HashMap<>();
+    private static final long MISSION_CACHE_DURATION_MS = 5000; // 5 segundos
+    
     private int taskId = -1;
+    private int titleAnimationTick = 0;
 
     public ScoreboardManager(Apocalipsis plugin, StateManager stateManager,
                             DisasterController disasterController, MissionService missionService,
@@ -69,6 +80,9 @@ public class ScoreboardManager {
     }
 
     public void updateAll() {
+        // Incrementar contador para animación de título
+        titleAnimationTick++;
+        
         // [OPTIMIZACIÓN] Usar cache en lugar de Bukkit.getOnlinePlayers()
         for (Player player : plugin.getOnlinePlayersCache().getOnlinePlayers()) {
             updatePlayer(player);
@@ -98,8 +112,11 @@ public class ScoreboardManager {
         Objective objective = scoreboard.getObjective("apocalipsis");
         if (objective == null) {
             objective = scoreboard.registerNewObjective("apocalipsis", Criteria.DUMMY, 
-                net.kyori.adventure.text.Component.text("§c§lAPOCALIPSIS"));
+                getAnimatedTitle());
             objective.setDisplaySlot(DisplaySlot.SIDEBAR);
+        } else {
+            // Actualizar título con animación
+            objective.displayName(getAnimatedTitle());
         }
 
         // Limpiar entradas anteriores
@@ -139,6 +156,12 @@ public class ScoreboardManager {
         
         content.append("§7").append(ICON_STATE).append(" Estado: §f").append(stateDisplay).append("\n");
         content.append("§7").append(ICON_DISASTER).append(" Desastre: §f").append(disasterName).append("\n");
+        
+        // Mostrar evento activo si existe
+        String activeEvent = getActiveEventDisplay();
+        if (activeEvent != null) {
+            content.append("§7").append(ICON_EVENT).append(" Evento: ").append(activeEvent).append("\n");
+        }
         
         if (state == ServerState.ACTIVO) {
             String timeMMSS = calculateTimeFromStateYml();
@@ -192,32 +215,8 @@ public class ScoreboardManager {
         
         content.append(SEPARATOR).append("\n"); // Separador visual
         
-        // Misiones
-        content.append("§7").append(ICON_MISSIONS).append(" §e§lMisiones:\n");
-        var assignments = missionService.getActiveAssignments(player);
-        var incompletas = assignments.stream()
-            .filter(a -> !a.isCompleted() && !a.isFailed())
-            .filter(a -> a.getMission().getTipo().isEnabled())
-            .limit(3)
-            .toList();
-        
-        if (incompletas.isEmpty()) {
-            content.append("§a§lTodas completadas ✓\n");
-        } else {
-            for (var assignment : incompletas) {
-                String alias = assignment.getMission().getNombre();
-                if (alias.length() > MAX_MISSION_NAME_LENGTH) {
-                    alias = alias.substring(0, MAX_MISSION_NAME_LENGTH) + "...";
-                }
-                content.append("§7• §f").append(alias).append(" §8(")
-                    .append(assignment.getProgress()).append("/")
-                    .append(assignment.getMission().getCantidad()).append(")\n");
-            }
-        }
-        
-        int completed = missionService.getCompletedCount(player);
-        int total = assignments.size();
-        content.append("§7Completadas: §a").append(completed).append("§7/§f").append(total).append("\n");
+        // Misiones con sistema de caché (Sprint 3)
+        content.append(getCachedMissionsDisplay(player));
         
         content.append(SEPARATOR).append("\n"); // Separador visual
         content.append("§7").append(ICON_ONLINE).append(" Online: §f").append(plugin.getOnlinePlayersCache().getOnlineCount()).append("\n");
@@ -353,8 +352,12 @@ public class ScoreboardManager {
     }
 
     public void clearPlayer(Player player) {
-        playerScoreboards.remove(player.getUniqueId());
-        lastContentCache.remove(player.getUniqueId());
+        UUID uuid = player.getUniqueId();
+        playerScoreboards.remove(uuid);
+        lastContentCache.remove(uuid);
+        // Limpiar caché de misiones (Sprint 3)
+        lastMissionUpdate.remove(uuid);
+        cachedMissions.remove(uuid);
         player.setScoreboard(Bukkit.getScoreboardManager().getNewScoreboard());
     }
 
@@ -364,6 +367,95 @@ public class ScoreboardManager {
         }
         playerScoreboards.clear();
         lastContentCache.clear();
+        // Limpiar caché de misiones (Sprint 3)
+        lastMissionUpdate.clear();
+        cachedMissions.clear();
+    }
+
+    /**
+     * Genera el título animado del scoreboard alternando colores
+     * @return Component con el título animado
+     */
+    private Component getAnimatedTitle() {
+        // Cambiar color cada segundo (cada 20 ticks = 1 segundo)
+        // titleAnimationTick se incrementa cada 2 segundos (40 ticks)
+        // Por tanto, cada 2 ciclos cambia el color
+        boolean useDarkRed = (titleAnimationTick % 2) == 0;
+        String color = useDarkRed ? "§4" : "§c";
+        return Component.text(color + "§lAPOCALIPSIS");
+    }
+
+    /**
+     * Obtiene el nombre del evento activo para mostrar en el scoreboard
+     * @return Nombre formateado del evento o null si no hay evento activo
+     */
+    private String getActiveEventDisplay() {
+        if (plugin.getEventController() != null) {
+            EventBase activeEvent = plugin.getEventController().getActiveEvent();
+            if (activeEvent != null) {
+                String eventName = activeEvent.getClass().getSimpleName();
+                if (eventName.equals("EcoSombrasEvent")) {
+                    return "§5§lEco de Sombras";
+                } else if (eventName.equals("EcoBrasasEvent")) {
+                    return "§6§lEco de Brasas";
+                }
+                return "§f" + eventName;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Obtiene el display de misiones con sistema de caché (Sprint 3)
+     * Regenera el contenido solo si han pasado más de 5 segundos desde la última actualización
+     * @param player Jugador para obtener sus misiones
+     * @return String con el contenido formateado de misiones
+     */
+    private String getCachedMissionsDisplay(Player player) {
+        UUID uuid = player.getUniqueId();
+        long now = System.currentTimeMillis();
+        
+        // Verificar si necesitamos regenerar el contenido
+        Long lastUpdate = lastMissionUpdate.get(uuid);
+        if (lastUpdate == null || (now - lastUpdate) >= MISSION_CACHE_DURATION_MS) {
+            // Regenerar contenido de misiones
+            StringBuilder missionContent = new StringBuilder();
+            missionContent.append("§7").append(ICON_MISSIONS).append(" §e§lMisiones:\n");
+            
+            var assignments = missionService.getActiveAssignments(player);
+            var incompletas = assignments.stream()
+                .filter(a -> !a.isCompleted() && !a.isFailed())
+                .filter(a -> a.getMission().getTipo().isEnabled())
+                .limit(3)
+                .toList();
+            
+            if (incompletas.isEmpty()) {
+                missionContent.append("§a§lTodas completadas ✓\n");
+            } else {
+                for (var assignment : incompletas) {
+                    String alias = assignment.getMission().getNombre();
+                    if (alias.length() > MAX_MISSION_NAME_LENGTH) {
+                        alias = alias.substring(0, MAX_MISSION_NAME_LENGTH) + "...";
+                    }
+                    missionContent.append("§7• §f").append(alias).append(" §8(")
+                        .append(assignment.getProgress()).append("/")
+                        .append(assignment.getMission().getCantidad()).append(")\n");
+                }
+            }
+            
+            int completed = missionService.getCompletedCount(player);
+            int total = assignments.size();
+            missionContent.append("§7Completadas: §a").append(completed).append("§7/§f").append(total).append("\n");
+            
+            // Guardar en caché
+            String cached = missionContent.toString();
+            cachedMissions.put(uuid, cached);
+            lastMissionUpdate.put(uuid, now);
+            return cached;
+        } else {
+            // Usar caché
+            return cachedMissions.getOrDefault(uuid, "§7✎ §e§lMisiones:\n§a§lTodas completadas ✓\n");
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════════════
