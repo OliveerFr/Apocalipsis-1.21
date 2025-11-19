@@ -21,6 +21,23 @@ import me.apocalipsis.state.StateManager;
 
 public class ScoreboardManager {
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // CONSTANTES
+    // ═══════════════════════════════════════════════════════════════════════
+    private static final int PROGRESS_BAR_SIZE = 10;
+    private static final int MAX_MISSION_NAME_LENGTH = 15;
+    private static final int UPDATE_INTERVAL_TICKS = 40; // 2 segundos
+    private static final String SEPARATOR = "§8━━━━━━━━━━━━━";
+    
+    // Iconos Unicode
+    private static final String ICON_RANK = "⚔";
+    private static final String ICON_LEVEL = "★";
+    private static final String ICON_STATE = "◈";
+    private static final String ICON_DISASTER = "☠";
+    private static final String ICON_TIME = "⏱";
+    private static final String ICON_MISSIONS = "✎";
+    private static final String ICON_ONLINE = "👥";
+    
     private final Apocalipsis plugin;
     private final StateManager stateManager;
     private final MissionService missionService;
@@ -41,7 +58,7 @@ public class ScoreboardManager {
 
     public void startTask() {
         // Actualizar cada 2 segundos (40 ticks) para reducir paquetes
-        taskId = Bukkit.getScheduler().runTaskTimer(plugin, this::updateAll, 40L, 40L).getTaskId();
+        taskId = Bukkit.getScheduler().runTaskTimer(plugin, this::updateAll, UPDATE_INTERVAL_TICKS, UPDATE_INTERVAL_TICKS).getTaskId();
     }
 
     public void cancelTask() {
@@ -102,21 +119,16 @@ public class ScoreboardManager {
         
         // [FIX] Sistema de rangos con display_name traducido y scoreboard_color desde rangos.yml
         int xp = rankService.getXP(player);
+        int ps = missionService.getPlayerPs(player);
         String displayName = rankService.getTranslatedDisplayName(player);
         MissionRank currentRank = rankService.getRank(player);
         
-        // Mostrar rango actual con XP
-        content.append("§7Rango: ").append(displayName).append(" §8(§7").append(xp).append(" XP§8)\n");
-        
-        // Sistema de XP y Nivel (muestra progreso de nivel, NO de rango)
+        // Mostrar rango actual con PS y Nivel
         if (plugin.getExperienceService() != null) {
             int nivel = plugin.getExperienceService().getLevel(player);
-            int xpForNext = plugin.getExperienceService().getXPForLevel(nivel + 1);
-            int xpCurrent = plugin.getExperienceService().getXPForLevel(nivel);
-            int xpProgress = xp - xpCurrent;
-            int xpNeeded = xpForNext - xpCurrent;
-            
-            content.append("§7Nivel: §b").append(nivel).append(" §8(§7").append(xpProgress).append("/").append(xpNeeded).append(" XP§8)\n");
+            content.append("§7").append(ICON_RANK).append(" Rango: ").append(displayName).append(" §8(§e").append(ps).append(" PS §7| §b").append(nivel).append(" Nv§8)\n");
+        } else {
+            content.append("§7").append(ICON_RANK).append(" Rango: ").append(displayName).append(" §8(§e").append(ps).append(" PS§8)\n");
         }
         
         ServerState state = stateManager.getCurrentState();
@@ -125,27 +137,27 @@ public class ScoreboardManager {
             ? stateManager.getActiveDisasterId().toUpperCase().replace("_", " ") 
             : "§7Ninguno";
         
-        content.append("§7Estado: §f").append(stateDisplay).append("\n");
-        content.append("§7Desastre: §f").append(disasterName).append("\n");
+        content.append("§7").append(ICON_STATE).append(" Estado: §f").append(stateDisplay).append("\n");
+        content.append("§7").append(ICON_DISASTER).append(" Desastre: §f").append(disasterName).append("\n");
         
         if (state == ServerState.ACTIVO) {
             String timeMMSS = calculateTimeFromStateYml();
-            content.append("§7Tiempo: §a").append(timeMMSS).append("\n");
+            content.append("§7").append(ICON_TIME).append(" Tiempo: §a").append(timeMMSS).append("\n");
         } else if (state == ServerState.PREPARACION) {
             boolean prepForzada = stateManager.isPrepForzada();
             
             if (prepForzada) {
                 String timeMMSS = calculateTimeFromStateYml();
-                content.append("§7Preparación: §e").append(timeMMSS).append("\n");
+                content.append("§7").append(ICON_TIME).append(" Preparación: §e").append(timeMMSS).append("\n");
             } else {
                 String cooldownMMSS = calculateCooldownFromStateYml();
                 if (!cooldownMMSS.equals("00:00")) {
-                    content.append("§7Cooldown: §e").append(cooldownMMSS).append("\n");
+                    content.append("§7").append(ICON_TIME).append(" Cooldown: §e").append(cooldownMMSS).append("\n");
                 } else {
                     int minJugadores = plugin.getConfigManager().getMinJugadores();
                     // [OPTIMIZACIÓN] Usar cache de contador
                     int online = plugin.getOnlinePlayersCache().getOnlineCount();
-                    content.append("§7Cooldown: §a¡Listo!\n");
+                    content.append("§7").append(ICON_TIME).append(" Cooldown: §a¡Listo!\n");
                     if (online < minJugadores) {
                         content.append("§7Esperando: §e").append(online).append("§7/§f").append(minJugadores).append(" jugadores\n");
                     }
@@ -154,11 +166,11 @@ public class ScoreboardManager {
         } else if (state == ServerState.DETENIDO) {
             String cooldownMMSS = calculateCooldownFromStateYml();
             if (!cooldownMMSS.equals("00:00")) {
-                content.append("§7Cooldown: §e").append(cooldownMMSS).append("\n");
+                content.append("§7").append(ICON_TIME).append(" Cooldown: §e").append(cooldownMMSS).append("\n");
             }
         }
         
-        content.append(" \n"); // Línea vacía
+        content.append(SEPARATOR).append("\n"); // Separador visual
         
         // Progreso de rango (basado en XP según rangos.yml)
         if (!rankService.isMaxRank(player)) {
@@ -178,10 +190,10 @@ public class ScoreboardManager {
             content.append("§6§l★ RANGO MÁXIMO ★\n");
         }
         
-        content.append("  \n"); // Línea vacía
+        content.append(SEPARATOR).append("\n"); // Separador visual
         
         // Misiones
-        content.append("§e§lMisiones:\n");
+        content.append("§7").append(ICON_MISSIONS).append(" §e§lMisiones:\n");
         var assignments = missionService.getActiveAssignments(player);
         var incompletas = assignments.stream()
             .filter(a -> !a.isCompleted() && !a.isFailed())
@@ -194,7 +206,9 @@ public class ScoreboardManager {
         } else {
             for (var assignment : incompletas) {
                 String alias = assignment.getMission().getNombre();
-                if (alias.length() > 18) alias = alias.substring(0, 15) + "...";
+                if (alias.length() > MAX_MISSION_NAME_LENGTH) {
+                    alias = alias.substring(0, MAX_MISSION_NAME_LENGTH) + "...";
+                }
                 content.append("§7• §f").append(alias).append(" §8(")
                     .append(assignment.getProgress()).append("/")
                     .append(assignment.getMission().getCantidad()).append(")\n");
@@ -205,8 +219,8 @@ public class ScoreboardManager {
         int total = assignments.size();
         content.append("§7Completadas: §a").append(completed).append("§7/§f").append(total).append("\n");
         
-        content.append("   \n"); // Línea vacía
-        content.append("§7Online: §f").append(plugin.getOnlinePlayersCache().getOnlineCount()).append("\n");
+        content.append(SEPARATOR).append("\n"); // Separador visual
+        content.append("§7").append(ICON_ONLINE).append(" Online: §f").append(plugin.getOnlinePlayersCache().getOnlineCount()).append("\n");
         
         return content.toString();
     }
@@ -316,13 +330,12 @@ public class ScoreboardManager {
     }
 
     private String buildProgressBar(double progress) {
-        int bars = 20;
-        int filled = (int) Math.max(0, Math.min(bars, progress * bars));
+        int filled = (int) Math.max(0, Math.min(PROGRESS_BAR_SIZE, progress * PROGRESS_BAR_SIZE));
         
         // Colores dinámicos según progreso
         String fillColor = progress >= 0.75 ? "§a" : (progress >= 0.50 ? "§e" : (progress >= 0.25 ? "§6" : "§c"));
         
-        StringBuilder sb = new StringBuilder(64); // Pre-allocate capacity
+        StringBuilder sb = new StringBuilder(32); // Pre-allocate capacity
         sb.append("§8[");
         
         // Usar append múltiple para mejor performance
@@ -330,9 +343,9 @@ public class ScoreboardManager {
             sb.append(fillColor);
             for (int i = 0; i < filled; i++) sb.append('█');
         }
-        if (filled < bars) {
+        if (filled < PROGRESS_BAR_SIZE) {
             sb.append("§7");
-            for (int i = filled; i < bars; i++) sb.append('█');
+            for (int i = filled; i < PROGRESS_BAR_SIZE; i++) sb.append('█');
         }
         
         sb.append("§8]");
@@ -360,17 +373,24 @@ public class ScoreboardManager {
     /**
      * [FIX] Renderiza la línea de rango en el Scoreboard usando display_name traducido
      * desde rangos.yml (el display_name ya incluye códigos de color)
+     * Ahora incluye PS y Nivel en una sola línea compacta
      * @return nueva posición de línea (line - 1)
      */
     private int refreshRankLine(Player player, Objective objective, int line) {
-        int xp = rankService.getXP(player);
+        int ps = missionService.getPlayerPs(player);
         
         // Obtener display_name traducido desde rangos.yml (ya viene con colores)
         String displayName = rankService.getTranslatedDisplayName(player);
         
-        // Renderizar línea de rango: "Rango: <display_name> (XP XP)"
-        String rankLine = "§7Rango: " + displayName + " §8(§7" + xp + " XP§8)";
-        objective.getScore(rankLine).setScore(line--);
+        // Renderizar línea de rango: "⚔ Rango: <display_name> (PS PS | Nivel Nv)"
+        if (plugin.getExperienceService() != null) {
+            int nivel = plugin.getExperienceService().getLevel(player);
+            String rankLine = "§7" + ICON_RANK + " Rango: " + displayName + " §8(§e" + ps + " PS §7| §b" + nivel + " Nv§8)";
+            objective.getScore(rankLine).setScore(line--);
+        } else {
+            String rankLine = "§7" + ICON_RANK + " Rango: " + displayName + " §8(§e" + ps + " PS§8)";
+            objective.getScore(rankLine).setScore(line--);
+        }
         
         return line;
     }
