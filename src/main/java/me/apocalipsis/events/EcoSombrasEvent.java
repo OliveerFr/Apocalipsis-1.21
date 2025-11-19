@@ -781,13 +781,13 @@ public class EcoSombrasEvent extends EventBase {
             messageBus.broadcast(mensaje, "eco_sombras");
         }
         
-        // TRANSICIÓN AUTOMÁTICA al matar 20 sombras
-        if (sombrasLargasMuertas >= 20) {
+        // 🔧 FIX: TRANSICIÓN AUTOMÁTICA al matar 15 sombras (antes 20) → NÚCLEO (antes ANCLAS)
+        if (sombrasLargasMuertas >= 15) {
             if (spawnTask != null) spawnTask.cancel();
-            efectoCinematico("§5§l⚡ LAS ANCLAS DIMENSIONALES SE REVELAN", 10, 60, 20);
+            efectoCinematico("§5§l⚡ EL NÚCLEO EMERGE", 10, 60, 20);
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 limpiarEntidadesActoAnterior();
-                transicionarActo(Acto.ANCLAS);
+                transicionarActo(Acto.NUCLEO);
             }, 60L);
         }
     }
@@ -1033,13 +1033,13 @@ public class EcoSombrasEvent extends EventBase {
         LivingEntity nucleo = (LivingEntity) nucleoEntity;
         double vidaActual = nucleo.getHealth();
         
-        // TRANSICIÓN AUTOMÁTICA: Núcleo destruido → RITUAL
+        // 🔧 FIX: TRANSICIÓN AUTOMÁTICA: Núcleo destruido → ANCLAS (antes RITUAL)
         if (vidaActual <= 0 || !nucleo.isValid()) {
             if (spawnTask != null) spawnTask.cancel();
-            efectoCinematico("§5§l⚡ EL RITUAL COMIENZA ⚡", 10, 60, 20);
+            efectoCinematico("§5§l⚡ LAS ANCLAS EMERGEN ⚡", 10, 60, 20);
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 limpiarEntidadesActoAnterior();
-                transicionarActo(Acto.RITUAL);
+                transicionarActo(Acto.ANCLAS);
             }, 60L);
             return;
         }
@@ -1244,7 +1244,7 @@ public class EcoSombrasEvent extends EventBase {
     }
     
     private void tickActoAnclas() {
-        // Verificar si todas están selladas
+        // 🔧 FIX: Verificar si todas las anclas están selladas
         if (anclasSelladas.size() >= anclaLocations.size()) {
             // 🔧 FIX: Hacer núcleo VULNERABLE en lugar de matarlo automáticamente
             if (nucleoEntity != null && nucleoEntity.isValid()) {
@@ -1264,7 +1264,15 @@ public class EcoSombrasEvent extends EventBase {
                 }
             }
             
-            // NO transicionar automáticamente - esperar que jugadores lo destruyan
+            // 🔧 FIX: Verificar si el núcleo ha sido destruido después de hacerlo vulnerable
+            if (nucleoEntity == null || !nucleoEntity.isValid() || ((LivingEntity) nucleoEntity).getHealth() <= 0) {
+                messageBus.broadcast("§5§l¡El Núcleo ha sido destruido!", "eco_sombras");
+                efectoCinematico("§5§l⚡ EL RITUAL COMIENZA ⚡", 10, 60, 20);
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    limpiarEntidadesActoAnterior();
+                    transicionarActo(Acto.RITUAL);
+                }, 60L);
+            }
         }
     }
     
@@ -2411,10 +2419,11 @@ public class EcoSombrasEvent extends EventBase {
         }
         
         // ═══════════════════════════════════════════════════════════════════
-        // 🏁 FINALIZACIÓN DEL EVENTO (90 segundos)
+        // 🏁 FINALIZACIÓN DEL EVENTO (120 segundos)
         // ═══════════════════════════════════════════════════════════════════
         
-        if (ticksEnActo >= 1800) {
+        // 🔧 FIX: Cambiar de 1800 a 2400 ticks (120 segundos en vez de 90)
+        if (ticksEnActo >= 2400) {
             finalizarEvento();
         }
     }
