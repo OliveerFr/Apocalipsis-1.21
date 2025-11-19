@@ -1081,28 +1081,108 @@ public class MissionService {
     public void addPS(UUID uuid, int amount, String reason) {
         int current = playerPs.getOrDefault(uuid, 0);
         int newAmount = current + amount;
+        
+        // Detectar rank up ANTES de actualizar los PS
+        me.apocalipsis.missions.MissionRank oldRank = me.apocalipsis.missions.MissionRank.fromXp(current);
+        me.apocalipsis.missions.MissionRank newRank = me.apocalipsis.missions.MissionRank.fromXp(newAmount);
+        
         playerPs.put(uuid, newAmount);
         savePlayerData();
         
         // Log para tracking
         plugin.getLogger().info(String.format("[PS] %s ganó %d PS (%s) [%d -> %d]", 
             uuid, amount, reason, current, newAmount));
+        
+        // Si hubo rank up, ejecutar efectos y recompensas
+        if (oldRank != newRank) {
+            Player player = plugin.getServer().getPlayer(uuid);
+            if (player != null && player.isOnline()) {
+                playRankUpEffects(player, newRank);
+                
+                // Entregar recompensas de rango
+                if (plugin.getRewardService() != null) {
+                    plugin.getRewardService().deliverRewards(player, newRank);
+                }
+                
+                // Actualizar scoreboard y tablist
+                if (plugin.getScoreboardManager() != null) {
+                    plugin.getScoreboardManager().updatePlayer(player);
+                }
+                if (plugin.getTablistManager() != null) {
+                    plugin.getTablistManager().updatePlayer(player);
+                }
+            }
+        }
     }
     
     /**
      * Establece los PS de un jugador directamente (para castigos/recompensas externas)
      */
     public void setPS(UUID uuid, int ps) {
+        int current = playerPs.getOrDefault(uuid, 0);
+        
+        // Detectar rank up
+        me.apocalipsis.missions.MissionRank oldRank = me.apocalipsis.missions.MissionRank.fromXp(current);
+        me.apocalipsis.missions.MissionRank newRank = me.apocalipsis.missions.MissionRank.fromXp(ps);
+        
         playerPs.put(uuid, ps);
         savePlayerData();
+        
+        // Si hubo rank up, ejecutar efectos y recompensas
+        if (oldRank != newRank) {
+            Player player = plugin.getServer().getPlayer(uuid);
+            if (player != null && player.isOnline()) {
+                playRankUpEffects(player, newRank);
+                
+                // Entregar recompensas de rango
+                if (plugin.getRewardService() != null) {
+                    plugin.getRewardService().deliverRewards(player, newRank);
+                }
+                
+                // Actualizar scoreboard y tablist
+                if (plugin.getScoreboardManager() != null) {
+                    plugin.getScoreboardManager().updatePlayer(player);
+                }
+                if (plugin.getTablistManager() != null) {
+                    plugin.getTablistManager().updatePlayer(player);
+                }
+            }
+        }
     }
     
     /**
      * Establece los PS de un jugador por UUID (alias de setPS)
      */
     public void setPlayerPs(UUID uuid, int ps) {
+        int current = playerPs.getOrDefault(uuid, 0);
+        
+        // Detectar rank up
+        me.apocalipsis.missions.MissionRank oldRank = me.apocalipsis.missions.MissionRank.fromXp(current);
+        me.apocalipsis.missions.MissionRank newRank = me.apocalipsis.missions.MissionRank.fromXp(ps);
+        
         playerPs.put(uuid, ps);
         savePlayerData();
+        
+        // Si hubo rank up, ejecutar efectos y recompensas
+        if (oldRank != newRank) {
+            Player player = plugin.getServer().getPlayer(uuid);
+            if (player != null && player.isOnline()) {
+                playRankUpEffects(player, newRank);
+                
+                // Entregar recompensas de rango
+                if (plugin.getRewardService() != null) {
+                    plugin.getRewardService().deliverRewards(player, newRank);
+                }
+                
+                // Actualizar scoreboard y tablist
+                if (plugin.getScoreboardManager() != null) {
+                    plugin.getScoreboardManager().updatePlayer(player);
+                }
+                if (plugin.getTablistManager() != null) {
+                    plugin.getTablistManager().updatePlayer(player);
+                }
+            }
+        }
     }
 
     /**
