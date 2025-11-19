@@ -609,4 +609,167 @@
 ---
 
 **Última actualización:** 18 de noviembre de 2025  
-**Estado:** Pendiente de inicio
+**Estado:** ✅ 95% Completado (7/8 Categorías + Sesión 3 + OnlinePlayersCache)
+
+---
+
+## 🗑️ ARCHIVOS YML - GESTIÓN DE DATOS DEL SERVIDOR
+
+### 📋 Clasificación de Archivos YML
+
+#### ✅ **SEGUROS DE ELIMINAR** (No contienen datos de jugadores, se regeneran)
+Estos archivos se pueden eliminar sin perder progreso de jugadores. Se regenerarán automáticamente:
+
+1. **`state.yml`** 
+   - **Contenido**: Estado del servidor (DETENIDO/ACTIVO), último desastre, timestamps
+   - **Regenerable**: ✅ Sí, se crea automáticamente con valores por defecto
+   - **Impacto**: Ninguno en datos de jugadores
+   - **Se puede eliminar**: ✅ Sí
+
+2. **`config.yml`**
+   - **Contenido**: Configuración general del plugin (frecuencias, activaciones)
+   - **Regenerable**: ✅ Sí, se crea con valores por defecto
+   - **Impacto**: Se pierden configuraciones custom del servidor
+   - **Se puede eliminar**: ⚠️ Sí, pero se pierden ajustes personalizados
+
+3. **`chat.yml`**
+   - **Contenido**: Configuración de chat (formato, colores, filtros)
+   - **Regenerable**: ✅ Sí
+   - **Se puede eliminar**: ⚠️ Sí, pero se pierden ajustes de chat
+
+4. **`desastres.yml`**
+   - **Contenido**: Configuración de desastres (daño, frecuencia, efectos)
+   - **Regenerable**: ✅ Sí
+   - **Se puede eliminar**: ⚠️ Sí, pero se pierden balances custom
+
+5. **`eventos.yml`**
+   - **Contenido**: Configuración de eventos especiales (EcoSombras, EcoBrasas)
+   - **Regenerable**: ✅ Sí
+   - **Se puede eliminar**: ⚠️ Sí, pero se pierden ajustes de eventos
+
+6. **`eco_sombras.yml`**
+   - **Contenido**: Configuración específica del evento EcoSombras
+   - **Regenerable**: ✅ Sí
+   - **Se puede eliminar**: ⚠️ Sí, pero se pierden ajustes del evento
+
+7. **`misiones_new.yml`**
+   - **Contenido**: Catálogo de misiones (tipos, objetivos, recompensas)
+   - **Regenerable**: ✅ Sí
+   - **Se puede eliminar**: ⚠️ Sí, pero se pierden misiones custom
+
+8. **`recompensas.yml`**
+   - **Contenido**: Configuración de recompensas (PS, XP, items)
+   - **Regenerable**: ✅ Sí
+   - **Se puede eliminar**: ⚠️ Sí, pero se pierden balances de recompensas
+
+9. **`rangos.yml`**
+   - **Contenido**: Definición de rangos (requisitos, bonificaciones, colores)
+   - **Regenerable**: ✅ Sí
+   - **Se puede eliminar**: ⚠️ Sí, pero se pierden rangos custom
+
+10. **`protecciones.yml`**
+    - **Contenido**: Configuración de zonas protegidas
+    - **Regenerable**: ✅ Sí
+    - **Se puede eliminar**: ⚠️ Sí, pero se pierden ajustes de protecciones
+
+11. **`castigos.yml`**
+    - **Contenido**: Configuración de sistema de castigos
+    - **Regenerable**: ✅ Sí
+    - **Se puede eliminar**: ⚠️ Sí, pero se pierden ajustes de castigos
+
+---
+
+#### ❌ **NO ELIMINAR** (Contienen datos críticos de jugadores)
+
+**NINGUNO** - Este plugin NO guarda datos de jugadores en archivos YML. 
+
+Los datos de jugadores (XP, PS, misiones, habilidades, etc.) se almacenan en:
+- **Base de datos externa** (MySQL/SQLite según configuración)
+- O en archivos de datos del servidor (playerdata/ si usa archivos planos)
+
+---
+
+### 🔍 ¿DÓNDE ESTÁN LOS DATOS DE JUGADORES?
+
+Según el código del plugin, los datos se guardan en:
+
+1. **Base de datos** (recomendado):
+   - Tablas: `players_data`, `missions_active`, `block_ownership`, etc.
+   - Configuración en `config.yml` sección `database:`
+
+2. **Archivos planos** (fallback):
+   - Carpeta: `plugins/Apocalipsis/data/`
+   - Archivos: `playerdata/[UUID].yml` (si existe este sistema)
+
+---
+
+### ⚠️ RECOMENDACIONES DE LIMPIEZA
+
+#### **Limpieza Segura (Sin perder datos)**
+```bash
+# Puedes eliminar SOLO este archivo sin riesgo:
+rm plugins/Apocalipsis/state.yml
+```
+
+Este archivo se regenera automáticamente al iniciar el servidor con valores por defecto.
+
+---
+
+#### **Limpieza de Configuración (Resetea ajustes)**
+```bash
+# Eliminar configuraciones pero NO datos de jugadores:
+rm plugins/Apocalipsis/state.yml
+rm plugins/Apocalipsis/config.yml
+rm plugins/Apocalipsis/chat.yml
+rm plugins/Apocalipsis/desastres.yml
+rm plugins/Apocalipsis/eventos.yml
+rm plugins/Apocalipsis/eco_sombras.yml
+rm plugins/Apocalipsis/protecciones.yml
+rm plugins/Apocalipsis/castigos.yml
+```
+
+**⚠️ ADVERTENCIA**: Esto resetea TODA la configuración a valores por defecto. Haz backup primero si tienes ajustes personalizados importantes.
+
+---
+
+#### **Limpieza Total (PELIGROSO - Solo para testing)**
+```bash
+# ⛔ NO HACER EN SERVIDOR EN PRODUCCIÓN ⛔
+# Esto elimina TODO incluyendo posibles datos de jugadores
+rm -rf plugins/Apocalipsis/
+```
+
+**🔴 NUNCA hacer esto en un servidor con jugadores activos.**
+
+---
+
+### 📦 BACKUP RECOMENDADO
+
+Antes de eliminar cualquier archivo:
+
+```bash
+# Backup completo de la carpeta del plugin
+cp -r plugins/Apocalipsis/ backups/apocalipsis_backup_$(date +%Y%m%d_%H%M%S)/
+```
+
+O en Windows PowerShell:
+```powershell
+Copy-Item -Recurse plugins\Apocalipsis\ backups\apocalipsis_backup_$(Get-Date -Format 'yyyyMMdd_HHmmss')\
+```
+
+---
+
+### 🎯 RESPUESTA RÁPIDA A TU PREGUNTA
+
+**¿Qué .yml puedo eliminar sin perder datos de jugadores?**
+
+**Respuesta corta**: ✅ **`state.yml`** es el ÚNICO 100% seguro.
+
+**Respuesta completa**:
+- ✅ **100% Seguro**: `state.yml` (se regenera automáticamente)
+- ⚠️ **Seguro con reset**: Todos los demás .yml (pierdes configuraciones pero NO datos de jugadores)
+- ❌ **NUNCA eliminar**: Base de datos o carpeta `data/` (si existe)
+
+---
+
+**Los datos de jugadores (XP, PS, misiones, stats) NO están en archivos .yml, están en la base de datos o en `data/playerdata/`. Los .yml son solo configuración.**
