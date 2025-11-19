@@ -509,7 +509,9 @@ public class TerremotoNew extends DisasterBase {
             0.0,
             ThreadLocalRandom.current().nextDouble(-k, k)
         );
-        p.setVelocity(p.getVelocity().add(v));
+        // 🔧 FIX: Calcular velocidad final y aplicar con smoothing anti-cheat
+        Vector finalVelocity = p.getVelocity().add(v);
+        plugin.getVelocityManager().applySmoothedVelocity(p, finalVelocity);
         p.setFallDistance(0f);
         
         // [NUEVO] Shake de cámara (rotación de vista)

@@ -223,7 +223,8 @@ public class GuardianPhaseSystem {
                 Player player = (Player) entity;
                 Vector knockback = player.getLocation().toVector()
                     .subtract(loc.toVector()).normalize().multiply(2.0).setY(1.0);
-                player.setVelocity(knockback);
+                // 🔧 FIX: Usar VelocityManager para evitar detección anti-cheat
+                plugin.getVelocityManager().applySmoothedVelocity(player, knockback);
                 player.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 40, 0));
             }
         }
@@ -323,7 +324,8 @@ public class GuardianPhaseSystem {
                 Player player = (Player) entity;
                 Vector knockback = player.getLocation().toVector()
                     .subtract(loc.toVector()).normalize().multiply(3.0).setY(1.5);
-                player.setVelocity(knockback);
+                // 🔧 FIX: Usar VelocityManager para evitar detección anti-cheat
+                plugin.getVelocityManager().applySmoothedVelocity(player, knockback);
                 player.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 60, 1));
                 player.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 60, 2));
             }

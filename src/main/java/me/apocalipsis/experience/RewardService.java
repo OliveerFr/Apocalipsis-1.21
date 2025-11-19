@@ -118,17 +118,25 @@ public class RewardService {
         // Verificar si ya recibió esta recompensa
         String key = player.getUniqueId().toString() + ":" + rank.name();
         if (deliveredRewards.contains(key)) {
+            plugin.getLogger().info("[Rewards] " + player.getName() + " ya recibió recompensas de " + rank.name());
             return false; // Ya recibió esta recompensa
         }
         
         RankReward reward = rewardsByRank.get(rank);
         if (reward == null) {
+            plugin.getLogger().warning("[Rewards] No hay recompensas configuradas para rango: " + rank.name());
             return false; // No hay recompensas para este rango
         }
+        
+        plugin.getLogger().info("[Rewards] Entregando recompensas de " + rank.name() + " a " + player.getName());
+        plugin.getLogger().info("[Rewards] Total comandos: " + reward.getCommands().size());
         
         // Ejecutar comandos
         for (String command : reward.getCommands()) {
             String processedCommand = command.replace("%player%", player.getName());
+            
+            // 🔧 DEBUG: Log del comando procesado
+            plugin.getLogger().info("[Rewards] Ejecutando: " + processedCommand);
             
             // Ejecutar en el siguiente tick para evitar problemas de sincronización
             Bukkit.getScheduler().runTask(plugin, () -> {
@@ -150,7 +158,7 @@ public class RewardService {
         player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.5f);
         player.playSound(player.getLocation(), org.bukkit.Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
         
-        plugin.getLogger().info("[Rewards] Recompensas de " + rank.name() + " entregadas a " + player.getName());
+        plugin.getLogger().info("[Rewards] ✓ Recompensas de " + rank.name() + " entregadas a " + player.getName());
         
         return true;
     }

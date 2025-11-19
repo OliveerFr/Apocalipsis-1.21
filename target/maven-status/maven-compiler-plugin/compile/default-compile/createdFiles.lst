@@ -5,6 +5,7 @@ me\apocalipsis\events\gameplay\FeedbackSystem$2.class
 me\apocalipsis\events\gameplay\GuardianPhaseSystem$7.class
 me\apocalipsis\events\gameplay\FeedbackSystem.class
 me\apocalipsis\missions\MissionRenderer$1.class
+me\apocalipsis\utils\VelocityManager$VelocityTask.class
 me\apocalipsis\utils\BlockOwnershipTracker$1.class
 me\apocalipsis\disaster\DisasterRegistry.class
 me\apocalipsis\events\gameplay\GuardianPhaseSystem$1.class
@@ -160,6 +161,7 @@ me\apocalipsis\events\gameplay\EventAudioSystem$ReverbType.class
 me\apocalipsis\state\ServerState.class
 me\apocalipsis\events\gameplay\ChoiceSystem.class
 me\apocalipsis\ui\FeedbackSystem$3.class
+me\apocalipsis\utils\VelocityManager.class
 me\apocalipsis\listeners\PlayerListener.class
 me\apocalipsis\utils\ParticleUtil.class
 me\apocalipsis\experience\RewardService$RankReward.class

@@ -1356,7 +1356,8 @@ public class EcoSombrasEvent extends EventBase {
                         (random.nextDouble() - 0.5) * 0.3,
                         (random.nextDouble() - 0.5) * 0.5
                     );
-                    p.setVelocity(shake);
+                    // 🔧 FIX: Usar VelocityManager para evitar detección anti-cheat
+                    plugin.getVelocityManager().applySmoothedVelocity(p, shake);
                 }, index * 1L);
             }
         }
@@ -2228,7 +2229,8 @@ public class EcoSombrasEvent extends EventBase {
                     // Empuje radial
                     org.bukkit.util.Vector direction = p.getLocation().toVector()
                         .subtract(loc.toVector()).normalize();
-                    p.setVelocity(direction.multiply(1.5).setY(0.8));
+                    // 🔧 FIX: Usar VelocityManager para evitar detección anti-cheat
+                    plugin.getVelocityManager().applySmoothedVelocity(p, direction.multiply(1.5).setY(0.8));
                 }
             }
             
@@ -2985,7 +2987,8 @@ public class EcoSombrasEvent extends EventBase {
                             (random.nextDouble() - 0.5) * 0.2,
                             (random.nextDouble() - 0.5) * 0.3
                         );
-                        p.setVelocity(shake);
+                        // 🔧 FIX: Usar VelocityManager para evitar detección anti-cheat
+                        plugin.getVelocityManager().applySmoothedVelocity(p, shake);
                     }, index * 2L);
                 }
             }, fadeIn);

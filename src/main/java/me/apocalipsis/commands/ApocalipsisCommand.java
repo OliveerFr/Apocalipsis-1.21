@@ -150,6 +150,9 @@ public class ApocalipsisCommand implements CommandExecutor {
             case "level":
                 cmdNivel(sender, args);
                 break;
+            case "rewards":
+                cmdRewards(sender, args);
+                break;
             default:
                 sender.sendMessage("§cSubcomando desconocido. Usa /avo para ver ayuda.");
                 break;
@@ -2368,6 +2371,149 @@ public class ApocalipsisCommand implements CommandExecutor {
                 
             default:
                 sender.sendMessage("§cSubcomando desconocido. Usa: check o clear");
+                break;
+        }
+    }
+    
+    /**
+     * Comando /avo rewards - Debug y gestión de sistema de recompensas
+     * Subcomandos:
+     *  - /avo rewards check <jugador> - Verifica estado de recompensas
+     *  - /avo rewards force <jugador> <rango> - Fuerza entrega de recompensas
+     *  - /avo rewards reset <jugador> - Resetea recompensas recibidas
+     */
+    private void cmdRewards(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("avo.admin")) {
+            sender.sendMessage("§cNo tienes permiso.");
+            return;
+        }
+        
+        if (args.length < 2) {
+            sender.sendMessage("§e════════════════════════════════════");
+            sender.sendMessage("§6§lAVO REWARDS - Sistema de Recompensas");
+            sender.sendMessage("§e════════════════════════════════════");
+            sender.sendMessage("§f/avo rewards check <jugador>");
+            sender.sendMessage("  §7Verifica estado de recompensas del jugador");
+            sender.sendMessage("§f/avo rewards force <jugador> <rango>");
+            sender.sendMessage("  §7Fuerza entrega de recompensas de un rango");
+            sender.sendMessage("  §7Rangos: EXPLORADOR, SOBREVIVIENTE, VETERANO,");
+            sender.sendMessage("  §7        LEYENDA, MAESTRO, TITAN, ABSOLUTO");
+            sender.sendMessage("§f/avo rewards reset <jugador>");
+            sender.sendMessage("  §7Resetea todas las recompensas recibidas");
+            sender.sendMessage("§e════════════════════════════════════");
+            return;
+        }
+        
+        String subCmd = args[1].toLowerCase();
+        
+        switch (subCmd) {
+            case "check":
+                // /avo rewards check <jugador>
+                if (args.length < 3) {
+                    sender.sendMessage("§cUso: /avo rewards check <jugador>");
+                    return;
+                }
+                Player target = plugin.getServer().getPlayer(args[2]);
+                if (target == null) {
+                    sender.sendMessage("§cJugador no encontrado.");
+                    return;
+                }
+                
+                me.apocalipsis.missions.MissionRank rank = plugin.getRankService().getRank(target);
+                int ps = plugin.getMissionService().getPlayerPs(target);
+                int level = plugin.getExperienceService().getLevel(target);
+                
+                sender.sendMessage("§e════════════════════════════════════");
+                sender.sendMessage("§6§lEstado de Recompensas: §f" + target.getName());
+                sender.sendMessage("§e════════════════════════════════════");
+                sender.sendMessage("§7Rango actual: §e" + rank.getDisplayName() + " §8(" + rank.name() + ")");
+                sender.sendMessage("§7PS: §e" + ps);
+                sender.sendMessage("§7Nivel: §e" + level);
+                sender.sendMessage("");
+                sender.sendMessage("§6Recompensas de rangos:");
+                
+                me.apocalipsis.experience.RewardService rewards = plugin.getRewardService();
+                if (rewards != null) {
+                    for (me.apocalipsis.missions.MissionRank r : me.apocalipsis.missions.MissionRank.values()) {
+                        if (r == me.apocalipsis.missions.MissionRank.NOVATO) continue;
+                        
+                        boolean received = rewards.hasReceivedRewards(target, r);
+                        String status = received ? "§a✓ RECIBIDO" : "§c✗ PENDIENTE";
+                        sender.sendMessage("  " + status + " §7- §f" + r.getDisplayName());
+                    }
+                } else {
+                    sender.sendMessage("§c✗ RewardService no disponible");
+                }
+                sender.sendMessage("§e════════════════════════════════════");
+                break;
+                
+            case "force":
+                // /avo rewards force <jugador> <rango>
+                if (args.length < 4) {
+                    sender.sendMessage("§cUso: /avo rewards force <jugador> <rango>");
+                    sender.sendMessage("§7Rangos válidos: EXPLORADOR, SOBREVIVIENTE, VETERANO,");
+                    sender.sendMessage("§7                LEYENDA, MAESTRO, TITAN, ABSOLUTO");
+                    return;
+                }
+                Player targetForce = plugin.getServer().getPlayer(args[2]);
+                if (targetForce == null) {
+                    sender.sendMessage("§cJugador no encontrado.");
+                    return;
+                }
+                
+                try {
+                    me.apocalipsis.missions.MissionRank forceRank = me.apocalipsis.missions.MissionRank.valueOf(args[3].toUpperCase());
+                    
+                    if (forceRank == me.apocalipsis.missions.MissionRank.NOVATO) {
+                        sender.sendMessage("§cEl rango NOVATO no tiene recompensas.");
+                        return;
+                    }
+                    
+                    if (plugin.getRewardService() != null) {
+                        plugin.getRewardService().forceDeliverRewards(targetForce, forceRank);
+                        sender.sendMessage("§a✓ Recompensas de §6" + forceRank.getDisplayName() + " §aforzadas para §f" + targetForce.getName());
+                        sender.sendMessage("§7Revisa la consola para ver los comandos ejecutados.");
+                        
+                        if (targetForce.isOnline()) {
+                            targetForce.sendMessage("§6§l★ §eHas recibido las recompensas de §6" + forceRank.getDisplayName());
+                        }
+                    } else {
+                        sender.sendMessage("§c✗ RewardService no disponible");
+                    }
+                } catch (IllegalArgumentException e) {
+                    sender.sendMessage("§cRango inválido: §f" + args[3]);
+                    sender.sendMessage("§7Usa: EXPLORADOR, SOBREVIVIENTE, VETERANO, LEYENDA, MAESTRO, TITAN, ABSOLUTO");
+                }
+                break;
+                
+            case "reset":
+                // /avo rewards reset <jugador>
+                if (args.length < 3) {
+                    sender.sendMessage("§cUso: /avo rewards reset <jugador>");
+                    return;
+                }
+                Player targetReset = plugin.getServer().getPlayer(args[2]);
+                if (targetReset == null) {
+                    sender.sendMessage("§cJugador no encontrado.");
+                    return;
+                }
+                
+                if (plugin.getRewardService() != null) {
+                    plugin.getRewardService().resetPlayerRewards(targetReset.getUniqueId());
+                    sender.sendMessage("§a✓ Recompensas reseteadas para §f" + targetReset.getName());
+                    sender.sendMessage("§7El jugador podrá recibir todas las recompensas nuevamente.");
+                    
+                    if (targetReset.isOnline()) {
+                        targetReset.sendMessage("§e⚠ Tus recompensas de rangos han sido reseteadas por un administrador.");
+                    }
+                } else {
+                    sender.sendMessage("§c✗ RewardService no disponible");
+                }
+                break;
+                
+            default:
+                sender.sendMessage("§cSubcomando desconocido.");
+                sender.sendMessage("§7Usa: §f/avo rewards §7para ver ayuda.");
                 break;
         }
     }

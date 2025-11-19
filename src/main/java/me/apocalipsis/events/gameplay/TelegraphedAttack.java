@@ -144,8 +144,10 @@ public class TelegraphedAttack {
                             double damage = 10.0 * damageMult;
                             
                             player.damage(damage, boss);
-                            player.setVelocity(player.getLocation().toVector()
-                                .subtract(center.toVector()).normalize().multiply(1.5).setY(0.8));
+                            // 🔧 FIX: Usar VelocityManager para evitar detección anti-cheat
+                            Vector knockback = player.getLocation().toVector()
+                                .subtract(center.toVector()).normalize().multiply(1.5).setY(0.8);
+                            plugin.getVelocityManager().applySmoothedVelocity(player, knockback);
                             
                             hitPlayers.add(player);
                         }
@@ -306,7 +308,8 @@ public class TelegraphedAttack {
                             double damage = 8.0 * damageMult;
                             
                             player.damage(damage, boss);
-                            player.setVelocity(toPlayer.multiply(1.2).setY(0.6));
+                            // 🔧 FIX: Usar VelocityManager para evitar detección anti-cheat
+                            plugin.getVelocityManager().applySmoothedVelocity(player, toPlayer.multiply(1.2).setY(0.6));
                             hitPlayers.add(player);
                         }
                     }
@@ -406,7 +409,8 @@ public class TelegraphedAttack {
                                     // Knockback radial
                                     Vector knockback = player.getLocation().toVector()
                                         .subtract(center.toVector()).normalize().multiply(2.0).setY(1.0);
-                                    player.setVelocity(knockback);
+                                    // 🔧 FIX: Usar VelocityManager para evitar detección anti-cheat
+                                    plugin.getVelocityManager().applySmoothedVelocity(player, knockback);
                                     
                                     // Stun
                                     player.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 40, 5));
@@ -585,7 +589,8 @@ public class TelegraphedAttack {
                                 player.damage(18.0, boss);
                                 
                                 // Knockback en dirección del charge
-                                player.setVelocity(direction.clone().multiply(2.5).setY(1.0));
+                                // 🔧 FIX: Usar VelocityManager para evitar detección anti-cheat
+                                plugin.getVelocityManager().applySmoothedVelocity(player, direction.clone().multiply(2.5).setY(1.0));
                                 hitPlayers.add(player);
                             }
                         }

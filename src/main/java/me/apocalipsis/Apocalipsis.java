@@ -37,6 +37,7 @@ import me.apocalipsis.ui.TablistManager;
 import me.apocalipsis.utils.BlockOwnershipTracker;
 import me.apocalipsis.utils.ConfigManager;
 import me.apocalipsis.utils.OnlinePlayersCache;
+import me.apocalipsis.utils.VelocityManager;
 
 public final class Apocalipsis extends JavaPlugin {
 
@@ -72,6 +73,7 @@ public final class Apocalipsis extends JavaPlugin {
     private BlockOwnershipTracker blockTracker;
     private DisasterEvasionTracker evasionTracker;
     private OnlinePlayersCache onlinePlayersCache; // [OPTIMIZACIÓN] Cache de jugadores online
+    private VelocityManager velocityManager; // [FIX] Sistema anti-cheat safe para velocity
 
     @Override
     public void onEnable() {
@@ -118,6 +120,10 @@ public final class Apocalipsis extends JavaPlugin {
         
         // Inicializar evasion tracker (anti-disconnect)
         evasionTracker = new DisasterEvasionTracker(this);
+        
+        // [FIX] Inicializar velocity manager (anti-cheat safe)
+        velocityManager = new VelocityManager(this);
+        getLogger().info("[VelocityManager] ✓ Sistema de velocity smoothing iniciado");
         
         // Inicializar disaster system
         disasterRegistry = new DisasterRegistry();
@@ -247,6 +253,11 @@ public final class Apocalipsis extends JavaPlugin {
         if (performanceAdapter != null) {
             performanceAdapter.stopMonitoring();
         }
+        
+        // [FIX] Detener velocity manager
+        if (velocityManager != null) {
+            velocityManager.shutdown();
+        }
 
         // Limpiar UI
         if (scoreboardManager != null) {
@@ -340,6 +351,10 @@ public final class Apocalipsis extends JavaPlugin {
     
     public RewardService getRewardService() {
         return rewardService;
+    }
+    
+    public VelocityManager getVelocityManager() {
+        return velocityManager;
     }
     
     /**

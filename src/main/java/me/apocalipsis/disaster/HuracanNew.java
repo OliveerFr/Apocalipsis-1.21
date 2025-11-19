@@ -563,7 +563,8 @@ public class HuracanNew extends DisasterBase {
             velocity.multiply(clampTotal * rachaFactor / totalSpeed);
         }
 
-        player.setVelocity(velocity);
+        // 🔧 FIX: Usar VelocityManager para evitar detección anti-cheat
+        plugin.getVelocityManager().applySmoothedVelocity(player, velocity);
         player.setFallDistance(0); // Evitar daño por caída del empuje
 
         // Partículas de viento cada 10 ticks

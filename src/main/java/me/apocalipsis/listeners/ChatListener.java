@@ -157,6 +157,10 @@ public class ChatListener implements Listener {
         separator = translateColors(separator);
         messageColor = translateColors(messageColor);
         
+        // 🔧 DEBUG: Log del formato generado (comentar después de testear)
+        // plugin.getLogger().info("[Chat-DEBUG] Rank: " + rank.name());
+        // plugin.getLogger().info("[Chat-DEBUG] Badge: " + badge);
+        
         // Construir formato final con placeholder %1$s para el mensaje
         // %1$s es reemplazado por Minecraft con el mensaje del jugador
         return badge + " " + playerName + " " + levelBadge + " " + separator + " " + messageColor + "%1$s";
@@ -177,14 +181,27 @@ public class ChatListener implements Listener {
                     float pitch = (float) config.getDouble("mentions.mention_pitch", 1.5);
                     
                     try {
-                        // Migrado a Registry API
-                        org.bukkit.NamespacedKey soundKey = org.bukkit.NamespacedKey.fromString(soundName.toLowerCase());
-                        if (soundKey == null) soundKey = org.bukkit.NamespacedKey.minecraft(soundName.toLowerCase());
-                        Sound sound = org.bukkit.Registry.SOUNDS.get(soundKey);
-                        if (sound != null) {
-                            online.playSound(online.getLocation(), sound, volume, pitch);
+                        // 🔧 FIX: Usar Registry API de Paper 1.21 correctamente
+                        String soundKeyString = soundName.toLowerCase().replace("_", ".");
+                        if (!soundKeyString.contains(":")) {
+                            soundKeyString = "minecraft:" + soundKeyString;
                         }
-                    } catch (IllegalArgumentException ignored) {}
+                        org.bukkit.NamespacedKey soundKey = org.bukkit.NamespacedKey.fromString(soundKeyString);
+                        
+                        if (soundKey != null) {
+                            Sound sound = org.bukkit.Registry.SOUNDS.get(soundKey);
+                            
+                            if (sound != null) {
+                                online.playSound(online.getLocation(), sound, volume, pitch);
+                                // 🔧 DEBUG: Confirmar que se reproduce
+                                // plugin.getLogger().info("[Mention] Sonido reproducido para " + online.getName());
+                            } else {
+                                plugin.getLogger().warning("[Mention] Sonido no encontrado en Registry: " + soundName);
+                            }
+                        }
+                    } catch (IllegalArgumentException e) {
+                        plugin.getLogger().warning("[Mention] Error al reproducir sonido: " + e.getMessage());
+                    }
                 }
                 
                 // Resaltar el nombre en el mensaje

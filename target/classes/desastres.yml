@@ -316,3 +316,24 @@ efectos_al_completar_mis_misiones:
 excepciones:
   enabled: true
   players: []  # UUIDs en string; acepta nombres pero convierte a UUID
+
+# ════════════════════════════════════════════════════════════════════
+# CONFIGURACIÓN ANTI-CHEAT COMPATIBILITY
+# ════════════════════════════════════════════════════════════════════
+anti_cheat:
+  # Habilitar sistema de velocity smoothing
+  velocity_smoothing_enabled: true
+  
+  # Velocidad máxima por tick (valores seguros)
+  # Conservador: 0.10, Balanceado: 0.15, Agresivo: 0.20
+  max_velocity_per_tick: 0.15
+  
+  # Duración de aplicación suave (ticks)
+  # Mayor duración = más suave pero menos realismo
+  # Conservador: 8, Balanceado: 5, Agresivo: 3
+  smooth_duration_ticks: 5
+  
+  # Reducir empuje durante lag (TPS < threshold)
+  reduce_on_lag: true
+  lag_threshold_tps: 18.0
+  lag_reduction_factor: 0.5
