@@ -6,7 +6,7 @@ ciclo:
   start_on_boot: false             # No iniciar al encender/reload
   min_jugadores: 1                 # No iniciar si < este número online
   respectar_cooldown: true         # Respetar cooldown entre desastres
-  cooldown_fin_segundos: 600       # Segundos de espera tras finalizar un desastre
+  cooldown_fin_segundos: 900       # Segundos de espera tras finalizar un desastre
   preparacion_inicial_segundos: 900  # Duración de preparación al usar /avo start (15 min default)
 
 desastres:
@@ -27,7 +27,7 @@ desastres:
     max_por_jugador: 2
   
   huracan:
-    duracion_segundos: 150
+    duracion_segundos: 75
     romper_bloques: false  # [#6] Controla si altera bloques físicamente
     
     # Sistema de fases de intensidad (inicio/pico/declive)
@@ -92,7 +92,7 @@ desastres:
       chance: 0.10
 
   lluvia_fuego:
-    duracion_segundos: 150
+    duracion_segundos: 70
     romper_bloques: true
     prender_fuego: true
     fuego_dura_seg: 8
@@ -156,7 +156,7 @@ desastres:
       chance: 0.25
 
   terremoto:
-    duracion_segundos: 150
+    duracion_segundos: 80
     romper_bloques: true
     # Lista de bloques débiles que puede romper el terremoto
     romper_whitelist: 

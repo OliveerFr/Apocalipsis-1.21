@@ -240,6 +240,12 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
         nextMeteorito = tickCounter + meteoritosIntervalo;
         faseMultiplicador = 1.0;
         
+        // [v1.17.0] Crear BossBar del desastre
+        createDisasterBossBar("LLUVIA DE FUEGO");
+        
+        // [v1.17.0] Mostrar título de inicio
+        showPhaseTitle(1, "LLUVIA DE FUEGO");
+        
         // Opcional: aplicar lluvia extra
         if (plugin.getConfigManager().isLluviaFuegoExtraLluvia()) {
             for (World world : Bukkit.getWorlds()) {
@@ -282,6 +288,9 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
                 plugin.getLogger().info("[LluviaFuego] Apagados " + extinguished + " bloques de fuego");
             }
         }
+        
+        // [v1.17.0] Remover BossBar
+        removeDisasterBossBar();
         
         // Restaurar bloques transformados
         for (Block b : blocksTransformados) {
@@ -939,5 +948,25 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
         
         // Agua profunda: al menos 2 bloques apilados
         return true;
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // MÉTODOS REQUERIDOS POR DisasterBase (v1.17.0)
+    // ═══════════════════════════════════════════════════════════════════
+    
+    @Override
+    protected String getDisasterName() {
+        return "LLUVIA DE FUEGO";
+    }
+    
+    @Override
+    protected String[] getPhaseNames() {
+        return new String[] {
+            "§7Chispas",
+            "§eLluvia Ligera",
+            "§6Lluvia Intensa",
+            "§cInfierno",
+            "§4§lAPOCALIPSIS ÍGNEO"
+        };
     }
 }

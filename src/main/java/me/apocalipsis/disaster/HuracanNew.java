@@ -307,6 +307,12 @@ public class HuracanNew extends DisasterBase {
         rachaNextTick = rachaIntervaloTicks;
         rachaActiva = false;
         faseMultiplicador = 1.0;
+        
+        // [v1.17.0] Crear BossBar del desastre
+        createDisasterBossBar("HURACÁN");
+        
+        // [v1.17.0] Mostrar título de inicio
+        showPhaseTitle(1, "HURACÁN");
     }
 
     @Override
@@ -342,6 +348,9 @@ public class HuracanNew extends DisasterBase {
             }
         }
         playersWithStatic.clear();
+        
+        // [v1.17.0] Remover BossBar
+        removeDisasterBossBar();
     }
     
     /**
@@ -917,6 +926,26 @@ public class HuracanNew extends DisasterBase {
             }
         }
         return false;
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // MÉTODOS REQUERIDOS POR DisasterBase (v1.17.0)
+    // ═══════════════════════════════════════════════════════════════════
+    
+    @Override
+    protected String getDisasterName() {
+        return "HURACÁN";
+    }
+    
+    @Override
+    protected String[] getPhaseNames() {
+        return new String[] {
+            "§7Viento Suave",
+            "§eViento Moderado",
+            "§6Tormenta Fuerte",
+            "§cHuracán Severo",
+            "§4§lHURACÁN CATASTRÓFICO"
+        };
     }
 }
 

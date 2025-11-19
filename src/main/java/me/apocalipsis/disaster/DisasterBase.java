@@ -1,8 +1,18 @@
 package me.apocalipsis.disaster;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
+import org.bukkit.World;
+import org.bukkit.boss.BarColor;
+import org.bukkit.boss.BarStyle;
+import org.bukkit.boss.BossBar;
 import org.bukkit.entity.Player;
 
 import me.apocalipsis.Apocalipsis;
@@ -26,6 +36,15 @@ public abstract class DisasterBase implements Disaster {
     
     protected boolean active = false;
     protected int tickCounter = 0;
+    
+    // Sistema de supervivencia y recompensas
+    protected Map<UUID, Integer> playerSurvivalPhases = new HashMap<>();
+    protected Map<UUID, Integer> playerDeathsDuringDisaster = new HashMap<>();
+    
+    // Sistema de BossBar
+    protected BossBar disasterBossBar;
+    protected int currentPhase = 1;
+    protected int totalPhases = 5;
 
     public DisasterBase(Apocalipsis plugin, MessageBus messageBus, SoundUtil soundUtil,
                        TimeService timeService, PerformanceAdapter performanceAdapter, String id) {
@@ -237,5 +256,150 @@ public abstract class DisasterBase implements Disaster {
      */
     protected boolean isInSafeMode() {
         return getPerformanceScale() == 0.0;
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // SISTEMA DE MEJORAS DE DESASTRES (v1.17.0)
+    // ═══════════════════════════════════════════════════════════════════
+    
+    /**
+     * Muestra advertencia previa 30 segundos antes del desastre
+     * Debe llamarse desde DisasterController antes de start()
+     */
+    public void showPreWarning() {
+        Bukkit.broadcastMessage("§6⚠ §e§lALERTA TEMPRANA §6⚠");
+        Bukkit.broadcastMessage("§7Un desastre se aproxima...");
+        
+        // Sonido de campana para todos
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            p.playSound(p.getLocation(), Sound.BLOCK_BELL_USE, 1.0f, 0.5f);
+            
+            // Partículas de advertencia en el cielo
+            Location skyLoc = p.getLocation().add(0, 20, 0);
+            spawnWarningParticles(p, skyLoc);
+        }
+    }
+    
+    /**
+     * Genera partículas de advertencia en el cielo
+     */
+    private void spawnWarningParticles(Player player, Location loc) {
+        World world = loc.getWorld();
+        if (world == null) return;
+        
+        player.spawnParticle(Particle.LARGE_SMOKE, loc, 50, 10, 5, 10, 0.1);
+        player.spawnParticle(Particle.CLOUD, loc, 30, 10, 5, 10, 0.05);
+    }
+    
+    /**
+     * Crea la BossBar del desastre
+     */
+    protected void createDisasterBossBar(String disasterName) {
+        disasterBossBar = Bukkit.createBossBar(
+            "§c§l" + disasterName + " §7- §eFase 1/" + totalPhases,
+            BarColor.RED,
+            BarStyle.SEGMENTED_10
+        );
+        disasterBossBar.setProgress(1.0 / totalPhases);
+        
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            disasterBossBar.addPlayer(p);
+        }
+    }
+    
+    /**
+     * Actualiza la fase de la BossBar
+     */
+    protected void updateBossBarPhase(int phase) {
+        if (disasterBossBar == null) return;
+        
+        currentPhase = phase;
+        double progress = (double) phase / totalPhases;
+        disasterBossBar.setProgress(progress);
+        
+        String phaseName = getPhaseDisplayName(phase);
+        disasterBossBar.setTitle("§c§l" + getDisasterName() + " §7- §e" + phaseName);
+        
+        // Color según intensidad
+        if (phase <= 2) {
+            disasterBossBar.setColor(BarColor.YELLOW);
+        } else if (phase <= 4) {
+            disasterBossBar.setColor(BarColor.RED);
+        } else {
+            disasterBossBar.setColor(BarColor.PURPLE);
+        }
+    }
+    
+    /**
+     * Remueve la BossBar
+     */
+    protected void removeDisasterBossBar() {
+        if (disasterBossBar != null) {
+            disasterBossBar.removeAll();
+            disasterBossBar = null;
+        }
+    }
+    
+    /**
+     * Obtiene el nombre display de la fase actual
+     */
+    protected String getPhaseDisplayName(int phase) {
+        return "Fase " + phase + "/" + totalPhases;
+    }
+    
+    /**
+     * Obtiene el nombre del desastre para mostrar
+     */
+    protected abstract String getDisasterName();
+    
+    /**
+     * Muestra títulos mejorados al cambiar de fase
+     */
+    protected void showPhaseTitle(int phase, String disasterName) {
+        String[] phaseNames = getPhaseNames();
+        
+        String title = "§l" + disasterName.toUpperCase();
+        String subtitle = phaseNames[Math.min(phase - 1, phaseNames.length - 1)];
+        
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            p.sendTitle(title, subtitle, 10, 40, 20);
+            
+            // Sonido según fase
+            Sound sound = phase < 3 ? Sound.BLOCK_NOTE_BLOCK_BASS : Sound.ENTITY_ENDER_DRAGON_GROWL;
+            float pitch = 0.5f + (phase * 0.2f);
+            p.playSound(p.getLocation(), sound, 1.0f, pitch);
+        }
+    }
+    
+    /**
+     * Obtiene los nombres de las fases del desastre
+     */
+    protected abstract String[] getPhaseNames();
+    
+    /**
+     * Registra que un jugador sobrevivió una fase
+     */
+    protected void trackPlayerSurvival(Player player, int phase) {
+        UUID uuid = player.getUniqueId();
+        playerSurvivalPhases.put(uuid, phase);
+    }
+    
+    /**
+     * Registra muerte de jugador durante el desastre
+     */
+    protected void handlePlayerDeathInDisaster(Player player) {
+        UUID uuid = player.getUniqueId();
+        playerDeathsDuringDisaster.put(uuid, 
+            playerDeathsDuringDisaster.getOrDefault(uuid, 0) + 1);
+        
+        player.sendMessage("§c§l☠ §7Has muerto durante el desastre. §e¡No te rindas!");
+    }
+    
+    /**
+     * Obtiene la fase actual del desastre basado en el tick
+     */
+    protected int getCurrentPhaseFromTick(int maxTicks) {
+        double progress = (double) tickCounter / maxTicks;
+        return Math.min((int) (progress * totalPhases) + 1, totalPhases);
     }
 }

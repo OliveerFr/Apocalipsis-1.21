@@ -346,6 +346,12 @@ public class TerremotoNew extends DisasterBase {
         // Resetear multiplicador al inicio
         faseMultiplicador = 1.0;
         
+        // [v1.17.0] Crear BossBar del desastre
+        createDisasterBossBar("TERREMOTO");
+        
+        // [v1.17.0] Mostrar título de inicio
+        showPhaseTitle(1, "TERREMOTO");
+        
         if (plugin.getConfigManager().isDebugCiclo()) {
             plugin.getLogger().info("[TerremotoNew] Iniciado - multiplicadores reseteados, tickCounter=" + tickCounter);
         }
@@ -370,6 +376,9 @@ public class TerremotoNew extends DisasterBase {
         grietaBlocks.clear();
         grietaOriginalStates.clear();
         epicentros.clear();
+        
+        // [v1.17.0] Remover BossBar
+        removeDisasterBossBar();
         
         if (plugin.getConfigManager().isDebugCiclo()) {
             plugin.getLogger().info("[TerremotoNew] Detenido completamente");
@@ -1148,5 +1157,25 @@ public class TerremotoNew extends DisasterBase {
                 world.spawnParticle(ParticleCompat.blockDust(), particleLoc, 3, 0.1, 0.1, 0.1, 0, Material.DIRT.createBlockData());
             }
         }
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // MÉTODOS REQUERIDOS POR DisasterBase (v1.17.0)
+    // ═══════════════════════════════════════════════════════════════════
+    
+    @Override
+    protected String getDisasterName() {
+        return "TERREMOTO";
+    }
+    
+    @Override
+    protected String[] getPhaseNames() {
+        return new String[] {
+            "§7Temblor Leve",
+            "§eSacudida Moderada",
+            "§6Terremoto Fuerte",
+            "§cTerremoto Severo",
+            "§4§lTERREMOTO CATASTRÓFICO"
+        };
     }
 }
