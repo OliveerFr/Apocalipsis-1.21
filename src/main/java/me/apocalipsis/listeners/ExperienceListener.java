@@ -32,17 +32,13 @@ public class ExperienceListener implements Listener {
      */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onEntityDeath(EntityDeathEvent event) {
+        // Early returns para reducir procesamiento
+        if (plugin.getExperienceService() == null) return;
+        
         Player killer = event.getEntity().getKiller();
-        if (killer == null) return;
+        if (killer == null || !killer.isOnline()) return;
         
         EntityType entityType = event.getEntityType();
-        
-        // Verificar que el servicio existe
-        if (plugin.getExperienceService() == null) {
-            plugin.getLogger().warning("[XP] ExperienceService es null!");
-            return;
-        }
-        
         plugin.getExperienceService().addMobKillXP(killer, entityType);
     }
     
@@ -51,61 +47,22 @@ public class ExperienceListener implements Listener {
      */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
+        // Early returns para performance
+        if (plugin.getExperienceService() == null) return;
+        
         Player player = event.getPlayer();
+        if (player == null || !player.isOnline()) return;
+        
         Material material = event.getBlock().getType();
         
         // Verificar que no sea un bloque colocado por jugador
         if (plugin.getBlockTracker() != null) {
             UUID owner = plugin.getBlockTracker().getBlockOwner(event.getBlock());
-            if (owner != null) {
-                return; // Bloque colocado por jugador, no dar XP
-            }
+            if (owner != null) return; // Bloque colocado por jugador, no dar XP
         }
         
-        // Intentar dar XP (el servicio verifica si el bloque está configurado)
-        boolean xpGranted = plugin.getExperienceService().addMiningXP(player, material);
-        
-        // Debug logging para minerales
-        if (isOre(material)) {
-            if (xpGranted) {
-                plugin.getLogger().info("[XP-DEBUG] " + player.getName() + 
-                    " minó " + material.name() + " - XP otorgado");
-            } else {
-                plugin.getLogger().warning("[XP-DEBUG] " + player.getName() + 
-                    " minó " + material.name() + " - XP NO otorgado (verifica config)");
-            }
-        }
-    }
-    
-    /**
-     * Verifica si un material es un mineral (ore)
-     */
-    private boolean isOre(Material material) {
-        switch (material) {
-            // Minerales vanilla
-            case COAL_ORE:
-            case DEEPSLATE_COAL_ORE:
-            case IRON_ORE:
-            case DEEPSLATE_IRON_ORE:
-            case COPPER_ORE:
-            case DEEPSLATE_COPPER_ORE:
-            case GOLD_ORE:
-            case DEEPSLATE_GOLD_ORE:
-            case REDSTONE_ORE:
-            case DEEPSLATE_REDSTONE_ORE:
-            case EMERALD_ORE:
-            case DEEPSLATE_EMERALD_ORE:
-            case LAPIS_ORE:
-            case DEEPSLATE_LAPIS_ORE:
-            case DIAMOND_ORE:
-            case DEEPSLATE_DIAMOND_ORE:
-            case NETHER_GOLD_ORE:
-            case NETHER_QUARTZ_ORE:
-            case ANCIENT_DEBRIS:
-                return true;
-            default:
-                return false;
-        }
+        // Dar XP (el servicio verifica si el bloque está configurado y tiene cooldown)
+        plugin.getExperienceService().addMiningXP(player, material);
     }
     
     /**
@@ -113,7 +70,10 @@ public class ExperienceListener implements Listener {
      */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onHarvest(PlayerHarvestBlockEvent event) {
+        if (plugin.getExperienceService() == null) return;
+        
         Player player = event.getPlayer();
+        if (player == null || !player.isOnline()) return;
         
         // Verificar si es un crop válido
         Material material = event.getHarvestedBlock().getType();
@@ -127,9 +87,12 @@ public class ExperienceListener implements Listener {
      */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onCraft(CraftItemEvent event) {
+        if (plugin.getExperienceService() == null) return;
         if (!(event.getWhoClicked() instanceof Player)) return;
         
         Player player = (Player) event.getWhoClicked();
+        if (!player.isOnline()) return;
+        
         Material material = event.getRecipe().getResult().getType();
         
         // Obtener XP del config
@@ -146,9 +109,12 @@ public class ExperienceListener implements Listener {
      */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onFish(PlayerFishEvent event) {
+        if (plugin.getExperienceService() == null) return;
         if (event.getState() != PlayerFishEvent.State.CAUGHT_FISH) return;
         
         Player player = event.getPlayer();
+        if (player == null || !player.isOnline()) return;
+        
         int xp = plugin.getConfigManager().getRecompensasConfig()
             .getInt("fuentes_xp.pescar.xp", 2);
         

@@ -886,24 +886,24 @@ public class HuracanNew extends DisasterBase {
     private void spawnWindParticles(Player player) {
         Location loc = player.getLocation();
         
-        // Nubes de viento
+        // Nubes de viento (reducido 5→3)
         player.getWorld().spawnParticle(ParticleCompat.cloud(), 
-            loc.clone().add(0, 1, 0), 5, 0.8, 0.5, 0.8, 0.05);
+            loc.clone().add(0, 1, 0), 3, 0.8, 0.5, 0.8, 0.05);
         
-        // Humo del suelo
+        // Humo del suelo (reducido 3→2)
         player.getWorld().spawnParticle(ParticleCompat.smokeNormal(), 
-            loc, 3, 0.5, 0.2, 0.5, 0.02);
+            loc, 2, 0.5, 0.2, 0.5, 0.02);
         
-        // BlockDust del suelo
+        // BlockDust del suelo (reducido 3→2)
         Location groundLoc = loc.clone().subtract(0, 1, 0);
         BlockData data = groundLoc.getBlock().getBlockData();
         player.getWorld().spawnParticle(ParticleCompat.blockDust(), 
-            loc, 3, 0.5, 0.1, 0.5, 0.02, data);
+            loc, 2, 0.5, 0.1, 0.5, 0.02, data);
         
-        // Durante ráfagas: partículas más intensas
+        // Durante ráfagas: partículas más intensas (reducido 2→1)
         if (rachaActiva && rachaSistemaEnabled) {
             player.getWorld().spawnParticle(Particle.SWEEP_ATTACK, 
-                loc.clone().add(0, 1, 0), 2, 1, 0.5, 1);
+                loc.clone().add(0, 1, 0), 1, 1, 0.5, 1);
         }
     }
 

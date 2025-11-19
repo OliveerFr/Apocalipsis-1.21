@@ -6,6 +6,7 @@ import org.bukkit.Material;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
@@ -21,7 +22,7 @@ public class MissionListener implements Listener {
         this.missionService = missionService;
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onEntityKill(EntityDeathEvent event) {
         Player killer = event.getEntity().getKiller();
         if (killer == null) return;
@@ -30,18 +31,17 @@ public class MissionListener implements Listener {
         missionService.progressMission(killer, MissionType.MATAR, type.name(), 1);
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
-        if (event.isCancelled()) return;
-        
         Player player = event.getPlayer();
+        if (player == null) return;
+        
         Material material = event.getBlock().getType();
         missionService.progressMission(player, MissionType.ROMPER, material.name(), 1);
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onCraft(CraftItemEvent event) {
-        if (event.isCancelled()) return;
         if (!(event.getWhoClicked() instanceof Player)) return;
 
         Player player = (Player) event.getWhoClicked();

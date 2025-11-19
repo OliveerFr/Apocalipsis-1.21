@@ -40,6 +40,11 @@ public class PlayerListener implements Listener {
     private final Set<UUID> respawnImmunity = new HashSet<>();
     private final java.util.Random random = new java.util.Random();
     
+    // [PERFORMANCE] Cache de configuración frecuentemente accedida
+    private boolean castigosEnabled = true;
+    private int psMinimo = 0;
+    private boolean anuncioPublicoEnabled = true;
+    
     // Sistema de puntos por tiempo jugado
     private final Map<UUID, Long> playerJoinTime = new HashMap<>();
     private static final long PS_TIME_INTERVAL = 30 * 60 * 1000; // 30 minutos en ms
@@ -63,11 +68,21 @@ public class PlayerListener implements Listener {
             plugin.saveResource("castigos.yml", false);
         }
         castigosConfig = YamlConfiguration.loadConfiguration(castigosFile);
+        
+        // [PERFORMANCE] Cachear valores frecuentemente accedidos
+        castigosEnabled = castigosConfig.getBoolean("general.enabled", true);
+        psMinimo = castigosConfig.getInt("general.ps_minimo", 0);
+        anuncioPublicoEnabled = castigosConfig.getBoolean("general.anuncio_publico.enabled", true);
     }
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
+        
+        // [PERFORMANCE] Early return si player inválido
+        if (player == null || !player.isOnline()) {
+            return;
+        }
         
         // [TIEMPO JUGADO] Registrar hora de conexión para PS por tiempo
         trackPlayerJoin(player);
@@ -180,6 +195,11 @@ public class PlayerListener implements Listener {
      * Aplica penalizaciones por muerte durante desastre
      */
     private void applyDeathPenalties(Player player, ConfigurationSection config) {
+        // [PERFORMANCE] Early return si sistema deshabilitado
+        if (!castigosEnabled) {
+            return;
+        }
+        
         Location loc = player.getLocation();
         StringBuilder efectosAplicados = new StringBuilder();
         
@@ -231,8 +251,7 @@ public class PlayerListener implements Listener {
         MissionRank rank = plugin.getRankService().getRank(player);
         int psLoss = config.getInt("perdida_ps." + rank.name(), 10);
         int currentPs = plugin.getMissionService().getPS(player.getUniqueId());
-        int minPs = castigosConfig.getInt("general.ps_minimo", 0);
-        int newPs = Math.max(minPs, currentPs - psLoss);
+        int newPs = Math.max(psMinimo, currentPs - psLoss);
         plugin.getMissionService().setPS(player.getUniqueId(), newPs);
         
         // 5. MENSAJES
@@ -250,8 +269,13 @@ public class PlayerListener implements Listener {
             float volumen = (float) sonidoConfig.getDouble("volumen", 1.0);
             float pitch = (float) sonidoConfig.getDouble("pitch", 0.8);
             try {
-                Sound sound = Sound.valueOf(soundName);
-                player.playSound(loc, sound, volumen, pitch);
+                // Migrado a Registry API
+                org.bukkit.NamespacedKey soundKey = org.bukkit.NamespacedKey.fromString(soundName.toLowerCase());
+                if (soundKey == null) soundKey = org.bukkit.NamespacedKey.minecraft(soundName.toLowerCase());
+                Sound sound = org.bukkit.Registry.SOUNDS.get(soundKey);
+                if (sound != null) {
+                    player.playSound(loc, sound, volumen, pitch);
+                }
             } catch (IllegalArgumentException ignored) {}
         }
         
@@ -272,7 +296,7 @@ public class PlayerListener implements Listener {
                 String anuncio = castigosConfig.getString("general.anuncio_publico.mensaje", "&c%jugador% &7ha recibido penalizaciones severas")
                     .replace("%jugador%", player.getName())
                     .replace("%razon%", "muerte en desastre");
-                org.bukkit.Bukkit.broadcastMessage(anuncio);
+                org.bukkit.Bukkit.getServer().broadcast(net.kyori.adventure.text.Component.text(anuncio));
             }
         }
         
@@ -301,7 +325,10 @@ public class PlayerListener implements Listener {
         if (tipo == null) return;
         
         try {
-            PotionEffectType effectType = PotionEffectType.getByName(tipo);
+            // Migrado a Registry API
+            org.bukkit.NamespacedKey effectKey = org.bukkit.NamespacedKey.fromString(tipo.toLowerCase());
+            if (effectKey == null) effectKey = org.bukkit.NamespacedKey.minecraft(tipo.toLowerCase());
+            PotionEffectType effectType = org.bukkit.Registry.EFFECT.get(effectKey);
             if (effectType != null) {
                 player.addPotionEffect(new PotionEffect(effectType, duracionSec * 20, amplificador));
             }

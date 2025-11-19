@@ -587,7 +587,7 @@ public class TerremotoNew extends DisasterBase {
 
             // Partículas y sonido previos
             Location particleLoc = l.clone().add(0.5, 1.0, 0.5);
-            w.spawnParticle(ParticleCompat.blockCrack(), particleLoc, 12, 0.25, 0.15, 0.25, 0.01, b.getBlockData());
+            w.spawnParticle(ParticleCompat.blockCrack(), particleLoc, 8, 0.25, 0.15, 0.25, 0.01, b.getBlockData());
             w.playSound(particleLoc, Sound.BLOCK_STONE_BREAK, 0.6f, 0.9f);
 
             b.setType(Material.AIR, false); // sin actualizar física masiva
@@ -606,8 +606,8 @@ public class TerremotoNew extends DisasterBase {
             blockData = Material.STONE.createBlockData();
         }
         
-        player.getWorld().spawnParticle(ParticleCompat.blockCrack(), loc, 8, 0.5, 0.1, 0.5, 0.1, blockData);
-        player.getWorld().spawnParticle(ParticleCompat.blockDust(), loc, 5, 0.3, 0.05, 0.3, 0.01, blockData);
+        player.getWorld().spawnParticle(ParticleCompat.blockCrack(), loc, 5, 0.5, 0.1, 0.5, 0.1, blockData);
+        player.getWorld().spawnParticle(ParticleCompat.blockDust(), loc, 3, 0.3, 0.05, 0.3, 0.01, blockData);
     }
 
     private void applyNauseaWithCooldown(Player player) {
@@ -989,26 +989,26 @@ public class TerremotoNew extends DisasterBase {
             
             if (originalType.name().contains("WOOL")) {
                 // Lana: partículas de nube blanca
-                world.spawnParticle(Particle.CLOUD, breakLoc, 15, 0.3, 0.3, 0.3, 0.05);
+                world.spawnParticle(Particle.CLOUD, breakLoc, 10, 0.3, 0.3, 0.3, 0.05);
                 world.playSound(breakLoc, Sound.BLOCK_WOOL_BREAK, 1.0f, 0.8f);
             } else if (originalType == Material.SLIME_BLOCK) {
                 // Slime: partículas verdes
-                world.spawnParticle(Particle.ITEM_SLIME, breakLoc, 20, 0.4, 0.4, 0.4, 0.1);
+                world.spawnParticle(Particle.ITEM_SLIME, breakLoc, 12, 0.4, 0.4, 0.4, 0.1);
                 world.playSound(breakLoc, Sound.BLOCK_SLIME_BLOCK_BREAK, 1.0f, 0.8f);
             } else if (originalType == Material.BLUE_ICE) {
                 // Hielo: partículas azules
-                world.spawnParticle(Particle.BLOCK, breakLoc, 15, 0.3, 0.3, 0.3, 0.1, 
+                world.spawnParticle(Particle.BLOCK, breakLoc, 10, 0.3, 0.3, 0.3, 0.1, 
                     Material.BLUE_ICE.createBlockData());
                 world.playSound(breakLoc, Sound.BLOCK_GLASS_BREAK, 0.8f, 1.2f);
             } else if (originalType == Material.HAY_BLOCK) {
                 // Heno: partículas amarillas
-                world.spawnParticle(Particle.BLOCK, breakLoc, 15, 0.3, 0.3, 0.3, 0.1, 
+                world.spawnParticle(Particle.BLOCK, breakLoc, 10, 0.3, 0.3, 0.3, 0.1, 
                     Material.HAY_BLOCK.createBlockData());
                 world.playSound(breakLoc, Sound.BLOCK_GRASS_BREAK, 1.0f, 0.7f);
             }
             
             // Partículas adicionales de impacto sísmico
-            world.spawnParticle(ParticleCompat.blockCrack(), breakLoc, 10, 0.3, 0.3, 0.3, 0.05, 
+            world.spawnParticle(ParticleCompat.blockCrack(), breakLoc, 6, 0.3, 0.3, 0.3, 0.05, 
                 Material.STONE.createBlockData());
             
             broken++;

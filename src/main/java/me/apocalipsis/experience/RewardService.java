@@ -4,6 +4,9 @@ import me.apocalipsis.Apocalipsis;
 import me.apocalipsis.missions.MissionCatalog;
 import me.apocalipsis.missions.MissionDifficulty;
 import me.apocalipsis.missions.MissionRank;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.title.Title;
 import org.bukkit.*;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -15,6 +18,7 @@ import org.bukkit.inventory.meta.FireworkMeta;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.*;
 
 /**
@@ -134,7 +138,7 @@ public class RewardService {
         
         // Enviar mensaje
         if (!reward.getMessage().isEmpty()) {
-            String message = org.bukkit.ChatColor.translateAlternateColorCodes('&', reward.getMessage());
+            Component message = LegacyComponentSerializer.legacyAmpersand().deserialize(reward.getMessage());
             player.sendMessage(message);
         }
         
@@ -246,7 +250,7 @@ public class RewardService {
         // Enviar mensaje
         String message = section.getString("mensaje", "");
         if (!message.isEmpty()) {
-            player.sendMessage(org.bukkit.ChatColor.translateAlternateColorCodes('&', message));
+            player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(message));
         }
         
         // Sonido sutil
@@ -277,7 +281,7 @@ public class RewardService {
         
         String baseMessage = config.getString("recompensas_diarias_completas.recompensas_base.mensaje", "");
         if (!baseMessage.isEmpty()) {
-            player.sendMessage(org.bukkit.ChatColor.translateAlternateColorCodes('&', baseMessage));
+            player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(baseMessage));
         }
         
         // 2. Bonus por rango
@@ -295,16 +299,23 @@ public class RewardService {
             
             String rankMessage = rankSection.getString("mensaje", "");
             if (!rankMessage.isEmpty()) {
-                player.sendMessage(org.bukkit.ChatColor.translateAlternateColorCodes('&', rankMessage));
+                player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(rankMessage));
             }
         }
         
         // 3. Título épico
         String titulo = config.getString("recompensas_diarias_completas.titulo", "&6&l¡COMPLETADO!");
         String subtitulo = config.getString("recompensas_diarias_completas.subtitulo", "&eHas terminado todas las misiones");
-        titulo = org.bukkit.ChatColor.translateAlternateColorCodes('&', titulo);
-        subtitulo = org.bukkit.ChatColor.translateAlternateColorCodes('&', subtitulo);
-        player.sendTitle(titulo, subtitulo, 10, 60, 20);
+        
+        Component titleComponent = LegacyComponentSerializer.legacyAmpersand().deserialize(titulo);
+        Component subtitleComponent = LegacyComponentSerializer.legacyAmpersand().deserialize(subtitulo);
+        
+        Title title = Title.title(
+            titleComponent,
+            subtitleComponent,
+            Title.Times.times(Duration.ofMillis(500), Duration.ofMillis(3000), Duration.ofMillis(1000))
+        );
+        player.showTitle(title);
         
         // 4. Efectos especiales
         if (config.getBoolean("recompensas_diarias_completas.efectos.sonidos", true)) {

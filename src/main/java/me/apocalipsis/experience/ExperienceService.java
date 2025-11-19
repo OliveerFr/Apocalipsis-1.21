@@ -23,6 +23,8 @@ public class ExperienceService {
     private final Apocalipsis plugin;
     private final File dataFile;
     private final Map<UUID, PlayerExperienceData> playerData = new HashMap<>();
+    private final Map<Integer, Integer> xpLevelCache = new HashMap<>(); // Cache de XP por nivel
+    private final Map<String, Double> rankMultiplierCache = new HashMap<>(); // Cache de multiplicadores de rango
     
     // Configuración de XP
     private int nivelInicial = 100;
@@ -45,6 +47,16 @@ public class ExperienceService {
         FileConfiguration config = plugin.getConfigManager().getRecompensasConfig();
         nivelInicial = config.getInt("experiencia.nivel_inicial", 100);
         multiplicador = config.getInt("experiencia.multiplicador", 50);
+        
+        // Cachear multiplicadores de rango
+        rankMultiplierCache.clear();
+        ConfigurationSection rankSection = config.getConfigurationSection("fuentes_xp.misiones.multiplicador_por_rango");
+        if (rankSection != null) {
+            for (String rankName : rankSection.getKeys(false)) {
+                double multiplier = config.getDouble("fuentes_xp.misiones.multiplicador_por_rango." + rankName, 1.0);
+                rankMultiplierCache.put(rankName, multiplier);
+            }
+        }
     }
     
     /**
@@ -111,14 +123,28 @@ public class ExperienceService {
     
     /**
      * Calcula la XP necesaria para alcanzar un nivel específico
+     * Usa cache para evitar recalcular niveles frecuentemente accedidos
      */
     public int getXPForLevel(int nivel) {
         if (nivel <= 1) return 0;
         
+        // Check cache first
+        Integer cached = xpLevelCache.get(nivel);
+        if (cached != null) {
+            return cached;
+        }
+        
+        // Calculate if not cached
         int totalXP = 0;
         for (int i = 2; i <= nivel; i++) {
             totalXP += nivelInicial + ((i - 2) * multiplicador);
         }
+        
+        // Cache result (limit cache size to first 100 levels)
+        if (nivel <= 100) {
+            xpLevelCache.put(nivel, totalXP);
+        }
+        
         return totalXP;
     }
     
@@ -226,7 +252,7 @@ public class ExperienceService {
             player.sendMessage("§a+§e" + xp + " XP §7(" + source + ")");
         } else if (xp > 0) {
             // Para XP pequeño, usar action bar (menos intrusivo)
-            player.sendActionBar("§a+" + xp + " XP §7(" + source + ")");
+            player.sendActionBar(net.kyori.adventure.text.Component.text("§a+" + xp + " XP §7(" + source + ")"));
         }
         
         // Guardar datos
@@ -287,7 +313,16 @@ public class ExperienceService {
      */
     private void onLevelUp(Player player, int oldLevel, int newLevel) {
         // Efectos visuales
-        player.sendTitle("§6§lNIVEL " + newLevel, "§e¡Has subido de nivel!", 10, 40, 10);
+        net.kyori.adventure.title.Title title = net.kyori.adventure.title.Title.title(
+            net.kyori.adventure.text.Component.text("§6§lNIVEL " + newLevel),
+            net.kyori.adventure.text.Component.text("§e¡Has subido de nivel!"),
+            net.kyori.adventure.title.Title.Times.times(
+                java.time.Duration.ofMillis(500), 
+                java.time.Duration.ofMillis(2000), 
+                java.time.Duration.ofMillis(500)
+            )
+        );
+        player.showTitle(title);
         player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
         
         // Fuegos artificiales
@@ -318,9 +353,9 @@ public class ExperienceService {
             xp = config.getDouble(diffPath);
         }
         
-        // Aplicar multiplicador por rango
+        // Aplicar multiplicador por rango (usar cache)
         MissionRank rank = plugin.getRankService().getRank(player);
-        double rankMultiplier = config.getDouble("fuentes_xp.misiones.multiplicador_por_rango." + rank.name(), 1.0);
+        double rankMultiplier = rankMultiplierCache.getOrDefault(rank.name(), 1.0);
         xp *= rankMultiplier;
         
         return addXP(player, (int) Math.round(xp), "Misión " + difficulty.name(), false);

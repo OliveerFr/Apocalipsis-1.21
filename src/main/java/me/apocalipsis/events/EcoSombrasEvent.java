@@ -5,6 +5,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.bukkit.*;
 import org.bukkit.attribute.Attribute;
+import org.bukkit.boss.BarColor;
+import org.bukkit.boss.BarStyle;
+import org.bukkit.boss.BossBar;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -24,6 +27,12 @@ import me.apocalipsis.events.gameplay.QTESystem;
 import me.apocalipsis.events.gameplay.TelegraphedAttack;
 import me.apocalipsis.events.gameplay.EventAudioSystem;
 import me.apocalipsis.events.gameplay.EnvironmentSystem;
+import me.apocalipsis.events.gameplay.DialogSystem;
+import me.apocalipsis.events.gameplay.LoreSystem;
+import me.apocalipsis.events.gameplay.ChoiceSystem;
+import me.apocalipsis.events.gameplay.ProtectionSystem;
+import me.apocalipsis.events.gameplay.SpectatorSystem;
+import me.apocalipsis.events.gameplay.DifficultyScaler;
 
 /**
  * El Eco de las Sombras Largas - Evento cinematográfico de 2-3 horas
@@ -79,6 +88,7 @@ public class EcoSombrasEvent extends EventBase {
     private int oleadaActual = 0;
     private boolean guardianSpawneado = false;
     private Entity guardianEntity;
+    private boolean guardianDerrotado = false; // 🔧 FIX #13: Flag para evitar múltiples triggers
     
     // Tracking de participación para recompensas
     private Map<UUID, Integer> participacionSombras = new HashMap<>();
@@ -94,6 +104,7 @@ public class EcoSombrasEvent extends EventBase {
     private BukkitTask manchasTask;
     private BukkitTask spawnTask;
     private BukkitTask oleadaTask;
+    private BukkitTask itemSupplyTask; // 🔧 FIX: Task para suministro de items
     
     // Entidades del evento
     private Set<UUID> entidadesEvento = new HashSet<>();
@@ -128,6 +139,20 @@ public class EcoSombrasEvent extends EventBase {
     // Sistema de ambiente inmersivo
     private EnvironmentSystem environmentSystem;
     
+    // Sistemas de narrativa (NUEVO - Categoría 7)
+    private DialogSystem dialogSystem;
+    private LoreSystem loreSystem;
+    private ChoiceSystem choiceSystem;
+    
+    // Sistema de protecciones (NUEVO - Categoría 9)
+    private ProtectionSystem protectionSystem;
+    
+    // Sistema de espectador (NUEVO - Categoría 10)
+    private SpectatorSystem spectatorSystem;
+    
+    // Sistema de balanceo de dificultad (NUEVO - Categoría 15)
+    private DifficultyScaler difficultyScaler;
+    
     // ═══════════════════════════════════════════════════════════════════
     // CONSTRUCTOR
     // ═══════════════════════════════════════════════════════════════════
@@ -161,6 +186,20 @@ public class EcoSombrasEvent extends EventBase {
         
         // Inicializar sistema de ambiente
         environmentSystem = new EnvironmentSystem(plugin);
+        
+        // Inicializar sistemas de narrativa (NUEVO - Categoría 7)
+        dialogSystem = new DialogSystem(plugin);
+        loreSystem = new LoreSystem(plugin);
+        choiceSystem = new ChoiceSystem(plugin);
+        
+        // Inicializar sistema de protecciones (NUEVO - Categoría 9)
+        protectionSystem = new ProtectionSystem(plugin);
+        
+        // Inicializar sistema de espectador (NUEVO - Categoría 10)
+        spectatorSystem = new SpectatorSystem(plugin);
+        
+        // Inicializar balanceador de dificultad (NUEVO - Categoría 15)
+        difficultyScaler = new DifficultyScaler(plugin, 3, 6, 1.0);
     }
     
     private void loadConfig() {
@@ -206,6 +245,32 @@ public class EcoSombrasEvent extends EventBase {
         ticksEnActo = 0;
         ticksTotales = 0;
         
+        // 🛡️ PROTECCIÓN: Activar sistema de protecciones (NUEVO - Categoría 9)
+        protectionSystem.enable("eco_sombras");
+        protectionSystem.setProtectionMode(
+            true,  // preventBlockBreak
+            true,  // preventBlockPlace
+            true,  // preventExplosions
+            true,  // preventMobSpawn
+            true,  // preventPvP
+            true   // preventContainerAccess
+        );
+        protectionSystem.enableRollback();
+        
+        // 👁️ ESPECTADOR: Activar modo espectador (NUEVO - Categoría 10)
+        spectatorSystem.enable("eco_sombras");
+        spectatorSystem.configure(
+            true,   // allowFlying
+            true,   // showEventInfo
+            true,   // muteDeathMessages
+            true,   // preventInteraction
+            null    // spectatorSpawn (null = mantener ubicación actual)
+        );
+        
+        // 🔧 FIX: Dar kit inicial y iniciar suministro de items
+        darKitInicial();
+        iniciarSuministroItems();
+        
         iniciarActoActivacion();
     }
     
@@ -243,6 +308,7 @@ public class EcoSombrasEvent extends EventBase {
         if (manchasTask != null) manchasTask.cancel();
         if (spawnTask != null) spawnTask.cancel();
         if (oleadaTask != null) oleadaTask.cancel();
+        if (itemSupplyTask != null) itemSupplyTask.cancel(); // 🔧 FIX
         
         // Limpiar entidades
         cleanup();
@@ -255,6 +321,17 @@ public class EcoSombrasEvent extends EventBase {
         
         // 🌫️ AMBIENTE: Restaurar ambiente completo
         environmentSystem.cleanupAll();
+        
+        // 📖 NARRATIVA: Limpiar sistemas narrativos (NUEVO - Categoría 7)
+        dialogSystem.cleanup();
+        loreSystem.cleanup();
+        choiceSystem.cleanup();
+        
+        // 🛡️ PROTECCIÓN: Desactivar sistema de protecciones (NUEVO - Categoría 9)
+        protectionSystem.disable();
+        
+        // 👁️ ESPECTADOR: Desactivar modo espectador (NUEVO - Categoría 10)
+        spectatorSystem.disable();
     }
     
     @Override
@@ -272,6 +349,13 @@ public class EcoSombrasEvent extends EventBase {
                 break;
             case SOMBRAS_LARGAS:
                 tickActoSombrasLargas();
+                
+                // 📖 NARRATIVA: Susurros aleatorios (NUEVO - Categoría 7)
+                if (ticksEnActo % 600 == 0 && Math.random() < 0.3) {
+                    for (Player p : Bukkit.getOnlinePlayers()) {
+                        dialogSystem.randomWhisper(p);
+                    }
+                }
                 break;
             case NUCLEO:
                 tickActoNucleo();
@@ -359,6 +443,9 @@ public class EcoSombrasEvent extends EventBase {
             String mensaje = config.getString("actos.acto_0_activacion.mensajes.inicial.texto",
                 "§8Un eco desconocido se ha registrado en el mundo…");
             messageBus.broadcast(mensaje, "eco_sombras");
+            
+            // 📖 NARRATIVA: Secuencia de diálogos intro (NUEVO - Categoría 7)
+            dialogSystem.broadcastDialogSequence(DialogSystem.createIntroSequence());
             
             // Sonido
             String sonidoStr = config.getString("actos.acto_0_activacion.sonidos.inicial.tipo", "ENTITY_WARDEN_HEARTBEAT");
@@ -462,29 +549,91 @@ public class EcoSombrasEvent extends EventBase {
         manchasLocations.add(spawnLoc);
         manchasActivas++;
         
-        // Efecto visual continuo
-        Bukkit.getScheduler().runTaskTimer(plugin, new Runnable() {
-            int ticks = 0;
-            @Override
-            public void run() {
-                if (!manchasLocations.contains(spawnLoc) || ticks++ > 600) { // 30 seg max
-                    manchasLocations.remove(spawnLoc);
-                    manchasActivas--;
-                    return;
-                }
-                
-                // Partículas
-                spawnLoc.getWorld().spawnParticle(Particle.SQUID_INK, spawnLoc, 20, 1, 0.1, 1, 0);
-                
-                // IA de huida
-                for (Player p : spawnLoc.getWorld().getPlayers()) {
-                    if (p.getLocation().distance(spawnLoc) < 5) {
-                        // Huir
-                        huidaMancha(spawnLoc, p.getLocation());
-                    }
-                }
+        // 🔧 FIX: Spawn SILVERFISH visible en lugar de solo partículas
+        Silverfish mancha = (Silverfish) spawnLoc.getWorld().spawnEntity(spawnLoc, EntityType.SILVERFISH);
+        
+        // Configurar para visibilidad máxima
+        mancha.customName(net.kyori.adventure.text.Component.text("§8§o◊ Mancha de Sombra ◊"));
+        mancha.setCustomNameVisible(true);
+        mancha.setAI(true);
+        mancha.setSilent(false);
+        mancha.setInvulnerable(false);
+        
+        // 🔧 GLOWING permanente para destacar
+        mancha.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, Integer.MAX_VALUE, 0, false, false));
+        mancha.setGlowing(true);
+        
+        // Velocidad aumentada para huir
+        mancha.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, Integer.MAX_VALUE, 2, false, false));
+        
+        // Registrar en entidades del evento
+        entidadesEvento.add(mancha.getUniqueId());
+        protectionSystem.registerEventEntity(mancha);
+        
+        // 🔧 Partículas MULTI-COLOR continuas para destacar
+        BukkitTask particleTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            if (!mancha.isValid() || mancha.isDead()) {
+                manchasLocations.remove(spawnLoc);
+                manchasActivas--;
+                return;
             }
-        }, 0L, 5L);
+            
+            Location manchaLoc = mancha.getLocation().add(0, 0.5, 0);
+            
+            // Aura negra constante
+            manchaLoc.getWorld().spawnParticle(Particle.SQUID_INK, manchaLoc, 5, 0.3, 0.3, 0.3, 0.05);
+            
+            // Partículas moradas para contraste
+            manchaLoc.getWorld().spawnParticle(Particle.PORTAL, manchaLoc, 3, 0.2, 0.2, 0.2, 0);
+            
+            // Dust morado brillante
+            manchaLoc.getWorld().spawnParticle(Particle.DUST, manchaLoc, 2, 0.2, 0.2, 0.2, 
+                new Particle.DustOptions(org.bukkit.Color.fromRGB(138, 43, 226), 1.5f));
+        }, 0L, 2L); // Cada 0.1 segundos
+        
+        // 🔧 FIX #8: Detector de proximidad para desaparecer manchas
+        BukkitTask proximityTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            if (!mancha.isValid() || mancha.isDead()) {
+                return;
+            }
+            
+            // Detectar jugadores cercanos (radio 2.5 bloques)
+            boolean playerNearby = mancha.getNearbyEntities(2.5, 2.5, 2.5).stream()
+                .anyMatch(e -> e instanceof Player);
+            
+            if (playerNearby) {
+                // Partículas de desaparición (humo negro)
+                Location manchaLoc2 = mancha.getLocation();
+                manchaLoc2.getWorld().spawnParticle(Particle.SMOKE, manchaLoc2, 30, 0.5, 0.5, 0.5, 0.05);
+                manchaLoc2.getWorld().spawnParticle(Particle.SQUID_INK, manchaLoc2, 20, 0.3, 0.3, 0.3, 0.02);
+                
+                // Sonido de desvanecimiento
+                manchaLoc2.getWorld().playSound(manchaLoc2, Sound.ENTITY_ENDERMAN_TELEPORT, 0.5f, 0.8f);
+                
+                // Remover mancha
+                mancha.remove();
+                manchasLocations.remove(spawnLoc);
+                manchasActivas--;
+                particleTask.cancel();
+            }
+        }, 10L, 10L); // Revisar cada 0.5s
+        
+        // 🔧 Sonido periódico para localización
+        BukkitTask soundTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            if (!mancha.isValid() || mancha.isDead()) {
+                return;
+            }
+            mancha.getWorld().playSound(mancha.getLocation(), Sound.ENTITY_ENDERMAN_AMBIENT, 0.3f, 0.5f);
+        }, 0L, 40L); // Cada 2 segundos
+        
+        // Timeout de 30 segundos
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (mancha.isValid() && !mancha.isDead()) {
+                mancha.remove();
+                manchasLocations.remove(spawnLoc);
+                manchasActivas--;
+            }
+        }, 600L);
     }
     
     private void huidaMancha(Location manchaLoc, Location playerLoc) {
@@ -560,6 +709,7 @@ public class EcoSombrasEvent extends EventBase {
         
         configurarSombraLarga(sombra, mobConfig);
         entidadesEvento.add(sombra.getUniqueId());
+        protectionSystem.registerEventEntity(sombra); // 🛡️ Registrar en protección
         
         // 🎨 TRAIL Y AURA DE SOMBRA
         particleSystem.startShadowTrail(sombra, me.apocalipsis.events.gameplay.ParticleEffectSystem.ParticleTrailType.SHADOW);
@@ -704,8 +854,80 @@ public class EcoSombrasEvent extends EventBase {
             Shulker nucleo = (Shulker) nucleoLocation.getWorld().spawnEntity(nucleoLocation, EntityType.SHULKER);
             configurarNucleo(nucleo);
             
+            // 🔧 FIX: GLOWING permanente para visibilidad máxima
+            nucleo.setGlowing(true);
+            nucleo.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, Integer.MAX_VALUE, 0, false, false));
+            
+            // 🔧 FIX: INVULNERABLE hasta que se sellen las anclas
+            nucleo.setInvulnerable(true);
+            
             nucleoEntity = nucleo;
             entidadesEvento.add(nucleo.getUniqueId());
+            protectionSystem.registerEventEntity(nucleo); // 🛡️ Registrar en protección
+            
+            // 🔧 FIX: Partículas INTENSAS permanentes
+            BukkitTask nucleoParticles = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+                if (!nucleo.isValid() || nucleo.isDead() || actoActual != Acto.NUCLEO) {
+                    return;
+                }
+                
+                Location loc = nucleo.getLocation().add(0, 1, 0);
+                
+                // Múltiples capas de partículas
+                loc.getWorld().spawnParticle(Particle.END_ROD, loc, 10, 0.5, 0.5, 0.5, 0.1);
+                loc.getWorld().spawnParticle(Particle.PORTAL, loc, 15, 0.7, 0.7, 0.7, 0.5);
+                loc.getWorld().spawnParticle(Particle.REVERSE_PORTAL, loc, 10, 0.5, 0.5, 0.5, 0.3);
+                loc.getWorld().spawnParticle(Particle.SQUID_INK, loc, 5, 0.3, 0.3, 0.3, 0.05);
+                
+                // Dust morado brillante
+                loc.getWorld().spawnParticle(Particle.DUST, loc, 8, 0.5, 0.5, 0.5, 
+                    new Particle.DustOptions(org.bukkit.Color.fromRGB(138, 43, 226), 2.5f));
+                
+                // Sonic boom cada 2 segundos
+                if (ticksEnActo % 40 == 0) {
+                    loc.getWorld().spawnParticle(Particle.SONIC_BOOM, loc, 5, 1, 1, 1, 0);
+                    loc.getWorld().playSound(loc, Sound.ENTITY_WARDEN_SONIC_CHARGE, 0.5f, 1.5f);
+                }
+            }, 0L, 2L); // Cada 0.1 segundos
+            
+            // 🔧 FIX: BEACON VERTICAL permanente
+            BukkitTask nucleoBeam = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+                if (!nucleo.isValid() || nucleo.isDead() || actoActual != Acto.NUCLEO) {
+                    return;
+                }
+                
+                Location base = nucleo.getLocation();
+                for (int y = 1; y <= 50; y++) {
+                    base.getWorld().spawnParticle(Particle.END_ROD, base.clone().add(0, y, 0), 
+                        2, 0.1, 0, 0.1, 0);
+                }
+            }, 0L, 10L); // Cada 0.5 segundos
+            
+            // 🔧 FIX: Sonido ambiente constante
+            BukkitTask nucleoSound = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+                if (!nucleo.isValid() || nucleo.isDead() || actoActual != Acto.NUCLEO) {
+                    return;
+                }
+                
+                Location loc = nucleo.getLocation();
+                loc.getWorld().playSound(loc, Sound.BLOCK_RESPAWN_ANCHOR_AMBIENT, 1.0f, 0.5f);
+                loc.getWorld().playSound(loc, Sound.BLOCK_BEACON_AMBIENT, 0.8f, 0.8f);
+            }, 0L, 60L); // Cada 3 segundos
+            
+            // 🔧 FIX: WAYPOINT visual con action bar
+            BukkitTask nucleoWaypoint = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+                if (!nucleo.isValid() || nucleo.isDead() || actoActual != Acto.NUCLEO) {
+                    return;
+                }
+                
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    p.setCompassTarget(nucleoLocation);
+                    double distance = p.getLocation().distance(nucleoLocation);
+                    p.sendActionBar(net.kyori.adventure.text.Component.text(
+                        String.format("§5§l⬡ NÚCLEO §7[%.0fm] §c§lINVULNERABLE", distance)
+                    ));
+                }
+            }, 0L, 20L); // Cada segundo
             
             // 🎨 AURA PULSANTE MÍSTICA DEL NÚCLEO
             particleSystem.startPulsingAura(nucleo, 
@@ -868,8 +1090,16 @@ public class EcoSombrasEvent extends EventBase {
     private void iniciarActoAnclas() {
         plugin.getLogger().info("[EcoSombras] Iniciando Acto 4: Anclas del Mundo");
         
-        // Generar 5 anclas alrededor del núcleo
-        int cantidad = config.getInt("actos.acto_4_anclas.anclas.cantidad", 5);
+        // 🔧 FIX #12: Escalar anclas según cantidad de jugadores (3 anclas para ≤3 jugadores)
+        int jugadoresActivos = Bukkit.getOnlinePlayers().size();
+        int cantidad;
+        if (jugadoresActivos <= 3) {
+            cantidad = 3; // 3 anclas para grupos pequeños
+        } else {
+            cantidad = config.getInt("actos.acto_4_anclas.anclas.cantidad", 5); // 5 anclas por defecto
+        }
+        
+        plugin.getLogger().info("[EcoSombras] Generando " + cantidad + " anclas para " + jugadoresActivos + " jugadores");
         
         if (nucleoLocation == null) return;
         
@@ -887,6 +1117,9 @@ public class EcoSombrasEvent extends EventBase {
             
             generarEstructuraAncla(anclaLoc, i);
             anclaLocations.add(anclaLoc);
+            
+            // 🛡️ PROTECCIÓN: Añadir zona protegida para ancla (NUEVO - Categoría 9)
+            protectionSystem.addProtectedZone(anclaLoc, 10, "Ancla " + (i + 1));
         }
         
         // Mensaje
@@ -909,79 +1142,129 @@ public class EcoSombrasEvent extends EventBase {
         world.playSound(center, Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 2.0f, 0.8f);
         world.playSound(center, Sound.ITEM_TRIDENT_THUNDER, 1.5f, 1.2f);
         
-        // Base 3x3 de DEEPSLATE_TILES
-        for (int x = -1; x <= 1; x++) {
-            for (int z = -1; z <= 1; z++) {
+        // 🔧 FIX: Base 5x5 con patrón visible (en lugar de 3x3)
+        for (int x = -2; x <= 2; x++) {
+            for (int z = -2; z <= 2; z++) {
                 Location loc = center.clone().add(x, 0, z);
-                loc.getBlock().setType(Material.DEEPSLATE_TILES);
+                // Alternar bloques para patrón visible
+                if ((x + z) % 2 == 0) {
+                    loc.getBlock().setType(Material.BLACKSTONE);
+                } else {
+                    loc.getBlock().setType(Material.CRYING_OBSIDIAN);
+                }
             }
         }
         
-        // Centro: RESPAWN_ANCHOR
-        center.clone().add(0, 1, 0).getBlock().setType(Material.RESPAWN_ANCHOR);
+        // 🔧 FIX: RESPAWN ANCHOR más alto (nivel 2) y CARGADO al máximo
+        Location anchorLoc = center.clone().add(0, 2, 0);
+        anchorLoc.getBlock().setType(Material.RESPAWN_ANCHOR);
         
-        // Velas en esquinas
-        Location[] velas = {
-            center.clone().add(1, 1, 1),
-            center.clone().add(1, 1, -1),
-            center.clone().add(-1, 1, 1),
-            center.clone().add(-1, 1, -1)
-        };
+        org.bukkit.block.data.type.RespawnAnchor anchor = 
+            (org.bukkit.block.data.type.RespawnAnchor) anchorLoc.getBlock().getBlockData();
+        anchor.setCharges(4); // Máxima carga = máximo brillo
+        anchorLoc.getBlock().setBlockData(anchor);
         
-        for (Location velaLoc : velas) {
-            velaLoc.getBlock().setType(Material.PURPLE_CANDLE);
-            // Encender vela
-            org.bukkit.block.data.type.Candle candle = (org.bukkit.block.data.type.Candle) velaLoc.getBlock().getBlockData();
-            candle.setLit(true);
-            velaLoc.getBlock().setBlockData(candle);
+        // 🔧 FIX: PILARES de velas moradas (4 pilares de 3 bloques)
+        for (int dir = 0; dir < 4; dir++) {
+            int offsetX = 0, offsetZ = 0;
+            switch (dir) {
+                case 0: offsetX = 3; break;   // Este
+                case 1: offsetX = -3; break;  // Oeste
+                case 2: offsetZ = 3; break;   // Sur
+                case 3: offsetZ = -3; break;  // Norte
+            }
+            
+            // Pilar de 3 velas apiladas
+            for (int y = 0; y < 3; y++) {
+                Location candleLoc = center.clone().add(offsetX, 1 + y, offsetZ);
+                candleLoc.getBlock().setType(Material.PURPLE_CANDLE);
+                
+                org.bukkit.block.data.type.Candle candle = 
+                    (org.bukkit.block.data.type.Candle) candleLoc.getBlock().getBlockData();
+                candle.setLit(true);
+                candle.setCandles(4); // Máximo de velas = más luz
+                candleLoc.getBlock().setBlockData(candle);
+            }
+            
+            // End Rod en la cima para beacon visual
+            Location topLoc = center.clone().add(offsetX, 4, offsetZ);
+            topLoc.getBlock().setType(Material.END_ROD);
         }
         
-        // 🎬 BEAM DE LUZ vertical continuo + Pulso de energía
+        // 🔧 FIX: BEAM TRIPLE más intenso hasta el cielo
         Bukkit.getScheduler().runTaskTimer(plugin, () -> {
             if (anclasSelladas.contains(id) || actoActual != Acto.ANCLAS) {
                 return;
             }
             
-            // Beam vertical hasta el cielo
-            for (int y = 1; y <= 50; y++) {
-                if (y % 2 == 0) { // Optimizado: solo cada 2 bloques
-                    world.spawnParticle(Particle.END_ROD, center.clone().add(0, y, 0), 1, 0.1, 0, 0.1, 0);
-                    world.spawnParticle(Particle.REVERSE_PORTAL, center.clone().add(0, y, 0), 2, 0.15, 0, 0.15, 0);
+            // Beam vertical TODOS los bloques hasta el cielo (no cada 2)
+            for (int y = 1; y <= 100; y++) {
+                // Triple beam: END_ROD + REVERSE_PORTAL + DUST morado
+                world.spawnParticle(Particle.END_ROD, center.clone().add(0, y, 0), 
+                    3, 0.1, 0, 0.1, 0);
+                world.spawnParticle(Particle.REVERSE_PORTAL, center.clone().add(0, y, 0), 
+                    5, 0.2, 0, 0.2, 0);
+                world.spawnParticle(Particle.DUST, center.clone().add(0, y, 0), 
+                    2, 0.1, 0, 0.1, new Particle.DustOptions(org.bukkit.Color.fromRGB(138, 43, 226), 2.0f));
+            }
+            
+            // 🔧 FIX: Pulso radial CONSTANTE (cada tick)
+            for (int angle = 0; angle < 360; angle += 20) {
+                double radians = Math.toRadians(angle);
+                for (double r = 0; r <= 8; r += 0.3) {
+                    Location pulseLoc = center.clone().add(
+                        Math.cos(radians) * r,
+                        0.5,
+                        Math.sin(radians) * r
+                    );
+                    world.spawnParticle(Particle.SONIC_BOOM, pulseLoc, 1, 0, 0, 0, 0);
+                    world.spawnParticle(Particle.PORTAL, pulseLoc, 1, 0, 0, 0, 0);
                 }
             }
             
-            // 🎬 Pulso de energía radial (cada 2 segundos)
-            if (ticksEnActo % 40 == 0) {
-                for (int angle = 0; angle < 360; angle += 30) {
-                    double radians = Math.toRadians(angle);
-                    for (double r = 0; r <= 5; r += 0.5) {
-                        Location pulseLoc = center.clone().add(
-                            Math.cos(radians) * r,
-                            0.5,
-                            Math.sin(radians) * r
-                        );
-                        world.spawnParticle(Particle.SONIC_BOOM, pulseLoc, 1, 0, 0, 0, 0);
-                    }
-                }
-                world.playSound(center, Sound.BLOCK_RESPAWN_ANCHOR_AMBIENT, 0.5f, 1.5f);
+            // Sonido ambiental constante
+            world.playSound(center, Sound.BLOCK_RESPAWN_ANCHOR_AMBIENT, 0.8f, 1.5f);
+            
+        }, 0L, 5L); // Cada 0.25 segundos
+        
+        // 🔧 FIX: WAYPOINT visual - compass apunta + action bar con distancia
+        Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            if (anclasSelladas.contains(id) || actoActual != Acto.ANCLAS) {
+                return;
             }
-        }, 0L, 10L);
+            
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                p.setCompassTarget(center);
+                double distance = p.getLocation().distance(center);
+                p.sendActionBar(net.kyori.adventure.text.Component.text(
+                    String.format("§5§l⚡ ANCLA %d §7[%.0fm]", (id + 1), distance)
+                ));
+            }
+        }, 0L, 20L); // Cada segundo
     }
     
     private void tickActoAnclas() {
         // Verificar si todas están selladas
         if (anclasSelladas.size() >= anclaLocations.size()) {
-            // Hacer núcleo vulnerable y transicionar
+            // 🔧 FIX: Hacer núcleo VULNERABLE en lugar de matarlo automáticamente
             if (nucleoEntity != null && nucleoEntity.isValid()) {
-                ((LivingEntity) nucleoEntity).setHealth(0);
+                LivingEntity nucleo = (LivingEntity) nucleoEntity;
+                nucleo.setInvulnerable(false);
+                
+                // Efectos visuales de vulnerabilidad
+                nucleoLocation.getWorld().spawnParticle(Particle.EXPLOSION, nucleoLocation, 10, 1, 1, 1);
+                nucleoLocation.getWorld().playSound(nucleoLocation, Sound.ENTITY_WITHER_BREAK_BLOCK, 2.0f, 0.5f);
+                
+                messageBus.broadcast("§c§l¡El Núcleo es ahora VULNERABLE!", "eco_sombras");
+                messageBus.broadcast("§7¡Destrúyelo antes de que sea tarde!", "eco_sombras");
+                
+                // Actualizar action bar para todos
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    p.sendActionBar(net.kyori.adventure.text.Component.text("§5§l⬡ NÚCLEO §a§lVULNERABLE §7- ¡DESTRÚYELO!"));
+                }
             }
             
-            messageBus.broadcast("§5§lTodas las anclas han sido selladas.", "eco_sombras");
-            messageBus.broadcast("§7El Núcleo ha sido destruido.", "eco_sombras");
-            
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                transicionarActo(Acto.RITUAL);
-            }, 100L);
+            // NO transicionar automáticamente - esperar que jugadores lo destruyan
         }
     }
     
@@ -1241,28 +1524,60 @@ public class EcoSombrasEvent extends EventBase {
             spawnearGuardian();
         }
         
-        // Check si el Guardián fue derrotado
-        if (guardianSpawneado && (guardianEntity == null || !guardianEntity.isValid())) {
-            messageBus.broadcast("§5§l¡El Guardián de las Sombras Largas ha caído!", "eco_sombras");
+        // 🔧 FIX #13: Verificar MUERTE REAL del Guardian con flag para evitar múltiples triggers
+        if (guardianSpawneado && guardianEntity != null && guardianEntity.isValid() && !guardianDerrotado) {
+            LivingEntity guardian = (LivingEntity) guardianEntity;
             
-            // Recompensas para todos los participantes
-            for (UUID uuid : participantesOriginales) {
-                Player p = Bukkit.getPlayer(uuid);
-                if (p != null && p.isOnline()) {
-                    participacionGuardian.put(uuid, true);
-                    p.getInventory().addItem(items.crearEcoResonante());
+            // Solo transicionar si está realmente muerto o vida <= 0
+            if (guardian.isDead() || guardian.getHealth() <= 0) {
+                guardianDerrotado = true; // Marcar como derrotado
+                
+                // Mensaje dramático con title
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    p.sendTitle(
+                        "§5§l◆ VICTORIA ◆",
+                        "§7El Guardian ha sido derrotado",
+                        10, 80, 20
+                    );
+                    p.playSound(p.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 0.8f);
                 }
+                
+                messageBus.broadcast("§5§l¡El Guardián del Umbral ha caído!", "eco_sombras");
+                
+                // Efectos visuales de victoria
+                Location loc = guardian.getLocation();
+                loc.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, loc, 3);
+                loc.getWorld().spawnParticle(Particle.WITCH, loc, 100, 3, 3, 3, 0.2);
+                
+                // Recompensas para todos los participantes
+                for (UUID uuid : participantesOriginales) {
+                    Player p = Bukkit.getPlayer(uuid);
+                    if (p != null && p.isOnline()) {
+                        participacionGuardian.put(uuid, true);
+                        p.getInventory().addItem(items.crearEcoResonante());
+                    }
+                }
+                
+                // Delay de 10 segundos para efectos post-muerte
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    // Verificar que el evento sigue activo
+                    if (actoActual == Acto.RITUAL) {
+                        transicionarActo(Acto.CLIFFHANGER);
+                        
+                        // Mensaje de transición
+                        for (Player p : Bukkit.getOnlinePlayers()) {
+                            p.sendMessage("§7[§5EcoSombras§7] §aAvanzando al Acto Final...");
+                        }
+                    }
+                }, 200L); // 10 segundos = 200 ticks
             }
-            
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                transicionarActo(Acto.CLIFFHANGER);
-            }, 60L);
         }
     }
     
     private void iniciarActoRitual() {
         oleadaActual = 0;
         guardianSpawneado = false;
+        guardianDerrotado = false; // 🔧 FIX #13: Reset flag
         
         ConfigurationSection ritualConfig = config.getConfigurationSection("actos.acto_5_ritual");
         if (ritualConfig == null) return;
@@ -1289,6 +1604,9 @@ public class EcoSombrasEvent extends EventBase {
         
         // Generar estructura de arena (círculo de bloques)
         generarArenaRitual();
+        
+        // 🛡️ PROTECCIÓN: Añadir zona protegida para la arena (NUEVO - Categoría 9)
+        protectionSystem.addProtectedZone(arenaCenter, 30, "Arena Ritual");
         
         // 🎨 PARTÍCULAS AMBIENTALES INTENSAS EN ARENA
         particleSystem.startAmbientParticles(arenaCenter, 30, 
@@ -1322,31 +1640,60 @@ public class EcoSombrasEvent extends EventBase {
         
         World world = arenaCenter.getWorld();
         int centerX = arenaCenter.getBlockX();
-        int centerY = world.getHighestBlockYAt(arenaCenter) - 1;
+        // 🔧 FIX: Usar getHighestBlockYAt para terreno sólido
+        int centerY = world.getHighestBlockYAt(centerX, arenaCenter.getBlockZ());
         int centerZ = arenaCenter.getBlockZ();
         
-        // Círculo en el suelo
-        for (int x = -radio; x <= radio; x++) {
-            for (int z = -radio; z <= radio; z++) {
-                double distancia = Math.sqrt(x * x + z * z);
-                
-                // Anillo exterior
-                if (distancia >= radio - 1 && distancia <= radio) {
-                    Location loc = new Location(world, centerX + x, centerY, centerZ + z);
-                    loc.getBlock().setType(material);
-                }
-                
-                // Anillos interiores (cada 5 bloques)
-                if (distancia > 0 && (int)distancia % 5 == 0 && distancia < radio) {
-                    Location loc = new Location(world, centerX + x, centerY, centerZ + z);
-                    loc.getBlock().setType(Material.CRYING_OBSIDIAN);
+        // Actualizar arenaCenter con Y correcto
+        arenaCenter.setY(centerY);
+        
+        messageBus.broadcast("§8§oGenerando arena ritual...", "eco_sombras");
+        
+        // 🔧 FIX: Limpiar área primero (remover bloques que bloqueen)
+        for (int x = -radio - 2; x <= radio + 2; x++) {
+            for (int z = -radio - 2; z <= radio + 2; z++) {
+                // Limpiar 5 bloques arriba del suelo
+                for (int y = 1; y <= 5; y++) {
+                    Location clearLoc = new Location(world, centerX + x, centerY + y, centerZ + z);
+                    Material blockType = clearLoc.getBlock().getType();
+                    if (!blockType.isSolid() || blockType == Material.TALL_GRASS || 
+                        blockType == Material.SHORT_GRASS || blockType == Material.FERN ||
+                        blockType == Material.LARGE_FERN || blockType == Material.DEAD_BUSH) {
+                        clearLoc.getBlock().setType(Material.AIR);
+                    }
                 }
             }
         }
         
-        // Pilares en 4 puntos cardinales
+        // 🔧 FIX: CÍRCULO COMPLETO (rellenar todo, no solo anillos)
+        for (int x = -radio; x <= radio; x++) {
+            for (int z = -radio; z <= radio; z++) {
+                double distancia = Math.sqrt(x * x + z * z);
+                
+                if (distancia <= radio) {
+                    Location loc = new Location(world, centerX + x, centerY, centerZ + z);
+                    
+                    // Patrón complejo visible
+                    if (distancia >= radio - 1 && distancia <= radio) {
+                        // Borde exterior - BLACKSTONE
+                        loc.getBlock().setType(material);
+                    } else if ((int)distancia % 5 == 0) {
+                        // Anillos concéntricos - CRYING_OBSIDIAN
+                        loc.getBlock().setType(Material.CRYING_OBSIDIAN);
+                    } else if ((x + z) % 2 == 0) {
+                        // Patrón de tablero - POLISHED_BLACKSTONE
+                        loc.getBlock().setType(Material.POLISHED_BLACKSTONE);
+                    } else {
+                        // Relleno - BLACKSTONE normal
+                        loc.getBlock().setType(Material.BLACKSTONE);
+                    }
+                }
+            }
+        }
+        
+        // 🔧 FIX: Pilares MÁS ALTOS y VISIBLES (8 bloques en lugar de 5)
         Material pilarMaterial = Material.OBSIDIAN;
-        int pilarHeight = 5;
+        int pilarHeight = 8;
         
         for (int dir = 0; dir < 4; dir++) {
             int offsetX = 0, offsetZ = 0;
@@ -1357,18 +1704,62 @@ public class EcoSombrasEvent extends EventBase {
                 case 3: offsetZ = -radio; break;    // Norte
             }
             
+            // Base del pilar (3x3)
+            for (int bx = -1; bx <= 1; bx++) {
+                for (int bz = -1; bz <= 1; bz++) {
+                    Location baseLoc = new Location(world, centerX + offsetX + bx, centerY + 1, centerZ + offsetZ + bz);
+                    baseLoc.getBlock().setType(Material.POLISHED_BLACKSTONE_BRICKS);
+                }
+            }
+            
+            // Pilar vertical
             for (int y = 0; y < pilarHeight; y++) {
-                Location loc = new Location(world, centerX + offsetX, centerY + 1 + y, centerZ + offsetZ);
+                Location loc = new Location(world, centerX + offsetX, centerY + 2 + y, centerZ + offsetZ);
                 loc.getBlock().setType(pilarMaterial);
             }
             
-            // Antorcha soul en la cima
-            Location torchLoc = new Location(world, centerX + offsetX, centerY + 1 + pilarHeight, centerZ + offsetZ);
-            torchLoc.getBlock().setType(Material.SOUL_TORCH);
+            // Cima: Respawn Anchor cargado
+            Location topLoc = new Location(world, centerX + offsetX, centerY + 2 + pilarHeight, centerZ + offsetZ);
+            topLoc.getBlock().setType(Material.RESPAWN_ANCHOR);
+            
+            org.bukkit.block.data.type.RespawnAnchor anchor = 
+                (org.bukkit.block.data.type.RespawnAnchor) topLoc.getBlock().getBlockData();
+            anchor.setCharges(4);
+            topLoc.getBlock().setBlockData(anchor);
+            
+            // Soul Lanterns alrededor
+            Location[] lanterns = {
+                topLoc.clone().add(1, 0, 0),
+                topLoc.clone().add(-1, 0, 0),
+                topLoc.clone().add(0, 0, 1),
+                topLoc.clone().add(0, 0, -1)
+            };
+            for (Location lanternLoc : lanterns) {
+                lanternLoc.getBlock().setType(Material.SOUL_LANTERN);
+            }
         }
         
-        // Actualizar centro a nivel del suelo
-        arenaCenter.setY(centerY + 1);
+        // CENTRO: Símbolo ritual (5x5 de Crying Obsidian)
+        for (int x = -2; x <= 2; x++) {
+            for (int z = -2; z <= 2; z++) {
+                if (Math.abs(x) + Math.abs(z) <= 3) { // Forma de diamante
+                    Location symbolLoc = new Location(world, centerX + x, centerY, centerZ + z);
+                    symbolLoc.getBlock().setType(Material.CRYING_OBSIDIAN);
+                }
+            }
+        }
+        
+        // EFECTOS VISUALES POST-GENERACIÓN
+        world.spawnParticle(Particle.EXPLOSION_EMITTER, arenaCenter, 10, radio, 2, radio);
+        world.playSound(arenaCenter, Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 2.0f, 0.5f);
+        
+        messageBus.broadcast("§d✦ Arena ritual completada ✦", "eco_sombras");
+        
+        // Mensaje con coordenadas para cada jugador
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            p.sendMessage(String.format("§5Arena en: §7X=%d Y=%d Z=%d §8[%.0fm]", 
+                centerX, centerY, centerZ, p.getLocation().distance(arenaCenter)));
+        }
     }
     
     private void spawnearOleada(int numeroOleada) {
@@ -1377,10 +1768,26 @@ public class EcoSombrasEvent extends EventBase {
         ConfigurationSection mobsConfig = config.getConfigurationSection("mobs");
         if (mobsConfig == null) return;
         
-        // Cantidad de mobs según la oleada
+        // 🔧 FIX #12: Escalar cantidad de mobs según jugadores activos (3 mínimo)
+        int jugadoresActivos = Bukkit.getOnlinePlayers().size();
         int cantidadBase = 3 + (numeroOleada * 2); // Oleada 1: 5, Oleada 2: 7, Oleada 3: 9
         
-        for (int i = 0; i < cantidadBase; i++) {
+        // Escalado: 1-2 jugadores = 60%, 3 jugadores = 100%, 4+ jugadores = +25% por jugador extra
+        double mobScaling;
+        if (jugadoresActivos <= 2) {
+            mobScaling = 0.6; // 60% para 1-2 jugadores
+        } else if (jugadoresActivos == 3) {
+            mobScaling = 1.0; // 100% para 3 jugadores (base)
+        } else {
+            mobScaling = 1.0 + (jugadoresActivos - 3) * 0.25; // 4p=125%, 5p=150%, etc.
+        }
+        
+        int cantidadFinal = Math.max(2, (int) Math.round(cantidadBase * mobScaling));
+        
+        plugin.getLogger().info("[EcoSombras] Oleada " + numeroOleada + ": " + cantidadFinal + " mobs (" + 
+            jugadoresActivos + " jugadores, " + String.format("%.0f%%", mobScaling * 100) + " scaling)");
+        
+        for (int i = 0; i < cantidadFinal; i++) {
             Location spawnLoc = encontrarPosicionSpawn(arenaCenter, 15, 25);
             if (spawnLoc == null) continue;
             
@@ -1392,6 +1799,7 @@ public class EcoSombrasEvent extends EventBase {
             Zombie sombra = (Zombie) spawnLoc.getWorld().spawnEntity(spawnLoc, EntityType.ZOMBIE);
             configurarSombraLarga(sombra, mobConfig);
             entidadesEvento.add(sombra.getUniqueId());
+            protectionSystem.registerEventEntity(sombra); // 🛡️ Registrar en protección
             
             // Partículas de spawn
             spawnLoc.getWorld().spawnParticle(Particle.LARGE_SMOKE, spawnLoc, 30, 0.5, 1, 0.5, 0.1);
@@ -1406,8 +1814,39 @@ public class EcoSombrasEvent extends EventBase {
         
         guardianSpawneado = true;
         
-        // 🌫️ AMBIENTE: Lluvia sangrienta + grietas del vacío + corrupción extrema
+        // 🔧 FIX #10: Spawn seguro +5 bloques sobre superficie
         World bossWorld = arenaCenter.getWorld();
+        Location safeLoc = arenaCenter.clone().add(0, 5, 0);
+        safeLoc.setY(safeLoc.getWorld().getHighestBlockYAt(safeLoc) + 5); // +5 sobre terreno
+        
+        // 🔧 FIX #10: Limpiar área de spawn (5x5x10) para evitar obstrucciones
+        for (int x = -2; x <= 2; x++) {
+            for (int z = -2; z <= 2; z++) {
+                for (int y = 0; y <= 10; y++) {
+                    Location clearLoc = safeLoc.clone().add(x, y, z);
+                    if (clearLoc.getBlock().getType().isSolid()) {
+                        clearLoc.getBlock().setType(Material.AIR);
+                    }
+                }
+            }
+        }
+        
+        // 🔧 FIX #10: Teleportar jugadores a posición segura ANTES de spawn
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            Location playerSafeLoc = arenaCenter.clone().add(
+                random.nextInt(10) - 5,  // X aleatorio (-5 a +5)
+                10,                      // Y +10 sobre arena
+                random.nextInt(10) - 5   // Z aleatorio
+            );
+            playerSafeLoc.setY(playerSafeLoc.getWorld().getHighestBlockYAt(playerSafeLoc) + 2);
+            p.teleport(playerSafeLoc);
+            
+            // Efecto visual de teleport + Slow falling para prevenir caída
+            p.playSound(p.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 1.0f);
+            p.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING, 60, 0)); // 3s slow fall
+        }
+        
+        // 🌫️ AMBIENTE: Lluvia sangrienta + grietas del vacío + corrupción extrema
         environmentSystem.setDynamicWeather(bossWorld, EnvironmentSystem.WeatherType.BLOOD_RAIN, 0);
         environmentSystem.spawnAtmosphericEffect(bossWorld, EnvironmentSystem.AtmosphericEffect.VOID_CRACKS, 0);
         environmentSystem.spawnAtmosphericEffect(bossWorld, EnvironmentSystem.AtmosphericEffect.CORRUPTION_SPREAD, 0);
@@ -1475,14 +1914,13 @@ public class EcoSombrasEvent extends EventBase {
         }
         
         // Oscurecer el mundo temporalmente
-        World world = arenaCenter.getWorld();
-        long tiempoOriginal = world.getTime();
-        world.setTime(18000); // Medianoche
+        long tiempoOriginal = bossWorld.getTime();
+        bossWorld.setTime(18000); // Medianoche
         
-        // 🎬 Secuencia de efectos superpuestos
+        // 🎬 Secuencia de efectos superpuestos (🔧 FIX #11: Reducidos 60%)
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            // Explosión de partículas masiva
-            for (int i = 0; i < 360; i += 10) {
+            // Explosión de partículas masiva (REDUCIDA)
+            for (int i = 0; i < 360; i += 30) { // 🔧 Cada 30° en lugar de 10°
                 double radians = Math.toRadians(i);
                 for (int r = 1; r <= 15; r++) {
                     Location particleLoc = arenaCenter.clone().add(
@@ -1490,27 +1928,27 @@ public class EcoSombrasEvent extends EventBase {
                         5,
                         Math.sin(radians) * r
                     );
-                    world.spawnParticle(Particle.SOUL_FIRE_FLAME, particleLoc, 3, 0.2, 0.2, 0.2, 0.05);
-                    world.spawnParticle(Particle.SQUID_INK, particleLoc, 2, 0.1, 0.1, 0.1, 0);
+                    bossWorld.spawnParticle(Particle.SOUL_FIRE_FLAME, particleLoc, 1, 0.2, 0.2, 0.2, 0.05); // 🔧 3→1
+                    bossWorld.spawnParticle(Particle.SQUID_INK, particleLoc, 1, 0.1, 0.1, 0.1, 0); // 🔧 2→1
                 }
             }
             
             // Efecto cinematográfico con título
             efectoCinematico("§5§l⚔ GUARDIÁN DEL UMBRAL ⚔", 10, 80, 20);
             
-            // Partículas verticales masivas
-            for (int y = 0; y < 50; y++) {
-                world.spawnParticle(Particle.REVERSE_PORTAL, arenaCenter.clone().add(0, y, 0), 20, 0.5, 0, 0.5, 0.3);
-                world.spawnParticle(Particle.END_ROD, arenaCenter.clone().add(0, y, 0), 10, 0.3, 0, 0.3, 0.1);
+            // Partículas verticales (🔧 FIX #11: REDUCIDAS 60%)
+            for (int y = 0; y < 50; y += 2) { // 🔧 Saltar de 2 en 2
+                bossWorld.spawnParticle(Particle.REVERSE_PORTAL, arenaCenter.clone().add(0, y, 0), 8, 0.5, 0, 0.5, 0.3); // 🔧 20→8
+                bossWorld.spawnParticle(Particle.END_ROD, arenaCenter.clone().add(0, y, 0), 4, 0.3, 0, 0.3, 0.1); // 🔧 10→4
             }
             
-            world.spawnParticle(Particle.EXPLOSION_EMITTER, arenaCenter.clone().add(0, 5, 0), 15, 3, 3, 3);
+            bossWorld.spawnParticle(Particle.EXPLOSION_EMITTER, arenaCenter.clone().add(0, 5, 0), 6, 3, 3, 3); // 🔧 15→6
             
             // 🎬 Sonidos superpuestos cinematográficos
-            world.playSound(arenaCenter, Sound.ENTITY_WITHER_SPAWN, 2.0f, 0.4f);
-            world.playSound(arenaCenter, Sound.ENTITY_ENDER_DRAGON_GROWL, 2.5f, 0.2f);
-            world.playSound(arenaCenter, Sound.ENTITY_WARDEN_SONIC_BOOM, 2.0f, 0.5f);
-            world.playSound(arenaCenter, Sound.AMBIENT_BASALT_DELTAS_MOOD, 2.0f, 0.3f);
+            bossWorld.playSound(arenaCenter, Sound.ENTITY_WITHER_SPAWN, 2.0f, 0.4f);
+            bossWorld.playSound(arenaCenter, Sound.ENTITY_ENDER_DRAGON_GROWL, 2.5f, 0.2f);
+            bossWorld.playSound(arenaCenter, Sound.ENTITY_WARDEN_SONIC_BOOM, 2.0f, 0.5f);
+            bossWorld.playSound(arenaCenter, Sound.AMBIENT_BASALT_DELTAS_MOOD, 2.0f, 0.3f);
             
             // Sonidos a cada jugador para efecto 3D
             for (Player p : Bukkit.getOnlinePlayers()) {
@@ -1549,14 +1987,28 @@ public class EcoSombrasEvent extends EventBase {
             // Calcular atributos según número de jugadores y dificultad
             int numJugadores = Math.max(1, participantesOriginales.size());
             double diffMultiplier = difficulty.multiplier;
-            double playerScaling = 1.0 + (numJugadores - 1) * 0.3; // +30% stats por jugador extra
+            
+            // 🔧 FIX #12: Escalado ajustado para 3 jugadores mínimo (en lugar de 5)
+            // Fórmula anterior: 1.0 + (numJugadores - 1) * 0.3 → 100% base + 30% por jugador extra
+            // Nueva fórmula: Escalar desde 3 jugadores base
+            double playerScaling;
+            if (numJugadores <= 3) {
+                // Para 1-3 jugadores: Escalar a la baja desde 100%
+                playerScaling = 0.6 + (numJugadores - 1) * 0.2; // 1p=60%, 2p=80%, 3p=100%
+            } else {
+                // Para 4+ jugadores: Escalar al alza desde 100%
+                playerScaling = 1.0 + (numJugadores - 3) * 0.3; // 4p=130%, 5p=160%, etc.
+            }
+            
+            plugin.getLogger().info("[EcoSombras] Escalado Guardian: " + numJugadores + " jugadores → " + 
+                String.format("%.0f%%", playerScaling * 100));
             
             // Atributos épicos escalados (para Netherite Prot 4)
-            double baseHealth = 400.0 * diffMultiplier * playerScaling;  // 400-3600 corazones
+            double baseHealth = 400.0 * diffMultiplier * playerScaling;  // 240-3600 corazones (escalado)
             guardian.getAttribute(Attribute.MAX_HEALTH).setBaseValue(baseHealth);
             guardian.setHealth(baseHealth);
             
-            double baseDamage = 12.0 * diffMultiplier * playerScaling;  // Escalado por dificultad
+            double baseDamage = 12.0 * diffMultiplier * playerScaling;  // Escalado por dificultad y jugadores
             guardian.getAttribute(Attribute.ATTACK_DAMAGE).setBaseValue(baseDamage);
             
             double baseSpeed = 0.30 * Math.min(1.5, diffMultiplier);  // Velocidad moderada
@@ -1609,6 +2061,7 @@ public class EcoSombrasEvent extends EventBase {
             
             guardianEntity = guardian;
             entidadesEvento.add(guardian.getUniqueId());
+            protectionSystem.registerEventEntity(guardian); // 🛡️ Registrar en protección
             
             // 🎮 INICIALIZAR SISTEMA DE FASES
             guardianPhaseSystem = new me.apocalipsis.events.gameplay.GuardianPhaseSystem(
@@ -1636,14 +2089,43 @@ public class EcoSombrasEvent extends EventBase {
                 arenaCenter.getWorld().playSound(arenaCenter, Sound.ENTITY_WARDEN_ROAR, 2.0f, 0.3f);
             }, 40L);
             
-            // Efecto de aura constante con partículas épicas
+            // 🔧 FIX #11: BossBar para visibilidad del Guardian (reemplaza efectos excesivos)
+            BossBar guardianBar = Bukkit.createBossBar(
+                "§5§lGuardián del Umbral", 
+                BarColor.PURPLE, 
+                BarStyle.SEGMENTED_20
+            );
+            guardianBar.setProgress(1.0);
+            
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                guardianBar.addPlayer(p);
+            }
+            
+            // 🔧 FIX #11: Efecto de aura reducido 60% (6+4+3 en lugar de 15+10+8)
             BukkitTask auraTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
                 if (guardian.isValid()) {
                     Location loc = guardian.getLocation();
-                    // Aura de sombras
-                    loc.getWorld().spawnParticle(Particle.SQUID_INK, loc.clone().add(0, 3, 0), 15, 1.5, 3, 1.5, 0.05);
-                    loc.getWorld().spawnParticle(Particle.SOUL_FIRE_FLAME, loc.clone().add(0, 2, 0), 10, 1, 2, 1, 0.03);
-                    loc.getWorld().spawnParticle(Particle.SMOKE, loc.clone().add(0, 1, 0), 8, 1, 1.5, 1, 0.02);
+                    
+                    // Actualizar BossBar con vida del Guardian
+                    double healthPercent = guardian.getHealth() / guardian.getAttribute(Attribute.MAX_HEALTH).getValue();
+                    guardianBar.setProgress(Math.max(0.0, Math.min(1.0, healthPercent)));
+                    
+                    // Cambiar color según vida
+                    if (healthPercent < 0.25) {
+                        guardianBar.setColor(BarColor.RED);
+                    } else if (healthPercent < 0.50) {
+                        guardianBar.setColor(BarColor.YELLOW);
+                    }
+                    
+                    // 🔧 FIX #11: Partículas reducidas 60% (antes: 15+10+8, ahora: 6+4+3)
+                    loc.getWorld().spawnParticle(Particle.SQUID_INK, loc.clone().add(0, 3, 0), 6, 1.5, 3, 1.5, 0.05); // 15→6
+                    loc.getWorld().spawnParticle(Particle.SOUL_FIRE_FLAME, loc.clone().add(0, 2, 0), 4, 1, 2, 1, 0.03); // 10→4
+                    loc.getWorld().spawnParticle(Particle.SMOKE, loc.clone().add(0, 1, 0), 3, 1, 1.5, 1, 0.02); // 8→3
+                    
+                    // 🔧 FIX #11: Glowing level 2 para mejor visibilidad
+                    if (!guardian.hasPotionEffect(PotionEffectType.GLOWING)) {
+                        guardian.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 999999, 1, false, false));
+                    }
                     
                     // Efecto de respiración (cada 3 segundos)
                     if (ticksEnActo % 60 == 0) {
@@ -1659,6 +2141,9 @@ public class EcoSombrasEvent extends EventBase {
                             ));
                         }
                     }
+                } else {
+                    // Remover BossBar si el Guardian muere
+                    guardianBar.removeAll();
                 }
             }, 0L, 20L);  // Cada segundo
             
@@ -1668,7 +2153,7 @@ public class EcoSombrasEvent extends EventBase {
             iniciarHabilidadesGuardian(guardian);
             
             // Restaurar tiempo del mundo
-            world.setTime(tiempoOriginal);
+            bossWorld.setTime(tiempoOriginal);
         }, 60L); // Spawn después de 3 segundos de oscuridad
     }
     
@@ -1880,22 +2365,9 @@ public class EcoSombrasEvent extends EventBase {
         // 📖 MOMENTO 4: NARRATIVA - Monólogo del Observador (15-45 segundos)
         // ═══════════════════════════════════════════════════════════════════
         
+        // 📖 NARRATIVA: Secuencia de diálogos del Observador (NUEVO - Categoría 7)
         if (ticksEnActo == 300) {
-            String obs1 = cliffConfig.getString("mensajes.observador_1.texto",
-                "§7§o\"Han sellado la grieta... pero no la fuente.\"");
-            messageBus.broadcast(obs1, "eco_sombras");
-        }
-        
-        if (ticksEnActo == 500) {
-            String obs2 = cliffConfig.getString("mensajes.observador_2.texto",
-                "§7§o\"El eco persiste. La sombra recuerda.\"");
-            messageBus.broadcast(obs2, "eco_sombras");
-        }
-        
-        if (ticksEnActo == 700) {
-            String obs3 = cliffConfig.getString("mensajes.observador_3.texto",
-                "§7§o\"Lo que viene... no tiene forma. Aún.\"");
-            messageBus.broadcast(obs3, "eco_sombras");
+            dialogSystem.broadcastDialogSequence(DialogSystem.createCliffhangerSequence());
         }
         
         // ═══════════════════════════════════════════════════════════════════
@@ -1904,6 +2376,23 @@ public class EcoSombrasEvent extends EventBase {
         
         if (ticksEnActo == 1200) {
             aparicionFiguraMisteriosa();
+            
+            // 📖 NARRATIVA: Choice final con la figura (NUEVO - Categoría 7)
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                if (participacionGuardian.getOrDefault(p.getUniqueId(), false)) {
+                    choiceSystem.presentChoice(p, ChoiceSystem.createFigureChoice(loreSystem));
+                }
+            }
+        }
+        
+        if (ticksEnActo == 1400) {
+            // 📖 NARRATIVA: Revelación final para jugadores con alto karma
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                int karma = choiceSystem.getKarma(p);
+                if (Math.abs(karma) >= 3) {
+                    loreSystem.revealFragment(p, "figure_revelation");
+                }
+            }
         }
         
         // ═══════════════════════════════════════════════════════════════════
@@ -1963,7 +2452,7 @@ public class EcoSombrasEvent extends EventBase {
             arenaCenter = new Location(
                 world,
                 sumX / jugadores.size(),
-                sumY / jugadores.size() + 10,
+                sumY / jugadores.size(),
                 sumZ / jugadores.size()
             );
         }
@@ -1974,15 +2463,12 @@ public class EcoSombrasEvent extends EventBase {
         Location center = arenaCenter.clone().add(0, 15, 0); // 15 bloques en el aire
         World world = center.getWorld();
         
-        // Símbolo flotante usando bloques de END_ROD y CRYING_OBSIDIAN
-        // Patrón en forma de estrella de 5 puntas
-        
-        // Centro
+        // Centro del símbolo
         center.getBlock().setType(Material.CRYING_OBSIDIAN);
         
-        // 5 puntas de la estrella
+        // Estrella de 5 puntas
         for (int i = 0; i < 5; i++) {
-            double angulo = (i * 72 - 90) * Math.PI / 180; // -90 para empezar arriba
+            double angulo = (i * 72 - 90) * Math.PI / 180;
             int x = (int) Math.round(Math.cos(angulo) * 5);
             int z = (int) Math.round(Math.sin(angulo) * 5);
             
@@ -1998,16 +2484,19 @@ public class EcoSombrasEvent extends EventBase {
             }
         }
         
-        // Partículas continuas alrededor del símbolo
+        // Partículas continuas
+        final Location finalCenter = center;
         BukkitTask simboloTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
-            world.spawnParticle(Particle.END_ROD, center, 20, 5, 0.5, 5, 0.05);
-            world.spawnParticle(Particle.PORTAL, center, 10, 3, 0.5, 3, 0.5);
-            world.spawnParticle(Particle.SOUL, center, 5, 2, 0.5, 2, 0.02);
+            if (actoActual != Acto.CLIFFHANGER) return;
+            
+            world.spawnParticle(Particle.END_ROD, finalCenter, 20, 5, 0.5, 5, 0.05);
+            world.spawnParticle(Particle.PORTAL, finalCenter, 10, 3, 0.5, 3, 0.5);
+            world.spawnParticle(Particle.SOUL, finalCenter, 5, 2, 0.5, 2, 0.02);
         }, 0L, 5L);
         
-        // Guardar tarea para limpiar después
-        if (spawnTask != null) spawnTask.cancel();
-        spawnTask = simboloTask;
+        // Cancelar cuando termine el acto
+        if (manchasTask != null) manchasTask.cancel();
+        manchasTask = simboloTask;
     }
     
     private void aparicionFiguraMisteriosa() {
@@ -2034,6 +2523,7 @@ public class EcoSombrasEvent extends EventBase {
         figura.setCustomNameVisible(true);
         
         entidadesEvento.add(figura.getUniqueId());
+        protectionSystem.registerEventEntity(figura); // 🛡️ Registrar en protección
         
         // Aura constante
         BukkitTask figuraTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
@@ -2093,6 +2583,7 @@ public class EcoSombrasEvent extends EventBase {
         int psPorAncla = recompensasConfig.getInt("ps.por_ancla", 20);
         int psPorGuardian = recompensasConfig.getInt("ps.por_guardian", 50);
         int psBonusGrupal = recompensasConfig.getInt("ps.bonus_grupal", 25);
+        int psBonusKarma = recompensasConfig.getInt("ps.bonus_karma", 10); // NUEVO
         
         for (UUID uuid : participantesOriginales) {
             Player p = Bukkit.getPlayer(uuid);
@@ -2117,6 +2608,12 @@ public class EcoSombrasEvent extends EventBase {
             // Bonus grupal si hay 3+ jugadores
             if (participantesOriginales.size() >= 3) {
                 psTotal += psBonusGrupal;
+            }
+            
+            // NUEVO - Bonus por karma positivo/negativo extremo
+            int karma = choiceSystem.getKarma(p);
+            if (Math.abs(karma) >= 5) {
+                psTotal += psBonusKarma;
             }
             
             // ═══════════════════════════════════════════════════════════
@@ -2233,11 +2730,89 @@ public class EcoSombrasEvent extends EventBase {
     }
     
     private void cleanup() {
-        // Remover entidades del evento
+        plugin.getLogger().info("[EcoSombras] 🔧 FIX #14: Iniciando cleanup completo...");
+        
+        int entidadesRemovidas = 0;
+        int bloquesCuriosos = 0;
+        
+        // 🔧 FIX #14: Remover TODAS las entidades con metadata de evento
         for (World world : Bukkit.getWorlds()) {
             for (Entity entity : world.getEntities()) {
+                // Verificar por UUID en la lista de entidades del evento
                 if (entidadesEvento.contains(entity.getUniqueId())) {
                     entity.remove();
+                    entidadesRemovidas++;
+                    continue;
+                }
+                
+                // 🔧 FIX #14: Verificar por metadata (backup por si UUID no coincide)
+                if (entity.hasMetadata("eco_sombras_evento")) {
+                    entity.remove();
+                    entidadesRemovidas++;
+                    continue;
+                }
+                
+                // 🔧 FIX #14: Verificar por nombres custom (manchas, sombras, guardian)
+                if (entity.getCustomName() != null) {
+                    String nombre = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+                        .serialize(entity.customName());
+                    if (nombre.contains("Mancha") || nombre.contains("Sombra") || 
+                        nombre.contains("Guardián") || nombre.contains("Núcleo")) {
+                        entity.remove();
+                        entidadesRemovidas++;
+                    }
+                }
+            }
+        }
+        
+        // 🔧 FIX #14: Cancelar TODAS las tareas programadas (por si quedan algunas)
+        if (mainTask != null && !mainTask.isCancelled()) mainTask.cancel();
+        if (manchasTask != null && !manchasTask.isCancelled()) manchasTask.cancel();
+        if (spawnTask != null && !spawnTask.isCancelled()) spawnTask.cancel();
+        if (oleadaTask != null && !oleadaTask.isCancelled()) oleadaTask.cancel();
+        if (itemSupplyTask != null && !itemSupplyTask.isCancelled()) itemSupplyTask.cancel();
+        
+        // 🔧 FIX #14: Limpiar estructuras (anclas, arena ritual, símbolos)
+        // Remover anclas del mundo
+        for (Location anclaLoc : anclaLocations) {
+            if (anclaLoc == null || anclaLoc.getWorld() == null) continue;
+            
+            // Limpiar estructura 7x7 de cada ancla
+            for (int x = -3; x <= 3; x++) {
+                for (int z = -3; z <= 3; z++) {
+                    for (int y = 0; y <= 4; y++) {
+                        Location blockLoc = anclaLoc.clone().add(x, y, z);
+                        Material type = blockLoc.getBlock().getType();
+                        
+                        // Solo remover bloques del evento (Crying Obsidian, End Rod, etc.)
+                        if (type == Material.CRYING_OBSIDIAN || type == Material.BLACKSTONE ||
+                            type == Material.RESPAWN_ANCHOR || type == Material.PURPLE_CANDLE ||
+                            type == Material.END_ROD) {
+                            blockLoc.getBlock().setType(Material.AIR);
+                            bloquesCuriosos++;
+                        }
+                    }
+                }
+            }
+        }
+        
+        // 🔧 FIX #14: Limpiar arena ritual si existe
+        if (arenaCenter != null && arenaCenter.getWorld() != null) {
+            int radio = 25;
+            for (int x = -radio; x <= radio; x++) {
+                for (int z = -radio; z <= radio; z++) {
+                    if (x*x + z*z > radio*radio) continue; // Solo dentro del círculo
+                    
+                    Location blockLoc = arenaCenter.clone().add(x, 0, z);
+                    Material type = blockLoc.getBlock().getType();
+                    
+                    // Remover bloques de ritual
+                    if (type == Material.BLACKSTONE || type == Material.SOUL_SAND ||
+                        type == Material.SOUL_LANTERN || type == Material.CRYING_OBSIDIAN ||
+                        type == Material.BASALT || type == Material.POLISHED_BLACKSTONE) {
+                        blockLoc.getBlock().setType(Material.AIR);
+                        bloquesCuriosos++;
+                    }
                 }
             }
         }
@@ -2245,14 +2820,33 @@ public class EcoSombrasEvent extends EventBase {
         // 🎨 LIMPIAR TODOS LOS EFECTOS DE PARTÍCULAS
         particleSystem.cleanupAll();
         
-        // Limpiar sistemas de UI
+        // 🔧 FIX #14: Limpiar sistemas de UI y feedback
         uiManager.cleanupAll();
         feedbackSystem.cleanupAll();
         
+        // 🔧 FIX #14: Limpiar QTE system (cancelar QTEs activos)
+        qteSystem.cleanup();
+        
+        // 🔧 FIX #14: Limpiar telegraphed attacks (si tiene método cleanup)
+        // telegraphedAttack.cleanup(); // No disponible en esta versión
+        
+        // 🔧 FIX #14: Limpiar guardian phase system si existe (si tiene método cleanup)
+        // if (guardianPhaseSystem != null) {
+        //     guardianPhaseSystem.cleanup();
+        // }
+        
+        // 🔧 FIX #14: Limpiar listas y mapas de datos
         entidadesEvento.clear();
         manchasLocations.clear();
         anclaLocations.clear();
         anclasSelladas.clear();
+        participacionSombras.clear();
+        participacionAnclas.clear();
+        participacionGuardian.clear();
+        participantesOriginales.clear();
+        
+        plugin.getLogger().info("[EcoSombras] ✅ Cleanup completo: " + 
+            entidadesRemovidas + " entidades, " + bloquesCuriosos + " bloques removidos");
     }
     
     // ═══════════════════════════════════════════════════════════════════
@@ -2305,6 +2899,22 @@ public class EcoSombrasEvent extends EventBase {
     
     public int getOleadaActual() {
         return oleadaActual;
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // GETTERS PARA SISTEMAS NARRATIVOS (NUEVO - Categoría 7)
+    // ═══════════════════════════════════════════════════════════════════
+    
+    public DialogSystem getDialogSystem() {
+        return dialogSystem;
+    }
+    
+    public LoreSystem getLoreSystem() {
+        return loreSystem;
+    }
+    
+    public ChoiceSystem getChoiceSystem() {
+        return choiceSystem;
     }
     
     /**
@@ -2459,4 +3069,81 @@ public class EcoSombrasEvent extends EventBase {
         entidadesEvento.clear();
         manchasLocations.clear();
     }
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // SISTEMA DE ITEMS BÁSICOS (FIX #5)
+    // ═══════════════════════════════════════════════════════════════════
+    
+    /**
+     * Da kit inicial de supervivencia a todos los participantes
+     */
+    private void darKitInicial() {
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            // 🔧 FIX #9: Kit ampliado con 6 Ender Eyes + Blaze Powder para anclas
+            ItemStack[] startKit = {
+                new ItemStack(Material.IRON_SWORD),
+                new ItemStack(Material.BOW),
+                new ItemStack(Material.ARROW, 64),
+                new ItemStack(Material.COOKED_BEEF, 32),
+                new ItemStack(Material.GOLDEN_APPLE, 4),
+                new ItemStack(Material.TORCH, 32),
+                new ItemStack(Material.ENDER_PEARL, 4),
+                new ItemStack(Material.ENDER_EYE, 6),       // 🔧 FIX #9: 6 Ender Eyes para anclas
+                new ItemStack(Material.BLAZE_POWDER, 8)     // 🔧 FIX #9: Blaze Powder adicional
+            };
+            
+            for (ItemStack item : startKit) {
+                p.getInventory().addItem(item);
+            }
+            
+            p.sendMessage("§d§l[Eco de las Sombras] §aKit inicial recibido");
+            // 🔧 FIX #9: Notificar sobre items para anclas
+            p.sendMessage("§7Incluye §eEnder Eyes §7y §eBlaze Powder §7para las anclas");
+        }
+    }
+    
+    /**
+     * Inicia sistema de suministro periódico de items cada 5 minutos
+     */
+    private void iniciarSuministroItems() {
+        // Cada 5 minutos, dar items básicos a todos los participantes
+        itemSupplyTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            for (UUID uuid : participantesOriginales) {
+                Player p = Bukkit.getPlayer(uuid);
+                if (p == null || !p.isOnline()) continue;
+                
+                // 🔧 FIX #9: Kit de supervivencia ampliado con 60% más Ender Eyes y Blaze Powder
+                ItemStack[] supplies = {
+                    new ItemStack(Material.COOKED_BEEF, 16),
+                    new ItemStack(Material.GOLDEN_APPLE, 2),
+                    new ItemStack(Material.ARROW, 32),
+                    new ItemStack(Material.TORCH, 16),
+                    new ItemStack(Material.OAK_PLANKS, 32),
+                    new ItemStack(Material.COBBLESTONE, 32),
+                    new ItemStack(Material.ENDER_PEARL, 2),
+                    new ItemStack(Material.ENDER_EYE, 4),        // 🔧 FIX #9: +60% (antes 0, ahora 4)
+                    new ItemStack(Material.BLAZE_POWDER, 4)       // 🔧 FIX #9: +4 Blaze Powder
+                };
+                
+                // Poción de curación
+                ItemStack healPotion = new ItemStack(Material.POTION);
+                org.bukkit.inventory.meta.PotionMeta meta = 
+                    (org.bukkit.inventory.meta.PotionMeta) healPotion.getItemMeta();
+                meta.setBasePotionType(org.bukkit.potion.PotionType.HEALING);
+                healPotion.setItemMeta(meta);
+                
+                // Dar items solo si no tiene inventario lleno de ese tipo
+                for (ItemStack item : supplies) {
+                    if (!p.getInventory().contains(item.getType(), 64)) {
+                        p.getInventory().addItem(item);
+                    }
+                }
+                p.getInventory().addItem(healPotion);
+                
+                p.sendMessage("§a§l[+] Suministros recibidos");
+                p.playSound(p.getLocation(), Sound.ENTITY_ITEM_PICKUP, 0.5f, 1.2f);
+            }
+        }, 6000L, 6000L); // Cada 5 minutos (6000 ticks)
+    }
 }
+

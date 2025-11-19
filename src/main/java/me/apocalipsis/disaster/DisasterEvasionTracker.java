@@ -610,7 +610,16 @@ public class DisasterEvasionTracker {
             org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 if (player.isOnline()) {
                     player.playSound(loc, org.bukkit.Sound.ENTITY_WITHER_SPAWN, 2.0f, 0.5f);
-                    player.sendTitle("§4§l⚠", "§cMETEORITO ENTRANTE", 0, 20, 10);
+                    net.kyori.adventure.title.Title warning = net.kyori.adventure.title.Title.title(
+                        net.kyori.adventure.text.Component.text("§4§l⚠"),
+                        net.kyori.adventure.text.Component.text("§cMETEORITO ENTRANTE"),
+                        net.kyori.adventure.title.Title.Times.times(
+                            java.time.Duration.ZERO,
+                            java.time.Duration.ofSeconds(1),
+                            java.time.Duration.ofMillis(500)
+                        )
+                    );
+                    player.showTitle(warning);
                 }
             }, delay);
         }
@@ -621,7 +630,9 @@ public class DisasterEvasionTracker {
                 org.bukkit.Location currentLoc = player.getLocation();
                 
                 // Anuncio global
-                org.bukkit.Bukkit.broadcastMessage("§4§l⚠⚠⚠ Un SUPER METEORITO impactará en la base de §f" + player.getName() + " §4§l⚠⚠⚠");
+                org.bukkit.Bukkit.getServer().broadcast(
+                    net.kyori.adventure.text.Component.text("§4§l⚠⚠⚠ Un SUPER METEORITO impactará en la base de §f" + player.getName() + " §4§l⚠⚠⚠")
+                );
                 
                 // Impacto del meteorito - múltiples explosiones
                 for (int i = 0; i < 15; i++) {

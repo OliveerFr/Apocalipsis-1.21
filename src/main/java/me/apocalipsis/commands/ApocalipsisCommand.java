@@ -47,51 +47,18 @@ public class ApocalipsisCommand implements CommandExecutor {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 0) {
-            sender.sendMessage("§c§lAPOCALIPSIS §7- Comandos:");
-            sender.sendMessage("§6=== Control de Desastres ===");
-            sender.sendMessage("§e/avo start §7- Inicia o reanuda el desastre");
-            sender.sendMessage("§e/avo stop §7- Detiene el desastre actual");
-            sender.sendMessage("§e/avo force <id> §7- Fuerza un desastre específico");
-            sender.sendMessage("§e/avo skip §7- Salta al siguiente estado");
-            sender.sendMessage("§e/avo preparacion <min> §7- Inicia preparación");
-            sender.sendMessage("§e/avo time <set|add> <min> §7- Modifica tiempo del estado");
-            sender.sendMessage("§6=== Protecciones ===");
-            sender.sendMessage("§e/avo escanear §7- Escanea protecciones cercanas");
-            sender.sendMessage("§e/avo protecciones §7- Guía de protecciones");
-            sender.sendMessage("§6=== Experiencia y Progresión ===");
-            sender.sendMessage("§e/avo xp §7- Ver tu experiencia y progreso");
-            sender.sendMessage("§e/avo nivel §7- Ver tu nivel actual");
-            sender.sendMessage("§e/avo xp <get|add|set> §7- Gestión de XP (Admin)");
-            sender.sendMessage("§6=== Evento Eco de Brasas ===");
-            sender.sendMessage("§e/avo eco start §7- Inicia el evento");
-            sender.sendMessage("§e/avo eco stop §7- Detiene el evento");
-            sender.sendMessage("§e/avo eco fase <1|2|3> §7- Fuerza fase específica");
-            sender.sendMessage("§e/avo eco next §7- Avanza a siguiente fase");
-            sender.sendMessage("§e/avo eco info §7- Info detallada del evento");
-            sender.sendMessage("§e/avo eco pulso <add|set> <valor> §7- Ajusta pulso");
-            sender.sendMessage("§e/avo eco ancla <1-3> §7- Completa ancla");
-            sender.sendMessage("§6=== Evento Eco de Sombras Largas ===");
-            sender.sendMessage("§e/avo eco_sombras start §7- Inicia el evento");
-            sender.sendMessage("§e/avo eco_sombras stop §7- Detiene el evento");
-            sender.sendMessage("§e/avo eco_sombras fase <1-6> §7- Fuerza acto");
-            sender.sendMessage("§e/avo eco_sombras info §7- Info del evento");
-            sender.sendMessage("§6=== Misiones ===");
-            sender.sendMessage("§e/avo newday §7- Crea un nuevo día y asigna misiones");
-            sender.sendMessage("§e/avo endday §7- Termina el día actual");
-            sender.sendMessage("§e/avo status [jugador] §7- Muestra misiones activas");
-            sender.sendMessage("§e/avo setxp <jugador> <xp|rango> §7- Ajusta XP (o asigna rango)");
-            sender.sendMessage("§e/avo mission <give|complete|clear> §7- Gestión de misiones");
-            sender.sendMessage("§6=== Sistema ===");
-            sender.sendMessage("§e/avo tps §7- Ver TPS y rendimiento");
-            sender.sendMessage("§e/avo stats §7- Estadísticas del servidor");
-            sender.sendMessage("§e/avo cooldown §7- Estado del cooldown");
-            sender.sendMessage("§e/avo backup §7- Backup manual de datos");
-            sender.sendMessage("§e/avo reload §7- Recarga la configuración");
-            sender.sendMessage("§e/avo test §7- Toggle modo test");
-            sender.sendMessage("§e/avo debug <on|off|status|missions> §7- Control de logs");
-            sender.sendMessage("§e/avo test-alert <jugador> §7- Prueba notificaciones");
-            sender.sendMessage("§e/avo admin <add|remove|list> §7- Gestionar excepciones");
-            sender.sendMessage("§e/avo evasion <check|clear> [jugador] §7- Gestionar evasiones");
+            showHelp(sender, 1);
+            return true;
+        }
+        
+        // Check for help pages
+        if (args[0].equalsIgnoreCase("help") && args.length > 1) {
+            try {
+                int page = Integer.parseInt(args[1]);
+                showHelp(sender, page);
+            } catch (NumberFormatException e) {
+                sender.sendMessage("§cUso: /avo help <página>");
+            }
             return true;
         }
 
@@ -191,6 +158,104 @@ public class ApocalipsisCommand implements CommandExecutor {
         return true;
     }
 
+    /**
+     * Muestra ayuda paginada con diseño mejorado
+     */
+    private void showHelp(CommandSender sender, int page) {
+        final int CMDS_PER_PAGE = 12;
+        
+        // Build complete command list
+        String[][] commands = {
+            // Page 1: Desastres y Protecciones
+            {"§6▸ Control de Desastres", ""},
+            {"  §e/avo start", "§7Inicia o reanuda desastre"},
+            {"  §e/avo stop", "§7Detiene desastre actual"},
+            {"  §e/avo force <id>", "§7Fuerza desastre específico"},
+            {"  §e/avo skip", "§7Salta al siguiente estado"},
+            {"  §e/avo preparacion <min>", "§7Inicia preparación"},
+            {"  §e/avo time <set|add> <min>", "§7Modifica tiempo"},
+            {"§6▸ Protecciones", ""},
+            {"  §e/avo escanear", "§7Escanea protecciones cercanas"},
+            {"  §e/avo protecciones", "§7Guía de protecciones"},
+            {"§6▸ Sistema", ""},
+            {"  §e/avo tps", "§7Ver TPS y rendimiento"},
+            
+            // Page 2: Experiencia y Misiones
+            {"§6▸ Experiencia y Progresión", ""},
+            {"  §e/avo xp", "§7Ver tu XP y progreso"},
+            {"  §e/avo nivel", "§7Ver tu nivel actual"},
+            {"  §e/avo xp <get|add|set>", "§7Gestión XP (Admin)"},
+            {"§6▸ Misiones", ""},
+            {"  §e/avo newday", "§7Nuevo día + misiones"},
+            {"  §e/avo endday", "§7Termina día actual"},
+            {"  §e/avo status [jugador]", "§7Misiones activas"},
+            {"  §e/avo setxp <jugador> <xp>", "§7Ajusta XP/rango"},
+            {"  §e/avo mission <...>", "§7Gestión misiones"},
+            {"", ""},
+            {"", ""},
+            
+            // Page 3: Eventos
+            {"§6▸ Evento Eco de Brasas", ""},
+            {"  §e/avo eco start", "§7Inicia evento"},
+            {"  §e/avo eco stop", "§7Detiene evento"},
+            {"  §e/avo eco fase <1-3>", "§7Fuerza fase"},
+            {"  §e/avo eco next", "§7Siguiente fase"},
+            {"  §e/avo eco info", "§7Info detallada"},
+            {"  §e/avo eco pulso <...>", "§7Ajusta pulso"},
+            {"  §e/avo eco ancla <1-3>", "§7Completa ancla"},
+            {"§6▸ Evento Eco de Sombras", ""},
+            {"  §e/avo eco_sombras start", "§7Inicia evento"},
+            {"  §e/avo eco_sombras stop", "§7Detiene evento"},
+            {"  §e/avo eco_sombras fase <1-6>", "§7Fuerza acto"},
+            {"  §e/avo eco_sombras info", "§7Info evento"},
+            
+            // Page 4: Admin
+            {"§6▸ Sistema Avanzado", ""},
+            {"  §e/avo stats", "§7Estadísticas servidor"},
+            {"  §e/avo cooldown", "§7Estado cooldown"},
+            {"  §e/avo backup", "§7Backup manual"},
+            {"  §e/avo reload", "§7Recarga config"},
+            {"  §e/avo test", "§7Toggle modo test"},
+            {"  §e/avo debug <...>", "§7Control logs"},
+            {"  §e/avo test-alert <jugador>", "§7Test notificaciones"},
+            {"  §e/avo admin <...>", "§7Gestión excepciones"},
+            {"  §e/avo evasion <...>", "§7Gestión evasiones"},
+            {"", ""},
+            {"", ""},
+            {"", ""}
+        };
+        
+        int totalPages = (commands.length + CMDS_PER_PAGE - 1) / CMDS_PER_PAGE;
+        page = Math.max(1, Math.min(page, totalPages));
+        
+        int startIdx = (page - 1) * CMDS_PER_PAGE;
+        int endIdx = Math.min(startIdx + CMDS_PER_PAGE, commands.length);
+        
+        // Header
+        sender.sendMessage("§8§m                                                  ");
+        sender.sendMessage("§c§lAPOCALIPSIS §8| §7Comandos §8(§e" + page + "§7/§e" + totalPages + "§8)");
+        sender.sendMessage("§8§m                                                  ");
+        
+        // Commands
+        for (int i = startIdx; i < endIdx; i++) {
+            String[] cmd = commands[i];
+            if (cmd[0].isEmpty()) {
+                continue; // Skip empty lines
+            }
+            if (cmd[1].isEmpty()) {
+                sender.sendMessage(cmd[0]); // Category header
+            } else {
+                sender.sendMessage(cmd[0] + " §8- " + cmd[1]);
+            }
+        }
+        
+        // Footer
+        sender.sendMessage("§8§m                                                  ");
+        if (page < totalPages) {
+            sender.sendMessage("§7Usa §e/avo help " + (page + 1) + "§7 para ver más comandos");
+        }
+    }
+    
     private void cmdStart(CommandSender sender) {
         if (!sender.hasPermission("avo.admin")) {
             sender.sendMessage("§cNo tienes permisos.");

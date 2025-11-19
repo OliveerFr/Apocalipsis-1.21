@@ -8,7 +8,10 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.player.AsyncPlayerChatEvent;
+import io.papermc.paper.event.player.AsyncChatEvent;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -29,11 +32,12 @@ public class ChatListener implements Listener {
     }
     
     @EventHandler(priority = EventPriority.LOWEST)
-    public void onPlayerChat(AsyncPlayerChatEvent event) {
+    public void onPlayerChat(AsyncChatEvent event) {
         if (event.isCancelled()) return;
         
         Player player = event.getPlayer();
-        String message = event.getMessage();
+        // Convertir Component a String plano para procesamiento
+        String message = PlainTextComponentSerializer.plainText().serialize(event.message());
         UUID uuid = player.getUniqueId();
         
         FileConfiguration config = plugin.getConfigManager().getChatConfig();
@@ -62,7 +66,7 @@ public class ChatListener implements Listener {
                     double remaining = cooldown - elapsed;
                     String cooldownMsg = config.getString("special_messages.cooldown_message", "&cEspera %seconds%s antes de enviar otro mensaje.")
                         .replace("%seconds%", String.format("%.1f", remaining));
-                    player.sendMessage(cooldownMsg);
+                    player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(cooldownMsg));
                     return;
                 }
             }
@@ -74,7 +78,8 @@ public class ChatListener implements Listener {
             String last = lastMessage.get(uuid);
             if (last != null && last.equalsIgnoreCase(message)) {
                 event.setCancelled(true);
-                player.sendMessage(config.getString("moderation.spam_warning", "&cNo envíes el mismo mensaje repetidamente."));
+                player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(
+                    config.getString("moderation.spam_warning", "&cNo envíes el mismo mensaje repetidamente.")));
                 return;
             }
             lastMessage.put(uuid, message);
@@ -118,12 +123,13 @@ public class ChatListener implements Listener {
         formattedMessage = formattedMessage.replace("%1$s", message);
         
         // Enviar mensaje formateado a todos los jugadores
+        Component formattedComponent = LegacyComponentSerializer.legacySection().deserialize(formattedMessage);
         for (Player recipient : plugin.getServer().getOnlinePlayers()) {
-            recipient.sendMessage(formattedMessage);
+            recipient.sendMessage(formattedComponent);
         }
         
-        // Log a consola
-        plugin.getLogger().info(org.bukkit.ChatColor.stripColor(formattedMessage));
+        // Log a consola (sin colores)
+        plugin.getLogger().info(PlainTextComponentSerializer.plainText().serialize(formattedComponent));
     }
     
     /**
@@ -171,8 +177,13 @@ public class ChatListener implements Listener {
                     float pitch = (float) config.getDouble("mentions.mention_pitch", 1.5);
                     
                     try {
-                        Sound sound = Sound.valueOf(soundName);
-                        online.playSound(online.getLocation(), sound, volume, pitch);
+                        // Migrado a Registry API
+                        org.bukkit.NamespacedKey soundKey = org.bukkit.NamespacedKey.fromString(soundName.toLowerCase());
+                        if (soundKey == null) soundKey = org.bukkit.NamespacedKey.minecraft(soundName.toLowerCase());
+                        Sound sound = org.bukkit.Registry.SOUNDS.get(soundKey);
+                        if (sound != null) {
+                            online.playSound(online.getLocation(), sound, volume, pitch);
+                        }
                     } catch (IllegalArgumentException ignored) {}
                 }
                 

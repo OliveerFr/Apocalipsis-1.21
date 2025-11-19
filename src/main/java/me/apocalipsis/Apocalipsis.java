@@ -36,6 +36,7 @@ import me.apocalipsis.ui.SoundUtil;
 import me.apocalipsis.ui.TablistManager;
 import me.apocalipsis.utils.BlockOwnershipTracker;
 import me.apocalipsis.utils.ConfigManager;
+import me.apocalipsis.utils.OnlinePlayersCache;
 
 public final class Apocalipsis extends JavaPlugin {
 
@@ -70,6 +71,7 @@ public final class Apocalipsis extends JavaPlugin {
     // Utils
     private BlockOwnershipTracker blockTracker;
     private DisasterEvasionTracker evasionTracker;
+    private OnlinePlayersCache onlinePlayersCache; // [OPTIMIZACIÓN] Cache de jugadores online
 
     @Override
     public void onEnable() {
@@ -88,6 +90,10 @@ public final class Apocalipsis extends JavaPlugin {
         configManager = new ConfigManager(this);
         messageBus = new MessageBus(this);
         soundUtil = new SoundUtil(this);
+        
+        // [OPTIMIZACIÓN] Cache de jugadores online
+        onlinePlayersCache = new OnlinePlayersCache();
+        getServer().getPluginManager().registerEvents(onlinePlayersCache, this);
         timeService = new TimeService(this);
         stateManager = new StateManager(this, timeService, messageBus);
         
@@ -198,8 +204,14 @@ public final class Apocalipsis extends JavaPlugin {
             abilityService.stopTask();
         }
         
+        // Detener mission height tracker
+        if (missionService != null) {
+            missionService.stopHeightTracker();
+        }
+        
         // Guardar block tracker
         if (blockTracker != null) {
+            blockTracker.stopCleanupTask();
             blockTracker.saveData();
         }
         
@@ -328,5 +340,13 @@ public final class Apocalipsis extends JavaPlugin {
     
     public RewardService getRewardService() {
         return rewardService;
+    }
+    
+    /**
+     * [OPTIMIZACIÓN] Obtiene el cache de jugadores online
+     * Usar en lugar de Bukkit.getOnlinePlayers() para mejor rendimiento
+     */
+    public OnlinePlayersCache getOnlinePlayersCache() {
+        return onlinePlayersCache;
     }
 }

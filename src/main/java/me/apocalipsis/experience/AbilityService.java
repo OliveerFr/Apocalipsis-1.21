@@ -23,9 +23,13 @@ public class AbilityService {
     // Caché de habilidades por rango
     private final Map<MissionRank, List<RankAbility>> abilitiesByRank = new HashMap<>();
     
+    // [OPTIMIZACIÓN] Cooldowns por jugador para evitar spam de aplicación
+    private final Map<UUID, Long> applyCooldowns = new HashMap<>();
+    
     // Configuración
     private int intervaloRenovacion = 600; // 30 segundos
     private int duracionEfecto = 1200; // 60 segundos
+    private int cooldownAplicacion = 100; // 5 segundos (en ticks)
     private boolean ocultarParticulas = false;
     private boolean notificarAplicacion = true;
     
@@ -46,6 +50,7 @@ public class AbilityService {
         // Cargar configuración general
         intervaloRenovacion = config.getInt("habilidades_config.intervalo_renovacion", 600);
         duracionEfecto = config.getInt("habilidades_config.duracion_efecto", 1200);
+        cooldownAplicacion = config.getInt("habilidades_config.cooldown_aplicacion", 100); // 5s default
         ocultarParticulas = config.getBoolean("habilidades_config.ocultar_particulas", false);
         notificarAplicacion = config.getBoolean("habilidades_config.notificar_aplicacion", true);
         
@@ -75,7 +80,10 @@ public class AbilityService {
                         int level = ((Number) abilityMap.getOrDefault("level", 1)).intValue();
                         String description = (String) abilityMap.getOrDefault("descripcion", "");
                         
-                        PotionEffectType effectType = PotionEffectType.getByName(type);
+                        // Migrado a Registry API
+                        org.bukkit.NamespacedKey key = org.bukkit.NamespacedKey.fromString(type.toLowerCase());
+                        if (key == null) key = org.bukkit.NamespacedKey.minecraft(type.toLowerCase());
+                        PotionEffectType effectType = org.bukkit.Registry.EFFECT.get(key);
                         if (effectType != null) {
                             abilities.add(new RankAbility(effectType, level, description));
                         } else {
@@ -122,12 +130,24 @@ public class AbilityService {
      * @param notify Si debe notificar al jugador
      */
     public void applyAbilities(Player player, boolean notify) {
+        UUID uuid = player.getUniqueId();
+        
+        // [OPTIMIZACIÓN] Verificar cooldown antes de aplicar
+        Long lastApply = applyCooldowns.get(uuid);
+        long currentTick = plugin.getServer().getCurrentTick();
+        if (lastApply != null && (currentTick - lastApply) < cooldownAplicacion) {
+            return; // Todavía en cooldown
+        }
+        
         MissionRank rank = plugin.getRankService().getRank(player);
         List<RankAbility> abilities = abilitiesByRank.get(rank);
         
         if (abilities == null || abilities.isEmpty()) {
             return;
         }
+        
+        // Registrar timestamp de aplicación
+        applyCooldowns.put(uuid, currentTick);
         
         // Aplicar cada habilidad
         for (RankAbility ability : abilities) {
@@ -149,7 +169,9 @@ public class AbilityService {
             String message = config.getString("habilidades_config.mensaje_aplicacion", 
                 "&aHabilidades de rango &e%rango% &aaplicadas");
             message = message.replace("%rango%", rank.getDisplayName());
-            player.sendMessage(org.bukkit.ChatColor.translateAlternateColorCodes('&', message));
+            // Migrado a Component con legacy serializer
+            net.kyori.adventure.text.Component messageComponent = net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacyAmpersand().deserialize(message);
+            player.sendMessage(messageComponent);
         }
     }
     
@@ -216,11 +238,12 @@ public class AbilityService {
         }
         
         public String getDescription() {
-            return org.bukkit.ChatColor.translateAlternateColorCodes('&', description);
+            // Migrado a legacy serializer para consistencia
+            return net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacyAmpersand().deserialize(description).toString();
         }
         
         public String getFormattedName() {
-            return type.getName() + " " + getRomanNumeral(level);
+            return type.getKey().getKey() + " " + getRomanNumeral(level);
         }
         
         private String getRomanNumeral(int number) {

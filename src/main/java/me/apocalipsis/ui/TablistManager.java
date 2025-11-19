@@ -41,7 +41,8 @@ public class TablistManager {
     }
 
     public void updateAll() {
-        for (Player player : Bukkit.getOnlinePlayers()) {
+        // [OPTIMIZACIÓN] Usar cache en lugar de Bukkit.getOnlinePlayers()
+        for (Player player : plugin.getOnlinePlayersCache().getOnlinePlayers()) {
             updatePlayer(player);
         }
     }
@@ -69,11 +70,10 @@ public class TablistManager {
         }
         
         int day = stateManager.getCurrentDay();
-        int online = Bukkit.getOnlinePlayers().size();
+        int online = plugin.getOnlinePlayersCache().getOnlineCount();
         int max = Bukkit.getMaxPlayers();
         double tps = performanceAdapter.getLastTPS();
         String tpsColor = tps >= 18.0 ? "§a" : (tps >= 14.0 ? "§e" : "§c");
-        String perfState = getPerformanceStateDisplay();
         
         StringBuilder header = new StringBuilder();
         
@@ -183,7 +183,7 @@ public class TablistManager {
         }
         
         int day = stateManager.getCurrentDay();
-        int online = Bukkit.getOnlinePlayers().size();
+        int online = plugin.getOnlinePlayersCache().getOnlineCount();
         int max = Bukkit.getMaxPlayers();
         double tps = performanceAdapter.getLastTPS();
         String tpsColor = tps >= 18.0 ? "§a" : (tps >= 14.0 ? "§e" : "§c");
@@ -243,7 +243,7 @@ public class TablistManager {
     }
 
     public void clearAll() {
-        for (Player player : Bukkit.getOnlinePlayers()) {
+        for (Player player : plugin.getOnlinePlayersCache().getOnlinePlayers()) {
             clearPlayer(player);
         }
         lastTabCache.clear();
@@ -351,7 +351,7 @@ public class TablistManager {
      */
     public void forceSharedScoreboard() {
         org.bukkit.scoreboard.Scoreboard mainBoard = getPluginMainBoard();
-        for (Player on : Bukkit.getOnlinePlayers()) {
+        for (Player on : plugin.getOnlinePlayersCache().getOnlinePlayers()) {
             on.setScoreboard(mainBoard);
             applyTabPrefix(on);
         }
@@ -394,29 +394,24 @@ public class TablistManager {
      * @return Barra de progreso coloreada
      */
     private String generateProgressBar(double percentage, int length) {
-        int filled = (int) (percentage / 100.0 * length);
+        int filled = (int) Math.max(0, Math.min(length, percentage / 100.0 * length));
         int empty = length - filled;
         
-        StringBuilder bar = new StringBuilder("§8[");
+        // Pre-allocate StringBuilder capacity
+        StringBuilder bar = new StringBuilder(length * 3 + 10);
+        bar.append("§8[");
         
-        // Determinar color según progreso
-        String barColor;
-        if (percentage >= 75) {
-            barColor = "§a"; // Verde
-        } else if (percentage >= 50) {
-            barColor = "§e"; // Amarillo
-        } else if (percentage >= 25) {
-            barColor = "§6"; // Naranja
-        } else {
-            barColor = "§c"; // Rojo
-        }
+        // Determinar color según progreso (inline para mejor performance)
+        String barColor = percentage >= 75 ? "§a" : (percentage >= 50 ? "§e" : (percentage >= 25 ? "§6" : "§c"));
         
-        // Construir barra
-        for (int i = 0; i < filled; i++) {
-            bar.append(barColor).append("█");
+        // Construir barra con menos append calls
+        if (filled > 0) {
+            bar.append(barColor);
+            for (int i = 0; i < filled; i++) bar.append('█');
         }
-        for (int i = 0; i < empty; i++) {
-            bar.append("§7§m "); // Gris tenue
+        if (empty > 0) {
+            bar.append("§7");
+            for (int i = 0; i < empty; i++) bar.append('█');
         }
         
         bar.append("§8]");

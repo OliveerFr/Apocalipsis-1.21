@@ -15,6 +15,7 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.inventory.ItemStack;
 
 import me.apocalipsis.events.gameplay.QTESystem;
@@ -124,12 +125,23 @@ public class EcoSombrasListener implements Listener {
             
             event.getDrops().clear(); // Limpiar drops normales
             
-            // 1-2 fragmentos
-            int cantidad = 1 + (Math.random() < 0.5 ? 1 : 0);
+            // 🔧 FIX #9: Aumentar drops 60% (antes: 1-2, ahora: 1-3 fragmentos + extras)
+            int cantidadFragmentos = 1 + (Math.random() < 0.7 ? 1 : 0) + (Math.random() < 0.3 ? 1 : 0); // 1-3
             ItemStack fragmento = items.crearFragmentoSombra();
-            fragmento.setAmount(cantidad);
-            
+            fragmento.setAmount(cantidadFragmentos);
             event.getDrops().add(fragmento);
+            
+            // 🔧 FIX #9: 60% chance de dropear Ender Eyes (1-2)
+            if (Math.random() < 0.60) {
+                int cantidadEyes = 1 + (Math.random() < 0.5 ? 1 : 0); // 1-2
+                event.getDrops().add(new ItemStack(Material.ENDER_EYE, cantidadEyes));
+            }
+            
+            // 🔧 FIX #9: 40% chance de dropear Blaze Powder (2-4)
+            if (Math.random() < 0.40) {
+                int cantidadPowder = 2 + (int) (Math.random() * 3); // 2-4
+                event.getDrops().add(new ItemStack(Material.BLAZE_POWDER, cantidadPowder));
+            }
         }
     }
     
@@ -199,6 +211,22 @@ public class EcoSombrasListener implements Listener {
                 
                 event.setCancelled(true);
                 return;
+            }
+        }
+    }
+    
+    /**
+     * Maneja respuestas de choices en el chat (NUEVO - Categoría 7)
+     */
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onPlayerChat(AsyncPlayerChatEvent event) {
+        Player player = event.getPlayer();
+        String message = event.getMessage().trim();
+        
+        // Intentar procesar como choice
+        if (message.equalsIgnoreCase("A") || message.equalsIgnoreCase("B")) {
+            if (evento.getChoiceSystem().makeChoice(player, message.toUpperCase())) {
+                event.setCancelled(true);
             }
         }
     }

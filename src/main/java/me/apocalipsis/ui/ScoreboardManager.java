@@ -52,7 +52,8 @@ public class ScoreboardManager {
     }
 
     public void updateAll() {
-        for (Player player : Bukkit.getOnlinePlayers()) {
+        // [OPTIMIZACIÓN] Usar cache en lugar de Bukkit.getOnlinePlayers()
+        for (Player player : plugin.getOnlinePlayersCache().getOnlinePlayers()) {
             updatePlayer(player);
         }
     }
@@ -142,7 +143,8 @@ public class ScoreboardManager {
                     content.append("§7Cooldown: §e").append(cooldownMMSS).append("\n");
                 } else {
                     int minJugadores = plugin.getConfigManager().getMinJugadores();
-                    int online = Bukkit.getOnlinePlayers().size();
+                    // [OPTIMIZACIÓN] Usar cache de contador
+                    int online = plugin.getOnlinePlayersCache().getOnlineCount();
                     content.append("§7Cooldown: §a¡Listo!\n");
                     if (online < minJugadores) {
                         content.append("§7Esperando: §e").append(online).append("§7/§f").append(minJugadores).append(" jugadores\n");
@@ -204,7 +206,7 @@ public class ScoreboardManager {
         content.append("§7Completadas: §a").append(completed).append("§7/§f").append(total).append("\n");
         
         content.append("   \n"); // Línea vacía
-        content.append("§7Online: §f").append(Bukkit.getOnlinePlayers().size()).append("\n");
+        content.append("§7Online: §f").append(plugin.getOnlinePlayersCache().getOnlineCount()).append("\n");
         
         return content.toString();
     }
@@ -248,7 +250,7 @@ public class ScoreboardManager {
                 } else {
                     // Cooldown cumplido - verificar si hay bloqueo por jugadores
                     int minJugadores = plugin.getConfigManager().getMinJugadores();
-                    int online = Bukkit.getOnlinePlayers().size();
+                    int online = plugin.getOnlinePlayersCache().getOnlineCount();
                     if (online < minJugadores) {
                         objective.getScore("§7Cooldown: §a¡Listo!").setScore(line--);
                         objective.getScore("§7Esperando: §e" + online + "§7/§f" + minJugadores + " jugadores").setScore(line--);
@@ -310,22 +312,29 @@ public class ScoreboardManager {
         objective.getScore("§7Completadas: §a" + completed + "§7/§f" + total).setScore(line--);
         
         objective.getScore("   ").setScore(line--); // Línea vacía
-        objective.getScore("§7Online: §f" + Bukkit.getOnlinePlayers().size()).setScore(line--);
+        objective.getScore("§7Online: §f" + plugin.getOnlinePlayersCache().getOnlineCount()).setScore(line--);
     }
 
     private String buildProgressBar(double progress) {
         int bars = 20;
-        int filled = (int) (progress * bars);
-        filled = Math.min(bars, Math.max(0, filled));
+        int filled = (int) Math.max(0, Math.min(bars, progress * bars));
         
-        StringBuilder sb = new StringBuilder("§8[");
-        for (int i = 0; i < bars; i++) {
-            if (i < filled) {
-                sb.append("§a|");
-            } else {
-                sb.append("§7|");
-            }
+        // Colores dinámicos según progreso
+        String fillColor = progress >= 0.75 ? "§a" : (progress >= 0.50 ? "§e" : (progress >= 0.25 ? "§6" : "§c"));
+        
+        StringBuilder sb = new StringBuilder(64); // Pre-allocate capacity
+        sb.append("§8[");
+        
+        // Usar append múltiple para mejor performance
+        if (filled > 0) {
+            sb.append(fillColor);
+            for (int i = 0; i < filled; i++) sb.append('█');
         }
+        if (filled < bars) {
+            sb.append("§7");
+            for (int i = filled; i < bars; i++) sb.append('█');
+        }
+        
         sb.append("§8]");
         return sb.toString();
     }

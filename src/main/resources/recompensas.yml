@@ -16,28 +16,28 @@ recompensas_por_mision:
   # Recompensas según dificultad de la misión
   por_dificultad:
     FACIL:
-      # Probabilidad de recompensa (0.0 - 1.0)
-      probabilidad: 0.20          # 20% de chance (antes 30%)
+      # Probabilidad de recompensa (0.0 - 1.0) - BALANCEADO v1.15
+      probabilidad: 0.15          # 15% de chance (reducido para balance)
       items:
-        - "give %player% minecraft:bread 2"
-        - "give %player% minecraft:cooked_beef 1"
-      mensaje: "&a¡Bonus! &7+2 Pan"
+        - "give %player% minecraft:bread 3"
+        - "give %player% minecraft:cooked_beef 2"
+      mensaje: "&a¡Bonus! &7+3 Pan, +2 Carne"
       
     MEDIA:
-      probabilidad: 0.30          # 30% de chance (antes 40%)
+      probabilidad: 0.25          # 25% de chance (reducido para balance)
       items:
-        - "give %player% minecraft:iron_ingot 2"
+        - "give %player% minecraft:iron_ingot 3"
         - "give %player% minecraft:gold_ingot 1"
-        - "give %player% minecraft:arrow 8"
-      mensaje: "&a¡Bonus! &7+2 Hierro, +1 Oro, +8 Flechas"
+        - "give %player% minecraft:arrow 12"
+      mensaje: "&a¡Bonus! &7+3 Hierro, +1 Oro, +12 Flechas"
       
     DIFICIL:
-      probabilidad: 0.40          # 40% de chance (antes 50%)
+      probabilidad: 0.35          # 35% de chance (reducido para balance)
       items:
         - "give %player% minecraft:diamond 1"
         - "give %player% minecraft:golden_apple 1"
-        - "give %player% minecraft:experience_bottle 3"
-      mensaje: "&a¡Bonus! &7+1 Diamante, +1 Manzana Dorada, +3 XP Bottles"
+        - "give %player% minecraft:experience_bottle 4"
+      mensaje: "&a¡Bonus! &7+1 Diamante, +1 Manzana Dorada, +4 XP Bottles"
 
 # ═══════════════════════════════════════════════════════════════
 # RECOMPENSAS POR COMPLETAR TODAS LAS MISIONES DEL DÍA
@@ -46,12 +46,13 @@ recompensas_por_mision:
 recompensas_diarias_completas:
   enabled: true
   
-  # Recompensas base (siempre se dan)
+  # Recompensas base (siempre se dan) - BALANCEADO v1.15
   recompensas_base:
     comandos:
-      - "give %player% minecraft:diamond 5"              # Antes 3
-      - "give %player% minecraft:golden_apple 3"         # Antes 2
-      - "give %player% minecraft:experience_bottle 8"    # Antes 5
+      - "give %player% minecraft:diamond 4"              # Balanceado: 4 diamantes
+      - "give %player% minecraft:golden_apple 2"         # Balanceado: 2 manzanas
+      - "give %player% minecraft:experience_bottle 6"    # Balanceado: 6 bottles
+      - "give %player% minecraft:iron_ingot 16"          # Agregado: recursos base
     mensaje: "&6&l★ ¡MISIONES DIARIAS COMPLETADAS! &r&7Has recibido recompensas especiales"
     
   # Recompensas adicionales según el rango del jugador

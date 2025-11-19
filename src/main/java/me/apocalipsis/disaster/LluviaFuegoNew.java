@@ -421,9 +421,9 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
             canSetFire = false; // Agua evita fuego
             
             // Efectos de vapor mejorados
-            world.spawnParticle(Particle.CLOUD, loc, 25, 1.2, 1.2, 1.2, 0.1);
-            world.spawnParticle(Particle.BUBBLE_POP, loc, 15, 0.8, 0.8, 0.8, 0.05);
-            world.spawnParticle(Particle.DRIPPING_WATER, loc, 10, 0.5, 0.5, 0.5, 0);
+            world.spawnParticle(Particle.CLOUD, loc, 15, 1.2, 1.2, 1.2, 0.1);
+            world.spawnParticle(Particle.BUBBLE_POP, loc, 10, 0.8, 0.8, 0.8, 0.05);
+            world.spawnParticle(Particle.DRIPPING_WATER, loc, 7, 0.5, 0.5, 0.5, 0);
             world.playSound(loc, Sound.BLOCK_FIRE_EXTINGUISH, 1.2f, 1.0f);
             world.playSound(loc, Sound.ENTITY_GENERIC_SPLASH, 0.8f, 1.2f);
             
@@ -435,9 +435,9 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
         evaporateNearbyWater(loc, romperProteccionCantidad);
         
         // Partículas de impacto
-        spawnParticleForNonExempt(world, ParticleCompat.flame(), loc, 15, 0.3, 0.3, 0.3, 0.1);
-        spawnParticleForNonExempt(world, ParticleCompat.lava(), loc, 5, 0.2, 0.2, 0.2, 0);
-        spawnParticleForNonExempt(world, ParticleCompat.smokeNormal(), loc, 10, 0.4, 0.4, 0.4, 0.05);
+        spawnParticleForNonExempt(world, ParticleCompat.flame(), loc, 10, 0.3, 0.3, 0.3, 0.1);
+        spawnParticleForNonExempt(world, ParticleCompat.lava(), loc, 4, 0.2, 0.2, 0.2, 0);
+        spawnParticleForNonExempt(world, ParticleCompat.smokeNormal(), loc, 7, 0.4, 0.4, 0.4, 0.05);
         spawnParticleForNonExempt(world, ParticleCompat.explosionNormal(), loc, 1, 0, 0, 0, 0);
         
         // Explosión controlada
@@ -701,10 +701,10 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
         world.createExplosion(loc, (float) meteoritosExplosionPower, false, romperBloques);
         
         // Efectos visuales
-        spawnParticleForNonExempt(world, Particle.EXPLOSION_EMITTER, loc, 3, 1, 1, 1, 0);
-        spawnParticleForNonExempt(world, Particle.FLAME, loc, 100, 3, 3, 3, 0.2);
-        spawnParticleForNonExempt(world, Particle.LAVA, loc, 50, 2, 2, 2, 0);
-        spawnParticleForNonExempt(world, Particle.CAMPFIRE_COSY_SMOKE, loc, 80, 4, 4, 4, 0.1);
+        spawnParticleForNonExempt(world, Particle.EXPLOSION_EMITTER, loc, 2, 1, 1, 1, 0);
+        spawnParticleForNonExempt(world, Particle.FLAME, loc, 60, 3, 3, 3, 0.2);
+        spawnParticleForNonExempt(world, Particle.LAVA, loc, 30, 2, 2, 2, 0);
+        spawnParticleForNonExempt(world, Particle.CAMPFIRE_COSY_SMOKE, loc, 50, 4, 4, 4, 0.1);
         
         // Sonidos
         world.playSound(loc, Sound.ENTITY_GENERIC_EXPLODE, 2.0f, 0.5f);

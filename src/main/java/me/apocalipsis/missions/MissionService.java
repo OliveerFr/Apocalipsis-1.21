@@ -40,6 +40,13 @@ public class MissionService {
     private final Map<UUID, List<MissionAssignment>> playerAssignments = new HashMap<>();
     private final Map<UUID, Integer> playerPs = new HashMap<>(); // Puntos de supervivencia
 
+    // [PERFORMANCE] Cache de contadores para evitar recalcular
+    private final Map<UUID, Integer> completedCountCache = new HashMap<>();
+    private final Map<UUID, Integer> failedCountCache = new HashMap<>();
+    
+    // [OPTIMIZACIÓN] Índice por tipo de misión para búsqueda O(1)
+    private final Map<MissionType, List<MissionCatalog>> catalogByType = new HashMap<>();
+
     private int maxPorDia = 5;
     private final Map<MissionRank, Integer> porRango = new HashMap<>();
     private final Map<MissionDifficulty, Integer> pesosPorDificultad = new HashMap<>();
@@ -67,6 +74,7 @@ public class MissionService {
 
     private void loadCatalog() {
         catalog.clear();
+        catalogByType.clear(); // Limpiar índice
         FileConfiguration config = plugin.getConfigManager().getMisionesConfig();
         
         List<Map<?, ?>> misionList = config.getMapList("misiones");
@@ -93,7 +101,11 @@ public class MissionService {
                     continue;
                 }
                 
-                catalog.add(new MissionCatalog(id, nombre, tipo, objetivo, cantidad, dificultad, rangos, recompensaPs));
+                MissionCatalog mission = new MissionCatalog(id, nombre, tipo, objetivo, cantidad, dificultad, rangos, recompensaPs);
+                catalog.add(mission);
+                
+                // [OPTIMIZACIÓN] Agregar al índice por tipo
+                catalogByType.computeIfAbsent(tipo, k -> new ArrayList<>()).add(mission);
             } catch (Exception e) {
                 plugin.getLogger().warning("Error cargando misión: " + e.getMessage());
             }
@@ -136,6 +148,10 @@ public class MissionService {
     public void assignMissionsForDay(int day) {
         // [FIX] Limpiar todas las misiones del día anterior
         playerAssignments.clear();
+        
+        // [PERFORMANCE] Limpiar caches
+        completedCountCache.clear();
+        failedCountCache.clear();
         
         // Asignar nuevas misiones a todos los jugadores online
         for (Player player : plugin.getServer().getOnlinePlayers()) {
@@ -307,6 +323,8 @@ public class MissionService {
                     
                     // Si se completó
                     if (assignment.isCompleted()) {
+                        // [PERFORMANCE] Invalidar cache
+                        completedCountCache.remove(uuid);
                         rewardPlayer(player, mission);
                     }
                 }
@@ -546,9 +564,20 @@ public class MissionService {
     }
 
     public int getCompletedCount(Player player) {
-        return (int) getActiveAssignments(player).stream()
+        UUID uuid = player.getUniqueId();
+        
+        // [PERFORMANCE] Usar cache si existe
+        if (completedCountCache.containsKey(uuid)) {
+            return completedCountCache.get(uuid);
+        }
+        
+        // Calcular y cachear
+        int count = (int) getActiveAssignments(player).stream()
             .filter(MissionAssignment::isCompleted)
             .count();
+        
+        completedCountCache.put(uuid, count);
+        return count;
     }
 
     public int getPlayerPs(Player player) {
@@ -1106,5 +1135,23 @@ public class MissionService {
             plugin.getLogger().warning("[MissionService] Error creando misión custom: " + e.getMessage());
             return false;
         }
+    }
+    
+    /**
+     * [OPTIMIZACIÓN] Obtiene misiones del catálogo filtradas por tipo
+     * Búsqueda O(1) usando índice pre-compilado
+     * @param type Tipo de misión a buscar
+     * @return Lista de misiones del tipo especificado (nunca null)
+     */
+    public List<MissionCatalog> getMissionsByType(MissionType type) {
+        return catalogByType.getOrDefault(type, Collections.emptyList());
+    }
+    
+    /**
+     * Obtiene todas las misiones del catálogo
+     * @return Copia defensiva del catálogo
+     */
+    public List<MissionCatalog> getAllMissions() {
+        return new ArrayList<>(catalog);
     }
 }
