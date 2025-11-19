@@ -26,13 +26,15 @@ public class DisasterStatistics {
         public final int highestPhaseReached;
         public final int deaths;
         public final long survivalTicks;
+        public final double damageReceived;
         
-        public PlayerStats(UUID uuid, String playerName, int highestPhaseReached, int deaths, long survivalTicks) {
+        public PlayerStats(UUID uuid, String playerName, int highestPhaseReached, int deaths, long survivalTicks, double damageReceived) {
             this.uuid = uuid;
             this.playerName = playerName;
             this.highestPhaseReached = highestPhaseReached;
             this.deaths = deaths;
             this.survivalTicks = survivalTicks;
+            this.damageReceived = damageReceived;
         }
         
         /**
@@ -51,7 +53,8 @@ public class DisasterStatistics {
      */
     public static void showDisasterSummary(String disasterName, int totalPhases, long totalTicks,
                                           Map<UUID, Integer> survivalPhases, 
-                                          Map<UUID, Integer> deathsMap) {
+                                          Map<UUID, Integer> deathsMap,
+                                          Map<UUID, Double> damageMap) {
         
         // Preparar lista de estadísticas
         List<PlayerStats> allStats = new ArrayList<>();
@@ -60,8 +63,9 @@ public class DisasterStatistics {
             UUID uuid = player.getUniqueId();
             int phaseReached = survivalPhases.getOrDefault(uuid, 1);
             int deaths = deathsMap.getOrDefault(uuid, 0);
+            double damage = damageMap.getOrDefault(uuid, 0.0);
             
-            allStats.add(new PlayerStats(uuid, player.getName(), phaseReached, deaths, totalTicks));
+            allStats.add(new PlayerStats(uuid, player.getName(), phaseReached, deaths, totalTicks, damage));
         }
         
         // Ordenar por fase alcanzada (descendente), luego por muertes (ascendente)
@@ -83,6 +87,11 @@ public class DisasterStatistics {
         
         // Mostrar top 3 supervivientes
         showTopSurvivors(allStats, totalPhases);
+        
+        Bukkit.broadcastMessage("");
+        
+        // Mostrar top 3 daño recibido
+        showTopDamageReceived(allStats);
         
         Bukkit.broadcastMessage("");
         Bukkit.broadcastMessage("§8§m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -129,6 +138,37 @@ public class DisasterStatistics {
     }
     
     /**
+     * Muestra el top 3 de daño recibido
+     */
+    private static void showTopDamageReceived(List<PlayerStats> allStats) {
+        Bukkit.broadcastMessage("§c§l  ⚠ TOP DAÑO RECIBIDO ⚠");
+        Bukkit.broadcastMessage("");
+        
+        // Ordenar por daño recibido (descendente)
+        List<PlayerStats> damageRanking = new ArrayList<>(allStats);
+        damageRanking.sort(Comparator.comparingDouble((PlayerStats s) -> s.damageReceived).reversed());
+        
+        int rank = 1;
+        for (int i = 0; i < Math.min(3, damageRanking.size()); i++) {
+            PlayerStats stats = damageRanking.get(i);
+            
+            if (stats.damageReceived <= 0) continue; // Saltar jugadores sin daño
+            
+            String medal = getMedal(rank);
+            String playerDisplay = medal + " §f" + stats.playerName;
+            String damageInfo = "§c" + String.format("%.1f", stats.damageReceived) + " ❤";
+            String heartsInfo = "§7(" + String.format("%.1f", stats.damageReceived / 2.0) + " corazones)";
+            
+            Bukkit.broadcastMessage(playerDisplay + " §8- " + damageInfo + " " + heartsInfo);
+            rank++;
+        }
+        
+        if (damageRanking.isEmpty() || damageRanking.get(0).damageReceived <= 0) {
+            Bukkit.broadcastMessage("§7  No se registró daño");
+        }
+    }
+    
+    /**
      * Envía estadísticas personales al jugador
      */
     private static void sendPersonalStats(Player player, PlayerStats stats, int totalPhases) {
@@ -153,6 +193,12 @@ public class DisasterStatistics {
         
         // Tiempo
         player.sendMessage("§8│ §7Tiempo en el desastre: §e" + stats.getSurvivalTimeFormatted());
+        
+        // Daño recibido
+        if (stats.damageReceived > 0) {
+            String damageColor = stats.damageReceived >= 40 ? "§4" : stats.damageReceived >= 20 ? "§c" : "§e";
+            player.sendMessage("§8│ §7Daño recibido: " + damageColor + String.format("%.1f", stats.damageReceived) + " ❤ §7(" + String.format("%.1f", stats.damageReceived / 2.0) + " corazones)");
+        }
         
         player.sendMessage("§8│");
         player.sendMessage("§8└─────────────────────┘");

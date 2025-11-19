@@ -41,6 +41,7 @@ public abstract class DisasterBase implements Disaster {
     // Sistema de supervivencia y estadísticas
     protected Map<UUID, Integer> playerSurvivalPhases = new HashMap<>();
     protected Map<UUID, Integer> playerDeathsDuringDisaster = new HashMap<>();
+    protected Map<UUID, Double> playerDamageReceived = new HashMap<>();
     protected long disasterStartTick = 0;
     
     // Sistema de BossBar
@@ -104,6 +105,7 @@ public abstract class DisasterBase implements Disaster {
         this.disasterStartTick = System.currentTimeMillis() / 50; // Ticks aproximados
         this.playerSurvivalPhases.clear();
         this.playerDeathsDuringDisaster.clear();
+        this.playerDamageReceived.clear();
         if (plugin.getConfigManager().isDebugCiclo()) {
             plugin.getLogger().info("[Disaster] START: " + id + " #" + instanceId);
         }
@@ -417,6 +419,15 @@ public abstract class DisasterBase implements Disaster {
     }
     
     /**
+     * Registra daño recibido por jugador durante el desastre (PÚBLICO para que listeners puedan llamarlo)
+     */
+    public void handlePlayerDamageInDisaster(Player player, double damage) {
+        UUID uuid = player.getUniqueId();
+        playerDamageReceived.put(uuid, 
+            playerDamageReceived.getOrDefault(uuid, 0.0) + damage);
+    }
+    
+    /**
      * Obtiene la fase actual del desastre basado en el tick
      */
     protected int getCurrentPhaseFromTick() {
@@ -444,7 +455,8 @@ public abstract class DisasterBase implements Disaster {
             totalPhases,
             totalTicks,
             playerSurvivalPhases,
-            playerDeathsDuringDisaster
+            playerDeathsDuringDisaster,
+            playerDamageReceived
         );
     }
 }

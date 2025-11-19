@@ -1,12 +1,15 @@
 package me.apocalipsis.listeners;
 
 import me.apocalipsis.Apocalipsis;
+import me.apocalipsis.disaster.Disaster;
+import me.apocalipsis.disaster.DisasterBase;
 import me.apocalipsis.disaster.DisasterEvasionTracker;
 
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
 /**
@@ -41,6 +44,31 @@ public class DisasterEvasionListener implements Listener {
         
         if (wasEvasion && plugin.getConfigManager().isDebugCiclo()) {
             plugin.getLogger().warning("[EVASIÓN] Jugador " + player.getName() + " se desconectó durante desastre activo");
+        }
+    }
+    
+    /**
+     * Registra el daño recibido por jugadores durante desastres
+     */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onEntityDamage(EntityDamageEvent event) {
+        // Solo procesar daño a jugadores
+        if (!(event.getEntity() instanceof Player)) {
+            return;
+        }
+        
+        Player player = (Player) event.getEntity();
+        
+        // Si NO hay desastre activo, no registrar
+        if (!plugin.getDisasterController().hasActiveDisaster()) {
+            return;
+        }
+        
+        // Obtener el desastre actual y registrar daño
+        Disaster activeDisaster = plugin.getDisasterController().getCurrentDisaster();
+        if (activeDisaster instanceof DisasterBase) {
+            double damage = event.getFinalDamage();
+            ((DisasterBase) activeDisaster).handlePlayerDamageInDisaster(player, damage);
         }
     }
 }
