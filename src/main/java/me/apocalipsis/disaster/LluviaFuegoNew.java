@@ -109,6 +109,10 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
             .getConfigurationSection("desastres.lluvia_fuego");
 
         if (config != null) {
+            // Cargar duración del desastre
+            int duracionSegundos = config.getInt("duracion_segundos", 70);
+            setMaxTicks(duracionSegundos);
+            
             densidad = config.getDouble("densidad", 0.5);  // REDUCIDO de 0.9 a 0.5 (44% menos bolas)
             apagaTodoAlFinalizar = config.getBoolean("apaga_todo_al_finalizar", true);
             explosionPower = (float) config.getDouble("explosion_power", 1.0);  // REDUCIDO de 1.2 a 1.0
@@ -329,7 +333,7 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
         updateMeteoritos();
         
         // [v1.18.0] Columnas de fuego en fases 4-5
-        int currentPhase = getCurrentPhaseFromTick(tickCounter);
+        int currentPhase = getCurrentPhaseFromTick();
         
         // [v1.19.0] Rastrear supervivencia de jugadores en esta fase
         for (Player p : Bukkit.getOnlinePlayers()) {

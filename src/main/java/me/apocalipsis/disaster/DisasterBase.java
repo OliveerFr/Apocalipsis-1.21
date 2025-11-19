@@ -36,6 +36,7 @@ public abstract class DisasterBase implements Disaster {
     
     protected boolean active = false;
     protected int tickCounter = 0;
+    protected int maxTicks = 1600; // Duración total del desastre en ticks (80 segundos por defecto)
     
     // Sistema de supervivencia y estadísticas
     protected Map<UUID, Integer> playerSurvivalPhases = new HashMap<>();
@@ -152,6 +153,18 @@ public abstract class DisasterBase implements Disaster {
         
         if (plugin.getConfigManager().isDebugCiclo() && tickCounter % 100 == 0) {
             plugin.getLogger().info("[Disaster] TICK #" + tickCounter + ": " + id + " #" + instanceId);
+        }
+        
+        // [v1.19.0] Actualizar fase de BossBar cada 20 ticks (1 segundo)
+        if (disasterBossBar != null && tickCounter % 20 == 0) {
+            int newPhase = getCurrentPhaseFromTick();
+            if (newPhase != currentPhase) {
+                updateBossBarPhase(newPhase);
+                // Mostrar título solo al cambiar de fase
+                if (newPhase > 1) {
+                    showPhaseTitle(newPhase, getDisasterName());
+                }
+            }
         }
         
         for (Player player : Bukkit.getOnlinePlayers()) {
@@ -406,9 +419,18 @@ public abstract class DisasterBase implements Disaster {
     /**
      * Obtiene la fase actual del desastre basado en el tick
      */
-    protected int getCurrentPhaseFromTick(int maxTicks) {
+    protected int getCurrentPhaseFromTick() {
+        if (maxTicks <= 0) return 1; // Prevenir división por cero
         double progress = (double) tickCounter / maxTicks;
         return Math.min((int) (progress * totalPhases) + 1, totalPhases);
+    }
+    
+    /**
+     * Establece la duración máxima del desastre en ticks
+     * Debe ser llamado desde loadConfig() de cada desastre
+     */
+    protected void setMaxTicks(int seconds) {
+        this.maxTicks = seconds * 20; // Convertir segundos a ticks
     }
     
     /**

@@ -119,6 +119,10 @@ public class TerremotoNew extends DisasterBase {
             .getConfigurationSection("desastres.terremoto");
 
         if (config != null) {
+            // Cargar duración del desastre
+            int duracionSegundos = config.getInt("duracion_segundos", 80);
+            setMaxTicks(duracionSegundos);
+            
             shakeIntensity = config.getDouble("shake_intensity", 0.08);
             shakeEveryTicks = config.getInt("shake_every_ticks", 3);
             breakChance = config.getDouble("break_chance", 0.02);
@@ -437,7 +441,7 @@ public class TerremotoNew extends DisasterBase {
         }
         
         // [v1.18.0] Spawning de silverfish desde grietas (fases 3-5)
-        int currentPhase = getCurrentPhaseFromTick(tickCounter);
+        int currentPhase = getCurrentPhaseFromTick();
         
         // [v1.19.0] Rastrear supervivencia de jugadores en esta fase
         for (Player p : org.bukkit.Bukkit.getOnlinePlayers()) {
@@ -517,7 +521,7 @@ public class TerremotoNew extends DisasterBase {
         
         // Derrumbes de bloques superiores (reducido por absorción)
         // [v1.18.0] Aumentado significativamente en fases 4-5
-        int currentPhase = getCurrentPhaseFromTick(tickCounter);
+        int currentPhase = getCurrentPhaseFromTick();
         double phaseDerrumbesMultiplier = (currentPhase >= 4) ? 2.5 : 1.0;
         double adjustedDerrumbesChance = derrumbesChance * scale * absorption.damageMultiplier * phaseDerrumbesMultiplier;
         if (derrumbesEnabled && random.nextDouble() < adjustedDerrumbesChance) {

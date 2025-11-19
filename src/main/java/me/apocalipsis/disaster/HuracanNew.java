@@ -115,6 +115,10 @@ public class HuracanNew extends DisasterBase {
             .getConfigurationSection("desastres.huracan");
 
         if (config != null) {
+            // Cargar duración del desastre
+            int duracionSegundos = config.getInt("duracion_segundos", 75);
+            setMaxTicks(duracionSegundos);
+            
             ConfigurationSection push = config.getConfigurationSection("push");
             if (push != null) {
                 maxHorizontal = push.getDouble("max_horizontal", 0.18);
@@ -453,7 +457,7 @@ public class HuracanNew extends DisasterBase {
         }
         
         // [v1.18.0] Spawning de Vex en fases 3-5
-        int currentPhase = getCurrentPhaseFromTick(tickCounter);
+        int currentPhase = getCurrentPhaseFromTick();
         
         // [v1.19.0] Rastrear supervivencia de jugadores en esta fase
         for (Player p : Bukkit.getOnlinePlayers()) {
