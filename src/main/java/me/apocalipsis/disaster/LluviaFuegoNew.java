@@ -16,6 +16,8 @@ import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.entity.EnderDragon;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.SmallFireball;
 import org.bukkit.event.EventHandler;
@@ -85,6 +87,10 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
     private int romperProteccionCooldown;
     private boolean romperProteccionProtegerProfunda;
     private long lastWaterBreakTime = 0;  // Cooldown tracking
+    
+    // [v1.18.0] Mecánicas avanzadas
+    private EnderDragon fireDragon = null;
+    private boolean dragonSpawned = false;
     
     private final Random random = new Random();
     private final java.util.List<org.bukkit.block.Block> fuegosTemporal = new java.util.ArrayList<>();
@@ -289,6 +295,13 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
             }
         }
         
+        // [v1.18.0] Remover dragón de fuego
+        if (fireDragon != null && fireDragon.isValid()) {
+            fireDragon.remove();
+        }
+        fireDragon = null;
+        dragonSpawned = false;
+        
         // [v1.17.0] Remover BossBar
         removeDisasterBossBar();
         
@@ -314,6 +327,18 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
         
         // Actualizar meteoritos
         updateMeteoritos();
+        
+        // [v1.18.0] Columnas de fuego en fases 4-5
+        int currentPhase = getCurrentPhaseFromTick(tickCounter);
+        if (currentPhase >= 4 && tickCounter % 40 == 0) {
+            createFireColumns();
+        }
+        
+        // [v1.18.0] Spawn dragón de fuego en fase 5
+        if (currentPhase == 5 && !dragonSpawned) {
+            spawnFireDragon();
+            dragonSpawned = true;
+        }
         
         // Sonidos ambientales cada 2 segundos
         if (tickCounter % 40 == 0) {
@@ -948,6 +973,98 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
         
         // Agua profunda: al menos 2 bloques apilados
         return true;
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // [v1.18.0] MECÁNICAS AVANZADAS
+    // ═══════════════════════════════════════════════════════════════════
+    
+    /**
+     * Crear columnas de fuego verticales en fases 4-5
+     */
+    private void createFireColumns() {
+        List<Player> onlinePlayers = new ArrayList<>(plugin.getServer().getOnlinePlayers());
+        if (onlinePlayers.isEmpty()) return;
+        
+        // Crear 2 columnas aleatorias
+        for (int i = 0; i < 2; i++) {
+            Player target = onlinePlayers.get(random.nextInt(onlinePlayers.size()));
+            Location base = target.getLocation().add(
+                random.nextInt(10) - 5,
+                0,
+                random.nextInt(10) - 5
+            );
+            
+            // Ajustar al suelo
+            base.setY(base.getWorld().getHighestBlockYAt(base) + 1);
+            
+            // Crear columna de fuego de 8 bloques de alto
+            for (int y = 0; y < 8; y++) {
+                Location fireLoc = base.clone().add(0, y, 0);
+                
+                // Partículas de fuego
+                fireLoc.getWorld().spawnParticle(Particle.FLAME, fireLoc, 15, 0.3, 0.3, 0.3, 0.1);
+                fireLoc.getWorld().spawnParticle(Particle.LAVA, fireLoc, 5, 0.2, 0.2, 0.2, 0);
+                
+                // Sonido en la base
+                if (y == 0) {
+                    fireLoc.getWorld().playSound(fireLoc, Sound.ENTITY_BLAZE_SHOOT, 1.5f, 0.8f);
+                }
+            }
+        }
+    }
+    
+    /**
+     * Spawn Ender Dragon como "dragón de fuego" en fase 5
+     */
+    private void spawnFireDragon() {
+        List<Player> onlinePlayers = new ArrayList<>(plugin.getServer().getOnlinePlayers());
+        if (onlinePlayers.isEmpty()) return;
+        
+        Player target = onlinePlayers.get(random.nextInt(onlinePlayers.size()));
+        Location spawnLoc = target.getLocation().add(0, 50, 0);
+        
+        // Spawn Ender Dragon
+        fireDragon = (EnderDragon) spawnLoc.getWorld().spawnEntity(spawnLoc, EntityType.ENDER_DRAGON);
+        fireDragon.setCustomName("§6§lDragón del Apocalipsis");
+        fireDragon.setCustomNameVisible(true);
+        fireDragon.setPhase(EnderDragon.Phase.CIRCLING);
+        
+        // Efectos dramáticos
+        spawnLoc.getWorld().spawnParticle(Particle.EXPLOSION, spawnLoc, 10, 3, 3, 3, 0);
+        spawnLoc.getWorld().spawnParticle(Particle.LAVA, spawnLoc, 50, 2, 2, 2, 0);
+        spawnLoc.getWorld().playSound(spawnLoc, Sound.ENTITY_ENDER_DRAGON_GROWL, 3.0f, 0.8f);
+        spawnLoc.getWorld().playSound(spawnLoc, Sound.ENTITY_WARDEN_ROAR, 2.0f, 0.6f);
+        
+        // Broadcast dramático
+        messageBus.broadcast("§6§l⚠ ¡UN DRAGÓN DEL APOCALIPSIS HA EMERGIDO DEL INFIERNO!", "dragon_spawn");
+        soundUtil.playSoundAll(Sound.ENTITY_ENDER_DRAGON_DEATH, 0.8f, 1.2f);
+        
+        // Task para dejar rastro de fuego
+        new org.bukkit.scheduler.BukkitRunnable() {
+            @Override
+            public void run() {
+                if (fireDragon == null || !fireDragon.isValid() || !isActive()) {
+                    this.cancel();
+                    return;
+                }
+                
+                // Rastro de fuego y partículas
+                Location dragonLoc = fireDragon.getLocation();
+                dragonLoc.getWorld().spawnParticle(Particle.FLAME, dragonLoc, 20, 1, 1, 1, 0.1);
+                dragonLoc.getWorld().spawnParticle(Particle.LAVA, dragonLoc, 10, 0.5, 0.5, 0.5, 0);
+                
+                // Ocasionalmente lanzar bola de fuego hacia abajo
+                if (random.nextDouble() < 0.3) {
+                    Location below = dragonLoc.clone().subtract(0, 10, 0);
+                    SmallFireball fireball = dragonLoc.getWorld().spawn(dragonLoc, SmallFireball.class);
+                    Vector direction = below.toVector().subtract(dragonLoc.toVector()).normalize();
+                    fireball.setDirection(direction);
+                    fireball.setYield(explosionPower * 1.5f);
+                    fireball.setIsIncendiary(true);
+                }
+            }
+        }.runTaskTimer(plugin, 0L, 10L);
     }
     
     // ═══════════════════════════════════════════════════════════════════

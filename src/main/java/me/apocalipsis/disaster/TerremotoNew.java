@@ -19,7 +19,10 @@ import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.entity.EntityType;
+import org.bukkit.entity.IronGolem;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Silverfish;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.util.Vector;
 
@@ -96,6 +99,10 @@ public class TerremotoNew extends DisasterBase {
     private int romperProteccionCooldown;
     private boolean romperProteccionPriorizarViejos;
     private long lastProtectionBreakTime = 0;  // Cooldown tracking
+    
+    // [v1.18.0] Mecánicas avanzadas
+    private final List<Silverfish> spawnedSilverfish = new ArrayList<>();
+    private boolean ironGolemSpawned = false;
     
     private final Random random = new Random();
     private final List<Location> epicentros = new ArrayList<>();
@@ -377,6 +384,15 @@ public class TerremotoNew extends DisasterBase {
         grietaOriginalStates.clear();
         epicentros.clear();
         
+        // [v1.18.0] Limpiar entidades spawneadas
+        for (Silverfish fish : spawnedSilverfish) {
+            if (fish.isValid()) {
+                fish.remove();
+            }
+        }
+        spawnedSilverfish.clear();
+        ironGolemSpawned = false;
+        
         // [v1.17.0] Remover BossBar
         removeDisasterBossBar();
         
@@ -418,6 +434,18 @@ public class TerremotoNew extends DisasterBase {
         // Generar nuevas grietas
         if (grietasEnabled && tickCounter % 100 == 0) {
             spawnCracks();
+        }
+        
+        // [v1.18.0] Spawning de silverfish desde grietas (fases 3-5)
+        int currentPhase = getCurrentPhaseFromTick(tickCounter);
+        if (currentPhase >= 3 && tickCounter % 60 == 0 && !grietaBlocks.isEmpty()) {
+            spawnSilverfishFromCracks();
+        }
+        
+        // [v1.18.0] Spawn Iron Golem en fase 5 (una sola vez)
+        if (currentPhase == 5 && !ironGolemSpawned) {
+            spawnIronGolemBoss();
+            ironGolemSpawned = true;
         }
     }
 
@@ -482,7 +510,10 @@ public class TerremotoNew extends DisasterBase {
         }
         
         // Derrumbes de bloques superiores (reducido por absorción)
-        double adjustedDerrumbesChance = derrumbesChance * scale * absorption.damageMultiplier;
+        // [v1.18.0] Aumentado significativamente en fases 4-5
+        int currentPhase = getCurrentPhaseFromTick(tickCounter);
+        double phaseDerrumbesMultiplier = (currentPhase >= 4) ? 2.5 : 1.0;
+        double adjustedDerrumbesChance = derrumbesChance * scale * absorption.damageMultiplier * phaseDerrumbesMultiplier;
         if (derrumbesEnabled && random.nextDouble() < adjustedDerrumbesChance) {
             spawnFallingDebris(player);
         }
@@ -1157,6 +1188,74 @@ public class TerremotoNew extends DisasterBase {
                 world.spawnParticle(ParticleCompat.blockDust(), particleLoc, 3, 0.1, 0.1, 0.1, 0, Material.DIRT.createBlockData());
             }
         }
+    }
+    
+    // ==================== [v1.18.0] MECÁNICAS AVANZADAS ====================
+    
+    /**
+     * Spawn silverfish desde grietas durante fases 3-5
+     */
+    private void spawnSilverfishFromCracks() {
+        if (grietaBlocks.isEmpty()) return;
+        
+        // Limpiar silverfish muertos
+        spawnedSilverfish.removeIf(fish -> !fish.isValid());
+        
+        // Máximo 5 silverfish activos
+        if (spawnedSilverfish.size() >= 5) return;
+        
+        // Seleccionar grieta aleatoria
+        Block crackBlock = grietaBlocks.get(random.nextInt(grietaBlocks.size()));
+        Location spawnLoc = crackBlock.getLocation().add(0.5, 1, 0.5);
+        
+        // Spawn silverfish
+        Silverfish fish = (Silverfish) crackBlock.getWorld().spawnEntity(spawnLoc, EntityType.SILVERFISH);
+        fish.setCustomName("§7Lepisma Sísmico");
+        fish.setCustomNameVisible(false);
+        spawnedSilverfish.add(fish);
+        
+        // Efectos visuales
+        spawnLoc.getWorld().spawnParticle(Particle.BLOCK, spawnLoc, 20, 0.3, 0.2, 0.3, 0.1, Material.STONE.createBlockData());
+        spawnLoc.getWorld().playSound(spawnLoc, Sound.ENTITY_SILVERFISH_AMBIENT, 1.0f, 0.8f);
+        
+        // Broadcast si es el primero
+        if (spawnedSilverfish.size() == 1) {
+            messageBus.broadcast("§7§l⚠ ¡Lepismas emergen de las grietas!", "silverfish_spawn");
+        }
+    }
+    
+    /**
+     * Spawn Iron Golem boss en fase 5 (catastrófica)
+     */
+    private void spawnIronGolemBoss() {
+        // Encontrar jugador aleatorio como punto de spawn
+        List<Player> onlinePlayers = new ArrayList<>(plugin.getServer().getOnlinePlayers());
+        if (onlinePlayers.isEmpty()) return;
+        
+        Player target = onlinePlayers.get(random.nextInt(onlinePlayers.size()));
+        Location spawnLoc = target.getLocation().add(
+            random.nextInt(10) - 5,
+            0,
+            random.nextInt(10) - 5
+        );
+        
+        // Ajustar Y para estar en el suelo
+        spawnLoc.setY(spawnLoc.getWorld().getHighestBlockYAt(spawnLoc) + 1);
+        
+        // Spawn Iron Golem
+        IronGolem golem = (IronGolem) spawnLoc.getWorld().spawnEntity(spawnLoc, EntityType.IRON_GOLEM);
+        golem.setCustomName("§6§lColoso Sísmico");
+        golem.setCustomNameVisible(true);
+        golem.setPlayerCreated(false); // Hostil
+        
+        // Efectos dramáticos
+        spawnLoc.getWorld().spawnParticle(Particle.EXPLOSION, spawnLoc, 5, 1, 1, 1, 0);
+        spawnLoc.getWorld().playSound(spawnLoc, Sound.ENTITY_IRON_GOLEM_HURT, 2.0f, 0.5f);
+        spawnLoc.getWorld().playSound(spawnLoc, Sound.ENTITY_WARDEN_EMERGE, 2.0f, 0.8f);
+        
+        // Broadcast dramático
+        messageBus.broadcast("§6§l⚠ ¡UN COLOSO SÍSMICO HA EMERGIDO DE LA TIERRA!", "golem_spawn");
+        soundUtil.playSoundAll(Sound.ENTITY_ENDER_DRAGON_GROWL, 1.0f, 0.6f);
     }
     
     // ═══════════════════════════════════════════════════════════════════

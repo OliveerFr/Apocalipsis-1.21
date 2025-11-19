@@ -14,6 +14,7 @@ me\apocalipsis\disaster\TerremotoNew$AbsorptionInfo.class
 me\apocalipsis\disaster\DisasterController.class
 me\apocalipsis\disaster\TerremotoNew.class
 me\apocalipsis\events\gameplay\ParticleEffectSystem$4.class
+me\apocalipsis\disaster\LluviaFuegoNew$1.class
 me\apocalipsis\events\gameplay\QTESystem$ActiveQTE.class
 me\apocalipsis\missions\MissionDifficulty.class
 me\apocalipsis\disaster\Disaster.class

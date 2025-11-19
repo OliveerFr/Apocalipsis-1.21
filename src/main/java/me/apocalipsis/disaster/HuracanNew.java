@@ -19,8 +19,10 @@ import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Vex;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Vector;
@@ -94,6 +96,9 @@ public class HuracanNew extends DisasterBase {
     
     // ANTI-GRIEFING: Tracker para verificar ownership de bloques
     private final BlockOwnershipTracker blockTracker;
+    
+    // [v1.18.0] Mecánicas avanzadas
+    private final List<Vex> spawnedVexes = new ArrayList<>();
     
     private final Random random = new Random();
     private final Set<UUID> playersWithStatic = new HashSet<>();
@@ -337,6 +342,14 @@ public class HuracanNew extends DisasterBase {
         }
         activeItems.clear();
         
+        // [v1.18.0] Limpiar Vexes spawneados
+        for (Vex vex : spawnedVexes) {
+            if (vex.isValid()) {
+                vex.remove();
+            }
+        }
+        spawnedVexes.clear();
+        
         // [AUTO-CLEANUP] Remover bloques de agua gradualmente para efecto natural
         scheduleWaterCleanup();
         
@@ -437,6 +450,17 @@ public class HuracanNew extends DisasterBase {
         // NUEVO: Inundación progresiva
         if (inundacionEnabled && tickCounter % inundacionTickInterval == 0) {
             expandFlood();
+        }
+        
+        // [v1.18.0] Spawning de Vex en fases 3-5
+        int currentPhase = getCurrentPhaseFromTick(tickCounter);
+        if (currentPhase >= 3 && tickCounter % 120 == 0) {
+            spawnStormVexes();
+        }
+        
+        // [v1.18.0] Efecto visual de tornado en fases 4-5
+        if (currentPhase >= 4 && tickCounter % 30 == 0) {
+            createTornadoVisual();
         }
         
         // Cleanup de objetos voladores fuera de rango
@@ -926,6 +950,78 @@ public class HuracanNew extends DisasterBase {
             }
         }
         return false;
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // [v1.18.0] MECÁNICAS AVANZADAS
+    // ═══════════════════════════════════════════════════════════════════
+    
+    /**
+     * Spawn Vex (espíritus del viento) en fases 3-5
+     */
+    private void spawnStormVexes() {
+        // Limpiar vexes muertos
+        spawnedVexes.removeIf(vex -> !vex.isValid());
+        
+        // Máximo 8 vexes activos
+        if (spawnedVexes.size() >= 8) return;
+        
+        // Encontrar jugador aleatorio
+        List<Player> onlinePlayers = new ArrayList<>(plugin.getServer().getOnlinePlayers());
+        if (onlinePlayers.isEmpty()) return;
+        
+        Player target = onlinePlayers.get(random.nextInt(onlinePlayers.size()));
+        Location spawnLoc = target.getLocation().add(
+            random.nextInt(12) - 6,
+            3 + random.nextInt(3),
+            random.nextInt(12) - 6
+        );
+        
+        // Spawn Vex
+        Vex vex = (Vex) spawnLoc.getWorld().spawnEntity(spawnLoc, EntityType.VEX);
+        vex.setCustomName("§7§lEspíritu del Viento");
+        vex.setCustomNameVisible(false);
+        spawnedVexes.add(vex);
+        
+        // Efectos visuales
+        spawnLoc.getWorld().spawnParticle(Particle.CLOUD, spawnLoc, 20, 0.5, 0.5, 0.5, 0.1);
+        spawnLoc.getWorld().playSound(spawnLoc, Sound.ENTITY_VEX_AMBIENT, 1.0f, 0.8f);
+        
+        // Broadcast si es el primero
+        if (spawnedVexes.size() == 1) {
+            messageBus.broadcast("§7§l⚠ ¡Espíritus del viento emergen de la tormenta!", "vex_spawn");
+        }
+    }
+    
+    /**
+     * Crear efecto visual de tornado (espiral de partículas)
+     */
+    private void createTornadoVisual() {
+        // Encontrar jugador aleatorio como centro
+        List<Player> onlinePlayers = new ArrayList<>(plugin.getServer().getOnlinePlayers());
+        if (onlinePlayers.isEmpty()) return;
+        
+        Player target = onlinePlayers.get(random.nextInt(onlinePlayers.size()));
+        Location center = target.getLocation();
+        
+        // Crear espiral de partículas
+        for (int y = 0; y < 15; y++) {
+            double radius = 2.0 - (y * 0.1); // Radio decrece con altura
+            if (radius < 0.3) radius = 0.3;
+            
+            for (int angle = 0; angle < 360; angle += 30) {
+                double rads = Math.toRadians(angle + (y * 20)); // Rotación
+                double x = center.getX() + radius * Math.cos(rads);
+                double z = center.getZ() + radius * Math.sin(rads);
+                
+                Location particleLoc = new Location(center.getWorld(), x, center.getY() + y * 0.5, z);
+                center.getWorld().spawnParticle(Particle.CLOUD, particleLoc, 1, 0, 0, 0, 0);
+                center.getWorld().spawnParticle(Particle.SWEEP_ATTACK, particleLoc, 1, 0, 0, 0, 0);
+            }
+        }
+        
+        // Sonido de tornado
+        center.getWorld().playSound(center, Sound.ITEM_ELYTRA_FLYING, 2.0f, 0.6f);
     }
     
     // ═══════════════════════════════════════════════════════════════════
