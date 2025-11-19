@@ -87,6 +87,14 @@ public class DisasterController {
         this.soundUtil = soundUtil;
     }
     
+    /**
+     * [v1.19.0] Obtiene el desastre actualmente en ejecución
+     * @return el desastre activo, o null si no hay ninguno
+     */
+    public Disaster getCurrentDisaster() {
+        return activeDisaster;
+    }
+    
     // ═══════════════════════════════════════════════════════════════════
     // GUARDA CENTRAL - Verifica si se puede iniciar un desastre
     // ═══════════════════════════════════════════════════════════════════

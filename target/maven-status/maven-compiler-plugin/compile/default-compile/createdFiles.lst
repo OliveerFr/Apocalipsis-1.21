@@ -104,6 +104,7 @@ me\apocalipsis\events\EcoSombrasEvent$3.class
 me\apocalipsis\events\gameplay\FeedbackSystem$IndicatorType.class
 me\apocalipsis\events\gameplay\TelegraphedAttack$4.class
 me\apocalipsis\events\gameplay\QTESystem$ActiveQTE$3.class
+me\apocalipsis\disaster\DisasterStatistics$PlayerStats.class
 me\apocalipsis\ui\UIManager$2.class
 me\apocalipsis\events\EcoBrasasEvent.class
 me\apocalipsis\events\gameplay\EventAudioSystem$4.class
@@ -116,6 +117,7 @@ me\apocalipsis\listeners\ChatListener.class
 me\apocalipsis\events\gameplay\EnvironmentSystem$3.class
 me\apocalipsis\events\gameplay\QTESystem$InputType.class
 me\apocalipsis\ui\UIManager$3.class
+me\apocalipsis\disaster\DisasterStatistics.class
 me\apocalipsis\disaster\adapters\PerformanceAdapter$PerformanceState.class
 me\apocalipsis\missions\MissionService$1.class
 me\apocalipsis\missions\MissionRank.class

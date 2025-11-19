@@ -16,6 +16,9 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 
 import me.apocalipsis.Apocalipsis;
+import me.apocalipsis.disaster.Disaster;
+import me.apocalipsis.disaster.DisasterBase;
+import me.apocalipsis.disaster.DisasterController;
 import me.apocalipsis.missions.MissionRank;
 import me.apocalipsis.state.ServerState;
 import me.apocalipsis.ui.ScoreboardManager;
@@ -173,6 +176,15 @@ public class PlayerListener implements Listener {
         // Verificar si murió durante un desastre activo
         ServerState currentState = plugin.getStateManager().getCurrentState();
         if (currentState != ServerState.ACTIVO) return;
+        
+        // [v1.19.0] Notificar al desastre activo sobre la muerte
+        DisasterController controller = plugin.getDisasterController();
+        if (controller != null && controller.getCurrentDisaster() != null) {
+            Disaster activeDisaster = controller.getCurrentDisaster();
+            if (activeDisaster instanceof DisasterBase) {
+                ((DisasterBase) activeDisaster).handlePlayerDeathInDisaster(player);
+            }
+        }
         
         ConfigurationSection muerteConfig = castigosConfig.getConfigurationSection("muerte_en_desastre");
         if (muerteConfig == null || !muerteConfig.getBoolean("enabled", true)) return;

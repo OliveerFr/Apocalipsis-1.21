@@ -37,9 +37,10 @@ public abstract class DisasterBase implements Disaster {
     protected boolean active = false;
     protected int tickCounter = 0;
     
-    // Sistema de supervivencia y recompensas
+    // Sistema de supervivencia y estadísticas
     protected Map<UUID, Integer> playerSurvivalPhases = new HashMap<>();
     protected Map<UUID, Integer> playerDeathsDuringDisaster = new HashMap<>();
+    protected long disasterStartTick = 0;
     
     // Sistema de BossBar
     protected BossBar disasterBossBar;
@@ -99,6 +100,9 @@ public abstract class DisasterBase implements Disaster {
         
         this.active = true;
         this.tickCounter = 0;
+        this.disasterStartTick = System.currentTimeMillis() / 50; // Ticks aproximados
+        this.playerSurvivalPhases.clear();
+        this.playerDeathsDuringDisaster.clear();
         if (plugin.getConfigManager().isDebugCiclo()) {
             plugin.getLogger().info("[Disaster] START: " + id + " #" + instanceId);
         }
@@ -118,6 +122,10 @@ public abstract class DisasterBase implements Disaster {
             plugin.getLogger().info("[Disaster] STOP: " + id + " #" + instanceId);
         }
         this.active = false;
+        
+        // Mostrar estadísticas antes de limpiar
+        showDisasterStatistics();
+        
         onStop();
     }
 
@@ -385,9 +393,9 @@ public abstract class DisasterBase implements Disaster {
     }
     
     /**
-     * Registra muerte de jugador durante el desastre
+     * Registra muerte de jugador durante el desastre (PÚBLICO para que listeners puedan llamarlo)
      */
-    protected void handlePlayerDeathInDisaster(Player player) {
+    public void handlePlayerDeathInDisaster(Player player) {
         UUID uuid = player.getUniqueId();
         playerDeathsDuringDisaster.put(uuid, 
             playerDeathsDuringDisaster.getOrDefault(uuid, 0) + 1);
@@ -401,5 +409,20 @@ public abstract class DisasterBase implements Disaster {
     protected int getCurrentPhaseFromTick(int maxTicks) {
         double progress = (double) tickCounter / maxTicks;
         return Math.min((int) (progress * totalPhases) + 1, totalPhases);
+    }
+    
+    /**
+     * Muestra las estadísticas finales del desastre
+     */
+    protected void showDisasterStatistics() {
+        long totalTicks = System.currentTimeMillis() / 50 - disasterStartTick;
+        
+        DisasterStatistics.showDisasterSummary(
+            getDisasterName(),
+            totalPhases,
+            totalTicks,
+            playerSurvivalPhases,
+            playerDeathsDuringDisaster
+        );
     }
 }

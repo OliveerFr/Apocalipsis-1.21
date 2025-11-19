@@ -438,6 +438,12 @@ public class TerremotoNew extends DisasterBase {
         
         // [v1.18.0] Spawning de silverfish desde grietas (fases 3-5)
         int currentPhase = getCurrentPhaseFromTick(tickCounter);
+        
+        // [v1.19.0] Rastrear supervivencia de jugadores en esta fase
+        for (Player p : org.bukkit.Bukkit.getOnlinePlayers()) {
+            trackPlayerSurvival(p, currentPhase);
+        }
+        
         if (currentPhase >= 3 && tickCounter % 60 == 0 && !grietaBlocks.isEmpty()) {
             spawnSilverfishFromCracks();
         }

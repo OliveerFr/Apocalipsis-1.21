@@ -454,6 +454,12 @@ public class HuracanNew extends DisasterBase {
         
         // [v1.18.0] Spawning de Vex en fases 3-5
         int currentPhase = getCurrentPhaseFromTick(tickCounter);
+        
+        // [v1.19.0] Rastrear supervivencia de jugadores en esta fase
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            trackPlayerSurvival(p, currentPhase);
+        }
+        
         if (currentPhase >= 3 && tickCounter % 120 == 0) {
             spawnStormVexes();
         }

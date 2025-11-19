@@ -330,6 +330,12 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
         
         // [v1.18.0] Columnas de fuego en fases 4-5
         int currentPhase = getCurrentPhaseFromTick(tickCounter);
+        
+        // [v1.19.0] Rastrear supervivencia de jugadores en esta fase
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            trackPlayerSurvival(p, currentPhase);
+        }
+        
         if (currentPhase >= 4 && tickCounter % 40 == 0) {
             createFireColumns();
         }
