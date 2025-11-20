@@ -74,28 +74,28 @@ public class DisasterStatistics {
             .reversed()
             .thenComparingInt(s -> s.deaths));
         
-        // Mostrar resumen a todos los jugadores
-        Bukkit.broadcastMessage("");
-        Bukkit.broadcastMessage("§8§m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        Bukkit.broadcastMessage("§c§l  ☠  RESUMEN DEL DESASTRE  ☠");
-        Bukkit.broadcastMessage("§8§m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        Bukkit.broadcastMessage("");
-        Bukkit.broadcastMessage("§7Desastre: §e" + disasterName);
-        Bukkit.broadcastMessage("§7Duración: §e" + formatTime(totalTicks));
-        Bukkit.broadcastMessage("§7Fases totales: §e" + totalPhases);
-        Bukkit.broadcastMessage("");
+        // Mostrar resumen a todos los jugadores (bypass chat plugins)
+        broadcastRaw("");
+        broadcastRaw("§8§m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        broadcastRaw("§c§l  ☠  RESUMEN DEL DESASTRE  ☠");
+        broadcastRaw("§8§m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        broadcastRaw("");
+        broadcastRaw("§7Desastre: §e" + disasterName);
+        broadcastRaw("§7Duración: §e" + formatTime(totalTicks));
+        broadcastRaw("§7Fases totales: §e" + totalPhases);
+        broadcastRaw("");
         
         // Mostrar top 3 supervivientes
         showTopSurvivors(allStats, totalPhases);
         
-        Bukkit.broadcastMessage("");
+        broadcastRaw("");
         
         // Mostrar top 3 daño recibido
         showTopDamageReceived(allStats);
         
-        Bukkit.broadcastMessage("");
-        Bukkit.broadcastMessage("§8§m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        Bukkit.broadcastMessage("");
+        broadcastRaw("");
+        broadcastRaw("§8§m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        broadcastRaw("");
         
         // Enviar estadísticas individuales a cada jugador
         for (PlayerStats stats : allStats) {
@@ -115,8 +115,8 @@ public class DisasterStatistics {
      * Muestra el top 3 de supervivientes
      */
     private static void showTopSurvivors(List<PlayerStats> allStats, int totalPhases) {
-        Bukkit.broadcastMessage("§6§l  ⚔ TOP SUPERVIVIENTES ⚔");
-        Bukkit.broadcastMessage("");
+        broadcastRaw("§6§l  ⚔ TOP SUPERVIVIENTES ⚔");
+        broadcastRaw("");
         
         int rank = 1;
         for (int i = 0; i < Math.min(3, allStats.size()); i++) {
@@ -128,12 +128,12 @@ public class DisasterStatistics {
                               "Fase " + stats.highestPhaseReached + "/" + totalPhases;
             String deathsInfo = stats.deaths == 0 ? "§a§l¡Sin muertes!" : "§7(" + stats.deaths + " muerte" + (stats.deaths == 1 ? "" : "s") + ")";
             
-            Bukkit.broadcastMessage(playerDisplay + " §8- " + phaseInfo + " " + deathsInfo);
+            broadcastRaw(playerDisplay + " §8- " + phaseInfo + " " + deathsInfo);
             rank++;
         }
         
         if (allStats.isEmpty()) {
-            Bukkit.broadcastMessage("§7  No hay supervivientes registrados");
+            broadcastRaw("§7  No hay supervivientes registrados");
         }
     }
     
@@ -141,8 +141,8 @@ public class DisasterStatistics {
      * Muestra el top 3 de daño recibido
      */
     private static void showTopDamageReceived(List<PlayerStats> allStats) {
-        Bukkit.broadcastMessage("§c§l  ⚠ TOP DAÑO RECIBIDO ⚠");
-        Bukkit.broadcastMessage("");
+        broadcastRaw("§c§l  ⚠ TOP DAÑO RECIBIDO ⚠");
+        broadcastRaw("");
         
         // Ordenar por daño recibido (descendente)
         List<PlayerStats> damageRanking = new ArrayList<>(allStats);
@@ -159,12 +159,12 @@ public class DisasterStatistics {
             String damageInfo = "§c" + String.format("%.1f", stats.damageReceived) + " ❤";
             String heartsInfo = "§7(" + String.format("%.1f", stats.damageReceived / 2.0) + " corazones)";
             
-            Bukkit.broadcastMessage(playerDisplay + " §8- " + damageInfo + " " + heartsInfo);
+            broadcastRaw(playerDisplay + " §8- " + damageInfo + " " + heartsInfo);
             rank++;
         }
         
         if (damageRanking.isEmpty() || damageRanking.get(0).damageReceived <= 0) {
-            Bukkit.broadcastMessage("§7  No se registró daño");
+            broadcastRaw("§7  No se registró daño");
         }
     }
     
@@ -172,37 +172,46 @@ public class DisasterStatistics {
      * Envía estadísticas personales al jugador
      */
     private static void sendPersonalStats(Player player, PlayerStats stats, int totalPhases) {
-        player.sendMessage("");
-        player.sendMessage("§8§l┌─ §6§lTUS ESTADÍSTICAS §8§l─┐");
-        player.sendMessage("§8│");
+        player.spigot().sendMessage(net.md_5.bungee.api.chat.TextComponent.fromLegacyText(""));
+        player.spigot().sendMessage(net.md_5.bungee.api.chat.TextComponent.fromLegacyText("§8§l┌─ §6§lTUS ESTADÍSTICAS §8§l─┐"));
+        player.spigot().sendMessage(net.md_5.bungee.api.chat.TextComponent.fromLegacyText("§8│"));
         
         // Fase alcanzada
         String phaseColor = getPhaseColor(stats.highestPhaseReached, totalPhases);
-        player.sendMessage("§8│ §7Fase máxima alcanzada: " + phaseColor + "§l" + stats.highestPhaseReached + "/" + totalPhases);
+        player.spigot().sendMessage(net.md_5.bungee.api.chat.TextComponent.fromLegacyText("§8│ §7Fase máxima alcanzada: " + phaseColor + "§l" + stats.highestPhaseReached + "/" + totalPhases));
         
         // Evaluación de rendimiento
         String performance = getPerformanceEvaluation(stats.highestPhaseReached, totalPhases, stats.deaths);
-        player.sendMessage("§8│ §7Rendimiento: " + performance);
+        player.spigot().sendMessage(net.md_5.bungee.api.chat.TextComponent.fromLegacyText("§8│ §7Rendimiento: " + performance));
         
         // Muertes
         if (stats.deaths == 0) {
-            player.sendMessage("§8│ §a§l✓ §a¡Sobreviviste sin morir!");
+            player.spigot().sendMessage(net.md_5.bungee.api.chat.TextComponent.fromLegacyText("§8│ §a§l✓ §a¡Sobreviviste sin morir!"));
         } else {
-            player.sendMessage("§8│ §7Muertes: §c" + stats.deaths);
+            player.spigot().sendMessage(net.md_5.bungee.api.chat.TextComponent.fromLegacyText("§8│ §7Muertes: §c" + stats.deaths));
         }
         
         // Tiempo
-        player.sendMessage("§8│ §7Tiempo en el desastre: §e" + stats.getSurvivalTimeFormatted());
+        player.spigot().sendMessage(net.md_5.bungee.api.chat.TextComponent.fromLegacyText("§8│ §7Tiempo en el desastre: §e" + stats.getSurvivalTimeFormatted()));
         
         // Daño recibido
         if (stats.damageReceived > 0) {
             String damageColor = stats.damageReceived >= 40 ? "§4" : stats.damageReceived >= 20 ? "§c" : "§e";
-            player.sendMessage("§8│ §7Daño recibido: " + damageColor + String.format("%.1f", stats.damageReceived) + " ❤ §7(" + String.format("%.1f", stats.damageReceived / 2.0) + " corazones)");
+            player.spigot().sendMessage(net.md_5.bungee.api.chat.TextComponent.fromLegacyText("§8│ §7Daño recibido: " + damageColor + String.format("%.1f", stats.damageReceived) + " ❤ §7(" + String.format("%.1f", stats.damageReceived / 2.0) + " corazones)"));
         }
         
-        player.sendMessage("§8│");
-        player.sendMessage("§8└─────────────────────┘");
-        player.sendMessage("");
+        player.spigot().sendMessage(net.md_5.bungee.api.chat.TextComponent.fromLegacyText("§8│"));
+        player.spigot().sendMessage(net.md_5.bungee.api.chat.TextComponent.fromLegacyText("§8└─────────────────────┘"));
+        player.spigot().sendMessage(net.md_5.bungee.api.chat.TextComponent.fromLegacyText(""));
+    }
+    
+    /**
+     * Envía un mensaje a todos los jugadores bypasseando plugins de chat
+     */
+    private static void broadcastRaw(String message) {
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            player.spigot().sendMessage(net.md_5.bungee.api.chat.TextComponent.fromLegacyText(message));
+        }
     }
     
     /**
