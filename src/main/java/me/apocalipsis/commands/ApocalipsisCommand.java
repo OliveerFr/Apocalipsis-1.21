@@ -142,6 +142,10 @@ public class ApocalipsisCommand implements CommandExecutor {
             case "eco_sombras":
                 cmdEcoSombras(sender, args);
                 break;
+            case "evento3":
+            case "susurro":
+                cmdEvento3(sender, args);
+                break;
             case "xp":
             case "experience":
                 cmdXP(sender, args);
@@ -152,6 +156,10 @@ public class ApocalipsisCommand implements CommandExecutor {
                 break;
             case "rewards":
                 cmdRewards(sender, args);
+                break;
+            case "autotest":
+            case "test-event":
+                cmdAutoTest(sender, args);
                 break;
             default:
                 sender.sendMessage("§cSubcomando desconocido. Usa /avo para ver ayuda.");
@@ -2017,6 +2025,198 @@ public class ApocalipsisCommand implements CommandExecutor {
                 break;
         }
     }
+    
+    /**
+     * Comandos para el Evento 3: El Susurro en la Piedra Rota
+     */
+    private void cmdEvento3(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("avo.admin")) {
+            sender.sendMessage("§cNo tienes permisos.");
+            return;
+        }
+        
+        if (args.length < 2) {
+            sender.sendMessage("§8§l=== EL SUSURRO EN LA PIEDRA ROTA - COMANDOS ===");
+            sender.sendMessage("§e/avo evento3 start §7- Inicia el evento");
+            sender.sendMessage("§e/avo evento3 stop §7- Detiene el evento");
+            sender.sendMessage("§e/avo evento3 acto <1-4> §7- Fuerza acto específico");
+            sender.sendMessage("§e/avo evento3 next §7- Avanza al siguiente acto");
+            sender.sendMessage("§e/avo evento3 info §7- Muestra información detallada");
+            sender.sendMessage("§e/avo evento3 fragmento spawn §7- Fuerza spawn fragmento");
+            sender.sendMessage("§e/avo evento3 grieta spawn §7- Fuerza spawn grieta");
+            return;
+        }
+        
+        String subCmd = args[1].toLowerCase();
+        
+        // Obtener instancia del evento
+        me.apocalipsis.events.SusurroPiedraRotaEvent evento3 = null;
+        if (eventController.hasActiveEvent() && 
+            eventController.getActiveEvent() instanceof me.apocalipsis.events.SusurroPiedraRotaEvent) {
+            evento3 = (me.apocalipsis.events.SusurroPiedraRotaEvent) eventController.getActiveEvent();
+        }
+        
+        switch (subCmd) {
+            case "start":
+            case "iniciar":
+                // Verificar si hay desastre activo
+                if (disasterController.hasActiveDisaster()) {
+                    sender.sendMessage("§cYa hay un desastre activo. Usa §e/avo stop §cprimero.");
+                    return;
+                }
+                
+                // Verificar si ya hay evento activo
+                if (eventController.hasActiveEvent()) {
+                    String eventoActivo = eventController.getActiveEvent().getEventId();
+                    sender.sendMessage("§cYa hay un evento activo: §f" + eventoActivo);
+                    sender.sendMessage("§7Usa §e/avo " + eventoActivo.replace("_", " ") + " stop §7primero.");
+                    return;
+                }
+                
+                // Verificar SAFE_MODE
+                if (stateManager.isSafeModeActive()) {
+                    sender.sendMessage("§cNo se puede iniciar en SAFE_MODE (TPS bajo).");
+                    return;
+                }
+                
+                // Verificar jugadores mínimos (1-6)
+                int jugadoresOnline = plugin.getServer().getOnlinePlayers().size();
+                if (jugadoresOnline < 1) {
+                    sender.sendMessage("§cSe requiere al menos 1 jugador online para iniciar el evento.");
+                    return;
+                }
+                
+                if (jugadoresOnline > 6) {
+                    sender.sendMessage("§e⚠ Este evento está diseñado para 1-6 jugadores.");
+                    sender.sendMessage("§7Jugadores actuales: §e" + jugadoresOnline);
+                    sender.sendMessage("§7Iniciando de todas formas...");
+                }
+                
+                // Iniciar evento
+                if (eventController.startEvent("susurro_piedra_rota")) {
+                    sender.sendMessage("§a✓ Evento §5§lEl Susurro en la Piedra Rota §ainiciado");
+                    sender.sendMessage("§7La piedra está susurrando algo...");
+                    plugin.getLogger().info(String.format("[SusurroPiedraRota] Iniciado por %s", sender.getName()));
+                } else {
+                    sender.sendMessage("§cNo se pudo iniciar el evento. Verifica la consola.");
+                }
+                break;
+                
+            case "stop":
+            case "detener":
+                if (evento3 == null) {
+                    sender.sendMessage("§cEl evento no está activo.");
+                    return;
+                }
+                
+                eventController.stopActiveEvent();
+                sender.sendMessage("§7✓ Evento §5El Susurro en la Piedra Rota §7detenido");
+                plugin.getLogger().info(String.format("[SusurroPiedraRota] Detenido por %s", sender.getName()));
+                break;
+                
+            case "acto":
+            case "fase":
+                if (evento3 == null) {
+                    sender.sendMessage("§cEl evento no está activo.");
+                    return;
+                }
+                
+                if (args.length < 3) {
+                    sender.sendMessage("§cUso: /avo evento3 acto <1-4>");
+                    sender.sendMessage("§7  1 = Piedra Despierta");
+                    sender.sendMessage("§7  2 = Piedra Quiebra (Grieta)");
+                    sender.sendMessage("§7  3 = El Núcleo de Forma");
+                    sender.sendMessage("§7  4 = Segundo Susurro");
+                    return;
+                }
+                
+                try {
+                    int actoNum = Integer.parseInt(args[2]);
+                    if (actoNum < 1 || actoNum > 4) {
+                        sender.sendMessage("§cActo inválido. Usa un número entre 1 y 4.");
+                        return;
+                    }
+                    
+                    evento3.forzarActo(actoNum);
+                    sender.sendMessage("§a✓ Forzada transición al acto: §e" + evento3.getActoActual());
+                    plugin.getLogger().info(String.format("[SusurroPiedraRota] %s forzó acto: %d", 
+                        sender.getName(), actoNum));
+                    
+                } catch (NumberFormatException e) {
+                    sender.sendMessage("§cNúmero de acto inválido: " + args[2]);
+                }
+                break;
+                
+            case "next":
+            case "siguiente":
+                if (evento3 == null) {
+                    sender.sendMessage("§cEl evento no está activo.");
+                    return;
+                }
+                
+                me.apocalipsis.events.SusurroPiedraRotaEvent.Acto actoAnterior = evento3.getActoActual();
+                evento3.avanzarActo();
+                
+                sender.sendMessage("§a✓ Avanzado al siguiente acto");
+                sender.sendMessage("§7De: §e" + actoAnterior + " §7→ §e" + evento3.getActoActual());
+                plugin.getLogger().info(String.format("[SusurroPiedraRota] %s avanzó al siguiente acto", 
+                    sender.getName()));
+                break;
+                
+            case "info":
+            case "status":
+                if (evento3 == null) {
+                    sender.sendMessage("§8§l=== SUSURRO PIEDRA ROTA - INFO ===");
+                    sender.sendMessage("§7Estado: §cInactivo");
+                    sender.sendMessage("§7Usa §e/avo evento3 start §7para iniciarlo.");
+                    return;
+                }
+                
+                sender.sendMessage(evento3.getInfo());
+                break;
+                
+            case "fragmento":
+                if (evento3 == null) {
+                    sender.sendMessage("§cEl evento no está activo.");
+                    return;
+                }
+                
+                if (args.length < 3) {
+                    sender.sendMessage("§cUso: /avo evento3 fragmento spawn");
+                    return;
+                }
+                
+                if (args[2].equalsIgnoreCase("spawn")) {
+                    evento3.forzarSpawnFragmento();
+                    sender.sendMessage("§a✓ Fragmento adicional spawneado");
+                    plugin.getLogger().info(String.format("[SusurroPiedraRota] %s spawneó fragmento", sender.getName()));
+                }
+                break;
+                
+            case "grieta":
+                if (evento3 == null) {
+                    sender.sendMessage("§cEl evento no está activo.");
+                    return;
+                }
+                
+                if (args.length < 3) {
+                    sender.sendMessage("§cUso: /avo evento3 grieta spawn");
+                    return;
+                }
+                
+                if (args[2].equalsIgnoreCase("spawn")) {
+                    evento3.forzarSpawnGrieta();
+                    sender.sendMessage("§a✓ Grieta de Forma spawneada");
+                    plugin.getLogger().info(String.format("[SusurroPiedraRota] %s spawneó grieta", sender.getName()));
+                }
+                break;
+                
+            default:
+                sender.sendMessage("§cSubcomando desconocido: §f" + subCmd);
+                sender.sendMessage("§7Usa §e/avo evento3 §7para ver comandos disponibles.");
+                break;
+        }
+    }
 
     // ========== MÉTODOS AUXILIARES PARA ESCANEO ==========
     
@@ -2514,6 +2714,212 @@ public class ApocalipsisCommand implements CommandExecutor {
             default:
                 sender.sendMessage("§cSubcomando desconocido.");
                 sender.sendMessage("§7Usa: §f/avo rewards §7para ver ayuda.");
+                break;
+        }
+    }
+    
+    /**
+     * /avo autotest <subcomando> - Sistema de autotesting con bots
+     */
+    private void cmdAutoTest(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("avo.admin")) {
+            sender.sendMessage("§cNo tienes permisos.");
+            return;
+        }
+        
+        if (args.length < 2) {
+            sender.sendMessage("§8§l═══════════════════════════════════════════════════");
+            sender.sendMessage("§6§l  SISTEMA DE AUTOTESTING - COMANDOS");
+            sender.sendMessage("§8§l═══════════════════════════════════════════════════");
+            sender.sendMessage("");
+            sender.sendMessage("§e/avo autotest start <evento> §7- Inicia autotesting");
+            sender.sendMessage("§e/avo autotest stop §7- Detiene autotesting");
+            sender.sendMessage("§e/avo autotest run <escenario> §7- Ejecuta escenario");
+            sender.sendMessage("§e/avo autotest suite <evento> §7- Ejecuta suite completa");
+            sender.sendMessage("§e/avo autotest bots §7- Lista bots activos");
+            sender.sendMessage("§e/avo autotest report §7- Genera reporte");
+            sender.sendMessage("§e/avo autotest clear §7- Limpia resultados");
+            sender.sendMessage("");
+            sender.sendMessage("§7Eventos: §feco_brasas, eco_sombras");
+            sender.sendMessage("§8§l═══════════════════════════════════════════════════");
+            return;
+        }
+        
+        String subCmd = args[1].toLowerCase();
+        
+        // Obtener sistema de autotesting
+        var autoTestSystem = plugin.getAutoTestSystem();
+        if (autoTestSystem == null) {
+            sender.sendMessage("§c✗ Sistema de autotesting no disponible");
+            return;
+        }
+        
+        switch (subCmd) {
+            case "start":
+                // /avo autotest start <evento>
+                if (args.length < 3) {
+                    sender.sendMessage("§cUso: /avo autotest start <evento>");
+                    sender.sendMessage("§7Eventos: eco_brasas, eco_sombras");
+                    return;
+                }
+                
+                String eventId = args[2].toLowerCase();
+                if (!eventId.equals("eco_brasas") && !eventId.equals("eco_sombras")) {
+                    sender.sendMessage("§cEvento inválido: §f" + eventId);
+                    sender.sendMessage("§7Usa: eco_brasas o eco_sombras");
+                    return;
+                }
+                
+                // Obtener ubicación de spawn
+                Location spawnLoc;
+                if (sender instanceof Player) {
+                    spawnLoc = ((Player) sender).getLocation();
+                } else {
+                    spawnLoc = plugin.getServer().getWorlds().get(0).getSpawnLocation();
+                }
+                
+                autoTestSystem.startAutoTesting(eventId, spawnLoc);
+                
+                sender.sendMessage("§a✓ Autotesting iniciado para §e" + eventId);
+                sender.sendMessage("§7Bots creados en: §f" + 
+                    String.format("%.1f, %.1f, %.1f", spawnLoc.getX(), spawnLoc.getY(), spawnLoc.getZ()));
+                sender.sendMessage("§7Usa §e/avo autotest bots §7para ver lista de bots");
+                break;
+                
+            case "stop":
+                if (!autoTestSystem.isTestingActive()) {
+                    sender.sendMessage("§cNo hay autotesting activo.");
+                    return;
+                }
+                
+                autoTestSystem.stopAutoTesting();
+                sender.sendMessage("§a✓ Autotesting detenido");
+                sender.sendMessage("§7Usa §e/avo autotest report §7para ver resultados");
+                break;
+                
+            case "run":
+                // /avo autotest run <escenario>
+                if (args.length < 3) {
+                    sender.sendMessage("§cUso: /avo autotest run <escenario>");
+                    sender.sendMessage("§7Escenarios disponibles:");
+                    sender.sendMessage("§f  basic, grieta, ancla, guardian, death, afk, partial");
+                    return;
+                }
+                
+                if (!autoTestSystem.isTestingActive()) {
+                    sender.sendMessage("§cDebes iniciar autotesting primero: §e/avo autotest start <evento>");
+                    return;
+                }
+                
+                String scenarioName = args[2].toLowerCase();
+                me.apocalipsis.events.testing.scenarios.TestScenario scenario = null;
+                
+                // Crear escenario basado en nombre
+                switch (scenarioName) {
+                    case "basic":
+                        scenario = new me.apocalipsis.events.testing.scenarios.BasicParticipationScenario();
+                        break;
+                    case "grieta":
+                        scenario = new me.apocalipsis.events.testing.scenarios.GrietaClosingScenario();
+                        break;
+                    case "ancla":
+                        scenario = new me.apocalipsis.events.testing.scenarios.AnclaCompletionScenario();
+                        break;
+                    case "guardian":
+                        scenario = new me.apocalipsis.events.testing.scenarios.GuardianFightScenario();
+                        break;
+                    case "death":
+                        scenario = new me.apocalipsis.events.testing.scenarios.PlayerDeathScenario();
+                        break;
+                    case "afk":
+                        scenario = new me.apocalipsis.events.testing.scenarios.AFKPlayerScenario();
+                        break;
+                    case "partial":
+                        scenario = new me.apocalipsis.events.testing.scenarios.PartialParticipationScenario();
+                        break;
+                    default:
+                        sender.sendMessage("§cEscenario desconocido: §f" + scenarioName);
+                        return;
+                }
+                
+                autoTestSystem.runScenario(scenario);
+                sender.sendMessage("§a✓ Ejecutando escenario: §e" + scenario.getName());
+                sender.sendMessage("§7Duración estimada: §f" + (scenario.getDurationTicks() / 20) + "s");
+                sender.sendMessage("§7Descripción: §f" + scenario.getDescription());
+                break;
+                
+            case "suite":
+                // /avo autotest suite <evento>
+                if (args.length < 3) {
+                    sender.sendMessage("§cUso: /avo autotest suite <evento>");
+                    return;
+                }
+                
+                if (!autoTestSystem.isTestingActive()) {
+                    sender.sendMessage("§cDebes iniciar autotesting primero: §e/avo autotest start <evento>");
+                    return;
+                }
+                
+                String suiteEventId = args[2].toLowerCase();
+                autoTestSystem.runTestSuite(suiteEventId);
+                
+                sender.sendMessage("§a✓ Ejecutando suite completa para §e" + suiteEventId);
+                sender.sendMessage("§7Esto puede tardar varios minutos...");
+                sender.sendMessage("§7El reporte se generará automáticamente al finalizar");
+                break;
+                
+            case "bots":
+                if (!autoTestSystem.isTestingActive()) {
+                    sender.sendMessage("§cNo hay autotesting activo.");
+                    return;
+                }
+                
+                var bots = autoTestSystem.getActiveBots();
+                sender.sendMessage("§8§l═══════════════════════════════════════════════════");
+                sender.sendMessage("§6§l  BOTS ACTIVOS (" + bots.size() + ")");
+                sender.sendMessage("§8§l═══════════════════════════════════════════════════");
+                
+                for (var bot : bots) {
+                    sender.sendMessage(bot.getStatsReport());
+                }
+                
+                sender.sendMessage("§8§l═══════════════════════════════════════════════════");
+                break;
+                
+            case "report":
+                var results = autoTestSystem.getTestResults();
+                if (results.isEmpty()) {
+                    sender.sendMessage("§cNo hay resultados de tests disponibles.");
+                    sender.sendMessage("§7Ejecuta algunos escenarios primero.");
+                    return;
+                }
+                
+                String fullReport = autoTestSystem.generateTestReport();
+                
+                // Enviar reporte línea por línea
+                for (String line : fullReport.split("\n")) {
+                    sender.sendMessage(line);
+                }
+                break;
+                
+            case "quick":
+                if (autoTestSystem.getTestResults().isEmpty()) {
+                    sender.sendMessage("§cNo hay resultados de tests disponibles.");
+                    return;
+                }
+                
+                String quickReport = autoTestSystem.generateQuickReport();
+                sender.sendMessage(quickReport);
+                break;
+                
+            case "clear":
+                autoTestSystem.clearResults();
+                sender.sendMessage("§a✓ Resultados de tests limpiados");
+                break;
+                
+            default:
+                sender.sendMessage("§cSubcomando desconocido: §f" + subCmd);
+                sender.sendMessage("§7Usa §e/avo autotest §7para ver ayuda");
                 break;
         }
     }

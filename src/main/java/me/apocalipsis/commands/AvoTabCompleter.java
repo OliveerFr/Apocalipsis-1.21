@@ -31,7 +31,7 @@ public class AvoTabCompleter implements TabCompleter {
                 "newday", "endday", "status", "setxp", "mission",
                 "tps", "stats", "backup", "cooldown", "debug", "test", "test-alert",
                 "reload", "admin", "escanear", "protecciones", "eco", "eco_sombras",
-                "xp", "experience", "nivel", "level", "evasion", "evasiones"
+                "evento3", "susurro", "xp", "experience", "nivel", "level", "evasion", "evasiones"
             );
             
             return subcommands.stream()
@@ -96,6 +96,13 @@ public class AvoTabCompleter implements TabCompleter {
                 case "eco_sombras":
                     // Sugerir subcomandos de eco_sombras
                     return Arrays.asList("start", "stop", "fase", "next", "info", "ancla", "nucleo").stream()
+                        .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
+                        .collect(Collectors.toList());
+                
+                case "evento3":
+                case "susurro":
+                    // Sugerir subcomandos de evento3 (El Susurro en la Piedra Rota)
+                    return Arrays.asList("start", "stop", "acto", "next", "info", "fragmento", "grieta").stream()
                         .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
                         .collect(Collectors.toList());
                 
@@ -202,6 +209,27 @@ public class AvoTabCompleter implements TabCompleter {
             // /avo eco_sombras nucleo <spawn|teleport|damage>
             if (subCmd.equals("eco_sombras") && args[1].equalsIgnoreCase("nucleo")) {
                 return Arrays.asList("spawn", "teleport", "damage").stream()
+                    .filter(s -> s.startsWith(args[2]))
+                    .collect(Collectors.toList());
+            }
+            
+            // /avo evento3 acto <1-4>
+            if ((subCmd.equals("evento3") || subCmd.equals("susurro")) && args[1].equalsIgnoreCase("acto")) {
+                return Arrays.asList("1", "2", "3", "4").stream()
+                    .filter(s -> s.startsWith(args[2]))
+                    .collect(Collectors.toList());
+            }
+            
+            // /avo evento3 fragmento <spawn>
+            if ((subCmd.equals("evento3") || subCmd.equals("susurro")) && args[1].equalsIgnoreCase("fragmento")) {
+                return Arrays.asList("spawn").stream()
+                    .filter(s -> s.startsWith(args[2]))
+                    .collect(Collectors.toList());
+            }
+            
+            // /avo evento3 grieta <spawn>
+            if ((subCmd.equals("evento3") || subCmd.equals("susurro")) && args[1].equalsIgnoreCase("grieta")) {
+                return Arrays.asList("spawn").stream()
                     .filter(s -> s.startsWith(args[2]))
                     .collect(Collectors.toList());
             }

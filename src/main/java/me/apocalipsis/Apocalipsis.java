@@ -18,6 +18,8 @@ import me.apocalipsis.disaster.adapters.PerformanceAdapter;
 import me.apocalipsis.events.EcoBrasasEvent;
 import me.apocalipsis.events.EcoSombrasEvent;
 import me.apocalipsis.events.EventController;
+import me.apocalipsis.events.SusurroPiedraRotaEvent;
+import me.apocalipsis.events.testing.EventAutoTestingSystem;
 import me.apocalipsis.experience.AbilityService;
 import me.apocalipsis.experience.ExperienceService;
 import me.apocalipsis.experience.RewardService;
@@ -50,6 +52,7 @@ public final class Apocalipsis extends JavaPlugin {
     private DisasterRegistry disasterRegistry;
     private DisasterController disasterController;
     private EventController eventController;
+    private EventAutoTestingSystem autoTestSystem;
     private MissionService missionService;
     private RankService rankService;
     private PerformanceAdapter performanceAdapter;
@@ -132,6 +135,10 @@ public final class Apocalipsis extends JavaPlugin {
         // Inicializar event system
         eventController = new EventController(this);
         
+        // Inicializar sistema de autotesting
+        autoTestSystem = new EventAutoTestingSystem(this);
+        getLogger().info("[AutoTest] ✓ Sistema de autotesting inicializado");
+        
         // Inicializar UI
         scoreboardManager = new ScoreboardManager(this, stateManager, disasterController, missionService, rankService);
         tablistManager = new TablistManager(this, stateManager, performanceAdapter, rankService);
@@ -146,7 +153,10 @@ public final class Apocalipsis extends JavaPlugin {
         EcoSombrasEvent ecoSombrasEvent = new EcoSombrasEvent(this, messageBus, soundUtil);
         eventController.registerEvent(ecoSombrasEvent);
         
-        getLogger().info("[EventController] ✓ Eventos narrativos registrados (Eco de Brasas, Eco de Sombras)");
+        SusurroPiedraRotaEvent susurroEvent = new SusurroPiedraRotaEvent(this, messageBus, soundUtil);
+        eventController.registerEvent(susurroEvent);
+        
+        getLogger().info("[EventController] ✓ Eventos narrativos registrados (Eco de Brasas, Eco de Sombras, Susurro Piedra Rota)");
 
         // Registrar comandos y tab completer
         getCommand("avo").setExecutor(new ApocalipsisCommand(this, stateManager, disasterController, eventController, missionService, timeService, messageBus));
@@ -162,6 +172,7 @@ public final class Apocalipsis extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new BlockTrackListener(this), this);
         getServer().getPluginManager().registerEvents(new DisasterEvasionListener(this), this);
         getServer().getPluginManager().registerEvents(new me.apocalipsis.listeners.ChatListener(this), this);
+        getServer().getPluginManager().registerEvents(new me.apocalipsis.events.SusurroPiedraRotaListener(this), this);
 
         // Cargar estado
         stateManager.loadState();
@@ -299,6 +310,10 @@ public final class Apocalipsis extends JavaPlugin {
 
     public EventController getEventController() {
         return eventController;
+    }
+    
+    public EventAutoTestingSystem getAutoTestSystem() {
+        return autoTestSystem;
     }
 
     public MissionService getMissionService() {

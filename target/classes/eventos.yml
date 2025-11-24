@@ -442,6 +442,297 @@ eventos:
         # - Emblema del Eco Templado (todos)
         # - PS según participación: 50-315 PS por jugador
 
+  # ═══════════════════════════════════════════════════════════════════
+  # EL SUSURRO EN LA PIEDRA ROTA - Mini-evento narrativo de 4 actos
+  # ═══════════════════════════════════════════════════════════════════
+  susurro_piedra_rota:
+    enabled: true
+    jugadores_minimos: 1
+    jugadores_maximos: 6
+    duracion_total_seg: 1200  # 20 minutos total (~5 min por acto)
+    
+    # ═══════════════════════════════════════════════════════════════
+    # CONTEXTO NARRATIVO
+    # ═══════════════════════════════════════════════════════════════
+    # Después del Eco de Sombras, algo "de afuera" reaccionó.
+    # La figura desconocida cambió la memoria del mundo.
+    # Ciertas estructuras antiguas están comenzando a "despertar".
+    # Este evento introduce el concepto de "forma" (complemento de "sombra").
+    
+    # ═══════════════════════════════════════════════════════════════
+    # SISTEMA DE RECOMPENSAS PS POR PARTICIPACIÓN
+    # ═══════════════════════════════════════════════════════════════
+    recompensas_ps:
+      base_participacion: 30           # PS base por completar evento
+      por_fragmento_inspeccionado: 10  # PS por cada fragmento de piedra inspeccionado
+      por_criatura_eliminada: 5        # PS por cada criatura de forma eliminada
+      por_recoger_nucleo: 50           # PS bonus por recoger el núcleo
+      # Participación completa (5 fragmentos + 10 criaturas + núcleo) = 30 + 50 + 50 + 50 = 180 PS
+    
+    # ═══════════════════════════════════════════════════════════════
+    # ITEMS DEL EVENTO
+    # ═══════════════════════════════════════════════════════════════
+    items:
+      # Item único y permanente - clave para futuros eventos
+      nucleo_forma:
+        material: "ECHO_SHARD"
+        nombre: "§5§lFragmento de Forma Desviada"
+        lore:
+          - "§8El Susurro en la Piedra Rota"
+          - ""
+          - "§7Un núcleo que no debería existir."
+          - "§7Vibra con una frecuencia incorrecta."
+          - "§7Como si recordara una forma que nunca tuvo."
+          - ""
+          - "§5\"La forma se deformó...\""
+          - "§5\"pero dejó un núcleo tras de sí.\""
+          - ""
+          - "§8✦ Item único y permanente"
+          - "§8✦ Será clave en eventos futuros"
+        glow: true
+        enchantments:
+          - "VANISHING_CURSE:1"  # No se pierde al morir
+        persistent: true  # No desaparece, se guarda en inventario
+    
+    # ═══════════════════════════════════════════════════════════════
+    # ACTO I: LA PIEDRA ROTA DESPIERTA
+    # ═══════════════════════════════════════════════════════════════
+    acto_1:
+      nombre: "La Piedra Rota Despierta"
+      duracion_seg: 300  # 5 minutos
+      
+      inicio:
+        mensaje_global: 
+          - "§8§m                                                    "
+          - ""
+          - "§7Un susurro se repite entre la piedra..."
+          - "§7Algo está intentando formarse."
+          - ""
+          - "§8§m                                                    "
+        sonido: "BLOCK_STONE_BREAK"
+        volumen: 1.0
+        pitch: 0.5
+      
+      fragmentos_piedra:
+        cantidad_min: 3
+        cantidad_max: 5
+        distancia_min_spawn: 50    # Mínimo 50 bloques del spawn
+        distancia_max_spawn: 150   # Máximo 150 bloques del spawn
+        distancia_entre_fragmentos: 30  # Mínimo 30 bloques entre fragmentos
+        
+        estructura:
+          bloques_base:
+            - "DEEPSLATE:3"
+            - "STONE:2"
+            - "CANDLE:1"  # Apagada
+          patron: "MINI_ALTAR"  # Mini altar 3x3
+          altura: 2
+        
+        efectos:
+          particulas_idle: "SMOKE_NORMAL"
+          particulas_descubierto: "PORTAL"
+          sonido_descubierto: "BLOCK_STONE_HIT"
+          distancia_deteccion: 5  # Bloques para activar
+        
+        mensajes_fragmentados:
+          - "§8⧖ §7...hijo del eco..."
+          - "§8⧖ §7...fragmento incorrecto..."
+          - "§8⧖ §7...la forma busca..."
+          - "§8⧖ §7...memoria rota..."
+          - "§8⧖ §7...no debería existir..."
+      
+      # Progresión: Todos los fragmentos deben ser inspeccionados
+      requisito_completar: "TODOS_FRAGMENTOS_INSPECCIONADOS"
+    
+    # ═══════════════════════════════════════════════════════════════
+    # ACTO II: LA PIEDRA SE QUIEBRA
+    # ═══════════════════════════════════════════════════════════════
+    acto_2:
+      nombre: "La Piedra se Quiebra"
+      duracion_seg: 300  # 5 minutos
+      
+      transicion:
+        mensaje_global:
+          - "§8§m                                                    "
+          - ""
+          - "§7La memoria se ha quebrado."
+          - "§5Una grieta de forma se ha abierto."
+          - ""
+          - "§8§m                                                    "
+        sonido: "ENTITY_WITHER_BREAK_BLOCK"
+        volumen: 1.0
+        pitch: 0.7
+      
+      grieta_forma:
+        spawn_aleatorio: true
+        distancia_min_spawn: 40
+        distancia_max_spawn: 100
+        
+        estructura:
+          tipo: "AGUJERO_VERTICAL"  # No es portal, es visual
+          altura: 8
+          radio: 3
+          bloques_aire: true  # Reemplaza bloques con aire temporalmente
+        
+        efectos_visuales:
+          particulas: "REVERSE_PORTAL"  # Partículas violetas
+          densidad: 30  # Partículas por segundo
+          alcance_visual: 50  # Se ve desde 50 bloques
+          sonido_ambiental: "BLOCK_PORTAL_AMBIENT"
+          sonido_volumen: 0.3
+        
+        proteccion:
+          no_damage_zone: true  # No hace daño
+          no_teleport: true     # No teletransporta
+          decorativa: true      # Solo visual
+      
+      criaturas_forma:
+        spawn_desde_grieta: true
+        oleadas:
+          cantidad: 3            # 3 oleadas
+          enemigos_por_oleada: 3-5
+          intervalo_oleadas_seg: 20  # 20 segundos entre oleadas
+          duracion_maxima_seg: 60    # 1 minuto máximo
+        
+        tipos_enemigos:
+          - tipo: "SILVERFISH"
+            nombre: "§5Criatura de Forma"
+            hp_multiplier: 0.5  # Débiles
+            velocidad: 1.2      # Rápidos
+            daño: 2             # 1 corazón
+            efectos:
+              - "GLOWING:999999:0"  # Brillan levemente
+        
+        drops:
+          nada: true  # No dropean items normales
+          # El núcleo se dropea al terminar todas las oleadas
+      
+      requisito_completar: "TODAS_CRIATURAS_ELIMINADAS"
+    
+    # ═══════════════════════════════════════════════════════════════
+    # ACTO III: EL NÚCLEO DE FORMA
+    # ═══════════════════════════════════════════════════════════════
+    acto_3:
+      nombre: "El Núcleo de Forma"
+      duracion_seg: 300  # 5 minutos
+      
+      aparicion_nucleo:
+        mensaje_global:
+          - "§8§m                                                    "
+          - ""
+          - "§5La forma se deformó..."
+          - "§5Pero dejó un núcleo tras de sí."
+          - ""
+          - "§8§m                                                    "
+        
+        spawn:
+          location: "CENTRO_GRIETA"  # Donde estaba la grieta
+          altura_sobre_suelo: 1.5
+          
+          efectos:
+            particulas: "END_ROD"
+            particulas_densidad: 20
+            sonido: "BLOCK_BEACON_ACTIVATE"
+            beam_luz: true  # Beam de luz hacia arriba
+            brillar: true
+        
+        interaccion:
+          tipo: "ITEM_FRAME_INVISIBLE"  # Item frame invisible con el item
+          distancia_recoger: 2
+          mensaje_recoger: "§5✦ Has recogido el §lFragmento de Forma Desviada"
+      
+      requisito_completar: "NUCLEO_RECOGIDO"
+    
+    # ═══════════════════════════════════════════════════════════════
+    # ACTO IV: EL SEGUNDO SUSURRO
+    # ═══════════════════════════════════════════════════════════════
+    acto_4:
+      nombre: "El Segundo Susurro"
+      duracion_seg: 300  # 5 minutos
+      
+      segundo_susurro:
+        trigger: "AL_RECOGER_NUCLEO"
+        
+        sonido_inicial:
+          tipo: "ENTITY_WITHER_BREAK_BLOCK"
+          volumen: 1.5
+          pitch: 0.4
+          descripcion: "Sonido fuerte de roca desgarrándose"
+        
+        mensajes_secuencia:
+          - texto: "§8⧖ §7...no aprendieron..."
+            delay_ticks: 40
+          - texto: "§8⧖ §7...otra vez..."
+            delay_ticks: 60
+          - texto: ""
+            delay_ticks: 80
+          - texto: "§8§o...la figura recuerda..."
+            delay_ticks: 100
+            sonido: "ENTITY_ENDERMAN_STARE"
+            volumen: 0.3
+      
+      observador_pensamiento:
+        trigger: "5_SEGUNDOS_ANTES_FINAL"
+        
+        mensaje:
+          jugadores: "TODOS"
+          texto:
+            - ""
+            - "§7§oLa piedra no debería hablar..."
+            - "§7§osi lo hace, es porque algo antiguo vuelve a tomar forma."
+            - ""
+          estilo: "PENSAMIENTO_SUAVE"  # Sin dramatismo
+      
+      cliffhanger:
+        trigger: "AL_FINALIZAR_EVENTO"
+        
+        simbolo_cielo:
+          tipo: "PARTICLE_PATTERN"
+          patron: "SIMBOLO_MISTERIOSO"  # Mismo del evento anterior
+          ubicacion: "CIELO_SOBRE_JUGADORES"
+          altura: 50
+          duracion_ticks: 20  # 1 segundo
+          particulas: "END_ROD"
+          
+          parpadeo:
+            veces: 2
+            intervalo_ticks: 10
+          
+          sonido: "BLOCK_BEACON_DEACTIVATE"
+          volumen: 0.5
+      
+      requisito_completar: "CLIFFHANGER_MOSTRADO"
+    
+    # ═══════════════════════════════════════════════════════════════
+    # VICTORIA
+    # ═══════════════════════════════════════════════════════════════
+    victoria:
+      requisito: "ACTO_4_COMPLETADO"
+      
+      recompensas_automaticas:
+        - tipo: "ITEM"
+          item: "nucleo_forma"
+          cantidad: 1
+          receptores: "JUGADOR_QUE_RECOGIO"  # Solo quien lo recogió primero
+        
+        - tipo: "PS"
+          calculo: "POR_PARTICIPACION"  # Según tracking
+          min: 30
+          max: 180
+      
+      mensaje_final:
+        texto:
+          - "§8§m                                                    "
+          - ""
+          - "§5§lEl Susurro en la Piedra Rota"
+          - "§7ha sido completado"
+          - ""
+          - "§8Un nuevo misterio se ha revelado..."
+          - "§8La forma busca recordar."
+          - ""
+          - "§8§m                                                    "
+        sonido: "UI_TOAST_CHALLENGE_COMPLETE"
+
 # ═══════════════════════════════════════════════════════════════════
 # CONFIGURACIÓN GLOBAL DE EVENTOS
 # ═══════════════════════════════════════════════════════════════════

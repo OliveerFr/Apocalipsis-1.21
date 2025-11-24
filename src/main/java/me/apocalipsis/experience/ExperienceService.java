@@ -229,6 +229,9 @@ public class ExperienceService {
         int oldLevel = data.getNivel();
         int oldXP = data.getXp();
         
+        // 🎯 Guardar rango anterior ANTES de añadir XP
+        MissionRank oldRank = plugin.getRankService().getRank(player);
+        
         // Añadir XP
         data.addXp(xp);
         
@@ -244,7 +247,16 @@ public class ExperienceService {
         if (newLevel > oldLevel) {
             data.setNivel(newLevel);
             leveledUp = true;
-            onLevelUp(player, oldLevel, newLevel);
+            
+            // 🎯 Verificar si subió de RANGO (más importante que nivel)
+            MissionRank newRank = plugin.getRankService().getRank(player);
+            if (newRank != oldRank) {
+                // ¡SUBIDA DE RANGO! Efectos épicos
+                onRankUp(player, oldRank, newRank);
+            } else {
+                // Solo subió de nivel (efectos normales)
+                onLevelUp(player, oldLevel, newLevel);
+            }
         }
         
         // Notificar al jugador
@@ -306,6 +318,59 @@ public class ExperienceService {
         
         playerCooldowns.put(source, currentTime);
         return true;
+    }
+    
+    /**
+     * Evento cuando un jugador sube de RANGO (¡ÉPICO!)
+     */
+    private void onRankUp(Player player, MissionRank oldRank, MissionRank newRank) {
+        String rankName = newRank.getDisplayName();
+        
+        // 🎉 Título épico
+        net.kyori.adventure.title.Title title = net.kyori.adventure.title.Title.title(
+            net.kyori.adventure.text.Component.text("§6§l⬆ RANGO ASCENDIDO ⬆"),
+            net.kyori.adventure.text.Component.text(rankName),
+            net.kyori.adventure.title.Title.Times.times(
+                java.time.Duration.ofMillis(500), 
+                java.time.Duration.ofMillis(4000), 
+                java.time.Duration.ofMillis(1000)
+            )
+        );
+        player.showTitle(title);
+        
+        // 🔊 Sonidos épicos
+        player.playSound(player.getLocation(), org.bukkit.Sound.UI_TOAST_CHALLENGE_COMPLETE, 2.0f, 1.0f);
+        player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, 1.5f, 1.2f);
+        player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_ENDER_DRAGON_GROWL, 0.8f, 1.8f);
+        
+        // ✨ Partículas épicas
+        org.bukkit.Location loc = player.getLocation().add(0, 1, 0);
+        player.getWorld().spawnParticle(org.bukkit.Particle.TOTEM_OF_UNDYING, loc, 100, 1.0, 1.5, 1.0, 0.1);
+        player.getWorld().spawnParticle(org.bukkit.Particle.FIREWORK, loc, 50, 0.8, 0.8, 0.8, 0.2);
+        player.getWorld().spawnParticle(org.bukkit.Particle.END_ROD, loc, 40, 0.6, 1.0, 0.6, 0.15);
+        player.getWorld().spawnParticle(org.bukkit.Particle.ENCHANT, loc, 60, 1.2, 1.2, 1.2, 1.0);
+        
+        // 💬 Notificación al jugador
+        player.sendMessage("§6§l═════════════════════════════════════");
+        player.sendMessage("§e§l         ¡ASCENSO DE RANGO!");
+        player.sendMessage("§7Has alcanzado el rango " + rankName + "§7!");
+        player.sendMessage("§6§l═════════════════════════════════════");
+        
+        // 🌍 Mensaje GLOBAL al servidor
+        String globalMessage = "§6§l★ " + player.getName() + " §7ha alcanzado el rango " + rankName + "§7! §6§l★";
+        plugin.getServer().broadcast(net.kyori.adventure.text.Component.text(globalMessage));
+        
+        // 🎁 Entregar recompensas del rango
+        if (plugin.getRewardService() != null) {
+            org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                boolean delivered = plugin.getRewardService().deliverRewards(player, newRank);
+                if (delivered) {
+                    player.sendMessage("§a§l✔ §7Recompensas de rango entregadas!");
+                }
+            }, 20L); // 1 segundo de delay para que vea el título primero
+        }
+        
+        plugin.getLogger().info("[XP] " + player.getName() + " subió de rango: " + oldRank.name() + " → " + newRank.name());
     }
     
     /**

@@ -96,6 +96,9 @@ public class EcoSombrasEvent extends EventBase {
     private Map<UUID, Boolean> participacionGuardian = new HashMap<>();
     private Set<UUID> participantesOriginales = new HashSet<>();
     
+    // 🔧 NUEVO: Guardar estado de jugadores (inventario, XP, ubicación) antes del Guardián
+    private Map<UUID, PlayerSavedState> estadosJugadores = new HashMap<>();
+    
     // Configuración del evento
     private FileConfiguration config;
     
@@ -105,6 +108,12 @@ public class EcoSombrasEvent extends EventBase {
     private BukkitTask spawnTask;
     private BukkitTask oleadaTask;
     private BukkitTask itemSupplyTask; // 🔧 FIX: Task para suministro de items
+    
+    // 🔧 FIX: Tasks del núcleo (Acto 3) - deben cancelarse al cambiar de acto
+    private BukkitTask nucleoParticlesTask;
+    private BukkitTask nucleoBeamTask;
+    private BukkitTask nucleoSoundTask;
+    private BukkitTask nucleoWaypointTask;
     
     // Entidades del evento
     private Set<UUID> entidadesEvento = new HashSet<>();
@@ -309,6 +318,12 @@ public class EcoSombrasEvent extends EventBase {
         if (spawnTask != null) spawnTask.cancel();
         if (oleadaTask != null) oleadaTask.cancel();
         if (itemSupplyTask != null) itemSupplyTask.cancel(); // 🔧 FIX
+        
+        // 🔧 FIX: Cancelar tasks del núcleo (Acto 3)
+        if (nucleoParticlesTask != null) nucleoParticlesTask.cancel();
+        if (nucleoBeamTask != null) nucleoBeamTask.cancel();
+        if (nucleoSoundTask != null) nucleoSoundTask.cancel();
+        if (nucleoWaypointTask != null) nucleoWaypointTask.cancel();
         
         // Limpiar entidades
         cleanup();
@@ -799,6 +814,18 @@ public class EcoSombrasEvent extends EventBase {
     private void iniciarActoNucleo() {
         plugin.getLogger().info("[EcoSombras] Iniciando Acto 3: Núcleo");
         
+        // 🔧 FIX: Prevenir spawn duplicado si ya existe un núcleo
+        if (nucleoEntity != null && nucleoEntity.isValid()) {
+            plugin.getLogger().warning("[EcoSombras] ¡Núcleo ya existe! Cancelando spawn duplicado.");
+            return;
+        }
+        
+        // 🔧 FIX: Limpiar núcleo anterior si existe pero está muerto
+        if (nucleoEntity != null && !nucleoEntity.isValid()) {
+            nucleoEntity = null;
+            nucleoLocation = null;
+        }
+        
         // 🎨 CAMBIAR PARTÍCULAS AMBIENTALES A MÁS INTENSAS
         Location center = Bukkit.getWorlds().get(0).getSpawnLocation();
         particleSystem.startAmbientParticles(center, 60, 
@@ -820,6 +847,12 @@ public class EcoSombrasEvent extends EventBase {
         
         // Spawn del Núcleo después de la oscuridad
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            // 🔧 FIX: Verificación adicional antes del spawn (prevenir race condition)
+            if (nucleoEntity != null && nucleoEntity.isValid()) {
+                plugin.getLogger().warning("[EcoSombras] Núcleo ya spawneado, cancelando.");
+                return;
+            }
+            
             List<Player> jugadores = new ArrayList<>(Bukkit.getOnlinePlayers());
             if (jugadores.isEmpty()) return;
             
@@ -865,9 +898,14 @@ public class EcoSombrasEvent extends EventBase {
             entidadesEvento.add(nucleo.getUniqueId());
             protectionSystem.registerEventEntity(nucleo); // 🛡️ Registrar en protección
             
+            // 🔧 FIX: Log de confirmación (debugging)
+            plugin.getLogger().info(String.format("[EcoSombras] Núcleo spawneado en X:%.1f Y:%.1f Z:%.1f (UUID: %s)",
+                nucleoLocation.getX(), nucleoLocation.getY(), nucleoLocation.getZ(), nucleo.getUniqueId()));
+            
             // 🔧 FIX: Partículas INTENSAS permanentes
-            BukkitTask nucleoParticles = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            nucleoParticlesTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
                 if (!nucleo.isValid() || nucleo.isDead() || actoActual != Acto.NUCLEO) {
+                    if (nucleoParticlesTask != null) nucleoParticlesTask.cancel();
                     return;
                 }
                 
@@ -891,8 +929,9 @@ public class EcoSombrasEvent extends EventBase {
             }, 0L, 2L); // Cada 0.1 segundos
             
             // 🔧 FIX: BEACON VERTICAL permanente
-            BukkitTask nucleoBeam = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            nucleoBeamTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
                 if (!nucleo.isValid() || nucleo.isDead() || actoActual != Acto.NUCLEO) {
+                    if (nucleoBeamTask != null) nucleoBeamTask.cancel();
                     return;
                 }
                 
@@ -904,8 +943,9 @@ public class EcoSombrasEvent extends EventBase {
             }, 0L, 10L); // Cada 0.5 segundos
             
             // 🔧 FIX: Sonido ambiente constante
-            BukkitTask nucleoSound = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            nucleoSoundTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
                 if (!nucleo.isValid() || nucleo.isDead() || actoActual != Acto.NUCLEO) {
+                    if (nucleoSoundTask != null) nucleoSoundTask.cancel();
                     return;
                 }
                 
@@ -915,8 +955,9 @@ public class EcoSombrasEvent extends EventBase {
             }, 0L, 60L); // Cada 3 segundos
             
             // 🔧 FIX: WAYPOINT visual con action bar
-            BukkitTask nucleoWaypoint = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            nucleoWaypointTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
                 if (!nucleo.isValid() || nucleo.isDead() || actoActual != Acto.NUCLEO) {
+                    if (nucleoWaypointTask != null) nucleoWaypointTask.cancel();
                     return;
                 }
                 
@@ -1090,13 +1131,13 @@ public class EcoSombrasEvent extends EventBase {
     private void iniciarActoAnclas() {
         plugin.getLogger().info("[EcoSombras] Iniciando Acto 4: Anclas del Mundo");
         
-        // 🔧 FIX #12: Escalar anclas según cantidad de jugadores (3 anclas para ≤3 jugadores)
+        // 🔧 BALANCEO PARA 4 JUGADORES: Escalar anclas según cantidad de jugadores
         int jugadoresActivos = Bukkit.getOnlinePlayers().size();
         int cantidad;
-        if (jugadoresActivos <= 3) {
-            cantidad = 3; // 3 anclas para grupos pequeños
+        if (jugadoresActivos <= 4) {
+            cantidad = 4; // 4 anclas para grupos de hasta 4 jugadores (1 por jugador)
         } else {
-            cantidad = config.getInt("actos.acto_4_anclas.anclas.cantidad", 5); // 5 anclas por defecto
+            cantidad = config.getInt("actos.acto_4_anclas.anclas.cantidad", 5); // 5+ anclas para grupos más grandes
         }
         
         plugin.getLogger().info("[EcoSombras] Generando " + cantidad + " anclas para " + jugadoresActivos + " jugadores");
@@ -1405,10 +1446,11 @@ public class EcoSombrasEvent extends EventBase {
                 p.playSound(p.getLocation(), Sound.BLOCK_BEACON_POWER_SELECT, 2.0f, 2.0f);
             }
             
-            efectoCinematico("§8§l⬢ EL NÚCLEO SE MANIFIESTA", 10, 60, 20);
+            // 🔧 FIX CRÍTICO: Después de Anclas va RITUAL, NO Núcleo (esto causaba el bucle infinito)
+            efectoCinematico("§d§l⚡ EL RITUAL FINAL ⚡", 10, 60, 20);
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 limpiarEntidadesActoAnterior();
-                transicionarActo(Acto.NUCLEO);
+                transicionarActo(Acto.RITUAL); // ✅ CORREGIDO: era Acto.NUCLEO
             }, 60L);
         }
     }
@@ -1439,6 +1481,12 @@ public class EcoSombrasEvent extends EventBase {
     }
     
     private void transicionarActo(Acto nuevoActo) {
+        // 🔧 FIX: Prevenir transiciones duplicadas al mismo acto
+        if (actoActual == nuevoActo) {
+            plugin.getLogger().warning("[EcoSombras] Ya estamos en el acto " + nuevoActo + ", ignorando transición duplicada.");
+            return;
+        }
+        
         plugin.getLogger().info("[EcoSombras] Transición: " + actoActual + " -> " + nuevoActo);
         actoActual = nuevoActo;
         ticksEnActo = 0;
@@ -1842,6 +1890,16 @@ public class EcoSombrasEvent extends EventBase {
         
         // 🔧 FIX #10: Teleportar jugadores a posición segura ANTES de spawn
         for (Player p : Bukkit.getOnlinePlayers()) {
+            // 🔧 FIX: Limpiar efectos de actos anteriores PRIMERO
+            p.removePotionEffect(PotionEffectType.BLINDNESS);
+            p.removePotionEffect(PotionEffectType.DARKNESS);
+            p.removePotionEffect(PotionEffectType.SLOWNESS);
+            p.removePotionEffect(PotionEffectType.MINING_FATIGUE);
+            p.removePotionEffect(PotionEffectType.JUMP_BOOST);
+            p.removePotionEffect(PotionEffectType.WEAKNESS);
+            p.setWalkSpeed(0.2f);
+            cinematicSystem.cleanupPlayer(p.getUniqueId());
+            
             Location playerSafeLoc = arenaCenter.clone().add(
                 random.nextInt(10) - 5,  // X aleatorio (-5 a +5)
                 10,                      // Y +10 sobre arena
@@ -1866,6 +1924,9 @@ public class EcoSombrasEvent extends EventBase {
         
         // 🎬 CINEMATOGRÁFICO COMPLETO: Slow motion + Freeze + Shake
         for (Player p : Bukkit.getOnlinePlayers()) {
+            // 💾 GUARDAR ESTADO: Guardar inventario, XP y ubicación antes del combate
+            guardarEstadoJugador(p);
+            
             // 🎵 AUDIO: Transición a música de boss épica
             audioSystem.playActMusic(p, EventAudioSystem.MusicTrack.GUARDIAN);
             
@@ -1881,50 +1942,39 @@ public class EcoSombrasEvent extends EventBase {
                 }
             }, 40L);
             
-            // Freeze frame inicial (2 segundos)
-            cinematicSystem.freezeFrame(p, 40);
+            // 🔧 ADAPTACIÓN: Sin freeze, jugadores pueden moverse y pelear
+            // Solo efectos visuales cinematográficos leves
             
-            // Slow motion al descongelar
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if (p.isOnline()) {
-                    cinematicSystem.slowMotion(p, 60);
-                }
-            }, 40L);
-            
-            // Letterbox + Zoom in al boss
+            // Letterbox + Zoom moderado (sin congelar)
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 if (p.isOnline()) {
                     cinematicSystem.showLetterbox(p, 100);
-                    cinematicSystem.smoothZoom(p, 0.3f, 80); // Zoom muy cercano
+                    cinematicSystem.smoothZoom(p, 0.5f, 80); // Zoom moderado (no cercano)
                 }
-            }, 60L);
+            }, 20L);
             
-            // Camera shake extremo al spawn
+            // Camera shake medio al spawn
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 if (p.isOnline()) {
                     cinematicSystem.cameraShake(p, 
-                        me.apocalipsis.events.gameplay.CinematicSystem.ShakeIntensity.EXTREME, 40);
+                        me.apocalipsis.events.gameplay.CinematicSystem.ShakeIntensity.MEDIUM, 40);
                 }
-            }, 100L);
+            }, 40L);
             
             // Reset gradual al final
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 if (p.isOnline()) {
                     cinematicSystem.resetZoom(p);
                 }
-            }, 200L);
+            }, 120L);
             
-            p.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 100, 9, false, false));
-            p.addPotionEffect(new PotionEffect(PotionEffectType.MINING_FATIGUE, 100, 9, false, false));
-            p.addPotionEffect(new PotionEffect(PotionEffectType.JUMP_BOOST, 100, 250, false, false));
-            
-            // Blindness inicial para fade in
-            p.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 40, 5, false, false));
+            // 🔧 ADAPTACIÓN: Slowness muy breve (1 segundo) para efecto dramático, sin impedir combate
+            p.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 20, 1, false, false));
         }
         
-        // Oscurecer el mundo temporalmente
-        long tiempoOriginal = bossWorld.getTime();
-        bossWorld.setTime(18000); // Medianoche
+        // 🔧 FIX: NO oscurecer el mundo para mantener visibilidad
+        // long tiempoOriginal = bossWorld.getTime();
+        // bossWorld.setTime(18000); // Medianoche
         
         // 🎬 Secuencia de efectos superpuestos (🔧 FIX #11: Reducidos 60%)
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
@@ -1997,16 +2047,15 @@ public class EcoSombrasEvent extends EventBase {
             int numJugadores = Math.max(1, participantesOriginales.size());
             double diffMultiplier = difficulty.multiplier;
             
-            // 🔧 FIX #12: Escalado ajustado para 3 jugadores mínimo (en lugar de 5)
-            // Fórmula anterior: 1.0 + (numJugadores - 1) * 0.3 → 100% base + 30% por jugador extra
-            // Nueva fórmula: Escalar desde 3 jugadores base
+            // 🔧 BALANCEO PARA 4 JUGADORES: Escalado optimizado para grupos de 4
+            // Base: 4 jugadores = 100% (balance óptimo)
             double playerScaling;
-            if (numJugadores <= 3) {
-                // Para 1-3 jugadores: Escalar a la baja desde 100%
-                playerScaling = 0.6 + (numJugadores - 1) * 0.2; // 1p=60%, 2p=80%, 3p=100%
+            if (numJugadores <= 4) {
+                // Para 1-4 jugadores: Escalar desde 50% hasta 100%
+                playerScaling = 0.5 + (numJugadores - 1) * 0.167; // 1p=50%, 2p=67%, 3p=83%, 4p=100%
             } else {
-                // Para 4+ jugadores: Escalar al alza desde 100%
-                playerScaling = 1.0 + (numJugadores - 3) * 0.3; // 4p=130%, 5p=160%, etc.
+                // Para 5+ jugadores: Escalar al alza desde 100%
+                playerScaling = 1.0 + (numJugadores - 4) * 0.25; // 5p=125%, 6p=150%, etc.
             }
             
             plugin.getLogger().info("[EcoSombras] Escalado Guardian: " + numJugadores + " jugadores → " + 
@@ -2017,7 +2066,8 @@ public class EcoSombrasEvent extends EventBase {
             guardian.getAttribute(Attribute.MAX_HEALTH).setBaseValue(baseHealth);
             guardian.setHealth(baseHealth);
             
-            double baseDamage = 12.0 * diffMultiplier * playerScaling;  // Escalado por dificultad y jugadores
+            // 🔧 BALANCEO: Daño reducido de 8.0 a 5.0 (2.5 corazones base, ~0.5❤️ con Netherite Prot 4)
+            double baseDamage = 5.0 * diffMultiplier * playerScaling;  // Escalado por dificultad y jugadores
             guardian.getAttribute(Attribute.ATTACK_DAMAGE).setBaseValue(baseDamage);
             
             double baseSpeed = 0.30 * Math.min(1.5, diffMultiplier);  // Velocidad moderada
@@ -2161,9 +2211,9 @@ public class EcoSombrasEvent extends EventBase {
             // Habilidades especiales del Guardián
             iniciarHabilidadesGuardian(guardian);
             
-            // Restaurar tiempo del mundo
-            bossWorld.setTime(tiempoOriginal);
-        }, 60L); // Spawn después de 3 segundos de oscuridad
+            // 🔧 FIX: Mantener tiempo del mundo como está (no restaurar)
+            // bossWorld.setTime(tiempoOriginal);
+        }, 60L); // Spawn después de 3 segundos
     }
     
     private void iniciarHabilidadesGuardian(LivingEntity guardian) {
@@ -2218,12 +2268,12 @@ public class EcoSombrasEvent extends EventBase {
             loc.getWorld().spawnParticle(Particle.SONIC_BOOM, loc.clone().add(0, 3, 0), 1);
             loc.getWorld().playSound(loc, Sound.ENTITY_WARDEN_SONIC_BOOM, 2.0f, 0.5f);
             
-            // Daño en área
+            // 🔧 BALANCEO: Daño reducido de 6.0 a 4.0 (2 corazones) para combate más justo
             for (Player p : Bukkit.getOnlinePlayers()) {
                 if (p.getWorld().equals(loc.getWorld()) && p.getLocation().distance(loc) < 12) {
-                    p.damage(12.0);  // 6 corazones
+                    p.damage(4.0);  // 2 corazones
                     p.addPotionEffect(new org.bukkit.potion.PotionEffect(
-                        org.bukkit.potion.PotionEffectType.WITHER, 100, 1
+                        org.bukkit.potion.PotionEffectType.WITHER, 40, 0
                     ));
                     
                     // Empuje radial
@@ -2247,7 +2297,8 @@ public class EcoSombrasEvent extends EventBase {
             Location loc = guardian.getLocation();
             messageBus.broadcast("§8El Guardián invoca refuerzos…", "eco_sombras");
             
-            for (int i = 0; i < 4; i++) {
+            // 🔧 BALANCEO: Reducido de 4 a 2 Sombras para no saturar
+            for (int i = 0; i < 2; i++) {
                 double angulo = (2 * Math.PI / 4) * i;
                 Location spawnLoc = loc.clone().add(
                     Math.cos(angulo) * 8,
@@ -2264,7 +2315,7 @@ public class EcoSombrasEvent extends EventBase {
                 }
             }
             
-        }, 600L, 600L);  // Cada 30 segundos
+        }, 600L, 1200L);  // Cada 60 segundos (antes 30s)
         
         // Fase de furia al 30% de vida
         BukkitTask furiaCheck = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
@@ -2284,9 +2335,9 @@ public class EcoSombrasEvent extends EventBase {
                 loc.getWorld().spawnParticle(Particle.DAMAGE_INDICATOR, loc.clone().add(0, 3, 0), 100, 2, 3, 2, 0.5);
                 loc.getWorld().playSound(loc, Sound.ENTITY_ENDER_DRAGON_GROWL, 2.0f, 0.5f);
                 
-                // Aumentar stats
-                guardian.getAttribute(Attribute.MOVEMENT_SPEED).setBaseValue(0.45);
-                guardian.getAttribute(Attribute.ATTACK_DAMAGE).setBaseValue(30.0);
+                // 🔧 BALANCEO: Aumentar stats moderadamente (10.0 = 5 corazones, ~2❤️ con Prot 4)
+                guardian.getAttribute(Attribute.MOVEMENT_SPEED).setBaseValue(0.35);
+                guardian.getAttribute(Attribute.ATTACK_DAMAGE).setBaseValue(10.0);
                 
                 // Efecto visual permanente de furia
                 BukkitTask furiaVisual = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
@@ -3046,6 +3097,9 @@ public class EcoSombrasEvent extends EventBase {
         // Limpiar entidades del acto anterior
         limpiarEntidadesActoAnterior();
         
+        // 🔧 FIX: Limpiar efectos de jugadores al saltar de acto
+        limpiarEfectosJugadores();
+        
         transicionarActo(siguiente);
         plugin.getLogger().info("[EcoSombras] Avanzado de " + actoActual + " a " + siguiente);
     }
@@ -3068,6 +3122,24 @@ public class EcoSombrasEvent extends EventBase {
             oleadaTask = null;
         }
         
+        // 🔧 FIX: Cancelar tasks del núcleo (Acto 3) al cambiar de acto
+        if (nucleoParticlesTask != null) {
+            nucleoParticlesTask.cancel();
+            nucleoParticlesTask = null;
+        }
+        if (nucleoBeamTask != null) {
+            nucleoBeamTask.cancel();
+            nucleoBeamTask = null;
+        }
+        if (nucleoSoundTask != null) {
+            nucleoSoundTask.cancel();
+            nucleoSoundTask = null;
+        }
+        if (nucleoWaypointTask != null) {
+            nucleoWaypointTask.cancel();
+            nucleoWaypointTask = null;
+        }
+        
         // Remover entidades del acto anterior
         for (World world : Bukkit.getWorlds()) {
             for (Entity entity : world.getEntities()) {
@@ -3080,6 +3152,34 @@ public class EcoSombrasEvent extends EventBase {
         // Limpiar listas
         entidadesEvento.clear();
         manchasLocations.clear();
+    }
+    
+    /**
+     * 🔧 FIX: Limpia efectos de poción y cinematográficos de todos los jugadores
+     * Se llama al saltar de acto con comando para garantizar visibilidad y movimiento
+     */
+    private void limpiarEfectosJugadores() {
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            // Remover efectos negativos de poción
+            p.removePotionEffect(PotionEffectType.BLINDNESS);
+            p.removePotionEffect(PotionEffectType.DARKNESS);
+            p.removePotionEffect(PotionEffectType.SLOWNESS);
+            p.removePotionEffect(PotionEffectType.MINING_FATIGUE);
+            p.removePotionEffect(PotionEffectType.JUMP_BOOST); // El negativo usado para freeze
+            p.removePotionEffect(PotionEffectType.WEAKNESS);
+            
+            // Resetear velocidad de movimiento
+            p.setWalkSpeed(0.2f); // Velocidad normal
+            p.setFlySpeed(0.1f);  // Velocidad de vuelo normal
+            
+            // Limpiar efectos cinematográficos
+            cinematicSystem.cleanupPlayer(p.getUniqueId());
+            
+            // Mensaje de limpieza
+            p.sendMessage("§a✓ Efectos cinematográficos limpiados");
+        }
+        
+        plugin.getLogger().info("[EcoSombras] Efectos de jugadores limpiados al saltar de acto");
     }
     
     // ═══════════════════════════════════════════════════════════════════
@@ -3156,6 +3256,74 @@ public class EcoSombrasEvent extends EventBase {
                 p.playSound(p.getLocation(), Sound.ENTITY_ITEM_PICKUP, 0.5f, 1.2f);
             }
         }, 6000L, 6000L); // Cada 5 minutos (6000 ticks)
+    }
+    
+    /**
+     * Obtiene el Set de participantes originales del evento
+     * @return Set inmutable de UUIDs de participantes
+     */
+    public Set<UUID> getParticipantesOriginales() {
+        return Collections.unmodifiableSet(participantesOriginales);
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // SISTEMA DE GUARDADO DE ESTADO (sin perder inventario/XP)
+    // ═══════════════════════════════════════════════════════════════════
+    
+    /**
+     * 🔧 NUEVO: Clase para guardar el estado completo del jugador
+     */
+    private static class PlayerSavedState {
+        ItemStack[] inventory;
+        ItemStack[] armor;
+        ItemStack offHand;
+        int level;
+        float exp;
+        Location location;
+        double health;
+        int foodLevel;
+        
+        PlayerSavedState(Player p) {
+            this.inventory = p.getInventory().getContents().clone();
+            this.armor = p.getInventory().getArmorContents().clone();
+            this.offHand = p.getInventory().getItemInOffHand().clone();
+            this.level = p.getLevel();
+            this.exp = p.getExp();
+            this.location = p.getLocation().clone();
+            this.health = p.getHealth();
+            this.foodLevel = p.getFoodLevel();
+        }
+        
+        void restore(Player p) {
+            p.getInventory().setContents(inventory);
+            p.getInventory().setArmorContents(armor);
+            p.getInventory().setItemInOffHand(offHand);
+            p.setLevel(level);
+            p.setExp(exp);
+            p.setHealth(health);
+            p.setFoodLevel(foodLevel);
+            // NO restaurar ubicación para que se queden en la arena
+        }
+    }
+    
+    /**
+     * 🔧 NUEVO: Guarda el estado actual del jugador
+     */
+    private void guardarEstadoJugador(Player p) {
+        PlayerSavedState estado = new PlayerSavedState(p);
+        estadosJugadores.put(p.getUniqueId(), estado);
+        plugin.getLogger().info("[EcoSombras] Estado guardado para " + p.getName());
+    }
+    
+    /**
+     * 🔧 NUEVO: Restaura el estado del jugador (inventario, XP, etc)
+     */
+    private void restaurarEstadoJugador(Player p) {
+        PlayerSavedState estado = estadosJugadores.get(p.getUniqueId());
+        if (estado != null) {
+            estado.restore(p);
+            plugin.getLogger().info("[EcoSombras] Estado restaurado para " + p.getName());
+        }
     }
 }
 

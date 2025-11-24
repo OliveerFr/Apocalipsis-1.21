@@ -14,6 +14,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.inventory.ItemStack;
@@ -228,6 +229,30 @@ public class EcoSombrasListener implements Listener {
             if (evento.getChoiceSystem().makeChoice(player, message.toUpperCase())) {
                 event.setCancelled(true);
             }
+        }
+    }
+    
+    /**
+     * Previene duplicación de items al morir durante el evento
+     * Ya que restauramos el inventario guardado, NO debemos dropear items
+     */
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onPlayerDeath(PlayerDeathEvent event) {
+        Player player = event.getEntity();
+        
+        // Si el jugador está participando en el evento
+        if (evento.getParticipantesOriginales().contains(player.getUniqueId())) {
+            // CRÍTICO: Vaciar drops para evitar duplicación
+            event.getDrops().clear();
+            
+            // Mantener inventario y XP (evitar pérdida)
+            event.setKeepInventory(true);
+            event.setKeepLevel(true);
+            event.getDrops().clear(); // Asegurar que esté vacío
+            
+            // Mensaje personalizado sin penalización
+            event.setDeathMessage(null);
+            player.sendMessage("§8§l⬢ §cHas caído en combate... §7pero el Umbral te protege.");
         }
     }
 }
