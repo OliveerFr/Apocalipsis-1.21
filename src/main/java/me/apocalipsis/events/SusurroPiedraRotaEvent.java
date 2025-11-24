@@ -101,6 +101,10 @@ public class SusurroPiedraRotaEvent extends EventBase {
     private Map<UUID, Integer> participacionCriaturas = new HashMap<>();
     private Set<UUID> participantesOriginales = new HashSet<>();
     
+    // Sistema de guía con action bar
+    private BukkitTask guiaActionBarTask;
+    private Map<UUID, Location> objetivosPorJugador = new ConcurrentHashMap<>();
+    
     // ═══════════════════════════════════════════════════════════════════
     // CONSTRUCTOR
     // ═══════════════════════════════════════════════════════════════════
@@ -134,6 +138,9 @@ public class SusurroPiedraRotaEvent extends EventBase {
             participantesOriginales.add(p.getUniqueId());
         }
         
+        // Iniciar sistema de guía
+        iniciarGuiaActionBar();
+        
         // Mensaje inicial
         mostrarMensajeInicio();
         
@@ -155,6 +162,9 @@ public class SusurroPiedraRotaEvent extends EventBase {
         
         // Limpiar núcleo
         limpiarNucleo();
+        
+        // Detener sistema de guía
+        detenerGuiaActionBar();
         
         // Cancelar tasks
         if (fragmentosParticleTask != null) fragmentosParticleTask.cancel();
@@ -241,8 +251,28 @@ public class SusurroPiedraRotaEvent extends EventBase {
         
         plugin.getLogger().info("[SusurroPiedraRota] Iniciando Acto 1: La Piedra Rota Despierta");
         
+        // Mensaje claro de objetivo
+        broadcastNarrative("§8§m                                                    ");
+        broadcastNarrative("");
+        broadcastNarrative("§5§lACTO 1: LA PIEDRA ROTA DESPIERTA");
+        broadcastNarrative("");
+        broadcastNarrative("§7→ Busca fragmentos de piedra brillantes dispersos");
+        broadcastNarrative("§7→ Acércate a cada fragmento para inspeccionarlo");
+        broadcastNarrative("");
+        broadcastNarrative("§8§m                                                    ");
+        
+        playSoundToAll(Sound.BLOCK_BEACON_ACTIVATE, 0.5f, 1.2f);
+        
         // Generar fragmentos de piedra
         generarFragmentosPiedra();
+        
+        // Asignar fragmento más cercano a cada jugador como objetivo
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            Location fragmentoMasCercano = encontrarFragmentoMasCercano(p.getLocation());
+            if (fragmentoMasCercano != null) {
+                objetivosPorJugador.put(p.getUniqueId(), fragmentoMasCercano);
+            }
+        }
         
         // Iniciar efectos de partículas para fragmentos
         iniciarEfectosFragmentos();
@@ -420,9 +450,18 @@ public class SusurroPiedraRotaEvent extends EventBase {
         
         player.sendMessage("");
         player.sendMessage(mensaje);
+        player.sendMessage("§a✓ Fragmento descubierto: " + (fragmentosInspeccionados.size() + 1) + "/" + fragmentosLocations.size());
         player.sendMessage("");
         
         soundUtil.playSound(player, Sound.ENTITY_ENDERMAN_STARE, 0.3f, 0.5f);
+        
+        // Asignar siguiente fragmento como objetivo
+        Location siguienteFragmento = encontrarFragmentoMasCercano(player.getLocation());
+        if (siguienteFragmento != null) {
+            objetivosPorJugador.put(player.getUniqueId(), siguienteFragmento);
+        } else {
+            objetivosPorJugador.remove(player.getUniqueId());
+        }
         
         plugin.getLogger().info(String.format(
             "[SusurroPiedraRota] %s descubrió fragmento #%d (%d/%d)",
@@ -467,8 +506,10 @@ public class SusurroPiedraRotaEvent extends EventBase {
         // Mensaje de transición
         broadcastNarrative("§8§m                                                    ");
         broadcastNarrative("");
-        broadcastNarrative("§7La memoria se ha quebrado.");
-        broadcastNarrative("§5Una grieta de forma se ha abierto.");
+        broadcastNarrative("§5§lACTO 2: LA PIEDRA SE QUIEBRA");
+        broadcastNarrative("");
+        broadcastNarrative("§7→ Una grieta de forma se ha abierto");
+        broadcastNarrative("§7→ Defiende la posición de 3 oleadas de criaturas");
         broadcastNarrative("");
         broadcastNarrative("§8§m                                                    ");
         
@@ -587,12 +628,12 @@ public class SusurroPiedraRotaEvent extends EventBase {
         
         // Oleadas subsiguientes cada 20 segundos
         for (int i = 1; i < oleadasTotales; i++) {
-            int oleadaNum = i;
+            final long delay = 60L + (i * 400L); // 3s + (i * 20s)
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 if (isActive() && actoActual == Acto.PIEDRA_QUIEBRA) {
                     spawnearOleada();
                 }
-            }, 60L + (i * 400L)); // 3s + (i * 20s)
+            }, delay);
         }
     }
     
@@ -608,33 +649,43 @@ public class SusurroPiedraRotaEvent extends EventBase {
             cantidadCriaturas
         ));
         
-        broadcastNarrative(String.format("§5⚠ Oleada %d/%d", oleadaActual, oleadasTotales));
+        broadcastNarrative(String.format("§5⚠ Oleada %d/%d - Elimina las criaturas de Forma", oleadaActual, oleadasTotales));
         playSoundToAll(Sound.ENTITY_WITHER_SPAWN, 0.5f, 1.5f);
         
+        // Actualizar objetivo para todos los jugadores
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            objetivosPorJugador.put(p.getUniqueId(), grietaLocation);
+        }
+        
+        // Spawn sincrónico para asegurar que se creen
         for (int i = 0; i < cantidadCriaturas; i++) {
+            final int delay = i * 10; // 0.5s entre cada spawn
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if (isActive()) {
+                if (isActive() && actoActual == Acto.PIEDRA_QUIEBRA) {
                     spawnearCriaturaForma();
                 }
-            }, i * 10L); // 0.5s entre cada spawn
+            }, delay);
         }
     }
     
     private void spawnearCriaturaForma() {
-        Location spawnLoc = grietaLocation.clone().add(
-            -2 + Math.random() * 4,
-            1,
-            -2 + Math.random() * 4
-        );
+        if (grietaLocation == null) return;
+        
+        // Buscar ubicación válida alrededor de la grieta
+        Location spawnLoc = encontrarSpawnSeguro(grietaLocation, 3, 5);
+        if (spawnLoc == null) {
+            spawnLoc = grietaLocation.clone().add(0, 1, 0); // Fallback
+        }
         
         Silverfish criatura = (Silverfish) grietaLocation.getWorld().spawnEntity(
             spawnLoc,
             EntityType.SILVERFISH
         );
         
-        criatura.setCustomName("§5Criatura de Forma");
+        // Usar método moderno para custom name
+        criatura.customName(net.kyori.adventure.text.Component.text("§5Criatura de Forma"));
         criatura.setCustomNameVisible(true);
-        criatura.setMaxHealth(10.0); // 5 corazones
+        criatura.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).setBaseValue(10.0); // 5 corazones
         criatura.setHealth(10.0);
         criatura.getAttribute(org.bukkit.attribute.Attribute.MOVEMENT_SPEED).setBaseValue(0.3); // Rápido
         criatura.addPotionEffect(new org.bukkit.potion.PotionEffect(
@@ -696,11 +747,13 @@ public class SusurroPiedraRotaEvent extends EventBase {
         
         plugin.getLogger().info("[SusurroPiedraRota] Iniciando Acto 3: El Núcleo de Forma");
         
-        // Mensaje global
+        // Mensaje global con instrucciones claras
         broadcastNarrative("§8§m                                                    ");
         broadcastNarrative("");
-        broadcastNarrative("§5La forma se deformó...");
-        broadcastNarrative("§5Pero dejó un núcleo tras de sí.");
+        broadcastNarrative("§5§lACTO 3: EL NÚCLEO DE FORMA");
+        broadcastNarrative("");
+        broadcastNarrative("§7→ La forma se deformó y dejó un núcleo");
+        broadcastNarrative("§7→ Acércate y recógelo para completar el evento");
         broadcastNarrative("");
         broadcastNarrative("§8§m                                                    ");
         
@@ -731,6 +784,11 @@ public class SusurroPiedraRotaEvent extends EventBase {
             "[SusurroPiedraRota] Núcleo de Forma spawneado en: %s",
             locationToString(nucleoLocation)
         ));
+        
+        // Asignar núcleo como objetivo para todos los jugadores
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            objetivosPorJugador.put(p.getUniqueId(), nucleoLocation);
+        }
         
         // Efectos visuales
         iniciarEfectosNucleo();
@@ -782,6 +840,7 @@ public class SusurroPiedraRotaEvent extends EventBase {
     
     private void verificarProximidadNucleo() {
         if (ticksEnActo % 5 != 0) return; // Verificar cada 0.25s
+        if (nucleoLocation == null) return; // Validación null safety
         
         for (Player player : Bukkit.getOnlinePlayers()) {
             if (player.getLocation().distance(nucleoLocation) < 2.0) {
@@ -1172,6 +1231,203 @@ public class SusurroPiedraRotaEvent extends EventBase {
     
     private String locationToString(Location loc) {
         return String.format("%.1f, %.1f, %.1f", loc.getX(), loc.getY(), loc.getZ());
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // SISTEMA DE GUÍA CON ACTION BAR
+    // ═══════════════════════════════════════════════════════════════════
+    
+    private void iniciarGuiaActionBar() {
+        if (guiaActionBarTask != null) {
+            guiaActionBarTask.cancel();
+        }
+        
+        guiaActionBarTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                Location objetivo = objetivosPorJugador.get(player.getUniqueId());
+                
+                if (objetivo != null) {
+                    double distancia = player.getLocation().distance(objetivo);
+                    
+                    // Si llegó al objetivo (menos de 3 bloques), quitar guía
+                    if (distancia < 3.0) {
+                        objetivosPorJugador.remove(player.getUniqueId());
+                        continue;
+                    }
+                    
+                    // Calcular dirección
+                    String direccion = calcularDireccion(player.getLocation(), objetivo);
+                    
+                    // Mostrar en action bar usando API moderna
+                    player.sendActionBar(net.kyori.adventure.text.Component.text(
+                        String.format(
+                            "§5⦿ Objetivo: §f%s §7(%d bloques)",
+                            direccion,
+                            (int)distancia
+                        )
+                    ));
+                }
+            }
+        }, 0L, 20L); // Cada segundo
+    }
+    
+    private String calcularDireccion(Location desde, Location hacia) {
+        Vector direccion = hacia.toVector().subtract(desde.toVector()).normalize();
+        
+        double x = direccion.getX();
+        double z = direccion.getZ();
+        
+        // Determinar dirección cardinal principal
+        if (Math.abs(x) > Math.abs(z)) {
+            return x > 0 ? "→ Este" : "← Oeste";
+        } else {
+            return z > 0 ? "↓ Sur" : "↑ Norte";
+        }
+    }
+    
+    private void detenerGuiaActionBar() {
+        if (guiaActionBarTask != null) {
+            guiaActionBarTask.cancel();
+            guiaActionBarTask = null;
+        }
+        objetivosPorJugador.clear();
+    }
+    
+    private Location encontrarFragmentoMasCercano(Location desde) {
+        Location masCercano = null;
+        double distanciaMinima = Double.MAX_VALUE;
+        
+        for (Location fragmento : fragmentosLocations) {
+            if (fragmentosInspeccionados.contains(fragmento)) {
+                continue; // Saltar fragmentos ya inspeccionados
+            }
+            
+            double distancia = desde.distance(fragmento);
+            if (distancia < distanciaMinima) {
+                distanciaMinima = distancia;
+                masCercano = fragmento;
+            }
+        }
+        
+        return masCercano;
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // VALIDACIÓN INTELIGENTE DE SPAWN
+    // ═══════════════════════════════════════════════════════════════════
+    
+    private Location encontrarSpawnSeguro(Location centro, int radioMin, int radioMax) {
+        Random random = new Random();
+        int intentos = 0;
+        int maxIntentos = 30;
+        
+        while (intentos < maxIntentos) {
+            double angle = random.nextDouble() * Math.PI * 2;
+            double distance = radioMin + random.nextDouble() * (radioMax - radioMin);
+            
+            double x = centro.getX() + Math.cos(angle) * distance;
+            double z = centro.getZ() + Math.sin(angle) * distance;
+            
+            Location spawn = new Location(centro.getWorld(), x, centro.getY(), z);
+            
+            if (esSpawnSeguro(spawn)) {
+                return spawn;
+            }
+            
+            intentos++;
+        }
+        
+        return null; // No se encontró ubicación segura
+    }
+    
+    private boolean esSpawnSeguro(Location loc) {
+        // 1. Verificar que el chunk esté cargado
+        if (!loc.getChunk().isLoaded()) {
+            loc.getChunk().load();
+        }
+        
+        // 2. Obtener superficie sólida
+        Location superficie = loc.getWorld().getHighestBlockAt(loc).getLocation().add(0, 1, 0);
+        
+        // 3. Verificar que no sea agua
+        if (superficie.getBlock().getType() == Material.WATER) {
+            return false;
+        }
+        
+        // 4. Verificar espacio libre (2 bloques de altura)
+        if (!superficie.clone().add(0, 1, 0).getBlock().getType().isAir()) {
+            return false;
+        }
+        
+        // 5. Verificar que el bloque debajo sea sólido
+        if (!superficie.clone().add(0, -1, 0).getBlock().getType().isSolid()) {
+            return false;
+        }
+        
+        return true;
+    }
+    
+    private Location encontrarLocationValidaMejorada(World world, Location spawn, int distMin, int distMax, int distEntreFragmentos) {
+        Random random = new Random();
+        int intentos = 0;
+        int maxIntentos = 100;
+        int radioActual = distMax;
+        
+        while (intentos < maxIntentos) {
+            double angle = random.nextDouble() * Math.PI * 2;
+            double distance = distMin + random.nextDouble() * (radioActual - distMin);
+            
+            int x = spawn.getBlockX() + (int)(Math.cos(angle) * distance);
+            int z = spawn.getBlockZ() + (int)(Math.sin(angle) * distance);
+            
+            // Asegurar que el chunk esté cargado
+            Chunk chunk = world.getChunkAt(x >> 4, z >> 4);
+            if (!chunk.isLoaded()) {
+                chunk.load(true);
+            }
+            
+            int y = world.getHighestBlockYAt(x, z);
+            Location loc = new Location(world, x, y, z);
+            
+            // Verificaciones de calidad
+            if (!esSpawnSeguro(loc)) {
+                intentos++;
+                continue;
+            }
+            
+            // Verificar que no esté muy cerca de otros fragmentos
+            boolean lejosDeOtros = true;
+            for (Location existente : fragmentosLocations) {
+                if (existente.distance(loc) < distEntreFragmentos) {
+                    lejosDeOtros = false;
+                    break;
+                }
+            }
+            
+            if (lejosDeOtros) {
+                // Verificar que tenga buen rango de visión (no obstruido arriba)
+                boolean buenaVision = true;
+                for (int checkY = 1; checkY <= 5; checkY++) {
+                    if (loc.clone().add(0, checkY, 0).getBlock().getType().isSolid()) {
+                        buenaVision = false;
+                        break;
+                    }
+                }
+                
+                if (buenaVision) {
+                    return loc;
+                }
+            }
+            
+            intentos++;
+            
+            // Expandir radio cada 20 intentos
+            if (intentos % 20 == 0 && radioActual < 200) {
+                radioActual += 20;
+            }
+        }
+        
+        return null;
     }
     
     // ═══════════════════════════════════════════════════════════════════
