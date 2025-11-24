@@ -2759,14 +2759,19 @@ public class ApocalipsisCommand implements CommandExecutor {
                 // /avo autotest start <evento>
                 if (args.length < 3) {
                     sender.sendMessage("§cUso: /avo autotest start <evento>");
-                    sender.sendMessage("§7Eventos: eco_brasas, eco_sombras");
+                    sender.sendMessage("§7Eventos: eco_brasas, eco_sombras, evento3, susurro_piedra_rota");
                     return;
                 }
                 
                 String eventId = args[2].toLowerCase();
-                if (!eventId.equals("eco_brasas") && !eventId.equals("eco_sombras")) {
+                // Normalizar nombres de eventos
+                if (eventId.equals("evento3")) {
+                    eventId = "susurro_piedra_rota";
+                }
+                
+                if (!eventId.equals("eco_brasas") && !eventId.equals("eco_sombras") && !eventId.equals("susurro_piedra_rota")) {
                     sender.sendMessage("§cEvento inválido: §f" + eventId);
-                    sender.sendMessage("§7Usa: eco_brasas o eco_sombras");
+                    sender.sendMessage("§7Usa: eco_brasas, eco_sombras, evento3 o susurro_piedra_rota");
                     return;
                 }
                 

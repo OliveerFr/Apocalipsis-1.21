@@ -31,7 +31,8 @@ public class AvoTabCompleter implements TabCompleter {
                 "newday", "endday", "status", "setxp", "mission",
                 "tps", "stats", "backup", "cooldown", "debug", "test", "test-alert",
                 "reload", "admin", "escanear", "protecciones", "eco", "eco_sombras",
-                "evento3", "susurro", "xp", "experience", "nivel", "level", "evasion", "evasiones"
+                "evento3", "susurro", "xp", "experience", "nivel", "level", "evasion", "evasiones",
+                "autotest"
             );
             
             return subcommands.stream()
@@ -125,6 +126,12 @@ public class AvoTabCompleter implements TabCompleter {
                     // Sugerir jugadores online
                     return plugin.getServer().getOnlinePlayers().stream()
                         .map(Player::getName)
+                        .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
+                        .collect(Collectors.toList());
+                
+                case "autotest":
+                    // Sugerir subcomandos de autotest
+                    return Arrays.asList("start", "stop", "run", "suite", "bots", "report", "clear").stream()
                         .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
                         .collect(Collectors.toList());
             }
@@ -243,6 +250,13 @@ public class AvoTabCompleter implements TabCompleter {
                 suggestions.addAll(Arrays.asList("100", "500", "1000", "2500", "5000"));
                 return suggestions.stream()
                     .filter(s -> s.toLowerCase().startsWith(args[2].toLowerCase()))
+                    .collect(Collectors.toList());
+            }
+            
+            // /avo autotest start <evento>
+            if (subCmd.equals("autotest") && args[1].equalsIgnoreCase("start")) {
+                return Arrays.asList("eco_brasas", "eco_sombras", "evento3", "susurro_piedra_rota").stream()
+                    .filter(s -> s.startsWith(args[2]))
                     .collect(Collectors.toList());
             }
             
