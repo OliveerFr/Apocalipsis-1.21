@@ -517,9 +517,9 @@ eventos:
       fragmentos_piedra:
         cantidad_min: 3
         cantidad_max: 5
-        distancia_min_spawn: 50    # Mínimo 50 bloques del spawn
-        distancia_max_spawn: 150   # Máximo 150 bloques del spawn
-        distancia_entre_fragmentos: 30  # Mínimo 30 bloques entre fragmentos
+        distancia_min_spawn: 500    # Mínimo 500 bloques del spawn
+        distancia_max_spawn: 1000   # Máximo 1000 bloques del spawn
+        distancia_entre_fragmentos: 150  # Mínimo 150 bloques entre fragmentos
         
         estructura:
           bloques_base:

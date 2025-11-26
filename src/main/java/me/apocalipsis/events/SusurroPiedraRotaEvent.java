@@ -806,9 +806,9 @@ public class SusurroPiedraRotaEvent extends EventBase {
         
         int cantidadMin = acto1Config.getInt("cantidad_min", 3);
         int cantidadMax = acto1Config.getInt("cantidad_max", 5);
-        int distanciaMin = acto1Config.getInt("distancia_min_spawn", 50);
-        int distanciaMax = acto1Config.getInt("distancia_max_spawn", 150);
-        int distanciaEntreFragmentos = acto1Config.getInt("distancia_entre_fragmentos", 30);
+        int distanciaMin = acto1Config.getInt("distancia_min_spawn", 500); // MÍNIMO 500 bloques
+        int distanciaMax = acto1Config.getInt("distancia_max_spawn", 1000); // MÁXIMO 1000 bloques
+        int distanciaEntreFragmentos = acto1Config.getInt("distancia_entre_fragmentos", 150); // 150 bloques entre fragmentos
         
         int cantidad = cantidadMin + new Random().nextInt(cantidadMax - cantidadMin + 1);
         
