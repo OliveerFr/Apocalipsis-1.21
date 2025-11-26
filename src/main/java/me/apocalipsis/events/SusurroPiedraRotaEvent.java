@@ -1002,9 +1002,9 @@ public class SusurroPiedraRotaEvent extends EventBase {
         
         int cantidadMin = acto1Config.getInt("cantidad_min", 3);
         int cantidadMax = acto1Config.getInt("cantidad_max", 5);
-        int distanciaMin = acto1Config.getInt("distancia_min_spawn", 50);
-        int distanciaMax = acto1Config.getInt("distancia_max_spawn", 150);
-        int distanciaEntreFragmentos = acto1Config.getInt("distancia_entre_fragmentos", 30);
+        int distanciaMin = acto1Config.getInt("distancia_min_spawn", 1000); // MÍNIMO 1000 bloques
+        int distanciaMax = acto1Config.getInt("distancia_max_spawn", 1500); // MÁXIMO 1500 bloques
+        int distanciaEntreFragmentos = acto1Config.getInt("distancia_entre_fragmentos", 150); // 150 bloques entre fragmentos
         
         int cantidad = cantidadMin + new Random().nextInt(cantidadMax - cantidadMin + 1);
         
@@ -4273,9 +4273,9 @@ public class SusurroPiedraRotaEvent extends EventBase {
             
             // Objetivos con aparición secuencial
             String[] objetivos = {
-                "§7✦ Busca fragmentos de piedra brillantes dispersos",
-                "§7✦ Acércate a cada fragmento para inspeccionarlo",
-                "§7✦ Completa el parkour entre fragmentos"
+                "§7✦ Fragmentos de piedra brillantes están dispersos por el mundo",
+                "§7✦ Busca y acércate a cada fragmento para inspeccionarlo",
+                "§7✦ Encuentra todos los fragmentos para completar el acto"
             };
             
             for (int i = 0; i < objetivos.length; i++) {
