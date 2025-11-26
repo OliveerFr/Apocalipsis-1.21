@@ -34,7 +34,6 @@ import me.apocalipsis.ui.MessageBus;
 import me.apocalipsis.ui.SoundUtil;
 import me.apocalipsis.utils.BlockOwnershipTracker;
 import me.apocalipsis.utils.DisasterDamage;
-import me.apocalipsis.utils.ParticleCompat;
 
 
 public class HuracanNew extends DisasterBase {
@@ -931,17 +930,17 @@ public class HuracanNew extends DisasterBase {
         Location loc = player.getLocation();
         
         // Nubes de viento (reducido 5→3)
-        player.getWorld().spawnParticle(ParticleCompat.cloud(), 
+        player.getWorld().spawnParticle(Particle.CLOUD, 
             loc.clone().add(0, 1, 0), 3, 0.8, 0.5, 0.8, 0.05);
         
         // Humo del suelo (reducido 3→2)
-        player.getWorld().spawnParticle(ParticleCompat.smokeNormal(), 
+        player.getWorld().spawnParticle(Particle.SMOKE, 
             loc, 2, 0.5, 0.2, 0.5, 0.02);
         
         // BlockDust del suelo (reducido 3→2)
         Location groundLoc = loc.clone().subtract(0, 1, 0);
         BlockData data = groundLoc.getBlock().getBlockData();
-        player.getWorld().spawnParticle(ParticleCompat.blockDust(), 
+        player.getWorld().spawnParticle(Particle.BLOCK, 
             loc, 2, 0.5, 0.1, 0.5, 0.02, data);
         
         // Durante ráfagas: partículas más intensas (reducido 2→1)

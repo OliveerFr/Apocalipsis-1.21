@@ -34,7 +34,6 @@ import me.apocalipsis.state.TimeService;
 import me.apocalipsis.ui.MessageBus;
 import me.apocalipsis.ui.SoundUtil;
 import me.apocalipsis.utils.DisasterDamage;
-import me.apocalipsis.utils.ParticleCompat;
 
 public class LluviaFuegoNew extends DisasterBase implements Listener {
 
@@ -479,10 +478,10 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
         evaporateNearbyWater(loc, romperProteccionCantidad);
         
         // Partículas de impacto
-        spawnParticleForNonExempt(world, ParticleCompat.flame(), loc, 10, 0.3, 0.3, 0.3, 0.1);
-        spawnParticleForNonExempt(world, ParticleCompat.lava(), loc, 4, 0.2, 0.2, 0.2, 0);
-        spawnParticleForNonExempt(world, ParticleCompat.smokeNormal(), loc, 7, 0.4, 0.4, 0.4, 0.05);
-        spawnParticleForNonExempt(world, ParticleCompat.explosionNormal(), loc, 1, 0, 0, 0, 0);
+        spawnParticleForNonExempt(world, Particle.FLAME, loc, 10, 0.3, 0.3, 0.3, 0.1);
+        spawnParticleForNonExempt(world, Particle.LAVA, loc, 4, 0.2, 0.2, 0.2, 0);
+        spawnParticleForNonExempt(world, Particle.SMOKE, loc, 7, 0.4, 0.4, 0.4, 0.05);
+        spawnParticleForNonExempt(world, Particle.EXPLOSION, loc, 1, 0, 0, 0, 0);
         
         // Explosión controlada
         boolean breakBlocks = romperBloques && !waterInfo.hasWater; // Agua evita rotura

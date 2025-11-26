@@ -2150,8 +2150,8 @@ public class SusurroPiedraRotaEvent extends EventBase {
             
             // 3. TÍTULO ÉPICO con fade-in
             enviarTituloCinematicoTodos(
-                "§5§lACTO II",
-                "§8✦ La Piedra se Quiebra ✦",
+                "§c§lACTO II",
+                "§8✦ §5§lLA DEFENSA DEL ALTAR §8✦",
                 80
             );
             
@@ -2166,11 +2166,11 @@ public class SusurroPiedraRotaEvent extends EventBase {
                 
                 broadcastNarrative("§8§m══════════════════════════════════════════════════");
                 broadcastNarrative("");
-                broadcastNarrative("          §5§l⧗ ACTO 2: LA PIEDRA SE QUIEBRA ⧗");
+                broadcastNarrative("          §c§l⧗ ACTO 2: §5§lLA DEFENSA DEL ALTAR §c§l⧗");
                 broadcastNarrative("");
-                broadcastNarrative("    §7✦ Una grieta de forma se ha abierto en el mundo");
-                broadcastNarrative("    §7✦ Defiende la posición de 3 oleadas de criaturas");
-                broadcastNarrative("    §7✦ No permitas que la forma te consuma");
+                broadcastNarrative("    §7✦ Una grieta dimensional se ha abierto en el altar");
+                broadcastNarrative("    §7✦ Oleadas de criaturas emergen desde el vacío");
+                broadcastNarrative("    §7✦ Defiende el altar a toda costa");
                 broadcastNarrative("");
                 broadcastNarrative("§8§m══════════════════════════════════════════════════");
                 
@@ -3647,8 +3647,8 @@ public class SusurroPiedraRotaEvent extends EventBase {
             
             // 3. TÍTULO ÉPICO FINAL con máxima dramaticidad
             enviarTituloCinematicoTodos(
-                "§5§lACTO FINAL",
-                "§8✦ §d§lEl Núcleo de Forma §8✦",
+                "§d§lACTO FINAL",
+                "§8✦ §5§lEL CORAZÓN DEL ABISMO §8✦",
                 100
             );
             
@@ -3681,11 +3681,11 @@ public class SusurroPiedraRotaEvent extends EventBase {
                 
                 broadcastNarrative("§8§m══════════════════════════════════════════════════");
                 broadcastNarrative("");
-                broadcastNarrative("          §d§l⧗ ACTO FINAL: EL NÚCLEO DE FORMA ⧗");
+                broadcastNarrative("          §d§l⧗ ACTO FINAL: §5§lEL CORAZÓN DEL ABISMO §d§l⧗");
                 broadcastNarrative("");
-                broadcastNarrative("    §7✦ La forma se deformó y dejó un núcleo puro");
-                broadcastNarrative("    §7✦ Acércate y recógelo para completar el evento");
-                broadcastNarrative("    §c✦ Este es el momento final... ¿estás listo?");
+                broadcastNarrative("    §7✦ La realidad se deforma... algo emerge del vacío");
+                broadcastNarrative("    §7✦ El núcleo palpita con energía ancestral");
+                broadcastNarrative("    §c✦ Este es el momento final... ¿te atreves?");
                 broadcastNarrative("");
                 broadcastNarrative("§8§m══════════════════════════════════════════════════");
                 
@@ -4124,6 +4124,12 @@ public class SusurroPiedraRotaEvent extends EventBase {
     private void tickActo3() {
         // Verificar progreso del laberinto para cada jugador
         if (!puzzleActo3Completado) {
+            // Null safety: verificar que nucleoLocation esté inicializado
+            if (nucleoLocation == null) {
+                plugin.getLogger().warning("[SusurroPiedraRota] nucleoLocation es null en tickActo3");
+                return;
+            }
+            
             for (Player p : Bukkit.getOnlinePlayers()) {
                 if (p.getWorld() == nucleoLocation.getWorld()) {
                     verificarProgresoLaberinto(p);
@@ -4265,7 +4271,7 @@ public class SusurroPiedraRotaEvent extends EventBase {
             
             // Título principal con animación
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                player.sendMessage(formatearCentrado("§5§l⧖ ACTO 1: LA PIEDRA ROTA DESPIERTA ⧖"));
+                player.sendMessage(formatearCentrado("§d§l⧖ ACTO I: §5§lLA BÚSQUEDA DE LOS FRAGMENTOS §d§l⧖"));
                 soundUtil.playSound(player, Sound.BLOCK_AMETHYST_BLOCK_CHIME, 0.5f, 1.0f);
             }, 10L);
             
@@ -4273,9 +4279,9 @@ public class SusurroPiedraRotaEvent extends EventBase {
             
             // Objetivos con aparición secuencial
             String[] objetivos = {
-                "§7✦ Fragmentos de piedra brillantes están dispersos por el mundo",
-                "§7✦ Busca y acércate a cada fragmento para inspeccionarlo",
-                "§7✦ Encuentra todos los fragmentos para completar el acto"
+                "§7✦ Fragmentos antiguos de piedra brillante yacen dispersos",
+                "§7✦ Cada fragmento guarda secretos y revelaciones",
+                "§7✦ Reúne todos los fragmentos para descubrir la verdad"
             };
             
             for (int i = 0; i < objetivos.length; i++) {

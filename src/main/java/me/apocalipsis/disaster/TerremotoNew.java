@@ -34,7 +34,6 @@ import me.apocalipsis.ui.SoundUtil;
 import me.apocalipsis.utils.BlockOwnershipTracker;
 import me.apocalipsis.utils.DisasterDamage;
 import me.apocalipsis.utils.EffectUtil;
-import me.apocalipsis.utils.ParticleCompat;
 
 public class TerremotoNew extends DisasterBase {
 
@@ -639,7 +638,7 @@ public class TerremotoNew extends DisasterBase {
 
             // Partículas y sonido previos
             Location particleLoc = l.clone().add(0.5, 1.0, 0.5);
-            w.spawnParticle(ParticleCompat.blockCrack(), particleLoc, 8, 0.25, 0.15, 0.25, 0.01, b.getBlockData());
+            w.spawnParticle(Particle.BLOCK, particleLoc, 8, 0.25, 0.15, 0.25, 0.01, b.getBlockData());
             w.playSound(particleLoc, Sound.BLOCK_STONE_BREAK, 0.6f, 0.9f);
 
             b.setType(Material.AIR, false); // sin actualizar física masiva
@@ -658,8 +657,8 @@ public class TerremotoNew extends DisasterBase {
             blockData = Material.STONE.createBlockData();
         }
         
-        player.getWorld().spawnParticle(ParticleCompat.blockCrack(), loc, 5, 0.5, 0.1, 0.5, 0.1, blockData);
-        player.getWorld().spawnParticle(ParticleCompat.blockDust(), loc, 3, 0.3, 0.05, 0.3, 0.01, blockData);
+        player.getWorld().spawnParticle(Particle.BLOCK, loc, 5, 0.5, 0.1, 0.5, 0.1, blockData);
+        player.getWorld().spawnParticle(Particle.BLOCK, loc, 3, 0.3, 0.05, 0.3, 0.01, blockData);
     }
 
     private void applyNauseaWithCooldown(Player player) {
@@ -878,7 +877,7 @@ public class TerremotoNew extends DisasterBase {
                     Location particleLoc = new Location(world, x, epicentro.getY(), z);
                     
                     spawnParticleForNonExempt(world, Particle.CAMPFIRE_COSY_SMOKE, particleLoc, 1, 0, 0, 0, 0.01);
-                    spawnParticleForNonExempt(world, ParticleCompat.blockDust(), particleLoc, 2, 0.1, 0, 0.1, 0, Material.STONE.createBlockData());
+                    spawnParticleForNonExempt(world, Particle.BLOCK, particleLoc, 2, 0.1, 0, 0.1, 0, Material.STONE.createBlockData());
                 }
                 
                 if (r == 4) {
@@ -1060,7 +1059,7 @@ public class TerremotoNew extends DisasterBase {
             }
             
             // Partículas adicionales de impacto sísmico
-            world.spawnParticle(ParticleCompat.blockCrack(), breakLoc, 6, 0.3, 0.3, 0.3, 0.05, 
+            world.spawnParticle(Particle.BLOCK, breakLoc, 6, 0.3, 0.3, 0.3, 0.05, 
                 Material.STONE.createBlockData());
             
             broken++;
@@ -1195,7 +1194,7 @@ public class TerremotoNew extends DisasterBase {
             for (int y = 0; y < 5; y++) {
                 Location particleLoc = dustLoc.clone().add(0, y * 0.5, 0);
                 world.spawnParticle(Particle.CAMPFIRE_COSY_SMOKE, particleLoc, 5, 0.2, 0.1, 0.2, 0.01);
-                world.spawnParticle(ParticleCompat.blockDust(), particleLoc, 3, 0.1, 0.1, 0.1, 0, Material.DIRT.createBlockData());
+                world.spawnParticle(Particle.BLOCK, particleLoc, 3, 0.1, 0.1, 0.1, 0, Material.DIRT.createBlockData());
             }
         }
     }
