@@ -4255,23 +4255,9 @@ public class SusurroPiedraRotaEvent extends EventBase {
     }
     
     private void tickActo3() {
-        // Verificar progreso del laberinto para cada jugador
-        if (!puzzleActo3Completado) {
-            // Null safety: verificar que nucleoLocation esté inicializado
-            if (nucleoLocation == null) {
-                plugin.getLogger().warning("[SusurroPiedraRota] nucleoLocation es null en tickActo3");
-                return;
-            }
-            
-            for (Player p : Bukkit.getOnlinePlayers()) {
-                if (p.getWorld() == nucleoLocation.getWorld()) {
-                    verificarProgresoLaberinto(p);
-                }
-            }
-        }
-        
-        // El acto se completa SOLO cuando el puzzle del laberinto esté completado
-        // El núcleo solo aparece después de completar el laberinto
+        // Acto 3 simplificado: solo recoger el núcleo
+        // No hay verificación necesaria aquí - el núcleo se recoge via listener
+        // El método verificarProgresoLaberinto ya no existe (laberinto eliminado)
     }
     
     private void completarActo3() {
