@@ -454,10 +454,11 @@ eventos:
     # ═══════════════════════════════════════════════════════════════
     # CONTEXTO NARRATIVO
     # ═══════════════════════════════════════════════════════════════
-    # Después del Eco de Sombras, algo "de afuera" reaccionó.
-    # La figura desconocida cambió la memoria del mundo.
-    # Ciertas estructuras antiguas están comenzando a "despertar".
-    # Este evento introduce el concepto de "forma" (complemento de "sombra").
+    # Después del Eco de Sombras, el mundo comienza a "recordar mal".
+    # Los fragmentos de memoria se manifiestan físicamente en altares rotos.
+    # Las criaturas son "copias defectuosas" - errores en la memoria del mundo.
+    # El Observador deja pensamientos crípticos (...) como rastros de su presencia.
+    # Este evento planta semillas para el final: algo más grande despierta en el End.
     
     # ═══════════════════════════════════════════════════════════════
     # SISTEMA DE RECOMPENSAS PS POR PARTICIPACIÓN
@@ -476,16 +477,16 @@ eventos:
       # Item único y permanente - clave para futuros eventos
       nucleo_forma:
         material: "ECHO_SHARD"
-        nombre: "§5§lFragmento de Forma Desviada"
+        nombre: "§5§lNúcleo de Memoria Corrupta"
         lore:
           - "§8El Susurro en la Piedra Rota"
           - ""
           - "§7Un núcleo que no debería existir."
           - "§7Vibra con una frecuencia incorrecta."
-          - "§7Como si recordara una forma que nunca tuvo."
+          - "§7Como si recordara algo que nunca fue."
           - ""
-          - "§5\"La forma se deformó...\""
-          - "§5\"pero dejó un núcleo tras de sí.\""
+          - "§8...la memoria falla..."
+          - "§8...pero el eco permanece..."
           - ""
           - "§8✦ Item único y permanente"
           - "§8✦ Será clave en eventos futuros"

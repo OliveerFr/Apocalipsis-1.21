@@ -27,24 +27,23 @@ import me.apocalipsis.events.gameplay.EnvironmentSystem.FogIntensity;
 import me.apocalipsis.events.gameplay.EnvironmentSystem.AtmosphericEffect;
 
 /**
- * El Susurro en la Piedra Rota - Mini-evento narrativo de 4 actos
+ * El Susurro en la Piedra Rota - Mini-evento narrativo de 3 actos
  * 
  * Contexto narrativo:
  * Después del Eco de Sombras, algo "de afuera" reaccionó.
- * La figura desconocida cambió la memoria del mundo.
- * Ciertas estructuras antiguas están comenzando a "despertar".
+ * El mundo comienza a recordar mal - fragmentos de memoria se manifiestan físicamente.
+ * Los altares antiguos "glitchean", creando copias defectuosas de criaturas.
  * 
- * Este evento introduce el concepto de "forma" (complemento de "sombra").
+ * Este evento representa la memoria fragmentada del mundo, no una entidad comunicandose.
+ * El Observador deja pensamientos crípticos (...) como rastros de su presencia.
  * 
  * Actos del evento:
- * 1. LA PIEDRA ROTA DESPIERTA (5 min): 3-5 fragmentos de piedra aparecen,
- *    hablan al acercarse con mensajes fragmentados
- * 2. LA PIEDRA SE QUIEBRA (5 min): Grieta de Forma aparece, spawn de
- *    Criaturas de Forma en oleadas rápidas
- * 3. EL NÚCLEO DE FORMA (5 min): Aparece el Fragmento de Forma Desviada
- *    (item único permanente)
- * 4. EL SEGUNDO SUSURRO (5 min): Mensajes inquietantes, pensamiento del
- *    Observador, cliffhanger con símbolo en el cielo
+ * 1. LOS SUSURROS APARECEN (5 min): 3-5 altares rotos aparecen con
+ *    susurros fragmentados del mundo
+ * 2. UN MAL RECUERDO DESPIERTA (5 min): El altar recuerda mal y genera
+ *    copias defectuosas de criaturas - errores de memoria
+ * 3. EL ECO RESUENA (5 min): Aparece el núcleo corrupto (item único permanente)
+ *    con teaser del End - "algo más grande despierta en el vacío"
  */
 public class SusurroPiedraRotaEvent extends EventBase {
     
@@ -2166,11 +2165,11 @@ public class SusurroPiedraRotaEvent extends EventBase {
                 
                 broadcastNarrative("§8§m══════════════════════════════════════════════════");
                 broadcastNarrative("");
-                broadcastNarrative("          §c§l⧗ ACTO 2: §5§lLA DEFENSA DEL ALTAR §c§l⧗");
+                broadcastNarrative("          §c§l⧗ ACTO 2: §5§lUN MAL RECUERDO DESPIERTA §c§l⧗");
                 broadcastNarrative("");
-                broadcastNarrative("    §7✦ Una grieta dimensional se ha abierto en el altar");
-                broadcastNarrative("    §7✦ Oleadas de criaturas emergen desde el vacío");
-                broadcastNarrative("    §7✦ Defiende el altar a toda costa");
+                broadcastNarrative("    §7✦ El altar comienza a recordar...");
+                broadcastNarrative("    §7✦ Copias defectuosas emergen de la memoria rota");
+                broadcastNarrative("    §7✦ No dejes que los recuerdos te consuman");
                 broadcastNarrative("");
                 broadcastNarrative("§8§m══════════════════════════════════════════════════");
                 
@@ -2773,10 +2772,10 @@ public class SusurroPiedraRotaEvent extends EventBase {
         
         // 🎯 Anuncio diferente para oleadas boss
         if (esOleadaBoss) {
-            broadcastNarrative("§c§l⚠ ¡OLEADA INTENSIFICADA! - " + oleadaActual + "/" + oleadasTotales);
-            broadcastNarrative("§6★ Más criaturas y mayor dificultad ★");
+            broadcastNarrative("§c§l⚠ ¡RECUERDO INTENSO! - " + oleadaActual + "/" + oleadasTotales);
+            broadcastNarrative("§6★ La memoria se fragmenta más ★");
         } else {
-            broadcastNarrative(String.format("§5⚠ Oleada %d/%d - Elimina las criaturas de Forma", oleadaActual, oleadasTotales));
+            broadcastNarrative(String.format("§5⚠ Recuerdo %d/%d - Elimina las copias defectuosas", oleadaActual, oleadasTotales));
         }
         broadcastNarrative(barraOleadas);
         
@@ -2784,14 +2783,14 @@ public class SusurroPiedraRotaEvent extends EventBase {
         String simbolos = generarSimbolosOleada(oleadaActual, oleadasTotales);
         if (esOleadaBoss) {
             enviarTituloCinematicoTodos(
-                "§c⚔ OLEADA INTENSIFICADA " + oleadaActual + "/" + oleadasTotales + " ⚔",
-                "§6★ " + simbolos + " - " + cantidadCriaturas + " criaturas ★",
+                "§c⚔ RECUERDO INTENSO " + oleadaActual + "/" + oleadasTotales + " ⚔",
+                "§6★ " + simbolos + " - " + cantidadCriaturas + " copias ★",
                 40
             );
         } else {
             enviarTituloCinematicoTodos(
-                "⚔ OLEADA " + oleadaActual + "/" + oleadasTotales + " ⚔",
-                simbolos + " - " + cantidadCriaturas + " criaturas",
+                "⚔ RECUERDO DEFECTUOSO " + oleadaActual + "/" + oleadasTotales + " ⚔",
+                simbolos + " - " + cantidadCriaturas + " copias",
                 40
             );
         }
@@ -3648,7 +3647,7 @@ public class SusurroPiedraRotaEvent extends EventBase {
             // 3. TÍTULO ÉPICO FINAL con máxima dramaticidad
             enviarTituloCinematicoTodos(
                 "§d§lACTO FINAL",
-                "§8✦ §5§lEL CORAZÓN DEL ABISMO §8✦",
+                "§8✦ §5§lEL ECO RESUENA §8✦",
                 100
             );
             
@@ -4271,7 +4270,7 @@ public class SusurroPiedraRotaEvent extends EventBase {
             
             // Título principal con animación
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                player.sendMessage(formatearCentrado("§d§l⧖ ACTO I: §5§lLA BÚSQUEDA DE LOS FRAGMENTOS §d§l⧖"));
+                player.sendMessage(formatearCentrado("§d§l⧖ ACTO I: §5§lLOS SUSURROS APARECEN §d§l⧖"));
                 soundUtil.playSound(player, Sound.BLOCK_AMETHYST_BLOCK_CHIME, 0.5f, 1.0f);
             }, 10L);
             
@@ -6351,9 +6350,9 @@ public class SusurroPiedraRotaEvent extends EventBase {
     // ═══════════════════════════════════════════════════════════════════
     
     /**
-     * 🎭 DIÁLOGOS DE LA FORMA
+     * 🎭 PENSAMIENTOS DEL OBSERVADOR
      * Mensajes estilizados que aparecen en momentos clave del evento.
-     * La Forma se comunica con los jugadores de manera misteriosa y ominosa.
+     * El Observador deja pensamientos crípticos sobre los glitches del mundo.
      */
     private void mostrarDialogoForma(String contexto) {
         long ahora = System.currentTimeMillis();
@@ -6380,63 +6379,63 @@ public class SusurroPiedraRotaEvent extends EventBase {
         
         switch (contexto) {
             case "INICIO":
-                dialogos.add("§5§l◈ §5§o\"Los fragmentos... me llaman...\"");
-                dialogos.add("§5§l◈ §5§o\"¿Pueden escucharme? Deben escucharme...\"");
-                dialogos.add("§5§l◈ §5§o\"Estoy dividido... ayúdenme a recordar...\"");
+                dialogos.add("§5§l◈ §8§o\"...algo se mueve en la piedra...\"");
+                dialogos.add("§5§l◈ §8§o\"...no debería estar aquí...\"");
+                dialogos.add("§5§l◈ §8§o\"...recuerdos rotos...\"");
                 break;
                 
             case "FRAGMENTO_ENCONTRADO":
-                dialogos.add("§5§l◈ §5§o\"Sí... eso es parte de mí...\"");
-                dialogos.add("§5§l◈ §5§o\"Más cerca... cada vez más cerca...\"");
-                dialogos.add("§5§l◈ §5§o\"Puedo sentir mi esencia retornando...\"");
+                dialogos.add("§5§l◈ §8§o\"...esto no pertenece aquí...\"");
+                dialogos.add("§5§l◈ §8§o\"...una pieza del puzzle roto...\"");
+                dialogos.add("§5§l◈ §8§o\"...el mundo glitchea...\"");
                 break;
                 
             case "ACTO2_INICIO":
-                dialogos.add("§5§l◈ §5§o\"La grieta se abre... mi nacimiento se acerca...\"");
-                dialogos.add("§5§l◈ §5§o\"No teman a mis hijos... son parte de mí...\"");
-                dialogos.add("§5§l◈ §5§o\"Defiendan este lugar... es sagrado...\"");
+                dialogos.add("§5§l◈ §8§o\"...la memoria se quiebra...\"");
+                dialogos.add("§5§l◈ §8§o\"...copias defectuosas...\"");
+                dialogos.add("§5§l◈ §8§o\"...el mundo recuerda mal...\"");
                 break;
                 
             case "CRIATURAS_SPAWN":
-                dialogos.add("§5§l◈ §5§o\"Mis fragmentos toman forma...\"");
-                dialogos.add("§5§l◈ §5§o\"No es malicia... es necesidad...\"");
-                dialogos.add("§5§l◈ §5§o\"Perdonen a mis ecos... no saben lo que hacen...\"");
+                dialogos.add("§5§l◈ §8§o\"...errores de renderizado...\"");
+                dialogos.add("§5§l◈ §8§o\"...copias sin alma...\"");
+                dialogos.add("§5§l◈ §8§o\"...no deberían existir...\"");
                 break;
                 
             case "JUGADOR_MUERTE":
-                dialogos.add("§5§l◈ §5§o\"No... necesito que vivan...\"");
-                dialogos.add("§5§l◈ §5§o\"Su esencia... se desvanece...\"");
-                dialogos.add("§5§l◈ §5§o\"Levántense... aún no es su hora...\"");
+                dialogos.add("§5§l◈ §8§o\"...la vida se desconecta...\"");
+                dialogos.add("§5§l◈ §8§o\"...otro bug en el sistema...\"");
+                dialogos.add("§5§l◈ §8§o\"...demasiado frágil...\"");
                 break;
                 
             case "OLEADA_COMPLETADA":
-                dialogos.add("§5§l◈ §5§o\"Bien hecho... la calma antes de la tormenta...\"");
-                dialogos.add("§5§l◈ §5§o\"Respiren... vendrá otra ola...\"");
-                dialogos.add("§5§l◈ §5§o\"Sus almas brillan con determinación...\"");
+                dialogos.add("§5§l◈ §8§o\"...pausa momentanea...\"");
+                dialogos.add("§5§l◈ §8§o\"...el glitch se reinicia...\"");
+                dialogos.add("§5§l◈ §8§o\"...pronto volverá...\"");
                 break;
                 
             case "ACTO3_INICIO":
-                dialogos.add("§5§l◈ §5§o\"Mi núcleo late... ¿pueden sentirlo?\"");
-                dialogos.add("§5§l◈ §5§o\"Estoy tan cerca de la plenitud...\"");
-                dialogos.add("§5§l◈ §5§o\"El laberinto guarda mi corazón...\"");
+                dialogos.add("§5§l◈ §8§o\"...el centro del error late...\"");
+                dialogos.add("§5§l◈ §8§o\"...corrupto, pero funcional...\"");
+                dialogos.add("§5§l◈ §8§o\"...el núcleo no debería existir...\"");
                 break;
                 
             case "CERCA_NUCLEO":
-                dialogos.add("§5§l◈ §5§o\"Lo sienten... mi esencia palpitante...\"");
-                dialogos.add("§5§l◈ §5§o\"Tan cerca... tan terriblemente cerca...\"");
-                dialogos.add("§5§l◈ §5§o\"Mi corazón resuena con sus pasos...\"");
+                dialogos.add("§5§l◈ §8§o\"...la anomalía pulsa...\"");
+                dialogos.add("§5§l◈ §8§o\"...cada vez más cerca del fallo...\"");
+                dialogos.add("§5§l◈ §8§o\"...resonancia detectada...\"");
                 break;
                 
             case "FINAL_EXITO":
-                dialogos.add("§5§l◈ §5§o\"Gracias... soy completo nuevamente...\"");
-                dialogos.add("§5§l◈ §5§o\"Recordaré... recordaré sus nombres...\"");
-                dialogos.add("§5§l◈ §5§o\"La Forma renace... gracias a ustedes...\"");
+                dialogos.add("§5§l◈ §8§o\"...fragmentos recolectados...\"");
+                dialogos.add("§5§l◈ §8§o\"...pero el eco permanece...\"");
+                dialogos.add("§5§l◈ §8§o\"...algo más grande despierta... en el vacío...\"");
                 break;
                 
             case "FINAL_FRACASO":
-                dialogos.add("§5§l◈ §5§o\"No... me desvanezco otra vez...\"");
-                dialogos.add("§5§l◈ §5§o\"Estaré aquí... esperando... siempre esperando...\"");
-                dialogos.add("§5§l◈ §5§o\"Mi susurro permanecerá en la piedra...\"");
+                dialogos.add("§5§l◈ §8§o\"...proceso interrumpido...\"");
+                dialogos.add("§5§l◈ §8§o\"...los fragmentos aún esperan...\"");
+                dialogos.add("§5§l◈ §8§o\"...el susurro persiste en la piedra...\"");
                 break;
         }
         
