@@ -2,8 +2,10 @@ package me.apocalipsis.events;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 import org.bukkit.*;
+import org.bukkit.block.Block;
 import org.bukkit.boss.BarColor;
 import org.bukkit.boss.BarStyle;
 import org.bukkit.boss.BossBar;
@@ -1263,8 +1265,8 @@ public class SusurroPiedraRotaEvent extends EventBase {
     }
     
     /**
-     * Terraforma un área 17x17 para crear el lugar perfecto para un fragmento
-     * Garantiza terreno plano, sólido, sin agua, y con bordes decorativos
+     * Terraforma un área 37x37 para crear el lugar perfecto para un fragmento
+     * Analiza el bioma circundante y usa sus bloques para integración natural
      */
     private void terraformarLugarPerfecto(World world, Location centro) {
         int cx = centro.getBlockX();
@@ -1272,40 +1274,76 @@ public class SusurroPiedraRotaEvent extends EventBase {
         int cz = centro.getBlockZ();
         Random rand = new Random();
         
-        // 🎭 Área ÉPICA: 37x37 (radio 18) - MUCHO MÁS GRANDE
+        // 🔍 ANÁLISIS DEL BIOMA: Detectar bloques predominantes en el área
+        Map<Material, Integer> bloquesBioma = new HashMap<>();
+        for (int scanX = cx - 25; scanX <= cx + 25; scanX += 3) {
+            for (int scanZ = cz - 25; scanZ <= cz + 25; scanZ += 3) {
+                Block bloque = world.getBlockAt(scanX, cy - 1, scanZ);
+                Material mat = bloque.getType();
+                if (mat.isSolid() && !mat.isAir()) {
+                    bloquesBioma.put(mat, bloquesBioma.getOrDefault(mat, 0) + 1);
+                }
+            }
+        }
+        
+        // Ordenar por frecuencia y obtener los 3 bloques más comunes
+        List<Material> bloquesComunes = bloquesBioma.entrySet().stream()
+            .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
+            .limit(3)
+            .map(Map.Entry::getKey)
+            .collect(Collectors.toList());
+        
+        // Materiales base y decorativos según el bioma
+        Material baseSuperficie = bloquesComunes.isEmpty() ? Material.STONE : bloquesComunes.get(0);
+        Material baseSubsuelo = obtenerVarianteOscura(baseSuperficie);
+        Material decoracion1 = bloquesComunes.size() > 1 ? bloquesComunes.get(1) : Material.STONE_BRICKS;
+        Material decoracion2 = bloquesComunes.size() > 2 ? bloquesComunes.get(2) : Material.MOSSY_COBBLESTONE;
+        
+        plugin.getLogger().info(String.format(
+            "[SusurroPiedraRota] 🌍 Bioma detectado - Base: %s, Decoración: %s, %s",
+            baseSuperficie, decoracion1, decoracion2
+        ));
+        
+        // 🎭 Área ÉPICA: 37x37 (radio 18) con transición gradual
         for (int x = cx - 18; x <= cx + 18; x++) {
             for (int z = cz - 18; z <= cz + 18; z++) {
                 double distCentro = Math.sqrt(Math.pow(x - cx, 2) + Math.pow(z - cz, 2));
                 
-                // 1. Base sólida más profunda (3 capas)
+                // 1. Base sólida adaptativa (3 capas usando bloques del bioma)
                 world.getBlockAt(x, cy - 3, z).setType(Material.DEEPSLATE);
-                world.getBlockAt(x, cy - 2, z).setType(Material.STONE);
-                world.getBlockAt(x, cy - 1, z).setType(Material.STONE);
+                world.getBlockAt(x, cy - 2, z).setType(baseSubsuelo);
+                world.getBlockAt(x, cy - 1, z).setType(baseSuperficie);
                 
                 // 2. Limpiar espacio arriba (8 bloques - ALTAR MÁS ALTO)
                 for (int dy = 0; dy < 8; dy++) {
                     world.getBlockAt(x, cy + dy, z).setType(Material.AIR);
                 }
                 
-                // 3. Decoración épica en anillos concéntricos
+                // 3. Transición gradual con bloques del bioma (más natural)
                 if (distCentro >= 16 && distCentro <= 18) {
-                    // Anillo exterior - Piedra agrietada
-                    if (rand.nextDouble() < 0.4) {
+                    // Anillo exterior - Mezcla con terreno natural
+                    if (rand.nextDouble() < 0.6) {
+                        world.getBlockAt(x, cy, z).setType(baseSuperficie);
+                    } else if (rand.nextDouble() < 0.3) {
                         world.getBlockAt(x, cy, z).setType(Material.CRACKED_STONE_BRICKS);
                     }
                 } else if (distCentro >= 12 && distCentro < 16) {
-                    // Anillo medio - Piedra musgosa
-                    if (rand.nextDouble() < 0.3) {
+                    // Anillo medio - Decoración del bioma
+                    if (rand.nextDouble() < 0.5) {
+                        world.getBlockAt(x, cy, z).setType(decoracion1);
+                    } else if (rand.nextDouble() < 0.3) {
                         world.getBlockAt(x, cy, z).setType(Material.MOSSY_COBBLESTONE);
                     }
                 } else if (distCentro >= 8 && distCentro < 12) {
-                    // Anillo interno - Ladrillos de piedra
-                    if (rand.nextDouble() < 0.25) {
+                    // Anillo interno - Mezcla bioma + piedra antigua
+                    if (rand.nextDouble() < 0.4) {
+                        world.getBlockAt(x, cy, z).setType(decoracion2);
+                    } else if (rand.nextDouble() < 0.25) {
                         world.getBlockAt(x, cy, z).setType(Material.STONE_BRICKS);
                     }
                 }
                 
-                // 4. Columnas decorativas en puntos cardinales
+                // 4. Columnas decorativas adaptativas en puntos cardinales
                 int distX = Math.abs(x - cx);
                 int distZ = Math.abs(z - cz);
                 if ((distX == 15 && distZ == 0) || (distX == 0 && distZ == 15)) {
@@ -1345,9 +1383,26 @@ public class SusurroPiedraRotaEvent extends EventBase {
         world.playSound(centro, Sound.BLOCK_RESPAWN_ANCHOR_CHARGE, 0.5f, 0.8f);
         
         plugin.getLogger().info(String.format(
-            "[SusurroPiedraRota] 🎭 Terraformado ÉPICO 37x37 completado en %s (base profunda, altar alto 8 bloques)",
-            locationToString(centro)
+            "[SusurroPiedraRota] 🎭 Terraformado ÉPICO 37x37 completado en %s (integrado con bioma: %s)",
+            locationToString(centro), baseSuperficie
         ));
+    }
+    
+    /**
+     * Obtiene una variante más oscura del material para el subsuelo
+     */
+    private Material obtenerVarianteOscura(Material base) {
+        return switch (base) {
+            case GRASS_BLOCK, DIRT -> Material.COARSE_DIRT;
+            case SAND -> Material.SANDSTONE;
+            case RED_SAND -> Material.RED_SANDSTONE;
+            case SNOW_BLOCK, SNOW -> Material.PACKED_ICE;
+            case PODZOL -> Material.DIRT;
+            case MYCELIUM -> Material.DIRT;
+            case GRAVEL -> Material.STONE;
+            case TERRACOTTA, RED_TERRACOTTA, ORANGE_TERRACOTTA -> Material.BROWN_TERRACOTTA;
+            default -> Material.STONE;
+        };
     }
     
     /**

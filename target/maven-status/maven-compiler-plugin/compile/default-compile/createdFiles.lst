@@ -184,6 +184,7 @@ me\apocalipsis\events\gameplay\EventAudioSystem.class
 me\apocalipsis\commands\ApocalipsisCommand.class
 me\apocalipsis\events\gameplay\ChoiceSystem$Choice.class
 me\apocalipsis\utils\BlockOwnershipTracker.class
+me\apocalipsis\events\SusurroPiedraRotaEvent$12.class
 me\apocalipsis\events\gameplay\EventAudioSystem$MusicTrack.class
 me\apocalipsis\events\gameplay\LoreSystem.class
 me\apocalipsis\events\gameplay\DialogSystem$2.class
