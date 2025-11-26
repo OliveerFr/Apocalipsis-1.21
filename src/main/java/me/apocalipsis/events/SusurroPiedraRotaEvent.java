@@ -1002,8 +1002,8 @@ public class SusurroPiedraRotaEvent extends EventBase {
         
         int cantidadMin = acto1Config.getInt("cantidad_min", 3);
         int cantidadMax = acto1Config.getInt("cantidad_max", 5);
-        int distanciaMin = acto1Config.getInt("distancia_min_spawn", 1000); // MÍNIMO 1000 bloques
-        int distanciaMax = acto1Config.getInt("distancia_max_spawn", 1500); // MÁXIMO 1500 bloques
+        int distanciaMin = acto1Config.getInt("distancia_min_spawn", 500); // MÍNIMO 500 bloques
+        int distanciaMax = acto1Config.getInt("distancia_max_spawn", 1000); // MÁXIMO 1000 bloques
         int distanciaEntreFragmentos = acto1Config.getInt("distancia_entre_fragmentos", 150); // 150 bloques entre fragmentos
         
         int cantidad = cantidadMin + new Random().nextInt(cantidadMax - cantidadMin + 1);
@@ -4370,10 +4370,7 @@ public class SusurroPiedraRotaEvent extends EventBase {
             aplicarEfectoEpicoCombinado(p);
         }
         
-        // 🏆 Calcular rank final de cada jugador
-        calcularRankFinal();
-        
-        // Calcular rangos de recompensa basados en tiempo (sistema antiguo - mantener por compatibilidad)
+        // Calcular rangos de recompensa basados en tiempo
         calcularRangosRecompensa();
         
         // Destello épico de victoria
@@ -6787,110 +6784,7 @@ public class SusurroPiedraRotaEvent extends EventBase {
      * 🏆 Calcula el rank final de cada jugador basado en su rendimiento.
      * Ranks: S (Perfecto), A (Excelente), B (Bueno), C (Completado)
      */
-    private void calcularRankFinal() {
-        long tiempoTotal = (System.currentTimeMillis() - tiempoInicioEvento) / 1000;
-        
-        for (UUID uuid : participantesOriginales) {
-            Player p = Bukkit.getPlayer(uuid);
-            if (p == null) continue;
-            
-            final int muertes = contadorMuertes;
-            final boolean todoLoreRecolectado = loreRecolectado.getOrDefault(uuid, new HashSet<>()).size() >= 3;
-            
-            // Calcular puntos base
-            int puntosBase = rendimientoJugador.getOrDefault(uuid, 0);
-            
-            // +200 por completar el evento
-            puntosBase += 200;
-            
-            // Bonus por tiempo (máximo 300 puntos)
-            // Menos de 10 min = 300, menos de 15 = 200, menos de 20 = 100
-            if (tiempoTotal < 600) puntosBase += 300;
-            else if (tiempoTotal < 900) puntosBase += 200;
-            else if (tiempoTotal < 1200) puntosBase += 100;
-            
-            // Penalización por muertes (-100 por muerte)
-            puntosBase -= (muertes * 100);
-            
-            // Bonus por lore completo
-            if (todoLoreRecolectado) puntosBase += 150;
-            
-            final int puntos = puntosBase;
-            
-            // Determinar rank
-            String rank;
-            String mensaje;
-            String dialogo;
-            
-            if (puntos >= 800 && muertes == 0 && todoLoreRecolectado) {
-                rank = "S";
-                mensaje = "§5§l⚡ RANK S - PERFECTO ⚡";
-                dialogo = "FINAL_RANK_S";
-            } else if (puntos >= 600 && muertes <= 1) {
-                rank = "A";
-                mensaje = "§d§l★ RANK A - EXCELENTE ★";
-                dialogo = "FINAL_RANK_A";
-            } else if (puntos >= 400 && muertes <= 3) {
-                rank = "B";
-                mensaje = "§b§l◆ RANK B - BUENO ◆";
-                dialogo = "FINAL_RANK_B";
-            } else {
-                rank = "C";
-                mensaje = "§7§l✓ RANK C - COMPLETADO ✓";
-                dialogo = "FINAL_RANK_C";
-            }
-            
-            rangoRecompensa.put(uuid, rank);
-            
-            // Mostrar resultado al jugador
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if (p.isOnline()) {
-                    p.sendMessage("");
-                    p.sendMessage(formatearCentrado("§8§m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
-                    p.sendMessage(formatearCentrado(mensaje));
-                    p.sendMessage(formatearCentrado("§7Puntuación: §f" + puntos));
-                    p.sendMessage(formatearCentrado("§7Tiempo: §f" + formatearTiempo(tiempoTotal)));
-                    p.sendMessage(formatearCentrado("§7Muertes: §f" + muertes));
-                    p.sendMessage(formatearCentrado("§7Lore: §f" + (todoLoreRecolectado ? "§a✓ Completo" : "§c✗ Incompleto")));
-                    p.sendMessage(formatearCentrado("§8§m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
-                    p.sendMessage("");
-                    
-                    // Diálogo especial de La Forma según el rank
-                    mostrarDialogoRank(p, rank);
-                }
-            }, 100L);
-        }
-    }
-    
-    /**
-     * Muestra diálogo especial según el rank obtenido.
-     */
-    private void mostrarDialogoRank(Player player, String rank) {
-        String dialogo;
-        
-        switch (rank) {
-            case "S":
-                dialogo = "§5§l◈ §5§o\"Perfección absoluta... eres digno de mi memoria completa...\"";
-                soundUtil.playSound(player, Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.2f);
-                break;
-            case "A":
-                dialogo = "§5§l◈ §5§o\"Excelente... me has dado forma nuevamente...\"";
-                soundUtil.playSound(player, Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
-                break;
-            case "B":
-                dialogo = "§5§l◈ §5§o\"Bien hecho... aunque podría haber sido mejor...\"";
-                soundUtil.playSound(player, Sound.BLOCK_NOTE_BLOCK_CHIME, 1.0f, 1.5f);
-                break;
-            default:
-                dialogo = "§5§l◈ §5§o\"Completado... pero mi forma sigue incompleta...\"";
-                soundUtil.playSound(player, Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.8f);
-                break;
-        }
-        
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            mostrarDialogoFormaAnimado(player, dialogo);
-        }, 20L);
-    }
+
     
     /**
      * Formatea tiempo en formato MM:SS
