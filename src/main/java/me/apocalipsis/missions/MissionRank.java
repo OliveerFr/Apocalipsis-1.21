@@ -82,11 +82,15 @@ public enum MissionRank {
 
     /**
      * Determina el rango según XP acumulados (umbral_acumulado=true)
+     * CORREGIDO: Solo asigna el rango cuando el XP supera ESTRICTAMENTE el umbral,
+     * evitando subir de rango antes de llenar completamente la barra de progreso.
      */
     public static MissionRank fromXp(int xp) {
         MissionRank result = NOVATO;
         for (MissionRank rank : values()) {
-            if (xp >= rank.getXpRequired()) {
+            // Solo asignar el rango si el XP es MAYOR al umbral (no igual)
+            // Esto asegura que la barra de progreso llegue al 100% antes de subir
+            if (xp > rank.getXpRequired()) {
                 result = rank;
             } else {
                 break;

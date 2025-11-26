@@ -279,15 +279,14 @@ public class EnvironmentSystem {
     
     /**
      * Cielo del vacío con oscuridad total
+     * ❌ DARKNESS INFINITO DESACTIVADO - Solo efectos visuales
      */
     private void applyVoidSky(World world) {
         world.setStorm(false);
         world.setTime(18000);
         
-        // Oscuridad extrema
-        for (Player p : world.getPlayers()) {
-            p.addPotionEffect(new PotionEffect(PotionEffectType.DARKNESS, Integer.MAX_VALUE, 0, false, false));
-        }
+        // ❌ DARKNESS INFINITO REMOVIDO - Dejaba ciegos a los jugadores
+        // En su lugar, usar solo efectos visuales atmosféricos
         
         // Grietas dimensionales
         spawnAtmosphericEffect(world, AtmosphericEffect.VOID_CRACKS, 0);
@@ -295,15 +294,14 @@ public class EnvironmentSystem {
     
     /**
      * Eclipse total con penumbra
+     * ❌ DARKNESS INFINITO DESACTIVADO - Solo efectos visuales
      */
     private void applyEclipse(World world) {
         world.setStorm(false);
         world.setTime(6000); // Mediodía
         
-        // Oscurecer con darkness effect
-        for (Player p : world.getPlayers()) {
-            p.addPotionEffect(new PotionEffect(PotionEffectType.DARKNESS, Integer.MAX_VALUE, 1, false, false));
-        }
+        // ❌ DARKNESS INFINITO REMOVIDO - Dejaba ciegos a los jugadores
+        // En su lugar, usar solo efectos visuales atmosféricos
         
         // Wisps oscuros
         spawnAtmosphericEffect(world, AtmosphericEffect.SHADOW_WISPS, 0);

@@ -1,6 +1,8 @@
 package me.apocalipsis.events;
 
 import me.apocalipsis.Apocalipsis;
+import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Silverfish;
@@ -9,6 +11,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
+import org.bukkit.event.player.PlayerMoveEvent;
 
 import java.util.UUID;
 
@@ -97,6 +100,30 @@ public class SusurroPiedraRotaListener implements Listener {
         event.setDroppedExp(0);
         
         plugin.getLogger().info("[SusurroPiedraRota] Criatura de Forma eliminada");
+    }
+    
+    /**
+     * Detectar cuando jugador pisa pressure plate del puzzle de memoria
+     */
+    @EventHandler
+    public void onPlayerMove(PlayerMoveEvent event) {
+        SusurroPiedraRotaEvent evento = getEventoActivo();
+        if (evento == null || !evento.isActive()) {
+            return;
+        }
+        
+        Player player = event.getPlayer();
+        Location to = event.getTo();
+        
+        if (to == null) return;
+        
+        // LISTENER DE PATRÓN ELIMINADO - Ya no hay minijuego de patrón
+        // Verificar si pisó pressure plate del puzzle de memoria (Acto 2)
+        // Material bloqueAbajo = to.clone().subtract(0, 1, 0).getBlock().getType();
+        // if (bloqueAbajo == Material.GOLD_BLOCK || bloqueAbajo == Material.GLOWSTONE) {
+        //     Location bloquePatron = to.clone().subtract(0, 1, 0);
+        //     evento.verificarPatronJugadorPublic(player, bloquePatron);
+        // }
     }
     
     /**

@@ -317,54 +317,62 @@ misiones:
     recompensa_ps: 78
 
    # ========== LEYENDA - DIFICIL ==========
-  # META: jugadores ya tienen gear fuerte/netherite → metas de jefes, beacon, shulkers y piezas netherite
+  # META: Gear avanzado, exploración del Nether/End, recursos premium
 
-  # Bosses y late–game
   - id: "matar_wither_skeleton"
     nombre: "Eliminar Wither Skeleton"
     tipo: "MATAR"
     objetivo: "WITHER_SKELETON"
-    cantidad: 20
+    cantidad: 15
     dificultad: "DIFICIL"
-    rangos: ["LEYENDA"]
-    recompensa_ps: 90
+    rangos: ["LEYENDA", "MAESTRO"]
+    recompensa_ps: 85
 
-  - id: "matar_wither"
-    nombre: "Derrotar al Wither"
+  - id: "matar_blaze_leyenda"
+    nombre: "Eliminar Blazes"
     tipo: "MATAR"
-    objetivo: "WITHER"
-    cantidad: 1
+    objetivo: "BLAZE"
+    cantidad: 30
     dificultad: "DIFICIL"
-    rangos: ["LEYENDA"]
-    recompensa_ps: 120
+    rangos: ["LEYENDA", "MAESTRO"]
+    recompensa_ps: 80
 
-  - id: "matar_ender_dragon"
-    nombre: "Derrotar al Ender Dragón"
+  - id: "matar_enderman_leyenda"
+    nombre: "Cazar Endermen"
     tipo: "MATAR"
-    objetivo: "ENDER_DRAGON"
-    cantidad: 1
+    objetivo: "ENDERMAN"
+    cantidad: 25
     dificultad: "DIFICIL"
-    rangos: ["LEYENDA"]
-    recompensa_ps: 140
+    rangos: ["LEYENDA", "MAESTRO"]
+    recompensa_ps: 75
 
-  # Progresión netherite y beacon
-  - id: "craftear_netherite_lote"
-    nombre: "Craftear lingotes de Netherite (lote)"
-    tipo: "CRAFTEAR"
-    objetivo: "NETHERITE_INGOT"
-    cantidad: 4
-    dificultad: "DIFICIL"
-    rangos: ["LEYENDA"]
-    recompensa_ps: 110
-
+  # Progresión netherite
   - id: "fundir_scrap_leyenda"
-    nombre: "Fundir scrap de Netherite (alto)"
+    nombre: "Fundir Ancient Debris"
     tipo: "COCINAR"
     objetivo: "NETHERITE_SCRAP"
-    cantidad: 24
+    cantidad: 8
+    dificultad: "DIFICIL"
+    rangos: ["LEYENDA", "MAESTRO"]
+    recompensa_ps: 85
+
+  - id: "romper_debris_leyenda"
+    nombre: "Romper Ancient Debris"
+    tipo: "ROMPER"
+    objetivo: "ANCIENT_DEBRIS"
+    cantidad: 8
     dificultad: "DIFICIL"
     rangos: ["LEYENDA"]
-    recompensa_ps: 110
+    recompensa_ps: 88
+
+  - id: "romper_diamante_leyenda"
+    nombre: "Minar diamantes"
+    tipo: "ROMPER"
+    objetivo: "DIAMOND_ORE"
+    cantidad: 16
+    dificultad: "DIFICIL"
+    rangos: ["LEYENDA"]
+    recompensa_ps: 82
 
   - id: "craftear_beacon"
     nombre: "Construir un Beacon"
@@ -373,27 +381,334 @@ misiones:
     cantidad: 1
     dificultad: "DIFICIL"
     rangos: ["LEYENDA"]
-    recompensa_ps: 120
+    recompensa_ps: 95
 
-  # End avanzado
+  # End básico
   - id: "matar_shulker_leyenda"
     nombre: "Eliminar Shulkers"
     tipo: "MATAR"
     objetivo: "SHULKER"
-    cantidad: 10
+    cantidad: 6
     dificultad: "DIFICIL"
     rangos: ["LEYENDA"]
-    recompensa_ps: 95
+    recompensa_ps: 82
 
-  # Piezas netherite (elección a tu gusto, dejo una)
-  - id: "craftear_pechera_netherite"
-    nombre: "Forjar pechera de Netherite"
+  - id: "romper_end_stone"
+    nombre: "Minar End Stone"
+    tipo: "ROMPER"
+    objetivo: "END_STONE"
+    cantidad: 64
+    dificultad: "DIFICIL"
+    rangos: ["LEYENDA"]
+    recompensa_ps: 70
+
+  # Crafteo avanzado
+  - id: "craftear_pechera_diamante"
+    nombre: "Forjar pechera de Diamante"
     tipo: "CRAFTEAR"
-    objetivo: "NETHERITE_CHESTPLATE"
+    objetivo: "DIAMOND_CHESTPLATE"
     cantidad: 1
     dificultad: "DIFICIL"
     rangos: ["LEYENDA"]
+    recompensa_ps: 78
+
+  - id: "craftear_espada_diamante"
+    nombre: "Forjar espada de Diamante"
+    tipo: "CRAFTEAR"
+    objetivo: "DIAMOND_SWORD"
+    cantidad: 1
+    dificultad: "DIFICIL"
+    rangos: ["LEYENDA"]
+    recompensa_ps: 75
+
+  # Farmeo avanzado
+  - id: "romper_glowstone"
+    nombre: "Romper Glowstone"
+    tipo: "ROMPER"
+    objetivo: "GLOWSTONE"
+    cantidad: 64
+    dificultad: "DIFICIL"
+    rangos: ["LEYENDA"]
+    recompensa_ps: 72
+
+  # ========== MAESTRO - DIFICIL ==========
+  # META: Farms establecidas, recursos en cantidad, exploración completa
+
+  - id: "matar_piglin_brute"
+    nombre: "Eliminar Piglin Brutes"
+    tipo: "MATAR"
+    objetivo: "PIGLIN_BRUTE"
+    cantidad: 20
+    dificultad: "DIFICIL"
+    rangos: ["MAESTRO", "TITAN"]
+    recompensa_ps: 100
+
+  - id: "matar_hoglin"
+    nombre: "Cazar Hoglins"
+    tipo: "MATAR"
+    objetivo: "HOGLIN"
+    cantidad: 20
+    dificultad: "DIFICIL"
+    rangos: ["MAESTRO", "TITAN"]
+    recompensa_ps: 95
+
+  - id: "matar_ghast"
+    nombre: "Eliminar Ghasts"
+    tipo: "MATAR"
+    objetivo: "GHAST"
+    cantidad: 10
+    dificultad: "DIFICIL"
+    rangos: ["MAESTRO", "TITAN"]
+    recompensa_ps: 105
+
+  - id: "fundir_scrap_maestro"
+    nombre: "Fundir Ancient Debris"
+    tipo: "COCINAR"
+    objetivo: "NETHERITE_SCRAP"
+    cantidad: 16
+    dificultad: "DIFICIL"
+    rangos: ["MAESTRO"]
+    recompensa_ps: 110
+
+  - id: "romper_debris_maestro"
+    nombre: "Romper Ancient Debris"
+    tipo: "ROMPER"
+    objetivo: "ANCIENT_DEBRIS"
+    cantidad: 16
+    dificultad: "DIFICIL"
+    rangos: ["MAESTRO"]
     recompensa_ps: 115
+
+  - id: "romper_deepslate_diamante"
+    nombre: "Minar Deepslate Diamond"
+    tipo: "ROMPER"
+    objetivo: "DEEPSLATE_DIAMOND_ORE"
+    cantidad: 12
+    dificultad: "DIFICIL"
+    rangos: ["MAESTRO"]
+    recompensa_ps: 108
+
+  - id: "matar_shulker_maestro"
+    nombre: "Eliminar Shulkers"
+    tipo: "MATAR"
+    objetivo: "SHULKER"
+    cantidad: 12
+    dificultad: "DIFICIL"
+    rangos: ["MAESTRO"]
+    recompensa_ps: 120
+
+  - id: "romper_quartz"
+    nombre: "Minar Quartz del Nether"
+    tipo: "ROMPER"
+    objetivo: "NETHER_QUARTZ_ORE"
+    cantidad: 64
+    dificultad: "DIFICIL"
+    rangos: ["MAESTRO"]
+    recompensa_ps: 98
+
+  - id: "craftear_bloques_diamante"
+    nombre: "Craftear bloques de diamante"
+    tipo: "CRAFTEAR"
+    objetivo: "DIAMOND_BLOCK"
+    cantidad: 2
+    dificultad: "DIFICIL"
+    rangos: ["MAESTRO"]
+    recompensa_ps: 118
+
+  - id: "fundir_oro_maestro"
+    nombre: "Fundir oro"
+    tipo: "COCINAR"
+    objetivo: "GOLD_INGOT"
+    cantidad: 32
+    dificultad: "DIFICIL"
+    rangos: ["MAESTRO"]
+    recompensa_ps: 95
+
+  # ========== TITAN - DIFICIL ==========
+  # META: Proyectos masivos, farms automáticas, construcciones épicas
+
+  - id: "matar_ravager"
+    nombre: "Eliminar Ravagers"
+    tipo: "MATAR"
+    objetivo: "RAVAGER"
+    cantidad: 10
+    dificultad: "DIFICIL"
+    rangos: ["TITAN", "ABSOLUTO"]
+    recompensa_ps: 135
+
+  - id: "matar_vindicator"
+    nombre: "Eliminar Vindicators"
+    tipo: "MATAR"
+    objetivo: "VINDICATOR"
+    cantidad: 25
+    dificultad: "DIFICIL"
+    rangos: ["TITAN", "ABSOLUTO"]
+    recompensa_ps: 128
+
+  - id: "matar_evoker"
+    nombre: "Eliminar Evokers"
+    tipo: "MATAR"
+    objetivo: "EVOKER"
+    cantidad: 8
+    dificultad: "DIFICIL"
+    rangos: ["TITAN", "ABSOLUTO"]
+    recompensa_ps: 132
+
+  - id: "fundir_scrap_titan"
+    nombre: "Fundir Ancient Debris"
+    tipo: "COCINAR"
+    objetivo: "NETHERITE_SCRAP"
+    cantidad: 24
+    dificultad: "DIFICIL"
+    rangos: ["TITAN"]
+    recompensa_ps: 140
+
+  - id: "romper_debris_titan"
+    nombre: "Romper Ancient Debris"
+    tipo: "ROMPER"
+    objetivo: "ANCIENT_DEBRIS"
+    cantidad: 24
+    dificultad: "DIFICIL"
+    rangos: ["TITAN"]
+    recompensa_ps: 145
+
+  - id: "craftear_beacon_titan"
+    nombre: "Construir un Beacon"
+    tipo: "CRAFTEAR"
+    objetivo: "BEACON"
+    cantidad: 1
+    dificultad: "DIFICIL"
+    rangos: ["TITAN"]
+    recompensa_ps: 155
+
+  - id: "matar_shulker_titan"
+    nombre: "Eliminar Shulkers"
+    tipo: "MATAR"
+    objetivo: "SHULKER"
+    cantidad: 20
+    dificultad: "DIFICIL"
+    rangos: ["TITAN"]
+    recompensa_ps: 138
+
+  - id: "romper_end_stone_titan"
+    nombre: "Minar End Stone"
+    tipo: "ROMPER"
+    objetivo: "END_STONE"
+    cantidad: 128
+    dificultad: "DIFICIL"
+    rangos: ["TITAN"]
+    recompensa_ps: 125
+
+  - id: "romper_diamante_titan"
+    nombre: "Minar diamantes"
+    tipo: "ROMPER"
+    objetivo: "DIAMOND_ORE"
+    cantidad: 24
+    dificultad: "DIFICIL"
+    rangos: ["TITAN"]
+    recompensa_ps: 135
+
+  - id: "fundir_hierro_titan"
+    nombre: "Fundir hierro en masa"
+    tipo: "COCINAR"
+    objetivo: "IRON_INGOT"
+    cantidad: 128
+    dificultad: "DIFICIL"
+    rangos: ["TITAN"]
+    recompensa_ps: 120
+
+  # ========== ABSOLUTO - DIFICIL ==========
+  # META: Desafíos definitivos, cantidades épicas, proyectos monumentales
+
+  - id: "matar_warden"
+    nombre: "Enfrentar Wardens"
+    tipo: "MATAR"
+    objetivo: "WARDEN"
+    cantidad: 2
+    dificultad: "DIFICIL"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 180
+
+  - id: "matar_elder_guardian"
+    nombre: "Eliminar Elder Guardians"
+    tipo: "MATAR"
+    objetivo: "ELDER_GUARDIAN"
+    cantidad: 3
+    dificultad: "DIFICIL"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 175
+
+  - id: "fundir_scrap_absoluto"
+    nombre: "Fundir Ancient Debris"
+    tipo: "COCINAR"
+    objetivo: "NETHERITE_SCRAP"
+    cantidad: 32
+    dificultad: "DIFICIL"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 170
+
+  - id: "romper_debris_absoluto"
+    nombre: "Romper Ancient Debris"
+    tipo: "ROMPER"
+    objetivo: "ANCIENT_DEBRIS"
+    cantidad: 32
+    dificultad: "DIFICIL"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 175
+
+  - id: "craftear_beacon_absoluto"
+    nombre: "Construir Beacons adicionales"
+    tipo: "CRAFTEAR"
+    objetivo: "BEACON"
+    cantidad: 2
+    dificultad: "DIFICIL"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 185
+
+  - id: "matar_shulker_absoluto"
+    nombre: "Eliminar Shulkers"
+    tipo: "MATAR"
+    objetivo: "SHULKER"
+    cantidad: 30
+    dificultad: "DIFICIL"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 165
+
+  - id: "romper_diamante_absoluto"
+    nombre: "Minar diamantes"
+    tipo: "ROMPER"
+    objetivo: "DIAMOND_ORE"
+    cantidad: 32
+    dificultad: "DIFICIL"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 168
+
+  - id: "craftear_bloques_diamante_absoluto"
+    nombre: "Craftear bloques de diamante"
+    tipo: "CRAFTEAR"
+    objetivo: "DIAMOND_BLOCK"
+    cantidad: 4
+    dificultad: "DIFICIL"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 160
+
+  - id: "romper_obsidiana_absoluto"
+    nombre: "Romper obsidiana en masa"
+    tipo: "ROMPER"
+    objetivo: "OBSIDIAN"
+    cantidad: 64
+    dificultad: "DIFICIL"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 155
+
+  - id: "fundir_hierro_absoluto"
+    nombre: "Fundir hierro industrial"
+    tipo: "COCINAR"
+    objetivo: "IRON_INGOT"
+    cantidad: 256
+    dificultad: "DIFICIL"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 150
 
 
 
@@ -401,10 +716,13 @@ config:
   max_por_dia: 10
   por_rango:
     NOVATO: 10
-    EXPLORADOR: 8
-    SOBREVIVIENTE: 6
-    VETERANO: 4
-    LEYENDA: 3
+    EXPLORADOR: 10
+    SOBREVIVIENTE: 8
+    VETERANO: 7
+    LEYENDA: 6
+    MAESTRO: 5
+    TITAN: 4
+    ABSOLUTO: 3
   pesos_por_dificultad:
     FACIL: 5
     MEDIA: 3

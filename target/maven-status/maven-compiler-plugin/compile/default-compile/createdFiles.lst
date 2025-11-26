@@ -14,6 +14,7 @@ me\apocalipsis\disaster\TerremotoNew$AbsorptionInfo.class
 me\apocalipsis\disaster\DisasterController.class
 me\apocalipsis\disaster\TerremotoNew.class
 me\apocalipsis\events\gameplay\ParticleEffectSystem$4.class
+me\apocalipsis\events\SusurroPiedraRotaEvent$7.class
 me\apocalipsis\disaster\LluviaFuegoNew$1.class
 me\apocalipsis\events\gameplay\QTESystem$ActiveQTE.class
 me\apocalipsis\missions\MissionDifficulty.class
@@ -26,10 +27,12 @@ me\apocalipsis\events\EventBase.class
 me\apocalipsis\experience\ExperienceService.class
 me\apocalipsis\events\testing\scenarios\AnclaSealingScenario.class
 me\apocalipsis\events\gameplay\ParticleEffectSystem$AmbientStyle.class
+me\apocalipsis\events\SusurroPiedraRotaEvent$1.class
 me\apocalipsis\commands\ApocalipsisCommand$WaterScanResult.class
 me\apocalipsis\events\gameplay\EnvironmentSystem$AtmosphericEffect.class
 me\apocalipsis\events\gameplay\QTESystem.class
 me\apocalipsis\events\gameplay\ProtectionSystem.class
+me\apocalipsis\events\SusurroPiedraRotaEvent$8.class
 me\apocalipsis\events\gameplay\CinematicSystem$ShakeIntensity.class
 me\apocalipsis\events\gameplay\GuardianPhaseSystem$6.class
 me\apocalipsis\events\testing\EventAutoTestingSystem.class
@@ -40,12 +43,14 @@ me\apocalipsis\events\gameplay\TelegraphedAttack$1.class
 me\apocalipsis\ui\ScoreboardManager.class
 me\apocalipsis\events\gameplay\SpectatorSystem.class
 me\apocalipsis\ui\TablistManager.class
+me\apocalipsis\events\SusurroPiedraRotaEvent$2.class
 me\apocalipsis\events\gameplay\TelegraphedAttack$2.class
 me\apocalipsis\events\gameplay\QTESystem$ActiveQTE$1.class
 me\apocalipsis\ui\UIManager$4.class
 me\apocalipsis\ui\UIManager$1.class
 me\apocalipsis\utils\DisasterDamage.class
 me\apocalipsis\events\gameplay\TelegraphedAttack$3.class
+me\apocalipsis\events\SusurroPiedraRotaEvent$3.class
 me\apocalipsis\events\gameplay\CinematicSystem$3.class
 me\apocalipsis\disaster\LluviaFuegoNew.class
 me\apocalipsis\disaster\DisasterEvasionTracker.class
@@ -85,6 +90,7 @@ me\apocalipsis\events\gameplay\ParticleEffectSystem$AuraStyle.class
 me\apocalipsis\events\gameplay\EnvironmentSystem$CorruptionType.class
 me\apocalipsis\listeners\MissionListener.class
 me\apocalipsis\events\gameplay\TelegraphedAttack$4$1.class
+me\apocalipsis\events\SusurroPiedraRotaEvent$5.class
 me\apocalipsis\Apocalipsis.class
 me\apocalipsis\events\gameplay\ChoiceSystem$1.class
 me\apocalipsis\listeners\DisasterEvasionListener.class
@@ -96,6 +102,7 @@ me\apocalipsis\events\EcoBrasasEvent$OleadaState.class
 me\apocalipsis\events\gameplay\ParticleEffectSystem$2.class
 me\apocalipsis\events\gameplay\CinematicSystem$4.class
 me\apocalipsis\events\gameplay\EventAudioSystem$6$1.class
+me\apocalipsis\events\SusurroPiedraRotaEvent$6.class
 me\apocalipsis\events\testing\scenarios\TestScenario.class
 me\apocalipsis\events\gameplay\EventAudioSystem$2.class
 me\apocalipsis\experience\RewardService.class
@@ -112,6 +119,8 @@ me\apocalipsis\events\EcoSombrasEvent$PlayerSavedState.class
 me\apocalipsis\events\gameplay\EnvironmentSystem$4.class
 me\apocalipsis\ui\SoundUtil.class
 me\apocalipsis\events\gameplay\QTESystem$CooperativeQTE$1.class
+me\apocalipsis\events\SusurroPiedraRotaEvent$Dificultad.class
+me\apocalipsis\events\SusurroPiedraRotaEvent$11.class
 me\apocalipsis\events\EcoSombrasEvent$3.class
 me\apocalipsis\events\gameplay\FeedbackSystem$IndicatorType.class
 me\apocalipsis\events\testing\EventTestBot$BotState.class
@@ -125,6 +134,7 @@ me\apocalipsis\events\gameplay\EventAudioSystem$4.class
 me\apocalipsis\listeners\ExperienceListener.class
 me\apocalipsis\disaster\adapters\PerformanceAdapter.class
 me\apocalipsis\events\gameplay\ParticleEffectSystem$1.class
+me\apocalipsis\events\SusurroPiedraRotaEvent$4.class
 me\apocalipsis\events\SusurroPiedraRotaItems.class
 me\apocalipsis\experience\ExperienceService$PlayerExperienceData.class
 me\apocalipsis\events\testing\scenarios\AFKPlayerScenario.class
@@ -144,11 +154,13 @@ me\apocalipsis\events\gameplay\ChoiceSystem$PendingChoice.class
 me\apocalipsis\events\testing\scenarios\NucleoDefeatScenario.class
 me\apocalipsis\commands\AvoTabCompleter.class
 me\apocalipsis\events\gameplay\GuardianPhaseSystem$PhaseType.class
+me\apocalipsis\events\SusurroPiedraRotaEvent$10.class
 me\apocalipsis\ui\FeedbackSystem$ComboTracker.class
 me\apocalipsis\events\gameplay\ParticleEffectSystem$6.class
 me\apocalipsis\events\SusurroPiedraRotaListener.class
 me\apocalipsis\disaster\HuracanNew.class
 me\apocalipsis\events\gameplay\EventAudioSystem$5.class
+me\apocalipsis\events\SusurroPiedraRotaEvent$9.class
 me\apocalipsis\events\gameplay\GuardianPhaseSystem$5.class
 me\apocalipsis\utils\OnlinePlayersCache.class
 me\apocalipsis\ui\UIManager$NotificationType.class
