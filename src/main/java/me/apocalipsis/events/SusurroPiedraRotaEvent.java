@@ -812,8 +812,15 @@ public class SusurroPiedraRotaEvent extends EventBase {
         
         int cantidad = cantidadMin + new Random().nextInt(cantidadMax - cantidadMin + 1);
         
-        World world = Bukkit.getWorlds().get(0);
-        Location spawn = world.getSpawnLocation();
+        // 🎯 Calcular ubicación promedio de jugadores activos como referencia
+        Location tempRef = calcularUbicacionPromedioJugadores();
+        if (tempRef == null) {
+            // Fallback al spawn del mundo si no hay jugadores
+            World world = Bukkit.getWorlds().get(0);
+            tempRef = world.getSpawnLocation();
+        }
+        final Location referenciaSpawn = tempRef;
+        final World world = referenciaSpawn.getWorld();
         
         broadcastNarrative("§5⧖ Buscando ubicaciones perfectas para los fragmentos...");
         playSoundToAll(Sound.BLOCK_PORTAL_AMBIENT, 0.3f, 0.8f);
@@ -868,7 +875,7 @@ public class SusurroPiedraRotaEvent extends EventBase {
             
             for (int i = 0; i < cantidad; i++) {
                 final boolean esPrimerFragmento = (i == 0);
-                Location loc = encontrarLocationValidaAsync(world, spawn, distanciaMin, distanciaMax, distanciaEntreFragmentos, ubicacionesEncontradas, esPrimerFragmento);
+                Location loc = encontrarLocationValidaAsync(world, referenciaSpawn, distanciaMin, distanciaMax, distanciaEntreFragmentos, ubicacionesEncontradas, esPrimerFragmento);
                 
                 if (loc != null) {
                     ubicacionesEncontradas.add(loc);
@@ -3680,11 +3687,11 @@ public class SusurroPiedraRotaEvent extends EventBase {
                 
                 broadcastNarrative("§8§m══════════════════════════════════════════════════");
                 broadcastNarrative("");
-                broadcastNarrative("          §d§l⧗ ACTO FINAL: §5§lEL CORAZÓN DEL ABISMO §d§l⧗");
+                broadcastNarrative("          §d§l⧗ ACTO FINAL: §5§lEL ECO RESUENA §d§l⧗");
                 broadcastNarrative("");
-                broadcastNarrative("    §7✦ La realidad se deforma... algo emerge del vacío");
-                broadcastNarrative("    §7✦ El núcleo palpita con energía ancestral");
-                broadcastNarrative("    §c✦ Este es el momento final... ¿te atreves?");
+                broadcastNarrative("    §7✦ El altar pulsa con energía corrupta");
+                broadcastNarrative("    §7✦ Un núcleo de memoria emerge cerca del altar");
+                broadcastNarrative("    §c✦ Recoge el núcleo antes de que sea tarde");
                 broadcastNarrative("");
                 broadcastNarrative("§8§m══════════════════════════════════════════════════");
                 
@@ -3722,12 +3729,8 @@ public class SusurroPiedraRotaEvent extends EventBase {
                     
                     spawnearNucleoForma();
                     
-                    // Iniciar puzzle de símbolos
-                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                        if (isActive() && actoActual == Acto.NUCLEO_FORMA) {
-                            iniciarPuzzleActo3();
-                        }
-                    }, 60L);
+                    // ✅ El núcleo ya está spawneado, los jugadores solo deben recogerlo
+                    // Las criaturas se generan automáticamente cada 10 segundos
                 }, 140L); // 7 segundos para leer diálogo
             }, 80L);
             
@@ -3735,19 +3738,18 @@ public class SusurroPiedraRotaEvent extends EventBase {
     }
     
     private void spawnearNucleoForma() {
-        // NÚCLEO ALEJADO: Colocar en el extremo opuesto del laberinto (radio 15)
-        // Calcular posición promedio de jugadores para spawn del laberinto
-        Location ubicacionPromedio = calcularUbicacionPromedioJugadores();
-        double anguloAlejado = Math.random() * Math.PI * 2; // Ángulo aleatorio
-        int radioLaberinto = 15;
+        // 🎯 NÚCLEO CERCA DEL ALTAR: Spawnearlo cerca de la grieta (5-10 bloques)
+        Random rand = new Random();
+        double angulo = Math.random() * Math.PI * 2;
+        int distancia = 5 + rand.nextInt(6); // 5-10 bloques
         
         nucleoLocation = grietaLocation.clone().add(
-            Math.cos(anguloAlejado) * radioLaberinto,
-            1.5,
-            Math.sin(anguloAlejado) * radioLaberinto
+            Math.cos(angulo) * distancia,
+            1.5, // Altura elevada para visibilidad
+            Math.sin(angulo) * distancia
         );
         
-        plugin.getLogger().info("[SusurroPiedraRota] Núcleo colocado a " + radioLaberinto + " bloques del centro");
+        plugin.getLogger().info("[SusurroPiedraRota] Núcleo colocado a " + distancia + " bloques del altar");
         
         // Distorsión dimensional al formar el núcleo
         efectoDistorsionDimensionalTodos(60);
@@ -3786,8 +3788,8 @@ public class SusurroPiedraRotaEvent extends EventBase {
                 return;
             }
             
-            Random rand = new Random();
-            int cantidadCriaturas = 1 + rand.nextInt(2); // 1-2 criaturas
+            Random r = new Random();
+            int cantidadCriaturas = 1 + r.nextInt(2); // 1-2 criaturas
             
             plugin.getLogger().info(String.format(
                 "[SusurroPiedraRota] Núcleo spawneando %d criatura(s) defensiva(s)",
@@ -3795,7 +3797,7 @@ public class SusurroPiedraRotaEvent extends EventBase {
             ));
             
             // Anuncio visual cada 2 spawns (cada 20 segundos)
-            if (rand.nextBoolean()) {
+            if (r.nextBoolean()) {
                 broadcastNarrative("§5⚡ El núcleo invoca defensores...");
             }
             
