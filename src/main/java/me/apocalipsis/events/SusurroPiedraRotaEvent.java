@@ -3736,7 +3736,7 @@ public class SusurroPiedraRotaEvent extends EventBase {
                 playSoundToAll(Sound.ENTITY_LIGHTNING_BOLT_IMPACT, 0.5f, 0.7f);
             }, 20L);
             
-            // 4. Mensaje narrativo épico
+            // 4. Mensaje narrativo épico con instrucciones claras
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 if (!isActive()) return;
                 
@@ -3745,13 +3745,27 @@ public class SusurroPiedraRotaEvent extends EventBase {
                 broadcastNarrative("          §d§l⧗ ACTO FINAL: §5§lEL ECO RESUENA §d§l⧗");
                 broadcastNarrative("");
                 broadcastNarrative("    §7✦ El altar pulsa con energía corrupta");
-                broadcastNarrative("    §7✦ Un núcleo de memoria emerge cerca del altar");
+                broadcastNarrative("    §e✦ Un núcleo de memoria emerge cerca del altar");
+                broadcastNarrative("    §e✦ §lBusca el BEAM DE LUZ violeta en el cielo");
+                broadcastNarrative("    §a✦ §lUSA TU BRÚJULA - apunta al núcleo");
                 broadcastNarrative("    §c✦ Recoge el núcleo antes de que sea tarde");
                 broadcastNarrative("");
                 broadcastNarrative("§8§m══════════════════════════════════════════════════");
                 
                 playSoundToAll(Sound.BLOCK_BEACON_POWER_SELECT, 1.0f, 1.5f);
                 playSoundToAll(Sound.BLOCK_END_PORTAL_FRAME_FILL, 0.8f, 1.2f);
+                
+                // Mensaje adicional de ayuda después de 3 segundos
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    for (Player p : Bukkit.getOnlinePlayers()) {
+                        if (participantesOriginales.contains(p.getUniqueId())) {
+                            p.sendMessage("");
+                            p.sendMessage("§d§l[⧖] §7PISTA: §eMira hacia arriba y busca el rayo de luz violeta");
+                            p.sendMessage("§d§l[⧖] §7Tu brújula te guiará hacia el núcleo");
+                            p.sendMessage("");
+                        }
+                    }
+                }, 60L);
             }, 60L);
             
             // 5. Spawn del núcleo con efecto dramático
@@ -3876,6 +3890,69 @@ public class SusurroPiedraRotaEvent extends EventBase {
     }
     
     private void iniciarEfectosNucleo() {
+        // 🌟 BEAM DE LUZ VERTICAL desde el cielo para visibilidad máxima
+        Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            if (actoActual != Acto.NUCLEO_FORMA || nucleoRecogido) {
+                return;
+            }
+            
+            // Beam de luz dramático desde Y=256 hasta el núcleo
+            World world = nucleoLocation.getWorld();
+            int startY = Math.min(world.getMaxHeight() - 10, 250);
+            
+            for (int y = startY; y > nucleoLocation.getBlockY(); y -= 2) {
+                world.spawnParticle(
+                    Particle.END_ROD,
+                    nucleoLocation.getX(),
+                    y,
+                    nucleoLocation.getZ(),
+                    2,
+                    0.3, 0, 0.3,
+                    0.02
+                );
+                
+                // Partículas secundarias para más visibilidad
+                if (y % 5 == 0) {
+                    world.spawnParticle(
+                        Particle.SOUL_FIRE_FLAME,
+                        nucleoLocation.getX(),
+                        y,
+                        nucleoLocation.getZ(),
+                        1,
+                        0.5, 0, 0.5,
+                        0
+                    );
+                }
+            }
+        }, 0L, 10L); // Cada 0.5 segundos
+        
+        // 📍 Actualizar brújula de todos los jugadores para que apunte al núcleo
+        Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            if (actoActual != Acto.NUCLEO_FORMA || nucleoRecogido) {
+                return;
+            }
+            
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                if (participantesOriginales.contains(p.getUniqueId())) {
+                    // Actualizar brújula
+                    p.setCompassTarget(nucleoLocation);
+                    
+                    // Mostrar distancia cada 5 segundos
+                    if (ticksEnActo % 100 == 0) {
+                        double distancia = p.getLocation().distance(nucleoLocation);
+                        String direccion = obtenerDireccionRelativa(p.getLocation(), nucleoLocation);
+                        
+                        p.sendMessage("§8[§d⧖§8] §7El núcleo está a §e" + Math.round(distancia) + " bloques §7hacia el §e" + direccion);
+                        
+                        // Sonido direccional
+                        if (distancia < 50) {
+                            p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME, 0.5f, 1.8f);
+                        }
+                    }
+                }
+            }
+        }, 0L, 20L); // Cada segundo
+        
         // Partículas cinematográficas épicas con múltiples capas AAA + latidos sincronizados
         nucleoParticleTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
             if (actoActual != Acto.NUCLEO_FORMA || nucleoRecogido) {
@@ -7398,6 +7475,38 @@ public class SusurroPiedraRotaEvent extends EventBase {
         // - Dirección relativa (↑→←↓)
         // - Distancia con colores (verde/amarillo/rojo)
         // Este action bar competía y sobrescribía el principal
+    }
+    
+    /**
+     * Obtiene la dirección cardinal relativa desde una ubicación hacia otra
+     */
+    private String obtenerDireccionRelativa(Location desde, Location hacia) {
+        double dx = hacia.getX() - desde.getX();
+        double dz = hacia.getZ() - desde.getZ();
+        
+        double angulo = Math.toDegrees(Math.atan2(dz, dx));
+        
+        // Normalizar entre 0 y 360
+        if (angulo < 0) angulo += 360;
+        
+        // Determinar dirección cardinal
+        if (angulo >= 337.5 || angulo < 22.5) {
+            return "ESTE";
+        } else if (angulo >= 22.5 && angulo < 67.5) {
+            return "SURESTE";
+        } else if (angulo >= 67.5 && angulo < 112.5) {
+            return "SUR";
+        } else if (angulo >= 112.5 && angulo < 157.5) {
+            return "SUROESTE";
+        } else if (angulo >= 157.5 && angulo < 202.5) {
+            return "OESTE";
+        } else if (angulo >= 202.5 && angulo < 247.5) {
+            return "NOROESTE";
+        } else if (angulo >= 247.5 && angulo < 292.5) {
+            return "NORTE";
+        } else {
+            return "NORESTE";
+        }
     }
     
     // ═══════════════════════════════════════════════════════════════════
