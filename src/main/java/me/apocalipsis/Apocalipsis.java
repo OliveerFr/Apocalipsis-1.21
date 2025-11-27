@@ -93,6 +93,7 @@ public final class Apocalipsis extends JavaPlugin {
         saveResource("rangos.yml", false);
         saveResource("recompensas.yml", false);
         saveResource("chat.yml", false);
+        saveResource("evasiones.yml", false);
 
         // Inicializar servicios
         configManager = new ConfigManager(this);

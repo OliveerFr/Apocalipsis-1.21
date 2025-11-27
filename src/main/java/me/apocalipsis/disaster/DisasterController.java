@@ -457,6 +457,9 @@ public class DisasterController {
         stateManager.setState(ServerState.ACTIVO);
         disaster.start();
         
+        // [EVASION] Marcar inicio global del desastre primero
+        plugin.getDisasterEvasionTracker().onDisasterStartGlobal();
+        
         // [EVASION] Registrar inicio del desastre para todos los jugadores online
         for (org.bukkit.entity.Player p : plugin.getServer().getOnlinePlayers()) {
             if (!p.hasPermission("apocalipsis.exempt")) {
@@ -1461,6 +1464,9 @@ public class DisasterController {
             Disaster disaster = registry.get(disasterId);
             activeDisaster = disaster;
             disaster.start();
+            
+            // [EVASION] Marcar inicio global del desastre PRIMERO
+            plugin.getDisasterEvasionTracker().onDisasterStartGlobal();
             
             // [EVASION] Registrar inicio del desastre para todos los jugadores online
             for (org.bukkit.entity.Player p : plugin.getServer().getOnlinePlayers()) {

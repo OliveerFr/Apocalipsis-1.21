@@ -96,6 +96,17 @@ public class PlayerListener implements Listener {
         // [EVASION PUNISHMENT] Aplicar castigos físicos pendientes
         plugin.getDisasterEvasionTracker().applyReconnectPunishment(player);
         
+        // [EVASION TRACKING] Si hay un desastre activo, registrar entrada del jugador
+        ServerState currentState = plugin.getStateManager().getCurrentState();
+        if (currentState == ServerState.ACTIVO && !player.hasPermission("apocalipsis.exempt")) {
+            plugin.getDisasterEvasionTracker().onDisasterStart(player);
+            
+            if (plugin.getConfigManager().isDebugCiclo()) {
+                plugin.getLogger().info("[EvasionTracker] Jugador " + player.getName() + 
+                    " se unió durante desastre activo - tracking iniciado");
+            }
+        }
+        
         // [HABILIDADES DE RANGO] Aplicar habilidades pasivas del rango actual
         org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (plugin.getAbilityService() != null) {

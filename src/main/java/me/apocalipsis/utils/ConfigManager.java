@@ -17,6 +17,7 @@ public class ConfigManager {
     private FileConfiguration rangosConfig;
     private FileConfiguration recompensasConfig;
     private FileConfiguration chatConfig;
+    private FileConfiguration evasionesConfig;
 
     public ConfigManager(Apocalipsis plugin) {
         this.plugin = plugin;
@@ -31,6 +32,14 @@ public class ConfigManager {
         this.rangosConfig = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "rangos.yml"));
         this.recompensasConfig = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "recompensas.yml"));
         this.chatConfig = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "chat.yml"));
+        this.evasionesConfig = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "evasiones.yml"));
+    }
+    
+    /**
+     * Recarga solo la configuración de evasiones
+     */
+    public void reloadEvasionesConfig() {
+        this.evasionesConfig = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "evasiones.yml"));
     }
 
     public FileConfiguration getConfig() {
@@ -59,6 +68,10 @@ public class ConfigManager {
     
     public FileConfiguration getChatConfig() {
         return chatConfig;
+    }
+    
+    public FileConfiguration getEvasionesConfig() {
+        return evasionesConfig;
     }
 
     public boolean isLluviaFuegoExtraLluvia() {
@@ -251,23 +264,181 @@ public class ConfigManager {
     }
     
     // ═══════════════════════════════════════════════════════════════════
-    // SISTEMA DE EVASIÓN
+    // SISTEMA DE EVASIÓN - evasiones.yml
     // ═══════════════════════════════════════════════════════════════════
     
+    // General
     public boolean isEvasionEnabled() {
-        return config.getBoolean("evasion.enabled", true);
+        return evasionesConfig.getBoolean("general.enabled", true);
     }
     
+    public boolean isEvasionDebug() {
+        return evasionesConfig.getBoolean("general.debug", false);
+    }
+    
+    public int getEvasionGuardarCadaSegundos() {
+        return evasionesConfig.getInt("general.guardar_cada_segundos", 30);
+    }
+    
+    // Tiempos
     public int getEvasionMinTiempoSegundos() {
-        return config.getInt("evasion.min_tiempo_segundos", 60);
+        return evasionesConfig.getInt("tiempos.min_tiempo_segundos", 60);
     }
     
+    public int getEvasionVentanaGraciaSegundos() {
+        return evasionesConfig.getInt("tiempos.ventana_gracia_segundos", 30);
+    }
+    
+    public int getEvasionLateJoinThresholdSegundos() {
+        return evasionesConfig.getInt("tiempos.late_join.threshold_segundos", 10);
+    }
+    
+    public int getEvasionLateJoinMinTiempoSegundos() {
+        return evasionesConfig.getInt("tiempos.late_join.min_tiempo_segundos", 30);
+    }
+    
+    public int getEvasionResetAutomaticoHoras() {
+        return evasionesConfig.getInt("tiempos.reset_automatico_horas", 24);
+    }
+    
+    // Reducción
+    public boolean isEvasionReduccionEnabled() {
+        return evasionesConfig.getBoolean("reduccion.enabled", true);
+    }
+    
+    public boolean isEvasionReduccionPorTiempoEnabled() {
+        return evasionesConfig.getBoolean("reduccion.por_tiempo.enabled", true);
+    }
+    
+    public int getEvasionReduccionCadaHoras() {
+        return evasionesConfig.getInt("reduccion.por_tiempo.reducir_cada_horas", 48);
+    }
+    
+    public boolean isEvasionReduccionPorDesastresEnabled() {
+        return evasionesConfig.getBoolean("reduccion.por_desastres_completados.enabled", true);
+    }
+    
+    public int getEvasionReduccionDesastresNecesarios() {
+        return evasionesConfig.getInt("reduccion.por_desastres_completados.desastres_necesarios", 3);
+    }
+    
+    public int getEvasionReduccionDesastresTiempoMinimo() {
+        return evasionesConfig.getInt("reduccion.por_desastres_completados.tiempo_minimo_segundos", 45);
+    }
+    
+    // Penalizaciones
+    public String getEvasionPenalizacionTipoCalculo() {
+        return evasionesConfig.getString("penalizaciones.tipo_calculo", "proporcional");
+    }
+    
+    public int getEvasionPenalizacionPsPorcentaje(int nivel) {
+        return evasionesConfig.getInt("penalizaciones.nivel_" + nivel + ".ps_porcentaje", 10);
+    }
+    
+    public int getEvasionPenalizacionMisionesRandom(int nivel) {
+        return evasionesConfig.getInt("penalizaciones.nivel_" + nivel + ".fallar_misiones_random", 0);
+    }
+    
+    public boolean getEvasionPenalizacionTodasMisiones(int nivel) {
+        return evasionesConfig.getBoolean("penalizaciones.nivel_" + nivel + ".fallar_todas_misiones", false);
+    }
+    
+    public String getEvasionPenalizacionCastigoFisico(int nivel) {
+        return evasionesConfig.getString("penalizaciones.nivel_" + nivel + ".castigo_fisico", "leve");
+    }
+    
+    public String getEvasionPenalizacionMensaje(int nivel) {
+        return evasionesConfig.getString("penalizaciones.nivel_" + nivel + ".mensaje", "&e⚠ Evasión detectada");
+    }
+    
+    // Castigos físicos
     public boolean isEvasionCastigosFisicosEnabled() {
-        return config.getBoolean("evasion.castigos_fisicos_enabled", false);
+        return evasionesConfig.getBoolean("castigos_fisicos.enabled", true);
     }
     
-    public boolean isEvasionSoloPerdidaPS() {
-        return config.getBoolean("evasion.solo_perdida_ps", true);
+    public int getEvasionCastigosFisicosDelaySegundos() {
+        return evasionesConfig.getInt("castigos_fisicos.delay_segundos", 3);
+    }
+    
+    // Notificaciones
+    public boolean isEvasionNotificacionesAdminsEnabled() {
+        return evasionesConfig.getBoolean("notificaciones.admins.enabled", true);
+    }
+    
+    public int getEvasionNotificacionesAlertarDesdeNivel() {
+        return evasionesConfig.getInt("notificaciones.admins.alertar_desde_nivel", 2);
+    }
+    
+    public String getEvasionNotificacionesPermiso() {
+        return evasionesConfig.getString("notificaciones.admins.permiso", "apocalipsis.notify.evasion");
+    }
+    
+    public String getEvasionNotificacionesMensaje() {
+        return evasionesConfig.getString("notificaciones.admins.mensaje", "&c[EVASIÓN] &f{player}");
+    }
+    
+    public boolean isEvasionNotificacionesJugadorEnabled() {
+        return evasionesConfig.getBoolean("notificaciones.jugador_en_desastre.enabled", true);
+    }
+    
+    // Por desastre
+    public boolean isEvasionPorDesastreEnabled() {
+        return evasionesConfig.getBoolean("por_desastre.enabled", false);
+    }
+    
+    public int getEvasionPorDesastreMinTiempo(String desastreId) {
+        return evasionesConfig.getInt("por_desastre." + desastreId + ".min_tiempo_segundos", getEvasionMinTiempoSegundos());
+    }
+    
+    public double getEvasionPorDesastreMultiplicador(String desastreId) {
+        return evasionesConfig.getDouble("por_desastre." + desastreId + ".multiplicador_penalizacion", 1.0);
+    }
+    
+    // Crash protection
+    public boolean isEvasionCrashProtectionEnabled() {
+        return evasionesConfig.getBoolean("crash_protection.enabled", true);
+    }
+    
+    public boolean isEvasionCrashProtectionRestaurarTracking() {
+        return evasionesConfig.getBoolean("crash_protection.restaurar_tracking", true);
+    }
+    
+    public int getEvasionCrashProtectionVentanaMinutos() {
+        return evasionesConfig.getInt("crash_protection.ventana_crash_minutos", 5);
+    }
+    
+    // Estadísticas
+    public boolean isEvasionEstadisticasEnabled() {
+        return evasionesConfig.getBoolean("estadisticas.enabled", true);
+    }
+    
+    public boolean isEvasionEstadisticasGuardarHistorial() {
+        return evasionesConfig.getBoolean("estadisticas.guardar_historial", true);
+    }
+    
+    public int getEvasionEstadisticasHistorialMaxEntradas() {
+        return evasionesConfig.getInt("estadisticas.historial_max_entradas", 100);
+    }
+    
+    // Permisos
+    public String getEvasionPermisoExencion() {
+        return evasionesConfig.getString("permisos.exencion", "apocalipsis.evasion.exempt");
+    }
+    
+    public boolean isEvasionPermisoVipEnabled() {
+        return evasionesConfig.getBoolean("permisos.vip.enabled", false);
+    }
+    
+    public String getEvasionPermisoVip() {
+        return evasionesConfig.getString("permisos.vip.permiso", "apocalipsis.evasion.vip");
+    }
+    
+    public int getEvasionPermisoVipReduccionPs() {
+        return evasionesConfig.getInt("permisos.vip.reduccion_ps_porcentaje", 50);
+    }
+    
+    public String getEvasionPermisoAdminComandos() {
+        return evasionesConfig.getString("permisos.admin_comandos", "apocalipsis.evasion.admin");
     }
     
     // ═══════════════════════════════════════════════════════════════════

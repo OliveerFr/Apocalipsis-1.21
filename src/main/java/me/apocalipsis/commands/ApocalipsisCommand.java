@@ -2513,10 +2513,17 @@ public class ApocalipsisCommand implements CommandExecutor {
         }
         
         if (args.length < 2) {
-            sender.sendMessage("§c§lGestión de Evasiones");
+            sender.sendMessage("§e▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+            sender.sendMessage("§c§lGestión de Evasiones de Desastres");
+            sender.sendMessage("§e▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
             sender.sendMessage("§e/avo evasion check <jugador> §7- Ver evasiones de un jugador");
-            sender.sendMessage("§e/avo evasion clear <jugador> §7- Limpiar evasiones de un jugador");
-            sender.sendMessage("§e/avo evasion clear all §7- Limpiar todas las evasiones");
+            sender.sendMessage("§e/avo evasion clear <jugador|all> §7- Limpiar evasiones");
+            sender.sendMessage("§e/avo evasion stats §7- Ver estadísticas globales");
+            sender.sendMessage("§e/avo evasion history <jugador> §7- Ver historial de evasiones");
+            sender.sendMessage("§e/avo evasion reduce <jugador> [cantidad] §7- Reducir evasiones");
+            sender.sendMessage("§e/avo evasion info §7- Ver configuración actual");
+            sender.sendMessage("§e/avo evasion reload §7- Recargar configuración");
+            sender.sendMessage("§e▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
             return;
         }
         
@@ -2568,11 +2575,166 @@ public class ApocalipsisCommand implements CommandExecutor {
                     }
                 }
                 break;
+            
+            case "stats":
+                showEvasionStats(sender);
+                break;
+            
+            case "history":
+                if (args.length < 3) {
+                    sender.sendMessage("§cUso: /avo evasion history <jugador>");
+                    return;
+                }
+                showEvasionHistory(sender, args[2]);
+                break;
+            
+            case "reduce":
+                if (args.length < 3) {
+                    sender.sendMessage("§cUso: /avo evasion reduce <jugador> [cantidad]");
+                    return;
+                }
+                int cantidad = 1;
+                if (args.length >= 4) {
+                    try {
+                        cantidad = Integer.parseInt(args[3]);
+                    } catch (NumberFormatException e) {
+                        sender.sendMessage("§cCantidad inválida.");
+                        return;
+                    }
+                }
+                reducePlayerEvasions(sender, args[2], cantidad);
+                break;
+            
+            case "info":
+                showEvasionConfig(sender);
+                break;
+            
+            case "reload":
+                plugin.getConfigManager().reloadEvasionesConfig();
+                plugin.getDisasterEvasionTracker().reloadConfig();
+                sender.sendMessage("§a✓ Configuración de evasiones recargada.");
+                break;
                 
             default:
-                sender.sendMessage("§cSubcomando desconocido. Usa: check o clear");
+                sender.sendMessage("§cSubcomando desconocido. Usa: check, clear, stats, history, reduce, info o reload");
                 break;
         }
+    }
+    
+    /**
+     * Muestra estadísticas globales de evasiones
+     */
+    private void showEvasionStats(CommandSender sender) {
+        sender.sendMessage("§e▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+        sender.sendMessage("§c§lEstadísticas Globales de Evasiones");
+        sender.sendMessage("§e▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+        
+        var stats = plugin.getDisasterEvasionTracker().getGlobalStats();
+        sender.sendMessage("§7Total de jugadores con evasiones: §c" + stats.getOrDefault("jugadores_con_evasiones", 0));
+        sender.sendMessage("§7Evasiones totales acumuladas: §c" + stats.getOrDefault("evasiones_totales", 0));
+        sender.sendMessage("§7Castigos pendientes: §e" + stats.getOrDefault("castigos_pendientes", 0));
+        sender.sendMessage("§7Nivel promedio de evasión: §6" + String.format("%.1f", stats.getOrDefault("nivel_promedio", 0.0)));
+        sender.sendMessage("");
+        sender.sendMessage("§7Jugadores online trackeados: §a" + stats.getOrDefault("jugadores_online_trackeados", 0));
+        sender.sendMessage("§e▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+    }
+    
+    /**
+     * Muestra historial de evasiones de un jugador
+     */
+    private void showEvasionHistory(CommandSender sender, String playerName) {
+        Player target = plugin.getServer().getPlayer(playerName);
+        if (target == null) {
+            sender.sendMessage("§cJugador no encontrado.");
+            return;
+        }
+        
+        java.util.List<String> history = plugin.getDisasterEvasionTracker().getPlayerHistory(target.getUniqueId());
+        
+        sender.sendMessage("§e▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+        sender.sendMessage("§c§lHistorial de Evasiones - " + target.getName());
+        sender.sendMessage("§e▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+        
+        if (history.isEmpty()) {
+            sender.sendMessage("§aSin historial de evasiones");
+        } else {
+            int count = 0;
+            for (int i = history.size() - 1; i >= 0 && count < 10; i--, count++) {
+                String entry = history.get(i);
+                String[] parts = entry.split("\\|");
+                if (parts.length >= 5) {
+                    long timestamp = Long.parseLong(parts[0]);
+                    String tiempo = parts[2];
+                    int psLoss = Integer.parseInt(parts[3]);
+                    int nivel = Integer.parseInt(parts[4]);
+                    String tipo = parts.length >= 6 ? parts[5] : "normal";
+                    
+                    java.util.Date date = new java.util.Date(timestamp);
+                    String fecha = new java.text.SimpleDateFormat("dd/MM HH:mm").format(date);
+                    
+                    String tipoIcon = tipo.equals("late") ? "§e⏰" : "§c⚡";
+                    sender.sendMessage(String.format("§7%s %s §7Nivel §c%d §7- PS: §c-%d §7(§e%s§7)", 
+                        fecha, tipoIcon, nivel, psLoss, tiempo));
+                }
+            }
+        }
+        sender.sendMessage("§e▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+    }
+    
+    /**
+     * Reduce evasiones de un jugador
+     */
+    private void reducePlayerEvasions(CommandSender sender, String playerName, int cantidad) {
+        Player target = plugin.getServer().getPlayer(playerName);
+        if (target == null) {
+            sender.sendMessage("§cJugador no encontrado.");
+            return;
+        }
+        
+        int reduced = plugin.getDisasterEvasionTracker().reduceEvasions(target.getUniqueId(), cantidad);
+        if (reduced > 0) {
+            sender.sendMessage("§a✓ Reducidas §e" + reduced + " §aevasión(es) de §f" + target.getName());
+            target.sendMessage("§a✓ Se te han reducido §e" + reduced + " §aevasión(es) por buen comportamiento.");
+        } else {
+            sender.sendMessage("§7" + target.getName() + " no tenía evasiones para reducir.");
+        }
+    }
+    
+    /**
+     * Muestra la configuración actual de evasiones
+     */
+    private void showEvasionConfig(CommandSender sender) {
+        sender.sendMessage("§e▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+        sender.sendMessage("§c§lConfiguración de Evasiones");
+        sender.sendMessage("§e▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+        
+        var cfg = plugin.getConfigManager();
+        
+        sender.sendMessage("§6Tiempos:");
+        sender.sendMessage("§7  • Tiempo mínimo: §e" + cfg.getEvasionMinTiempoSegundos() + "s");
+        sender.sendMessage("§7  • Ventana de gracia: §e" + cfg.getEvasionVentanaGraciaSegundos() + "s");
+        sender.sendMessage("§7  • Late-join threshold: §e" + cfg.getEvasionLateJoinThresholdSegundos() + "s");
+        sender.sendMessage("§7  • Late-join tiempo mín: §e" + cfg.getEvasionLateJoinMinTiempoSegundos() + "s");
+        sender.sendMessage("§7  • Reset automático: §e" + cfg.getEvasionResetAutomaticoHoras() + "h");
+        
+        sender.sendMessage("");
+        sender.sendMessage("§6Penalizaciones:");
+        sender.sendMessage("§7  • Tipo cálculo: §e" + cfg.getEvasionPenalizacionTipoCalculo());
+        for (int i = 1; i <= 4; i++) {
+            sender.sendMessage(String.format("§7  • Nivel %d: §c-%d%% PS §7+ §e%s", 
+                i, 
+                cfg.getEvasionPenalizacionPsPorcentaje(i),
+                cfg.getEvasionPenalizacionCastigoFisico(i)));
+        }
+        
+        sender.sendMessage("");
+        sender.sendMessage("§6Features:");
+        sender.sendMessage("§7  • Castigos físicos: " + (cfg.isEvasionCastigosFisicosEnabled() ? "§a✓" : "§c✗"));
+        sender.sendMessage("§7  • Notificaciones admin: " + (cfg.isEvasionNotificacionesAdminsEnabled() ? "§a✓" : "§c✗"));
+        sender.sendMessage("§7  • Estadísticas: " + (cfg.isEvasionEstadisticasEnabled() ? "§a✓" : "§c✗"));
+        sender.sendMessage("§7  • Sistema VIP: " + (cfg.isEvasionPermisoVipEnabled() ? "§a✓" : "§c✗"));
+        
+        sender.sendMessage("§e▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
     }
     
     /**

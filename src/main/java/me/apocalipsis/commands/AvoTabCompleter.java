@@ -117,7 +117,7 @@ public class AvoTabCompleter implements TabCompleter {
                 case "evasion":
                 case "evasiones":
                     // Sugerir subcomandos de evasion
-                    return Arrays.asList("check", "clear").stream()
+                    return Arrays.asList("check", "clear", "stats", "history", "reduce", "info", "reload").stream()
                         .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
                         .collect(Collectors.toList());
                 
@@ -271,22 +271,33 @@ public class AvoTabCompleter implements TabCompleter {
                 }
             }
             
-            // /avo evasion check|clear <jugador|all>
+            // /avo evasion check|clear|history|reduce <jugador|all>
             if ((subCmd.equals("evasion") || subCmd.equals("evasiones"))) {
                 String evasionSubCmd = args[1].toLowerCase();
-                if (evasionSubCmd.equals("check") || evasionSubCmd.equals("clear")) {
+                if (evasionSubCmd.equals("check") || evasionSubCmd.equals("history") || evasionSubCmd.equals("reduce")) {
+                    return plugin.getServer().getOnlinePlayers().stream()
+                        .map(Player::getName)
+                        .filter(s -> s.toLowerCase().startsWith(args[2].toLowerCase()))
+                        .collect(Collectors.toList());
+                }
+                if (evasionSubCmd.equals("clear")) {
                     List<String> suggestions = new ArrayList<>(
                         plugin.getServer().getOnlinePlayers().stream()
                             .map(Player::getName)
                             .collect(Collectors.toList())
                     );
-                    if (evasionSubCmd.equals("clear")) {
-                        suggestions.add("all");
-                    }
+                    suggestions.add("all");
                     return suggestions.stream()
                         .filter(s -> s.toLowerCase().startsWith(args[2].toLowerCase()))
                         .collect(Collectors.toList());
                 }
+            }
+        }
+        
+        // args.length == 4: /avo evasion reduce <jugador> <cantidad>
+        if (args.length == 4 && ("evasion".equalsIgnoreCase(args[0]) || "evasiones".equalsIgnoreCase(args[0]))) {
+            if ("reduce".equalsIgnoreCase(args[1])) {
+                return Arrays.asList("1", "2", "3", "5", "10");
             }
         }
         

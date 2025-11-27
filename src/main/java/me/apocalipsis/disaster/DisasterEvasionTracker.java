@@ -37,11 +37,20 @@ public class DisasterEvasionTracker {
     // UUID -> número de evasiones totales
     private final Map<UUID, Integer> evasionCount = new HashMap<>();
     
-    // Tiempo mínimo requerido en el desastre (60 segundos)
-    private static final long MIN_REQUIRED_TIME_MS = 60000;
+    // Tiempo mínimo requerido en el desastre (configurable desde evasiones.yml)
+    private long minRequiredTimeMs;
     
-    // Cooldown entre resets de evasiones (1 día = 86400000 ms)
-    private static final long EVASION_RESET_TIME_MS = 86400000;
+    // Ventana de gracia para reconexión (configurable desde evasiones.yml)
+    private long graceReconnectWindowMs;
+    
+    // Tiempo reducido para late-joiners (configurable desde evasiones.yml)
+    private long lateJoinMinTimeMs;
+    
+    // Threshold para detectar late-joiners (configurable desde evasiones.yml)
+    private long lateJoinThresholdMs;
+    
+    // Cooldown entre resets de evasiones (configurable desde evasiones.yml)
+    private long evasionResetTimeMs;
     
     // UUID -> último timestamp de evasión (para reset progresivo)
     private final Map<UUID, Long> lastEvasionTime = new HashMap<>();
@@ -49,22 +58,99 @@ public class DisasterEvasionTracker {
     // UUID -> nivel de castigo pendiente al reconectar
     private final Map<UUID, Integer> pendingPunishment = new HashMap<>();
     
+    // UUID -> tiempo en que se desconectó (para detectar reconexiones rápidas)
+    private final Map<UUID, Long> lastDisconnectTime = new HashMap<>();
+    
+    // Timestamp de cuando empezó el desastre actual (para detectar late-joiners)
+    private long currentDisasterStartTime = 0L;
+    
+    // Tracking de desastre activo (evitar falsos positivos)
+    private boolean disasterActive = false;
+    
     public DisasterEvasionTracker(Apocalipsis plugin) {
         this.plugin = plugin;
         this.dataFile = new File(plugin.getDataFolder(), "evasion_data.yml");
+        loadConfig();
         loadData();
     }
     
     /**
-     * Registra que un jugador ha entrado en un desastre activo
+     * Carga la configuración desde evasiones.yml
+     */
+    private void loadConfig() {
+        minRequiredTimeMs = plugin.getConfigManager().getEvasionMinTiempoSegundos() * 1000L;
+        graceReconnectWindowMs = plugin.getConfigManager().getEvasionVentanaGraciaSegundos() * 1000L;
+        lateJoinMinTimeMs = plugin.getConfigManager().getEvasionLateJoinMinTiempoSegundos() * 1000L;
+        lateJoinThresholdMs = plugin.getConfigManager().getEvasionLateJoinThresholdSegundos() * 1000L;
+        evasionResetTimeMs = plugin.getConfigManager().getEvasionResetAutomaticoHoras() * 3600000L;
+    }
+    
+    /**
+     * Recarga la configuración (útil para /reload)
+     */
+    public void reloadConfig() {
+        loadConfig();
+    }
+    
+    /**
+     * Marca el inicio de un desastre para todos los jugadores online.
+     * Se llama UNA vez cuando el desastre comienza.
+     */
+    public void onDisasterStartGlobal() {
+        long now = System.currentTimeMillis();
+        currentDisasterStartTime = now;
+        disasterActive = true;
+        
+        if (plugin.getConfigManager().isEvasionDebug()) {
+            plugin.getLogger().info("[EvasionTracker] Desastre iniciado - tracking activado");
+        }
+    }
+    
+    /**
+     * Registra que un jugador ha entrado en un desastre activo.
+     * Este método se llama tanto al inicio del desastre para todos los jugadores online,
+     * como cuando un jugador se une al servidor durante un desastre.
      */
     public void onDisasterStart(Player player) {
         UUID uuid = player.getUniqueId();
         long now = System.currentTimeMillis();
         
+        // Verificar si es una reconexión rápida dentro de la ventana de gracia
+        Long lastDisconnect = lastDisconnectTime.get(uuid);
+        if (lastDisconnect != null) {
+            long timeSinceDisconnect = now - lastDisconnect;
+            
+            if (timeSinceDisconnect <= graceReconnectWindowMs) {
+                // Reconexión rápida - restaurar tiempo anterior (si existía)
+                Long previousJoinTime = playerJoinTime.get(uuid);
+                if (previousJoinTime != null) {
+                    // Mantener el tiempo original para no penalizar
+                    if (plugin.getConfigManager().isEvasionDebug()) {
+                        plugin.getLogger().info("[EvasionTracker] " + player.getName() + 
+                            " reconectó en " + (timeSinceDisconnect/1000) + "s - tiempo restaurado");
+                    }
+                    return; // No actualizar playerJoinTime, mantener el original
+                }
+            }
+            // Limpiar registro de desconexión si ya pasó la ventana
+            lastDisconnectTime.remove(uuid);
+        }
+        
+        // Registrar tiempo de entrada
         playerJoinTime.put(uuid, now);
         
-        if (plugin.getConfigManager().isDebugCiclo()) {
+        // Detectar late-joiner (jugador que entra después del inicio del desastre)
+        if (disasterActive && currentDisasterStartTime > 0) {
+            long timeAfterStart = now - currentDisasterStartTime;
+            if (timeAfterStart > lateJoinThresholdMs) { // Más de X segundos después del inicio
+                if (plugin.getConfigManager().isEvasionDebug()) {
+                    plugin.getLogger().info("[EvasionTracker] " + player.getName() + 
+                        " entró " + (timeAfterStart/1000) + "s después del inicio - tiempo reducido aplicado");
+                }
+            }
+        }
+        
+        if (plugin.getConfigManager().isEvasionDebug()) {
             plugin.getLogger().info("[EvasionTracker] Jugador " + player.getName() + " entró al desastre");
         }
     }
@@ -79,24 +165,95 @@ public class DisasterEvasionTracker {
         UUID uuid = player.getUniqueId();
         Long joinTime = playerJoinTime.get(uuid);
         
+        // Si no hay desastre activo, no puede ser evasión
+        if (!disasterActive) {
+            if (plugin.getConfigManager().isEvasionDebug()) {
+                plugin.getLogger().info("[EvasionTracker] " + player.getName() + 
+                    " se desconectó pero no hay desastre activo");
+            }
+            return false;
+        }
+        
         // Si no tenía registro, no estaba en el desastre (o ya había terminado)
         if (joinTime == null) {
+            if (plugin.getConfigManager().isEvasionDebug()) {
+                plugin.getLogger().info("[EvasionTracker] " + player.getName() + 
+                    " se desconectó sin registro de entrada (posible late-join)");
+            }
             return false;
         }
         
         long now = System.currentTimeMillis();
         long timeInDisaster = now - joinTime;
         
+        // Determinar tiempo mínimo requerido (diferente para late-joiners)
+        long requiredTime = minRequiredTimeMs;
+        boolean isLateJoiner = false;
+        
+        if (currentDisasterStartTime > 0 && joinTime > currentDisasterStartTime + lateJoinThresholdMs) {
+            // Late-joiner: jugador que entró más de Xs después del inicio
+            requiredTime = lateJoinMinTimeMs;
+            isLateJoiner = true;
+            
+            if (plugin.getConfigManager().isEvasionDebug()) {
+                plugin.getLogger().info("[EvasionTracker] " + player.getName() + 
+                    " identificado como late-joiner - tiempo requerido: " + (requiredTime/1000) + "s");
+            }
+        }
+        
         // Si estuvo más del tiempo mínimo, no es evasión
-        if (timeInDisaster >= MIN_REQUIRED_TIME_MS) {
+        if (timeInDisaster >= requiredTime) {
             playerJoinTime.remove(uuid);
+            if (plugin.getConfigManager().isEvasionDebug()) {
+                plugin.getLogger().info("[EvasionTracker] " + player.getName() + 
+                    " se desconectó legítimamente (" + (timeInDisaster/1000) + "s >= " + (requiredTime/1000) + "s)");
+            }
             return false;
         }
         
-        // EVASIÓN DETECTADA
-        applyEvasionPenalty(player, timeInDisaster);
-        playerJoinTime.remove(uuid);
-        return true;
+        // Registrar tiempo de desconexión para ventana de gracia
+        lastDisconnectTime.put(uuid, now);
+        
+        // POSIBLE EVASIÓN - dar ventana de gracia de 30s para reconexión
+        if (plugin.getConfigManager().isEvasionDebug()) {
+            plugin.getLogger().warning("[EvasionTracker] " + player.getName() + 
+                " se desconectó temprano (" + (timeInDisaster/1000) + "s / " + (requiredTime/1000) + 
+                "s) - ventana de gracia de 30s para reconexión");
+        }
+        
+        // Programar verificación de evasión después de la ventana de gracia
+        final long finalTimeInDisaster = timeInDisaster;
+        final long finalJoinTime = joinTime;
+        final boolean finalIsLateJoiner = isLateJoiner;
+        
+        org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            // Verificar si el jugador reconectó dentro de la ventana de gracia
+            Long reconnectCheck = lastDisconnectTime.get(uuid);
+            if (reconnectCheck != null && reconnectCheck.equals(now)) {
+                // No reconectó - aplicar penalización
+                if (plugin.getConfigManager().isEvasionDebug()) {
+                    plugin.getLogger().warning("[EvasionTracker] " + player.getName() + 
+                        " NO reconectó en 30s - EVASIÓN CONFIRMADA");
+                }
+                
+                // Aplicar penalización (offline)
+                applyEvasionPenaltyOffline(uuid, player.getName(), finalTimeInDisaster, finalIsLateJoiner);
+                
+                // Limpiar registros
+                playerJoinTime.remove(uuid);
+                lastDisconnectTime.remove(uuid);
+            } else {
+                // Reconectó - no es evasión
+                if (plugin.getConfigManager().isEvasionDebug()) {
+                    plugin.getLogger().info("[EvasionTracker] " + player.getName() + 
+                        " reconectó dentro de la ventana de gracia - NO es evasión");
+                }
+                lastDisconnectTime.remove(uuid);
+            }
+        }, graceReconnectWindowMs / 50); // Convertir ms a ticks (50ms por tick)
+        
+        // NO remover playerJoinTime aún, esperar la ventana de gracia
+        return false; // Retornar false por ahora, se confirmará después
     }
     
     /**
@@ -104,23 +261,189 @@ public class DisasterEvasionTracker {
      */
     public void onDisasterEnd() {
         playerJoinTime.clear();
+        lastDisconnectTime.clear();
+        disasterActive = false;
+        currentDisasterStartTime = 0L;
         
-        if (plugin.getConfigManager().isDebugCiclo()) {
-            plugin.getLogger().info("[EvasionTracker] Desastre finalizado - registros limpiados");
+        if (plugin.getConfigManager().isEvasionDebug()) {
+            plugin.getLogger().info("[EvasionTracker] Desastre finalizado - registros limpiados, tracking desactivado");
+        }
+    }
+    
+    /**
+     * Aplica penalizaciones cuando el jugador ya se desconectó (versión offline)
+     */
+    private void applyEvasionPenaltyOffline(UUID uuid, String playerName, long timeInDisaster, boolean isLateJoiner) {
+        // Resetear contador si pasó más tiempo del configurado desde última evasión
+        Long lastEvasion = lastEvasionTime.get(uuid);
+        if (lastEvasion != null) {
+            long timeSinceLastEvasion = System.currentTimeMillis() - lastEvasion;
+            if (timeSinceLastEvasion > evasionResetTimeMs) {
+                evasionCount.put(uuid, 0);
+            }
+        }
+        
+        // Incrementar contador de evasiones
+        int evasions = evasionCount.getOrDefault(uuid, 0) + 1;
+        evasionCount.put(uuid, evasions);
+        lastEvasionTime.put(uuid, System.currentTimeMillis());
+        
+        // Obtener PS actual
+        int currentPs = plugin.getMissionService().getPlayerPs(uuid);
+        
+        // Obtener porcentaje de penalización desde config (nivel máximo: 4)
+        int nivel = Math.min(evasions, 4);
+        double porcentaje = plugin.getConfigManager().getEvasionPenalizacionPsPorcentaje(nivel) / 100.0;
+        
+        // Calcular pérdida de PS (proporcional si está configurado)
+        int psLoss = calcularPsLoss(currentPs, porcentaje, timeInDisaster, isLateJoiner);
+        
+        // Programar castigos físicos solo si están habilitados
+        if (plugin.getConfigManager().isEvasionCastigosFisicosEnabled()) {
+            scheduleReconnectPunishment(uuid, nivel);
+        }
+        
+        // Aplicar penalizaciones de misiones según config
+        int misionesRandom = plugin.getConfigManager().getEvasionPenalizacionMisionesRandom(nivel);
+        boolean todasMisiones = plugin.getConfigManager().getEvasionPenalizacionTodasMisiones(nivel);
+        
+        if (todasMisiones) {
+            plugin.getMissionService().failAllMissions(uuid);
+        } else if (misionesRandom > 0) {
+            for (int i = 0; i < misionesRandom; i++) {
+                plugin.getMissionService().failRandomMission(uuid);
+            }
+        }
+        
+        // Aplicar pérdida de PS
+        if (psLoss > 0) {
+            int newPs = Math.max(0, currentPs - psLoss);
+            plugin.getMissionService().setPlayerPs(uuid, newPs);
+        }
+        
+        // Notificar a administradores si está habilitado
+        notifyAdmins(uuid, playerName, nivel, evasions, psLoss);
+        
+        // Log detallado
+        String lateJoinNote = isLateJoiner ? " (LATE-JOINER)" : "";
+        plugin.getLogger().warning(String.format(
+            "[EvasionTracker] EVASIÓN CONFIRMADA%s - Jugador: %s, Tiempo: %.1fs, Evasiones: %d, Nivel: %d, PS perdidos: %d",
+            lateJoinNote,
+            playerName,
+            timeInDisaster / 1000.0,
+            evasions,
+            nivel,
+            psLoss
+        ));
+        
+        // Guardar historial si está habilitado
+        if (plugin.getConfigManager().isEvasionEstadisticasEnabled() && 
+            plugin.getConfigManager().isEvasionEstadisticasGuardarHistorial()) {
+            saveEvasionHistory(uuid, playerName, timeInDisaster, psLoss, nivel, isLateJoiner);
+        }
+        
+        // Guardar cambios
+        saveData();
+    }
+    
+    /**
+     * Calcula la pérdida de PS según el tipo de cálculo configurado
+     */
+    private int calcularPsLoss(int currentPs, double porcentaje, long timeInDisaster, boolean isLateJoiner) {
+        String tipoCalculo = plugin.getConfigManager().getEvasionPenalizacionTipoCalculo();
+        
+        if ("proporcional".equalsIgnoreCase(tipoCalculo)) {
+            // Proporcional: reduce según el tiempo que estuvo en el desastre
+            long tiempoRequerido = isLateJoiner ? lateJoinMinTimeMs : minRequiredTimeMs;
+            double factorTiempo = 1.0 - (timeInDisaster / (double) tiempoRequerido);
+            factorTiempo = Math.max(0.5, Math.min(1.0, factorTiempo)); // Entre 50% y 100%
+            return (int) (currentPs * porcentaje * factorTiempo);
+        } else {
+            // Fijo: aplica el porcentaje completo
+            return (int) (currentPs * porcentaje);
+        }
+    }
+    
+    /**
+     * Notifica a administradores sobre una evasión
+     */
+    private void notifyAdmins(UUID uuid, String playerName, int nivel, int totalEvasiones, int psLoss) {
+        if (!plugin.getConfigManager().isEvasionNotificacionesAdminsEnabled()) {
+            return;
+        }
+        
+        int alertarDesdeNivel = plugin.getConfigManager().getEvasionNotificacionesAlertarDesdeNivel();
+        if (nivel < alertarDesdeNivel) {
+            return;
+        }
+        
+        String permiso = plugin.getConfigManager().getEvasionNotificacionesPermiso();
+        String mensaje = plugin.getConfigManager().getEvasionNotificacionesMensaje()
+            .replace("{player}", playerName)
+            .replace("{evasiones}", String.valueOf(totalEvasiones))
+            .replace("{nivel}", String.valueOf(nivel))
+            .replace("{ps_perdidos}", String.valueOf(psLoss));
+        mensaje = mensaje.replace("&", "§");
+        
+        final String finalMensaje = mensaje;
+        
+        // Notificar a todos los admins online
+        org.bukkit.Bukkit.getScheduler().runTask(plugin, () -> {
+            for (org.bukkit.entity.Player admin : org.bukkit.Bukkit.getOnlinePlayers()) {
+                if (admin.hasPermission(permiso) || admin.hasPermission("avo.admin")) {
+                    admin.sendMessage(finalMensaje);
+                    admin.playSound(admin.getLocation(), org.bukkit.Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 0.5f);
+                }
+            }
+        });
+    }
+    
+    /**
+     * Guarda el historial de evasión para estadísticas
+     */
+    private void saveEvasionHistory(UUID uuid, String playerName, long timeInDisaster, int psLoss, int nivel, boolean isLateJoiner) {
+        try {
+            File historyFile = new File(plugin.getDataFolder(), "evasion_history.yml");
+            FileConfiguration history = YamlConfiguration.loadConfiguration(historyFile);
+            
+            String path = uuid.toString();
+            java.util.List<String> entries = history.getStringList(path);
+            
+            // Limitar entradas según configuración
+            int maxEntradas = plugin.getConfigManager().getEvasionEstadisticasHistorialMaxEntradas();
+            while (entries.size() >= maxEntradas) {
+                entries.remove(0);
+            }
+            
+            // Agregar nueva entrada
+            String entry = String.format("%d|%s|%.1fs|%d|%d|%s",
+                System.currentTimeMillis(),
+                playerName,
+                timeInDisaster / 1000.0,
+                psLoss,
+                nivel,
+                isLateJoiner ? "late" : "normal");
+            entries.add(entry);
+            
+            history.set(path, entries);
+            history.save(historyFile);
+        } catch (Exception e) {
+            plugin.getLogger().warning("[EvasionTracker] Error guardando historial: " + e.getMessage());
         }
     }
     
     /**
      * Aplica penalizaciones progresivas por evasión (PS + castigos físicos)
+     * Versión para cuando el jugador todavía está online
      */
     private void applyEvasionPenalty(Player player, long timeInDisaster) {
         UUID uuid = player.getUniqueId();
         
-        // Resetear contador si pasó más de 1 día desde última evasión
+        // Resetear contador si pasó el tiempo configurado desde última evasión
         Long lastEvasion = lastEvasionTime.get(uuid);
         if (lastEvasion != null) {
             long timeSinceLastEvasion = System.currentTimeMillis() - lastEvasion;
-            if (timeSinceLastEvasion > EVASION_RESET_TIME_MS) {
+            if (timeSinceLastEvasion > evasionResetTimeMs) {
                 evasionCount.put(uuid, 0);
             }
         }
@@ -132,41 +455,33 @@ public class DisasterEvasionTracker {
         
         // Obtener PS actual
         int currentPs = plugin.getMissionService().getPlayerPs(player);
-        int psLoss = 0;
+        
+        // Obtener nivel y porcentaje desde config (nivel máximo: 4)
+        int nivel = Math.min(evasions, 4);
+        double porcentaje = plugin.getConfigManager().getEvasionPenalizacionPsPorcentaje(nivel) / 100.0;
+        
+        // Calcular pérdida de PS
+        int psLoss = calcularPsLoss(currentPs, porcentaje, timeInDisaster, false);
         
         // Programar castigos físicos solo si están habilitados
         if (plugin.getConfigManager().isEvasionCastigosFisicosEnabled()) {
-            scheduleReconnectPunishment(uuid, evasions);
+            scheduleReconnectPunishment(uuid, nivel);
         }
         
-        // Aplicar penalización según número de evasiones
-        if (evasions == 1) {
-            // NIVEL 1: Advertencia suave
-            // -10% PS, advertencia, 3 rayos al reconectar
-            psLoss = (int) (currentPs * 0.10);
-            sendWarningMessage(player, 1, psLoss, timeInDisaster);
-            
-        } else if (evasions == 2) {
-            // NIVEL 2: Castigo moderado
-            // -20% PS, misión fallida, 5 rayos + daño al reconectar
-            psLoss = (int) (currentPs * 0.20);
-            failRandomMission(player);
-            sendWarningMessage(player, 2, psLoss, timeInDisaster);
-            
-        } else if (evasions == 3) {
-            // NIVEL 3: Castigo severo
-            // -30% PS, todas las misiones fallidas, 10 rayos + lluvia de fuego al reconectar
-            psLoss = (int) (currentPs * 0.30);
+        // Aplicar penalizaciones de misiones según config
+        int misionesRandom = plugin.getConfigManager().getEvasionPenalizacionMisionesRandom(nivel);
+        boolean todasMisiones = plugin.getConfigManager().getEvasionPenalizacionTodasMisiones(nivel);
+        
+        if (todasMisiones) {
             failAllMissions(player);
-            sendWarningMessage(player, 3, psLoss, timeInDisaster);
-            
-        } else {
-            // NIVEL 4+: CASTIGO EXTREMO
-            // -50% PS, todas las misiones fallidas, SUPER METEORITO destruye su base
-            psLoss = (int) (currentPs * 0.50);
-            failAllMissions(player);
-            sendWarningMessage(player, 4, psLoss, timeInDisaster);
+        } else if (misionesRandom > 0) {
+            for (int i = 0; i < misionesRandom; i++) {
+                failRandomMission(player);
+            }
         }
+        
+        // Enviar mensaje de advertencia
+        sendWarningMessage(player, nivel, psLoss, timeInDisaster);
         
         // Aplicar pérdida de PS
         if (psLoss > 0) {
@@ -174,14 +489,24 @@ public class DisasterEvasionTracker {
             plugin.getMissionService().setPlayerPs(uuid, newPs);
         }
         
+        // Notificar a administradores
+        notifyAdmins(uuid, player.getName(), nivel, evasions, psLoss);
+        
         // Log
         plugin.getLogger().warning(String.format(
-            "[EvasionTracker] EVASIÓN DETECTADA - Jugador: %s, Tiempo en desastre: %.1fs, Evasiones totales: %d, PS perdidos: %d",
+            "[EvasionTracker] EVASIÓN DETECTADA - Jugador: %s, Tiempo: %.1fs, Evasiones: %d, Nivel: %d, PS perdidos: %d",
             player.getName(),
             timeInDisaster / 1000.0,
             evasions,
+            nivel,
             psLoss
         ));
+        
+        // Guardar historial si está habilitado
+        if (plugin.getConfigManager().isEvasionEstadisticasEnabled() && 
+            plugin.getConfigManager().isEvasionEstadisticasGuardarHistorial()) {
+            saveEvasionHistory(uuid, player.getName(), timeInDisaster, psLoss, nivel, false);
+        }
     }
     
     /**
@@ -189,7 +514,7 @@ public class DisasterEvasionTracker {
      */
     private void sendWarningMessage(Player player, int evasionLevel, int psLoss, long timeInDisaster) {
         int secondsInDisaster = (int) (timeInDisaster / 1000);
-        int requiredSeconds = (int) (MIN_REQUIRED_TIME_MS / 1000);
+        int requiredSeconds = (int) (minRequiredTimeMs / 1000);
         
         player.sendMessage("");
         player.sendMessage("§c§l⚠ ═══════════════════════════════════════ ⚠");
@@ -382,7 +707,7 @@ public class DisasterEvasionTracker {
         pendingPunishment.put(uuid, evasionLevel);
         saveData(); // Guardar inmediatamente para persistir el castigo
         
-        if (plugin.getConfigManager().isDebugCiclo()) {
+        if (plugin.getConfigManager().isEvasionDebug()) {
             plugin.getLogger().info("[EvasionTracker] Castigo nivel " + evasionLevel + " programado y guardado para UUID: " + uuid);
         }
     }
@@ -745,5 +1070,75 @@ public class DisasterEvasionTracker {
         }
         
         return info.toString();
+    }
+    
+    /**
+     * Obtiene estadísticas globales de evasiones
+     */
+    public java.util.Map<String, Object> getGlobalStats() {
+        java.util.Map<String, Object> stats = new HashMap<>();
+        
+        int totalEvasiones = 0;
+        for (int count : evasionCount.values()) {
+            totalEvasiones += count;
+        }
+        
+        double nivelPromedio = 0;
+        if (!evasionCount.isEmpty()) {
+            nivelPromedio = totalEvasiones / (double) evasionCount.size();
+        }
+        
+        stats.put("jugadores_con_evasiones", evasionCount.size());
+        stats.put("evasiones_totales", totalEvasiones);
+        stats.put("castigos_pendientes", pendingPunishment.size());
+        stats.put("nivel_promedio", nivelPromedio);
+        stats.put("jugadores_online_trackeados", playerJoinTime.size());
+        
+        return stats;
+    }
+    
+    /**
+     * Obtiene el historial de evasiones de un jugador desde el archivo
+     */
+    public java.util.List<String> getPlayerHistory(UUID uuid) {
+        java.util.List<String> history = new java.util.ArrayList<>();
+        
+        try {
+            File historyFile = new File(plugin.getDataFolder(), "evasion_history.yml");
+            if (historyFile.exists()) {
+                FileConfiguration historyConfig = YamlConfiguration.loadConfiguration(historyFile);
+                history = historyConfig.getStringList(uuid.toString());
+            }
+        } catch (Exception e) {
+            plugin.getLogger().warning("[EvasionTracker] Error leyendo historial: " + e.getMessage());
+        }
+        
+        return history;
+    }
+    
+    /**
+     * Reduce el número de evasiones de un jugador
+     * @return Número de evasiones reducidas
+     */
+    public int reduceEvasions(UUID uuid, int cantidad) {
+        int current = evasionCount.getOrDefault(uuid, 0);
+        if (current <= 0) {
+            return 0;
+        }
+        
+        int toReduce = Math.min(current, cantidad);
+        int newCount = current - toReduce;
+        
+        if (newCount <= 0) {
+            evasionCount.remove(uuid);
+            lastEvasionTime.remove(uuid);
+        } else {
+            evasionCount.put(uuid, newCount);
+        }
+        
+        saveData();
+        plugin.getLogger().info("[EvasionTracker] Reducidas " + toReduce + " evasiones de UUID: " + uuid);
+        
+        return toReduce;
     }
 }

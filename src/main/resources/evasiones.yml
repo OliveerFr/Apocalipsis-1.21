@@ -1,0 +1,310 @@
+# ════════════════════════════════════════════════════════════════════
+# Apocalipsis — evasiones.yml
+# Sistema avanzado de detección y penalización de evasión de desastres
+# ════════════════════════════════════════════════════════════════════
+
+version: 1
+
+# ═══════════════════════════════════════════════════════════════════
+# CONFIGURACIÓN GENERAL
+# ═══════════════════════════════════════════════════════════════════
+general:
+  enabled: true                           # Activar/desactivar sistema completo
+  debug: false                            # Logs detallados en consola
+  guardar_cada_segundos: 30               # Frecuencia de guardado automático durante desastre
+
+# ═══════════════════════════════════════════════════════════════════
+# TIEMPOS Y VENTANAS
+# ═══════════════════════════════════════════════════════════════════
+tiempos:
+  # Tiempo mínimo que debe permanecer en desastre (jugadores normales)
+  min_tiempo_segundos: 60
+  
+  # Ventana de gracia para reconexión (protección contra fallos de internet)
+  ventana_gracia_segundos: 30
+  
+  # Configuración para jugadores que entran tarde al desastre (late-joiners)
+  late_join:
+    # Segundos después del inicio del desastre para ser considerado late-joiner
+    threshold_segundos: 10
+    # Tiempo mínimo requerido para late-joiners (reducido)
+    min_tiempo_segundos: 30
+  
+  # Tiempo para resetear contador de evasiones automáticamente
+  reset_automatico_horas: 24
+
+# ═══════════════════════════════════════════════════════════════════
+# SISTEMA DE REDUCCIÓN DE EVASIONES (BUEN COMPORTAMIENTO)
+# ═══════════════════════════════════════════════════════════════════
+reduccion:
+  enabled: true
+  
+  # Reducir 1 evasión por tiempo sin evadir
+  por_tiempo:
+    enabled: true
+    reducir_cada_horas: 48                # Cada 48 horas sin evadir, reduce 1 evasión
+  
+  # Reducir evasiones completando desastres
+  por_desastres_completados:
+    enabled: true
+    desastres_necesarios: 3               # Completar 3 desastres completos reduce 1 evasión
+    tiempo_minimo_segundos: 45            # Debe estar al menos 45s en cada desastre
+
+# ═══════════════════════════════════════════════════════════════════
+# PENALIZACIONES POR NIVEL
+# ═══════════════════════════════════════════════════════════════════
+penalizaciones:
+  # Tipo de cálculo: "fijo" o "proporcional"
+  # - fijo: Siempre aplica el porcentaje completo
+  # - proporcional: Reduce según tiempo que estuvo en el desastre
+  tipo_calculo: "proporcional"
+  
+  nivel_1:
+    ps_porcentaje: 10                     # -10% PS
+    fallar_misiones_random: 0             # No falla misiones
+    fallar_todas_misiones: false
+    castigo_fisico: "leve"                # leve, moderado, severo, extremo
+    mensaje: "&e⚠ Primera evasión - Advertencia"
+  
+  nivel_2:
+    ps_porcentaje: 20                     # -20% PS
+    fallar_misiones_random: 1             # Falla 1 misión aleatoria
+    fallar_todas_misiones: false
+    castigo_fisico: "moderado"
+    mensaje: "&6⚠ Segunda evasión - Castigo moderado"
+  
+  nivel_3:
+    ps_porcentaje: 30                     # -30% PS
+    fallar_misiones_random: 0
+    fallar_todas_misiones: true           # Falla TODAS las misiones
+    castigo_fisico: "severo"
+    mensaje: "&c⚠ Tercera evasión - Castigo severo"
+  
+  nivel_4:
+    ps_porcentaje: 50                     # -50% PS
+    fallar_misiones_random: 0
+    fallar_todas_misiones: true
+    castigo_fisico: "extremo"
+    mensaje: "&4⚠⚠⚠ Evasión crítica - CASTIGO MÁXIMO"
+
+# ═══════════════════════════════════════════════════════════════════
+# CASTIGOS FÍSICOS AL RECONECTAR
+# ═══════════════════════════════════════════════════════════════════
+castigos_fisicos:
+  enabled: true
+  delay_segundos: 3                       # Tiempo de espera antes de aplicar castigo
+  
+  # Configuración por nivel de severidad
+  leve:
+    rayos: 3
+    rayos_con_dano: false
+    efectos: []
+    particulas: true
+  
+  moderado:
+    rayos: 5
+    rayos_con_dano: true
+    dano_por_rayo: 2.0                    # Corazones
+    efectos:
+      - tipo: "SLOWNESS"
+        duracion_segundos: 10
+        amplificador: 1
+      - tipo: "WEAKNESS"
+        duracion_segundos: 10
+        amplificador: 0
+    particulas: true
+  
+  severo:
+    rayos: 10
+    rayos_con_dano: true
+    dano_por_rayo: 3.0
+    bolas_fuego: 8                        # Cantidad de bolas de fuego
+    bolas_fuego_radio: 5                  # Radio de dispersión
+    efectos:
+      - tipo: "SLOWNESS"
+        duracion_segundos: 20
+        amplificador: 2
+      - tipo: "WEAKNESS"
+        duracion_segundos: 20
+        amplificador: 1
+      - tipo: "MINING_FATIGUE"
+        duracion_segundos: 20
+        amplificador: 1
+    fuego_segundos: 5
+    particulas: true
+  
+  extremo:
+    rayos: 15
+    rayos_con_dano: true
+    dano_por_rayo: 7.5
+    explosiones: 15                       # Meteorito destructivo
+    explosion_radio: 10                   # Radio de área afectada
+    explosion_potencia: 4.0
+    explosion_rompe_bloques: true
+    efectos:
+      - tipo: "SLOWNESS"
+        duracion_segundos: 60
+        amplificador: 3
+      - tipo: "WEAKNESS"
+        duracion_segundos: 60
+        amplificador: 2
+      - tipo: "MINING_FATIGUE"
+        duracion_segundos: 60
+        amplificador: 2
+      - tipo: "HUNGER"
+        duracion_segundos: 60
+        amplificador: 2
+    fuego_segundos: 20
+    particulas: true
+    anuncio_global: true                  # Anunciar a todo el servidor
+
+# ═══════════════════════════════════════════════════════════════════
+# NOTIFICACIONES Y ALERTAS
+# ═══════════════════════════════════════════════════════════════════
+notificaciones:
+  # Notificaciones a administradores
+  admins:
+    enabled: true
+    alertar_desde_nivel: 2                # Solo alertar desde nivel 2+
+    permiso: "apocalipsis.notify.evasion" # Permiso para recibir notificaciones
+    mensaje: "&c[EVASIÓN] &f{player} &7evadió desastre ({evasiones} total, nivel {nivel})"
+    sonido: "BLOCK_NOTE_BLOCK_PLING"
+    sonido_volumen: 1.0
+    sonido_pitch: 0.5
+  
+  # Avisos proactivos al jugador durante el desastre
+  jugador_en_desastre:
+    enabled: true
+    avisos:
+      - segundos: 30
+        mensaje: "&e⏰ Llevas 30s en el desastre. Mínimo requerido: {min_tiempo}s"
+        sonido: "BLOCK_NOTE_BLOCK_HAT"
+      - segundos: 45
+        mensaje: "&e⏰ Llevas 45s. Faltan {faltante}s para salir sin penalización"
+        sonido: "BLOCK_NOTE_BLOCK_HAT"
+      - segundos: 60
+        mensaje: "&a✓ Ya puedes desconectarte sin penalización"
+        sonido: "ENTITY_PLAYER_LEVELUP"
+        particulas: "HAPPY_VILLAGER"
+  
+  # Mensaje al reconectar con castigo pendiente
+  castigo_pendiente:
+    titulo: "&4⚠"
+    subtitulo: "&cCastigo por evasión"
+    mensaje_chat:
+      - ""
+      - "&4§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      - ""
+      - "  &c&lTIENES UN CASTIGO PENDIENTE"
+      - "  &7Por evadir un desastre al desconectarte"
+      - ""
+      - "  &7Nivel de evasión: &c{nivel}"
+      - "  &7Los dioses aplicarán tu castigo en &e{segundos} segundos&7..."
+      - ""
+      - "&4§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      - ""
+
+# ═══════════════════════════════════════════════════════════════════
+# REQUISITOS POR TIPO DE DESASTRE (OPCIONAL)
+# ═══════════════════════════════════════════════════════════════════
+por_desastre:
+  enabled: false                          # Activar requisitos específicos por desastre
+  
+  # Si está desactivado, usa el tiempo general de 'tiempos.min_tiempo_segundos'
+  # Si está activado, usa los valores específicos de cada desastre
+  
+  huracan:
+    min_tiempo_segundos: 45               # Desastre fácil - tiempo reducido
+    multiplicador_penalizacion: 0.8       # Penalizaciones 20% más suaves
+  
+  terremoto:
+    min_tiempo_segundos: 60               # Desastre normal
+    multiplicador_penalizacion: 1.0       # Penalizaciones normales
+  
+  lluvia_fuego:
+    min_tiempo_segundos: 75               # Desastre difícil - tiempo aumentado
+    multiplicador_penalizacion: 1.2       # Penalizaciones 20% más duras
+
+# ═══════════════════════════════════════════════════════════════════
+# PROTECCIÓN CONTRA CRASHES
+# ═══════════════════════════════════════════════════════════════════
+crash_protection:
+  enabled: true
+  
+  # Al reiniciar servidor, verificar si había desastre activo
+  restaurar_tracking: true
+  
+  # Ventana de tiempo para considerar que fue un crash (minutos)
+  ventana_crash_minutos: 5
+  
+  # Si el servidor estuvo caído menos de X minutos, restaurar tracking
+  # Evita penalizar a jugadores por crashes del servidor
+
+# ═══════════════════════════════════════════════════════════════════
+# ESTADÍSTICAS Y TRACKING
+# ═══════════════════════════════════════════════════════════════════
+estadisticas:
+  enabled: true
+  guardar_historial: true                 # Guardar historial detallado de evasiones
+  historial_max_entradas: 100             # Máximo de entradas por jugador
+  
+  # Qué información trackear
+  trackear:
+    hora_evasion: true
+    desastre_evadido: true
+    tiempo_en_desastre: true
+    ps_perdidos: true
+    nivel_castigo: true
+    was_late_joiner: true
+
+# ═══════════════════════════════════════════════════════════════════
+# MENSAJES PERSONALIZABLES
+# ═══════════════════════════════════════════════════════════════════
+mensajes:
+  evasion_detectada:
+    titulo:
+      - ""
+      - "&c§l⚠ ═══════════════════════════════════════ ⚠"
+      - "&c§l         EVASIÓN DE DESASTRE DETECTADA"
+      - "&c§l⚠ ═══════════════════════════════════════ ⚠"
+      - ""
+    cuerpo:
+      - "&7Tiempo mínimo requerido: &e{min_tiempo}s"
+      - "&7Tiempo que estuviste: &c{tiempo_real}s"
+      - ""
+      - "&c§lPENALIZACIONES INMEDIATAS:"
+      - "&7  • Pérdida de PS: &c-{ps_perdidos} PS"
+    pie:
+      - ""
+      - "&e§l⚠ ADVERTENCIA:"
+      - "&7No evadas los desastres desconectándote."
+      - "&7Las penalizaciones &c§laumentan&7 con cada evasión."
+      - "&7Evasiones totales: &c{evasiones}"
+      - ""
+      - "&c§l⚠ ═══════════════════════════════════════ ⚠"
+      - ""
+  
+  ventana_gracia:
+    - "&e⏰ Desconexión detectada - Ventana de gracia de 30s"
+    - "&7Si reconectas en 30s, no serás penalizado"
+  
+  late_joiner:
+    - "&e⚠ Entraste tarde al desastre"
+    - "&7Tiempo mínimo requerido: &e{late_join_tiempo}s &7(reducido)"
+
+# ═══════════════════════════════════════════════════════════════════
+# PERMISOS Y EXENCIONES
+# ═══════════════════════════════════════════════════════════════════
+permisos:
+  # Jugadores con este permiso no son trackeados por evasión
+  exencion: "apocalipsis.evasion.exempt"
+  
+  # Reducción de penalizaciones por permisos VIP
+  vip:
+    enabled: false
+    permiso: "apocalipsis.evasion.vip"
+    reduccion_ps_porcentaje: 50           # VIP pierde 50% menos PS
+    reduccion_castigos_fisicos: true      # Castigos físicos más suaves
+  
+  # Comandos de administración
+  admin_comandos: "apocalipsis.evasion.admin"
