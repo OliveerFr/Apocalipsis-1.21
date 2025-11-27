@@ -161,6 +161,12 @@ public class ApocalipsisCommand implements CommandExecutor {
             case "test-event":
                 cmdAutoTest(sender, args);
                 break;
+            case "habilidad":
+            case "habilidades":
+            case "skill":
+            case "skills":
+                cmdHabilidades(sender, args);
+                break;
             default:
                 sender.sendMessage("§cSubcomando desconocido. Usa /avo para ver ayuda.");
                 break;
@@ -3089,6 +3095,294 @@ public class ApocalipsisCommand implements CommandExecutor {
             default:
                 sender.sendMessage("§cSubcomando desconocido: §f" + subCmd);
                 sender.sendMessage("§7Usa §e/avo autotest §7para ver ayuda");
+                break;
+        }
+    }
+    
+    // ==================== COMANDOS DE HABILIDADES ====================
+    
+    /**
+     * Comando principal de habilidades
+     * /avo habilidades [subcomando]
+     */
+    private void cmdHabilidades(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage("§cEste comando solo puede ser usado por jugadores.");
+            return;
+        }
+        
+        if (args.length < 2) {
+            // Abrir menú principal
+            plugin.getSkillTreeGUI().openMainMenu(player);
+            return;
+        }
+        
+        String subCmd = args[1].toLowerCase();
+        
+        switch (subCmd) {
+            case "menu":
+            case "arbol":
+            case "tree":
+                plugin.getSkillTreeGUI().openMainMenu(player);
+                break;
+                
+            case "info":
+                if (args.length < 3) {
+                    sender.sendMessage("§cUso: /avo habilidades info <id>");
+                    sender.sendMessage("§7Ejemplo: /avo habilidades info paso_ligero");
+                    return;
+                }
+                cmdHabilidadesInfo(player, args[2]);
+                break;
+                
+            case "mis":
+            case "my":
+            case "list":
+                cmdHabilidadesMis(player);
+                break;
+                
+            case "toggle":
+                if (args.length < 3) {
+                    sender.sendMessage("§cUso: /avo habilidades toggle <id>");
+                    return;
+                }
+                cmdHabilidadesToggle(player, args[2]);
+                break;
+                
+            case "toggles":
+                cmdHabilidadesToggles(player);
+                break;
+                
+            case "comprar":
+            case "buy":
+            case "unlock":
+                if (args.length < 3) {
+                    sender.sendMessage("§cUso: /avo habilidades comprar <id>");
+                    return;
+                }
+                cmdHabilidadesComprar(player, args[2]);
+                break;
+                
+            case "admin":
+                if (!player.hasPermission("avo.admin")) {
+                    sender.sendMessage("§cNo tienes permisos.");
+                    return;
+                }
+                cmdHabilidadesAdmin(player, args);
+                break;
+                
+            default:
+                sender.sendMessage("§e=== Comandos de Habilidades ===");
+                sender.sendMessage("§7/avo habilidades §f- Abre el árbol de habilidades");
+                sender.sendMessage("§7/avo habilidades info <id> §f- Info de una habilidad");
+                sender.sendMessage("§7/avo habilidades mis §f- Ver tus habilidades");
+                sender.sendMessage("§7/avo habilidades toggle <id> §f- Activar/desactivar");
+                sender.sendMessage("§7/avo habilidades toggles §f- Ver estado de toggles");
+                sender.sendMessage("§7/avo habilidades comprar <id> §f- Comprar habilidad");
+                if (player.hasPermission("avo.admin")) {
+                    sender.sendMessage("§c/avo habilidades admin §f- Comandos admin");
+                }
+                break;
+        }
+    }
+    
+    private void cmdHabilidadesInfo(Player player, String skillId) {
+        me.apocalipsis.skills.Skill skill = me.apocalipsis.skills.Skill.fromId(skillId);
+        if (skill == null) {
+            player.sendMessage("§cHabilidad no encontrada: §f" + skillId);
+            player.sendMessage("§7Usa §e/avo habilidades §7para ver el menú.");
+            return;
+        }
+        
+        var skillService = plugin.getSkillService();
+        boolean owned = skillService.hasSkill(player, skill);
+        boolean meetsReqs = skillService.meetsRequirements(player, skill);
+        
+        player.sendMessage("§6§l═══════ §e" + skill.getDisplayName() + " §6§l═══════");
+        player.sendMessage("§7" + skill.getDescription());
+        player.sendMessage("");
+        player.sendMessage("§7Rama: " + skill.getBranch().getDisplayName());
+        player.sendMessage("§7Tier: " + skill.getTier().getDisplayName());
+        player.sendMessage("§7Rareza: " + skill.getRarity().getDisplayName());
+        player.sendMessage("§7Costo: §e" + skill.getBaseCost() + " XP");
+        
+        if (skill.isToggleable()) {
+            player.sendMessage("§7Toggle: §a✓ Se puede activar/desactivar");
+        }
+        
+        if (skill.getRequirements().length > 0) {
+            player.sendMessage("");
+            player.sendMessage("§7Requisitos:");
+            for (String reqId : skill.getRequirements()) {
+                var req = me.apocalipsis.skills.Skill.fromId(reqId);
+                if (req != null) {
+                    boolean hasReq = skillService.hasSkill(player, req);
+                    String check = hasReq ? "§a✓" : "§c✗";
+                    player.sendMessage("  " + check + " §7" + req.getDisplayName());
+                }
+            }
+        }
+        
+        player.sendMessage("");
+        if (owned) {
+            player.sendMessage("§a§l✓ DESBLOQUEADA");
+            if (skill.isToggleable()) {
+                boolean enabled = skillService.isSkillEnabled(player, skill);
+                player.sendMessage("§7Estado: " + (enabled ? "§aActivada" : "§cDesactivada"));
+            }
+        } else if (meetsReqs) {
+            player.sendMessage("§e§l⬡ DISPONIBLE PARA COMPRAR");
+        } else {
+            player.sendMessage("§c§l✗ BLOQUEADA - Faltan requisitos");
+        }
+        player.sendMessage("§6§l═════════════════════════════════");
+    }
+    
+    private void cmdHabilidadesMis(Player player) {
+        var skillService = plugin.getSkillService();
+        var skills = skillService.getUnlockedSkills(player);
+        
+        if (skills.isEmpty()) {
+            player.sendMessage("§cNo tienes habilidades desbloqueadas.");
+            player.sendMessage("§7Usa §e/avo habilidades §7para ver el árbol.");
+            return;
+        }
+        
+        player.sendMessage("§6§l═══════ §eTUS HABILIDADES §6§l═══════");
+        
+        for (var skill : skills) {
+            String toggle = "";
+            if (skill.isToggleable()) {
+                boolean enabled = skillService.isSkillEnabled(player, skill);
+                toggle = enabled ? " §a[ON]" : " §c[OFF]";
+            }
+            player.sendMessage("§7• " + skill.getColoredName() + toggle);
+        }
+        
+        player.sendMessage("");
+        player.sendMessage("§7Total: §b" + skills.size() + "§7/§b" + skillService.getTotalSkillCount());
+        player.sendMessage("§7XP gastada: §e" + skillService.getXpGastada(player));
+        player.sendMessage("§6§l════════════════════════════════");
+    }
+    
+    private void cmdHabilidadesToggle(Player player, String skillId) {
+        var skill = me.apocalipsis.skills.Skill.fromId(skillId);
+        if (skill == null) {
+            player.sendMessage("§cHabilidad no encontrada: §f" + skillId);
+            return;
+        }
+        
+        plugin.getSkillService().toggleSkill(player, skill);
+    }
+    
+    private void cmdHabilidadesToggles(Player player) {
+        var skillService = plugin.getSkillService();
+        var toggleables = skillService.getToggleableSkills(player);
+        
+        if (toggleables.isEmpty()) {
+            player.sendMessage("§cNo tienes habilidades toggleables desbloqueadas.");
+            return;
+        }
+        
+        player.sendMessage("§6§l═══════ §eTOGGLES §6§l═══════");
+        
+        for (var skill : toggleables) {
+            boolean enabled = skillService.isSkillEnabled(player, skill);
+            String status = enabled ? "§a[ON]" : "§c[OFF]";
+            player.sendMessage(status + " §7" + skill.getDisplayName());
+            player.sendMessage("  §8/avo habilidades toggle " + skill.getId());
+        }
+        
+        player.sendMessage("§6§l══════════════════════════");
+    }
+    
+    private void cmdHabilidadesComprar(Player player, String skillId) {
+        var skill = me.apocalipsis.skills.Skill.fromId(skillId);
+        if (skill == null) {
+            player.sendMessage("§cHabilidad no encontrada: §f" + skillId);
+            return;
+        }
+        
+        // Abrir menú de confirmación
+        plugin.getSkillTreeGUI().openConfirmMenu(player, skill);
+    }
+    
+    private void cmdHabilidadesAdmin(Player player, String[] args) {
+        if (args.length < 3) {
+            player.sendMessage("§e=== Admin de Habilidades ===");
+            player.sendMessage("§7/avo habilidades admin give <jugador> <skill>");
+            player.sendMessage("§7/avo habilidades admin remove <jugador> <skill>");
+            player.sendMessage("§7/avo habilidades admin reset <jugador>");
+            player.sendMessage("§7/avo habilidades admin list");
+            return;
+        }
+        
+        String action = args[2].toLowerCase();
+        var skillService = plugin.getSkillService();
+        
+        switch (action) {
+            case "give":
+                if (args.length < 5) {
+                    player.sendMessage("§cUso: /avo habilidades admin give <jugador> <skill>");
+                    return;
+                }
+                Player targetGive = plugin.getServer().getPlayer(args[3]);
+                if (targetGive == null) {
+                    player.sendMessage("§cJugador no encontrado.");
+                    return;
+                }
+                var skillGive = me.apocalipsis.skills.Skill.fromId(args[4]);
+                if (skillGive == null) {
+                    player.sendMessage("§cHabilidad no encontrada.");
+                    return;
+                }
+                skillService.giveSkill(targetGive, skillGive);
+                player.sendMessage("§a✓ Habilidad §e" + skillGive.getDisplayName() + " §adada a §f" + targetGive.getName());
+                targetGive.sendMessage("§a✓ Has recibido la habilidad: " + skillGive.getColoredName());
+                break;
+                
+            case "remove":
+                if (args.length < 5) {
+                    player.sendMessage("§cUso: /avo habilidades admin remove <jugador> <skill>");
+                    return;
+                }
+                Player targetRemove = plugin.getServer().getPlayer(args[3]);
+                if (targetRemove == null) {
+                    player.sendMessage("§cJugador no encontrado.");
+                    return;
+                }
+                var skillRemove = me.apocalipsis.skills.Skill.fromId(args[4]);
+                if (skillRemove == null) {
+                    player.sendMessage("§cHabilidad no encontrada.");
+                    return;
+                }
+                skillService.removeSkill(targetRemove, skillRemove);
+                player.sendMessage("§a✓ Habilidad §e" + skillRemove.getDisplayName() + " §aquitada a §f" + targetRemove.getName());
+                break;
+                
+            case "reset":
+                if (args.length < 4) {
+                    player.sendMessage("§cUso: /avo habilidades admin reset <jugador>");
+                    return;
+                }
+                Player targetReset = plugin.getServer().getPlayer(args[3]);
+                if (targetReset == null) {
+                    player.sendMessage("§cJugador no encontrado.");
+                    return;
+                }
+                skillService.resetPlayer(targetReset);
+                player.sendMessage("§a✓ Habilidades de §f" + targetReset.getName() + " §areseteadas.");
+                break;
+                
+            case "list":
+                player.sendMessage("§e=== Lista de Habilidades ===");
+                for (var skill : me.apocalipsis.skills.Skill.values()) {
+                    player.sendMessage("§7• §e" + skill.getId() + " §f- " + skill.getDisplayName());
+                }
+                break;
+                
+            default:
+                player.sendMessage("§cSubcomando admin desconocido.");
                 break;
         }
     }

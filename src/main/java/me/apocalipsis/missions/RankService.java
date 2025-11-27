@@ -203,6 +203,14 @@ public class RankService {
     public int getXpForRank(MissionRank rank) {
         return rank.getXpRequired();
     }
+    
+    /**
+     * Obtiene el rango que correspondería a una cantidad de XP
+     * Útil para previsualizar compras de habilidades
+     */
+    public MissionRank getRankForXP(int xp) {
+        return MissionRank.fromXp(xp);
+    }
 
     /**
      * [FIX] Obtiene tab_prefix traducido desde rangos.yml

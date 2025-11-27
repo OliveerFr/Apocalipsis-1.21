@@ -32,7 +32,7 @@ public class AvoTabCompleter implements TabCompleter {
                 "tps", "stats", "backup", "cooldown", "debug", "test", "test-alert",
                 "reload", "admin", "escanear", "protecciones", "eco", "eco_sombras",
                 "evento3", "susurro", "xp", "experience", "nivel", "level", "evasion", "evasiones",
-                "autotest"
+                "autotest", "habilidad", "habilidades", "skill", "skills"
             );
             
             return subcommands.stream()
@@ -132,6 +132,15 @@ public class AvoTabCompleter implements TabCompleter {
                 case "autotest":
                     // Sugerir subcomandos de autotest
                     return Arrays.asList("start", "stop", "run", "suite", "bots", "report", "clear").stream()
+                        .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
+                        .collect(Collectors.toList());
+                
+                case "habilidad":
+                case "habilidades":
+                case "skill":
+                case "skills":
+                    // Sugerir subcomandos de habilidades
+                    return Arrays.asList("menu", "arbol", "info", "mis", "toggle", "toggles", "comprar", "admin").stream()
                         .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
                         .collect(Collectors.toList());
             }
@@ -292,6 +301,23 @@ public class AvoTabCompleter implements TabCompleter {
                         .collect(Collectors.toList());
                 }
             }
+            
+            // /avo habilidades info|toggle|comprar <skill_id>
+            if (subCmd.equals("habilidad") || subCmd.equals("habilidades") || 
+                subCmd.equals("skill") || subCmd.equals("skills")) {
+                String habSubCmd = args[1].toLowerCase();
+                if (habSubCmd.equals("info") || habSubCmd.equals("toggle") || habSubCmd.equals("comprar") || habSubCmd.equals("buy")) {
+                    return Arrays.stream(me.apocalipsis.skills.Skill.values())
+                        .map(s -> s.getId())
+                        .filter(s -> s.toLowerCase().startsWith(args[2].toLowerCase()))
+                        .collect(Collectors.toList());
+                }
+                if (habSubCmd.equals("admin")) {
+                    return Arrays.asList("give", "remove", "reset", "list").stream()
+                        .filter(s -> s.toLowerCase().startsWith(args[2].toLowerCase()))
+                        .collect(Collectors.toList());
+                }
+            }
         }
         
         // args.length == 4: /avo evasion reduce <jugador> <cantidad>
@@ -338,6 +364,34 @@ public class AvoTabCompleter implements TabCompleter {
             String xpSubCmd = args[1].toLowerCase();
             if (xpSubCmd.equals("add") || xpSubCmd.equals("set")) {
                 return Arrays.asList("10", "50", "100", "250", "500", "1000");
+            }
+        }
+        
+        // args.length == 4: /avo habilidades admin give|remove|reset <jugador>
+        if (args.length == 4 && (args[0].equalsIgnoreCase("habilidad") || args[0].equalsIgnoreCase("habilidades") ||
+                                  args[0].equalsIgnoreCase("skill") || args[0].equalsIgnoreCase("skills"))) {
+            if (args[1].equalsIgnoreCase("admin")) {
+                String adminSubCmd = args[2].toLowerCase();
+                if (adminSubCmd.equals("give") || adminSubCmd.equals("remove") || adminSubCmd.equals("reset")) {
+                    return plugin.getServer().getOnlinePlayers().stream()
+                        .map(Player::getName)
+                        .filter(s -> s.toLowerCase().startsWith(args[3].toLowerCase()))
+                        .collect(Collectors.toList());
+                }
+            }
+        }
+        
+        // args.length == 5: /avo habilidades admin give|remove <jugador> <skill_id>
+        if (args.length == 5 && (args[0].equalsIgnoreCase("habilidad") || args[0].equalsIgnoreCase("habilidades") ||
+                                  args[0].equalsIgnoreCase("skill") || args[0].equalsIgnoreCase("skills"))) {
+            if (args[1].equalsIgnoreCase("admin")) {
+                String adminSubCmd = args[2].toLowerCase();
+                if (adminSubCmd.equals("give") || adminSubCmd.equals("remove")) {
+                    return Arrays.stream(me.apocalipsis.skills.Skill.values())
+                        .map(s -> s.getId())
+                        .filter(s -> s.toLowerCase().startsWith(args[4].toLowerCase()))
+                        .collect(Collectors.toList());
+                }
             }
         }
 

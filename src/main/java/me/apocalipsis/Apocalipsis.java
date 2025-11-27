@@ -42,6 +42,9 @@ import me.apocalipsis.utils.OnlinePlayersCache;
 import me.apocalipsis.utils.VelocityManager;
 import me.apocalipsis.ui.RewardClaimSystem;
 import me.apocalipsis.commands.RecompensaCommand;
+import me.apocalipsis.skills.SkillService;
+import me.apocalipsis.skills.SkillTreeGUI;
+import me.apocalipsis.skills.SkillEffectListener;
 
 public final class Apocalipsis extends JavaPlugin {
 
@@ -63,6 +66,10 @@ public final class Apocalipsis extends JavaPlugin {
     private ExperienceService experienceService;
     private AbilityService abilityService;
     private RewardService rewardService;
+    
+    // Servicios de árbol de habilidades
+    private SkillService skillService;
+    private SkillTreeGUI skillTreeGUI;
 
     // UI
     private MessageBus messageBus;
@@ -117,6 +124,13 @@ public final class Apocalipsis extends JavaPlugin {
         experienceService = new ExperienceService(this);
         abilityService = new AbilityService(this);
         rewardService = new RewardService(this);
+        
+        // Inicializar árbol de habilidades
+        skillService = new SkillService(this);
+        skillTreeGUI = new SkillTreeGUI(this, skillService);
+        getServer().getPluginManager().registerEvents(skillTreeGUI, this);
+        getServer().getPluginManager().registerEvents(new SkillEffectListener(this, skillService), this);
+        getLogger().info("[SkillService] ✓ Sistema de árbol de habilidades iniciado");
         
         // Iniciar tarea de habilidades pasivas
         abilityService.startTask();
@@ -227,6 +241,11 @@ public final class Apocalipsis extends JavaPlugin {
         // Detener habilidades
         if (abilityService != null) {
             abilityService.stopTask();
+        }
+        
+        // Guardar árbol de habilidades
+        if (skillService != null) {
+            skillService.shutdown();
         }
         
         // Detener mission height tracker
@@ -387,6 +406,14 @@ public final class Apocalipsis extends JavaPlugin {
     
     public RewardClaimSystem getRewardClaimSystem() {
         return rewardClaimSystem;
+    }
+    
+    public SkillService getSkillService() {
+        return skillService;
+    }
+    
+    public SkillTreeGUI getSkillTreeGUI() {
+        return skillTreeGUI;
     }
     
     /**
