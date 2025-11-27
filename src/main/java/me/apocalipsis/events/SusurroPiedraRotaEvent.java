@@ -2509,62 +2509,61 @@ public class SusurroPiedraRotaEvent extends EventBase {
             // Mostrar diálogo narrativo ANTES de la actividad
             switch (numAltar) {
                 case 1:
-                    broadcastNarrative("    §8El Observador§7: §o\"...el primer fragmento...\"");
-                    broadcastNarrative("    §8El Observador§7: §o\"...debes permanecer inmóvil...\"");
-                    broadcastNarrative("    §8El Observador§7: §o\"...para escuchar su susurro...\"");
+                    broadcastNarrative("    §8El Observador§7: §o\"...el primer fragmento yace ante ustedes...\"");
+                    broadcastNarrative("    §8El Observador§7: §o\"...deben quedarse quietos... muy quietos...\"");
+                    broadcastNarrative("    §8El Observador§7: §o\"...solo así podrán escuchar lo que susurra...\"");
                     broadcastNarrative("");
-                    broadcastNarrative("    §e⚡ INSTRUCCIONES:");
-                    broadcastNarrative("    §f1. §7Reúnanse cerca del altar (15 bloques)");
-                    broadcastNarrative("    §f2. §7Permanezcan §lcompletamente inmóviles");
-                    broadcastNarrative("    §f3. §7Duración: §e10 segundos §7sin moverse");
-                    broadcastNarrative("    §8(El altar responde a la quietud absoluta)");
+                    broadcastNarrative("    §e⚡ ¿QUÉ DEBEN HACER?");
+                    broadcastNarrative("    §f1. §7Acérquense al altar (15 bloques)");
+                    broadcastNarrative("    §f2. §7Quédense §lcompletamente quietos");
+                    broadcastNarrative("    §f3. §7Aguanten §e10 segundos §7sin moverse");
+                    broadcastNarrative("    §8(El altar responde a la calma total)");
                     break;
                 case 2:
-                    broadcastNarrative("    §8El Observador§7: §o\"...los ecos del vacío resuenan...\"");
-                    broadcastNarrative("    §8El Observador§7: §o\"...objetos que atravesaron dimensiones...\"");
-                    broadcastNarrative("    §8El Observador§7: §o\"...alimentad la memoria con su poder...\"");
-                    broadcastNarrative("    §8El Observador§7: §o\"...necesito más... mucho más...\"");
+                    broadcastNarrative("    §8El Observador§7: §o\"...escuchen... los ecos del vacío resuenan...\"");
+                    broadcastNarrative("    §8El Observador§7: §o\"...objetos que viajaron entre dimensiones...\"");
+                    broadcastNarrative("    §8El Observador§7: §o\"...aliméntenlo con esa energía... ¡denle más!\"");
                     broadcastNarrative("");
-                    broadcastNarrative("    §e⚡ INSTRUCCIONES:");
-                    broadcastNarrative("    §f1. §7Reunid §e8 Ender Pearls §7(perlas de End)");
-                    broadcastNarrative("    §f2. §7Dropead las perlas cerca del altar");
+                    broadcastNarrative("    §e⚡ ¿QUÉ DEBEN HACER?");
+                    broadcastNarrative("    §f1. §7Consigan §e8 Ender Pearls §7(perlas del End)");
+                    broadcastNarrative("    §f2. §7Tírenlas cerca del altar (con Q)");
                     broadcastNarrative("    §f3. §7Progreso: §a0/8 §7perlas entregadas");
-                    broadcastNarrative("    §8(El altar absorberá la energía dimensional)");
+                    broadcastNarrative("    §8(El altar absorbe la energía dimensional)");
                     break;
                 case 3:
-                    broadcastNarrative("    §8El Observador§7: §o\"...el fragmento ansía riquezas de la tierra...\"");
-                    broadcastNarrative("    §8El Observador§7: §o\"...metales preciosos... gemas brillantes...\"");
-                    broadcastNarrative("    §8El Observador§7: §o\"...sacrificad vuestros tesoros... alimentad la memoria...\"");
+                    broadcastNarrative("    §8El Observador§7: §o\"...este fragmento tiene hambre de riquezas...\"");
+                    broadcastNarrative("    §8El Observador§7: §o\"...metales preciosos... piedras brillantes...\"");
+                    broadcastNarrative("    §8El Observador§7: §o\"...sacrifiquen sus tesoros para alimentar la memoria...\"");
                     broadcastNarrative("");
-                    broadcastNarrative("    §e⚡ INSTRUCCIONES:");
-                    broadcastNarrative("    §f1. §7Tirad §6items valiosos §7cerca del altar:");
+                    broadcastNarrative("    §e⚡ ¿QUÉ DEBEN HACER?");
+                    broadcastNarrative("    §f1. §7Tiren §6objetos valiosos §7cerca del altar:");
                     broadcastNarrative("       §7• §bDiamante §7= 3 pts §7| §6Oro §7= 1 pt");
                     broadcastNarrative("       §7• §aEsmeralda §7= 2 pts §7| §4Netherite §7= 5 pts");
-                    broadcastNarrative("    §f2. §7Total necesario: §610 puntos §7de ofrendas");
+                    broadcastNarrative("    §f2. §7Necesitan juntar §610 puntos §7de ofrendas");
                     broadcastNarrative("    §8(El altar consume los materiales valiosos)");
                     break;
                 case 4:
-                    broadcastNarrative("    §8El Observador§7: §o\"...criaturas del vacío emergen...\"");
+                    broadcastNarrative("    §8El Observador§7: §o\"...¡cuidado! Criaturas del vacío están emergiendo...\"");
                     broadcastNarrative("    §8El Observador§7: §o\"...la sangre de los hostiles alimenta la memoria...\"");
-                    broadcastNarrative("    §8El Observador§7: §o\"...caza a las bestias... purifica el fragmento...\"");
+                    broadcastNarrative("    §8El Observador§7: §o\"...cacen a las bestias... purifiquen el fragmento...\"");
                     broadcastNarrative("");
-                    broadcastNarrative("    §e⚡ INSTRUCCIONES:");
-                    broadcastNarrative("    §f1. §7Enemigos aparecerán cerca del altar");
-                    broadcastNarrative("    §f2. §7Eliminad §c5 mobs hostiles");
-                    broadcastNarrative("    §f3. §7Mobs naturales también cuentan (50 bloques)");
+                    broadcastNarrative("    §e⚡ ¿QUÉ DEBEN HACER?");
+                    broadcastNarrative("    §f1. §7Van a aparecer enemigos cerca del altar");
+                    broadcastNarrative("    §f2. §7Eliminen §c5 mobs hostiles");
+                    broadcastNarrative("    §f3. §7Los mobs naturales también sirven (50 bloques)");
                     broadcastNarrative("    §8(Zombies, Esqueletos, Husks, Strays...)");
                     break;
                 case 5:
-                    broadcastNarrative("    §8El Observador§7: §o\"...los cuatro fragmentos resuenan juntos...\"");
-                    broadcastNarrative("    §8El Observador§7: §o\"...pero la memoria sigue incompleta...\"");
-                    broadcastNarrative("    §8El Observador§7: §o\"...algo más grande... más oscuro... despierta...\"");
-                    broadcastNarrative("    §8El Observador§7: §o\"...y no os dejará marchar sin resistencia...\"");
+                    broadcastNarrative("    §8El Observador§7: §o\"...los cuatro fragmentos resuenan como uno...\"");
+                    broadcastNarrative("    §8El Observador§7: §o\"...pero la memoria todavía no está completa...\"");
+                    broadcastNarrative("    §8El Observador§7: §o\"...algo más grande... más oscuro... está despertando...\"");
+                    broadcastNarrative("    §8El Observador§7: §o\"...y no los va a dejar ir sin pelear...\"");
                     broadcastNarrative("");
-                    broadcastNarrative("    §c⚡ INSTRUCCIONES - DESAFÍO FINAL:");
-                    broadcastNarrative("    §f1. §7Permaneced cerca del altar (15 bloques)");
-                    broadcastNarrative("    §f2. §7Oleadas de enemigos aparecerán");
-                    broadcastNarrative("    §f3. §7Duración: §e30 segundos §7de resistencia");
-                    broadcastNarrative("    §8(La memoria corrupta lucha por manteneros fuera)");
+                    broadcastNarrative("    §c⚡ DESAFÍO FINAL - ¿QUÉ DEBEN HACER?");
+                    broadcastNarrative("    §f1. §7Quédense cerca del altar (15 bloques)");
+                    broadcastNarrative("    §f2. §7Van a venir oleadas de enemigos");
+                    broadcastNarrative("    §f3. §7Aguanten §e30 segundos §7de resistencia");
+                    broadcastNarrative("    §8(La memoria corrupta lucha por sacarlos)");
                     break;
             }
             
@@ -3519,36 +3518,36 @@ public class SusurroPiedraRotaEvent extends EventBase {
         // NARRATIVA DEL OBSERVADOR explicando QUÉ pasó y POR QUÉ
         switch (numAltar) {
             case 1:
-                broadcastNarrative("    §8El Observador§7: §o\"...lo escucháis..? El fragmento despierta...\"");
-                broadcastNarrative("    §8El Observador§7: §o\"...vuestra quietud permitió que la memoria resonara...\"");
+                broadcastNarrative("    §8El Observador§7: §o\"...¿lo escuchan? El fragmento despierta...\"");
+                broadcastNarrative("    §8El Observador§7: §o\"...su quietud permitió que la memoria resonara...\"");
                 broadcastNarrative("    §8El Observador§7: §o\"...el primer eco ha sido restaurado...\"");
                 broadcastNarrative("");
-                broadcastNarrative("    §7La inmovilidad permitió sincronizar con el fragmento dormido.");
-                broadcastNarrative("    §7Una fracción del mundo roto se ha reconectado.");
+                broadcastNarrative("    §a✓ §7La calma sincronizó con el fragmento dormido.");
+                broadcastNarrative("    §a✓ §7Una fracción del mundo roto se reconectó.");
                 break;
             case 2:
-                broadcastNarrative("    §8El Observador§7: §o\"...objetos que atravesaron el vacío...\"");
+                broadcastNarrative("    §8El Observador§7: §o\"...objetos que viajaron por el vacío...\"");
                 broadcastNarrative("    §8El Observador§7: §o\"...ocho perlas... suficiente energía dimensional...\"");
-                broadcastNarrative("    §8El Observador§7: §o\"...la resonancia alcanza su punto máximo...\"");
+                broadcastNarrative("    §8El Observador§7: §o\"...¡la resonancia alcanzó su punto máximo!\"");
                 broadcastNarrative("");
-                broadcastNarrative("    §7Las Ender Pearls vinieron del End, dimensión conectada al vacío.");
-                broadcastNarrative("    §7Su energía combinada desestabilizó la realidad, reparando la memoria rota.");
+                broadcastNarrative("    §a✓ §7Las Ender Pearls vienen del End, dimensión conectada al vacío.");
+                broadcastNarrative("    §a✓ §7Su energía combinada desestabilizó la realidad, reparando la memoria.");
                 break;
             case 3:
                 broadcastNarrative("    §8El Observador§7: §o\"...la esencia vital fluye hacia la piedra...\"");
-                broadcastNarrative("    §8El Observador§7: §o\"...el fragmento absorbe vuestro dolor...\"");
-                broadcastNarrative("    §8El Observador§7: §o\"...el sacrificio fortalece la conexión...\"");
+                broadcastNarrative("    §8El Observador§7: §o\"...el fragmento absorbe su sacrificio...\"");
+                broadcastNarrative("    §8El Observador§7: §o\"...las ofrendas fortalecen la conexión...\"");
                 broadcastNarrative("");
-                broadcastNarrative("    §7Los fragmentos están hechos de memorias vivientes del mundo.");
-                broadcastNarrative("    §7Necesitan energía vital para recobrar forma tangible.");
+                broadcastNarrative("    §a✓ §7Los fragmentos están hechos de memorias vivientes del mundo.");
+                broadcastNarrative("    §a✓ §7Necesitaban esa energía para recobrar forma tangible.");
                 break;
             case 4:
                 broadcastNarrative("    §8El Observador§7: §o\"...la plaga se desvanece por completo...\"");
-                broadcastNarrative("    §8El Observador§7: §o\"...doce ecos erróneos eliminados...\"");
-                broadcastNarrative("    §8El Observador§7: §o\"...la multiplicación corrupta se detiene...\"");
+                broadcastNarrative("    §8El Observador§7: §o\"...los ecos erróneos fueron eliminados...\"");
+                broadcastNarrative("    §8El Observador§7: §o\"...la corrupción se detuvo... por ahora...\"");
                 broadcastNarrative("");
-                broadcastNarrative("    §7El mundo roto creó copias que no deberían existir.");
-                broadcastNarrative("    §7Ahora el fragmento puede recordar sin interferencias.");
+                broadcastNarrative("    §a✓ §7El mundo roto creó copias que no deberían existir.");
+                broadcastNarrative("    §a✓ §7Ahora el fragmento puede recordar sin interferencias.");
                 break;
         }
         
@@ -3685,8 +3684,8 @@ public class SusurroPiedraRotaEvent extends EventBase {
             broadcastNarrative("    §8El Observador§7: §o\"...abrieron una grieta hacia algo peor...\"");
             broadcastNarrative("    §8El Observador§7: §o\"...un eco del apocalipsis olvidado...\"");
             broadcastNarrative("");
-            broadcastNarrative("    §7Los fragmentos eran llaves. Las reunisteis.");
-            broadcastNarrative("    §7Ahora debéis enfrentar lo que sellaron.");
+            broadcastNarrative("    §7Los fragmentos eran llaves. Las juntaron.");
+            broadcastNarrative("    §7Ahora deben enfrentar lo que sellaron.");
             broadcastNarrative("");
         }, 80L);
         
@@ -5449,6 +5448,14 @@ public class SusurroPiedraRotaEvent extends EventBase {
             criatura.addScoreboardTag("susurro_criatura");
             criatura.addScoreboardTag("tipo_" + tipo.toLowerCase());
             
+            // ✨ XP dinámico generoso - Acto 2 da MUCHA XP
+            int xpBase = 35 + (oleadaActual * 15); // Oleada 1: 50, Oleada 2: 65, Oleada 3: 80
+            criatura.getPersistentDataContainer().set(
+                new org.bukkit.NamespacedKey(plugin, "evento_xp"),
+                org.bukkit.persistence.PersistentDataType.INTEGER,
+                xpBase + (int)(Math.random() * 25) // +0-24 XP random
+            );
+            
             // NO usar efecto GLOWING permanente - ahora será dinámico
             tipoCriatura.put(criatura.getUniqueId(), tipo);
             glowIntensidad.put(criatura.getUniqueId(), 50); // Intensidad base 50%
@@ -5826,6 +5833,27 @@ public class SusurroPiedraRotaEvent extends EventBase {
                             killer.getUniqueId(),
                             participacionCriaturas.getOrDefault(killer.getUniqueId(), 0) + 1
                         );
+                        
+                        // ✨ DAR XP GENEROSO - Acto 2
+                        org.bukkit.NamespacedKey xpKey = new org.bukkit.NamespacedKey(plugin, "evento_xp");
+                        final int xpGanado;
+                        
+                        if (living.getPersistentDataContainer().has(xpKey, org.bukkit.persistence.PersistentDataType.INTEGER)) {
+                            xpGanado = living.getPersistentDataContainer().get(xpKey, org.bukkit.persistence.PersistentDataType.INTEGER);
+                        } else {
+                            xpGanado = 30 + (int)(Math.random() * 15); // Default 30-44 XP
+                        }
+                        
+                        killer.giveExp(xpGanado);
+                        
+                        // Orbe de XP visual
+                        final int xpOrb = xpGanado / 5;
+                        deathLoc.getWorld().spawn(deathLoc.clone().add(0, 0.5, 0), org.bukkit.entity.ExperienceOrb.class, orb -> {
+                            orb.setExperience(xpOrb);
+                        });
+                        
+                        killer.sendMessage("§a§l✦ +" + xpGanado + " XP §a§o¡Eco eliminado!");
+                        killer.playSound(killer.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.8f, 1.2f);
                     }
                 }
                 
@@ -7737,7 +7765,7 @@ public class SusurroPiedraRotaEvent extends EventBase {
         broadcastNarrative("§8§m                                                    ");
         broadcastNarrative("");
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            broadcastNarrative("    §5§lEl Observador§7: §o\"...lo habéis logrado...\"");
+            broadcastNarrative("    §5§lEl Observador§7: §o\"...¡lo lograron!...\"");
             playSoundToAll(Sound.ENTITY_WARDEN_AMBIENT, 0.5f, 0.5f);
         }, 20L);
         
@@ -7827,7 +7855,7 @@ public class SusurroPiedraRotaEvent extends EventBase {
             broadcastNarrative("          §5§lEL SUSURRO EN LA PIEDRA ROTA");
             broadcastNarrative("               §7ha sido completado");
             broadcastNarrative("");
-            broadcastNarrative("    §7Los fragmentos de memoria han sido reunidos.");
+            broadcastNarrative("    §7Juntaron todos los fragmentos de memoria.");
             broadcastNarrative("    §7El núcleo de la Forma ha sido capturado.");
             broadcastNarrative("    §7Pero algo cambió en el proceso...");
             broadcastNarrative("");
@@ -7836,7 +7864,7 @@ public class SusurroPiedraRotaEvent extends EventBase {
         
         // Teaser futuro (23s)
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            broadcastNarrative("    §5\"El Observador ahora sabe que estáis aquí.\"");
+            broadcastNarrative("    §5\"El Observador ahora sabe que están aquí.\"");
             broadcastNarrative("    §5\"Y lo que observa... nunca olvida.\"");
             broadcastNarrative("");
             broadcastNarrative("§8§m══════════════════════════════════════════════════");
@@ -10165,7 +10193,7 @@ public class SusurroPiedraRotaEvent extends EventBase {
                 
             case "ACTO2_INICIO":
                 dialogos.add("§5§l◈ §8§o\"...veis aquella grieta? No es una herida... es una cicatriz...\"");
-                dialogos.add("§5§l◈ §8§o\"...hace eones, vuestros antepasados sellaron algo aquí...\"");
+                dialogos.add("§5§l◈ §8§o\"...hace eones, sus antepasados sellaron algo aquí...\"");
                 dialogos.add("§5§l◈ §8§o\"...los fragmentos que activasteis eran las llaves del sello...\"");
                 dialogos.add("§5§l◈ §8§o\"...y ahora... lo que ellos encerraron... busca venganza...\"");
                 dialogos.add("§5§l◈ §8§o\"...defended el altar. Si la Forma os alcanza... todo terminará...\"");
@@ -10198,7 +10226,7 @@ public class SusurroPiedraRotaEvent extends EventBase {
                 break;
                 
             case "VICTORIA_ACTO2":
-                dialogos.add("§5§l◈ §8§o\"...lo habéis logrado... la Forma vuelve a dormir... por ahora...\"");
+                dialogos.add("§5§l◈ §8§o\"...¡lo lograron!... la Forma vuelve a dormir... por ahora...\"");
                 dialogos.add("§5§l◈ §8§o\"...pero su núcleo aún late... dentro de la grieta...\"");
                 dialogos.add("§5§l◈ §8§o\"...si queréis terminar esto... debéis entrar...\"");
                 break;
@@ -10233,7 +10261,7 @@ public class SusurroPiedraRotaEvent extends EventBase {
             case "NUCLEO_DESTRUIDO":
                 dialogos.add("§5§l◈ §8§o\"...se terminó... la Forma ha sido destruida...\"");
                 dialogos.add("§5§l◈ §8§o\"...pero su eco permanece... en algún lugar del vacío...\"");
-                dialogos.add("§5§l◈ §8§o\"...habéis salvado este mundo... pero otros aún esperan...\"");
+                dialogos.add("§5§l◈ §8§o\"...salvaron este mundo... pero otros aún esperan...\"");
                 break;
                 
             case "FINAL_EXITO":
