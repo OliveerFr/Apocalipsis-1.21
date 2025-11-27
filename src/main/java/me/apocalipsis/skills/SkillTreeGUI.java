@@ -652,14 +652,11 @@ public class SkillTreeGUI implements Listener {
         if (owned) {
             // Toggle si es toggleable
             if (skill.isToggleable()) {
-                boolean newState = skillService.toggleSkill(player, skill);
-                String stateText = newState ? "§a§lactivada" : "§c§ldesactivada";
-                player.sendMessage("§e" + skill.getDisplayName() + " §7" + stateText);
-                // Refrescar menú
+                skillService.toggleSkill(player, skill);
+                // Refrescar menú para mostrar nuevo estado
                 openBranchMenu(player, branch);
-                player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 0.7f, newState ? 1.2f : 0.8f);
             } else {
-                player.sendMessage("§7Ya tienes §e" + skill.getDisplayName() + "§7.");
+                player.sendMessage("§7Ya tienes §e" + skill.getDisplayName() + "§7 (pasiva permanente).");
                 player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 0.5f, 0.5f);
             }
         } else if (meetsReqs) {
