@@ -181,6 +181,10 @@ public class SkillService {
         return getData(player.getUniqueId()).getXpGastada();
     }
     
+    public int getTotalXpGastada(UUID uuid) {
+        return getData(uuid).getXpGastada();
+    }
+    
     public int getSkillCount(Player player) {
         return getData(player.getUniqueId()).getSkills().size();
     }
