@@ -425,18 +425,6 @@ public class ConfigManager {
         return evasionesConfig.getString("permisos.exencion", "apocalipsis.evasion.exempt");
     }
     
-    public boolean isEvasionPermisoVipEnabled() {
-        return evasionesConfig.getBoolean("permisos.vip.enabled", false);
-    }
-    
-    public String getEvasionPermisoVip() {
-        return evasionesConfig.getString("permisos.vip.permiso", "apocalipsis.evasion.vip");
-    }
-    
-    public int getEvasionPermisoVipReduccionPs() {
-        return evasionesConfig.getInt("permisos.vip.reduccion_ps_porcentaje", 50);
-    }
-    
     public String getEvasionPermisoAdminComandos() {
         return evasionesConfig.getString("permisos.admin_comandos", "apocalipsis.evasion.admin");
     }

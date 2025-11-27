@@ -2731,8 +2731,10 @@ public class ApocalipsisCommand implements CommandExecutor {
         sender.sendMessage("§6Features:");
         sender.sendMessage("§7  • Castigos físicos: " + (cfg.isEvasionCastigosFisicosEnabled() ? "§a✓" : "§c✗"));
         sender.sendMessage("§7  • Notificaciones admin: " + (cfg.isEvasionNotificacionesAdminsEnabled() ? "§a✓" : "§c✗"));
+        sender.sendMessage("§7  • Avisos proactivos: " + (cfg.isEvasionNotificacionesJugadorEnabled() ? "§a✓" : "§c✗"));
+        sender.sendMessage("§7  • Reducción por desastres: " + (cfg.isEvasionReduccionPorDesastresEnabled() ? "§a✓" : "§c✗"));
+        sender.sendMessage("§7  • Reducción por tiempo: " + (cfg.isEvasionReduccionPorTiempoEnabled() ? "§a✓" : "§c✗"));
         sender.sendMessage("§7  • Estadísticas: " + (cfg.isEvasionEstadisticasEnabled() ? "§a✓" : "§c✗"));
-        sender.sendMessage("§7  • Sistema VIP: " + (cfg.isEvasionPermisoVipEnabled() ? "§a✓" : "§c✗"));
         
         sender.sendMessage("§e▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
     }

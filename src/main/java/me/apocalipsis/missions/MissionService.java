@@ -583,6 +583,13 @@ public class MissionService {
     public int getPlayerPs(Player player) {
         return playerPs.getOrDefault(player.getUniqueId(), 0);
     }
+    
+    /**
+     * Obtiene los PS de un jugador por UUID (para sistemas offline como evasiones)
+     */
+    public int getPlayerPs(UUID uuid) {
+        return playerPs.getOrDefault(uuid, 0);
+    }
 
     private void loadPlayerData() {
         if (!dataFile.exists()) return;

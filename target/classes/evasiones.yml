@@ -299,12 +299,5 @@ permisos:
   # Jugadores con este permiso no son trackeados por evasión
   exencion: "apocalipsis.evasion.exempt"
   
-  # Reducción de penalizaciones por permisos VIP
-  vip:
-    enabled: false
-    permiso: "apocalipsis.evasion.vip"
-    reduccion_ps_porcentaje: 50           # VIP pierde 50% menos PS
-    reduccion_castigos_fisicos: true      # Castigos físicos más suaves
-  
   # Comandos de administración
   admin_comandos: "apocalipsis.evasion.admin"

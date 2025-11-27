@@ -67,6 +67,24 @@ public class DisasterEvasionTracker {
     // Tracking de desastre activo (evitar falsos positivos)
     private boolean disasterActive = false;
     
+    // ID del desastre actual (para requisitos por tipo)
+    private String currentDisasterId = null;
+    
+    // UUID -> desastres completados sin evadir (para reducción por buen comportamiento)
+    private final Map<UUID, Integer> completedDisastersCount = new HashMap<>();
+    
+    // UUID -> último tiempo sin evadir (para reducción por tiempo)
+    private final Map<UUID, Long> lastGoodBehaviorCheck = new HashMap<>();
+    
+    // UUID -> avisos ya enviados (para no repetir)
+    private final Map<UUID, java.util.Set<Integer>> sentWarnings = new HashMap<>();
+    
+    // Tarea de guardado automático
+    private int autoSaveTaskId = -1;
+    
+    // Tarea de avisos proactivos
+    private int proactiveWarningTaskId = -1;
+    
     public DisasterEvasionTracker(Apocalipsis plugin) {
         this.plugin = plugin;
         this.dataFile = new File(plugin.getDataFolder(), "evasion_data.yml");
@@ -97,12 +115,132 @@ public class DisasterEvasionTracker {
      * Se llama UNA vez cuando el desastre comienza.
      */
     public void onDisasterStartGlobal() {
+        onDisasterStartGlobal(null);
+    }
+    
+    /**
+     * Marca el inicio de un desastre con ID específico.
+     * @param disasterId ID del desastre (para requisitos por tipo)
+     */
+    public void onDisasterStartGlobal(String disasterId) {
         long now = System.currentTimeMillis();
         currentDisasterStartTime = now;
+        currentDisasterId = disasterId;
         disasterActive = true;
+        sentWarnings.clear();
+        
+        // Iniciar guardado automático durante desastre
+        startAutoSave();
+        
+        // Iniciar avisos proactivos
+        startProactiveWarnings();
         
         if (plugin.getConfigManager().isEvasionDebug()) {
-            plugin.getLogger().info("[EvasionTracker] Desastre iniciado - tracking activado");
+            plugin.getLogger().info("[EvasionTracker] Desastre iniciado" + 
+                (disasterId != null ? " (" + disasterId + ")" : "") + " - tracking activado");
+        }
+    }
+    
+    /**
+     * Inicia el guardado automático durante el desastre
+     */
+    private void startAutoSave() {
+        if (autoSaveTaskId != -1) {
+            org.bukkit.Bukkit.getScheduler().cancelTask(autoSaveTaskId);
+        }
+        
+        int intervalSeconds = plugin.getConfigManager().getEvasionGuardarCadaSegundos();
+        autoSaveTaskId = org.bukkit.Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            saveData();
+            if (plugin.getConfigManager().isEvasionDebug()) {
+                plugin.getLogger().info("[EvasionTracker] Auto-guardado durante desastre");
+            }
+        }, intervalSeconds * 20L, intervalSeconds * 20L).getTaskId();
+    }
+    
+    /**
+     * Inicia los avisos proactivos a jugadores durante el desastre
+     */
+    private void startProactiveWarnings() {
+        if (!plugin.getConfigManager().isEvasionNotificacionesJugadorEnabled()) {
+            return;
+        }
+        
+        if (proactiveWarningTaskId != -1) {
+            org.bukkit.Bukkit.getScheduler().cancelTask(proactiveWarningTaskId);
+        }
+        
+        // Revisar cada 5 segundos
+        proactiveWarningTaskId = org.bukkit.Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            if (!disasterActive) return;
+            
+            long now = System.currentTimeMillis();
+            
+            for (org.bukkit.entity.Player player : org.bukkit.Bukkit.getOnlinePlayers()) {
+                UUID uuid = player.getUniqueId();
+                Long joinTime = playerJoinTime.get(uuid);
+                
+                if (joinTime == null) continue;
+                
+                long timeInDisaster = (now - joinTime) / 1000; // En segundos
+                long requiredTime = getRequiredTimeForPlayer(uuid) / 1000;
+                
+                // Obtener avisos ya enviados
+                java.util.Set<Integer> sent = sentWarnings.computeIfAbsent(uuid, k -> new java.util.HashSet<>());
+                
+                // Avisos a 30s, 45s y cuando cumple el tiempo
+                if (timeInDisaster >= 30 && timeInDisaster < 45 && !sent.contains(30)) {
+                    sent.add(30);
+                    player.sendMessage("§e⏰ Llevas 30s en el desastre. Mínimo requerido: §f" + requiredTime + "s");
+                    player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_NOTE_BLOCK_HAT, 0.5f, 1.0f);
+                } else if (timeInDisaster >= 45 && timeInDisaster < requiredTime && !sent.contains(45)) {
+                    sent.add(45);
+                    long faltante = requiredTime - timeInDisaster;
+                    player.sendMessage("§e⏰ Llevas 45s. Faltan §f" + faltante + "s §epara salir sin penalización");
+                    player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_NOTE_BLOCK_HAT, 0.5f, 1.2f);
+                } else if (timeInDisaster >= requiredTime && !sent.contains(60)) {
+                    sent.add(60);
+                    player.sendMessage("§a✓ Ya puedes desconectarte sin penalización");
+                    player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, 0.7f, 1.5f);
+                    // Partículas de celebración
+                    player.getWorld().spawnParticle(org.bukkit.Particle.HAPPY_VILLAGER, 
+                        player.getLocation().add(0, 1, 0), 20, 0.5, 0.5, 0.5, 0);
+                }
+            }
+        }, 100L, 100L).getTaskId(); // Cada 5 segundos
+    }
+    
+    /**
+     * Obtiene el tiempo requerido para un jugador (considerando tipo de desastre y late-join)
+     */
+    private long getRequiredTimeForPlayer(UUID uuid) {
+        Long joinTime = playerJoinTime.get(uuid);
+        if (joinTime == null) return minRequiredTimeMs;
+        
+        // Verificar si es late-joiner
+        if (currentDisasterStartTime > 0 && joinTime > currentDisasterStartTime + lateJoinThresholdMs) {
+            return lateJoinMinTimeMs;
+        }
+        
+        // Verificar requisitos por tipo de desastre
+        if (currentDisasterId != null && plugin.getConfigManager().isEvasionPorDesastreEnabled()) {
+            return plugin.getConfigManager().getEvasionPorDesastreMinTiempo(currentDisasterId) * 1000L;
+        }
+        
+        return minRequiredTimeMs;
+    }
+    
+    /**
+     * Detiene las tareas de guardado automático y avisos
+     */
+    private void stopScheduledTasks() {
+        if (autoSaveTaskId != -1) {
+            org.bukkit.Bukkit.getScheduler().cancelTask(autoSaveTaskId);
+            autoSaveTaskId = -1;
+        }
+        if (proactiveWarningTaskId != -1) {
+            org.bukkit.Bukkit.getScheduler().cancelTask(proactiveWarningTaskId);
+            proactiveWarningTaskId = -1;
         }
     }
     
@@ -223,7 +361,6 @@ public class DisasterEvasionTracker {
         
         // Programar verificación de evasión después de la ventana de gracia
         final long finalTimeInDisaster = timeInDisaster;
-        final long finalJoinTime = joinTime;
         final boolean finalIsLateJoiner = isLateJoiner;
         
         org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
@@ -260,14 +397,124 @@ public class DisasterEvasionTracker {
      * Limpia el registro cuando el desastre termina naturalmente
      */
     public void onDisasterEnd() {
+        // Procesar jugadores que completaron el desastre para reducción por buen comportamiento
+        processCompletedDisasters();
+        
+        // Detener tareas programadas
+        stopScheduledTasks();
+        
+        // Limpiar registros
         playerJoinTime.clear();
         lastDisconnectTime.clear();
+        sentWarnings.clear();
         disasterActive = false;
         currentDisasterStartTime = 0L;
+        currentDisasterId = null;
+        
+        // Guardar datos finales
+        saveData();
         
         if (plugin.getConfigManager().isEvasionDebug()) {
             plugin.getLogger().info("[EvasionTracker] Desastre finalizado - registros limpiados, tracking desactivado");
         }
+    }
+    
+    /**
+     * Procesa jugadores que completaron el desastre sin evadir
+     * para el sistema de reducción por buen comportamiento
+     */
+    private void processCompletedDisasters() {
+        if (!plugin.getConfigManager().isEvasionReduccionEnabled() || 
+            !plugin.getConfigManager().isEvasionReduccionPorDesastresEnabled()) {
+            return;
+        }
+        
+        long now = System.currentTimeMillis();
+        int tiempoMinimo = plugin.getConfigManager().getEvasionReduccionDesastresTiempoMinimo() * 1000;
+        int desastresNecesarios = plugin.getConfigManager().getEvasionReduccionDesastresNecesarios();
+        
+        for (org.bukkit.entity.Player player : org.bukkit.Bukkit.getOnlinePlayers()) {
+            UUID uuid = player.getUniqueId();
+            Long joinTime = playerJoinTime.get(uuid);
+            
+            if (joinTime == null) continue;
+            
+            long timeInDisaster = now - joinTime;
+            
+            // Si estuvo el tiempo mínimo, cuenta como desastre completado
+            if (timeInDisaster >= tiempoMinimo) {
+                int completed = completedDisastersCount.getOrDefault(uuid, 0) + 1;
+                completedDisastersCount.put(uuid, completed);
+                
+                // Verificar si debe reducir evasiones
+                if (completed >= desastresNecesarios) {
+                    int currentEvasions = evasionCount.getOrDefault(uuid, 0);
+                    if (currentEvasions > 0) {
+                        evasionCount.put(uuid, currentEvasions - 1);
+                        completedDisastersCount.put(uuid, 0); // Resetear contador
+                        
+                        player.sendMessage("§a✓ ¡Buen comportamiento! Se te ha reducido 1 evasión por completar " + 
+                            desastresNecesarios + " desastres correctamente.");
+                        player.sendMessage("§7Evasiones actuales: §e" + (currentEvasions - 1));
+                        player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
+                        
+                        if (plugin.getConfigManager().isEvasionDebug()) {
+                            plugin.getLogger().info("[EvasionTracker] " + player.getName() + 
+                                " redujo 1 evasión por buen comportamiento (" + (currentEvasions - 1) + " restantes)");
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * Verifica y aplica reducción por tiempo sin evadir
+     * Llamar periódicamente (ej: cada hora o al inicio del día)
+     */
+    public void checkTimeBasedReduction() {
+        if (!plugin.getConfigManager().isEvasionReduccionEnabled() || 
+            !plugin.getConfigManager().isEvasionReduccionPorTiempoEnabled()) {
+            return;
+        }
+        
+        long now = System.currentTimeMillis();
+        long reducirCadaMs = plugin.getConfigManager().getEvasionReduccionCadaHoras() * 3600000L;
+        
+        for (UUID uuid : new java.util.HashSet<>(evasionCount.keySet())) {
+            Long lastCheck = lastGoodBehaviorCheck.get(uuid);
+            Long lastEvasion = lastEvasionTime.get(uuid);
+            
+            if (lastEvasion == null) continue;
+            
+            // Si no hay check previo, usar la última evasión como referencia
+            long referenceTime = lastCheck != null ? lastCheck : lastEvasion;
+            long timeSinceReference = now - referenceTime;
+            
+            // Si pasó suficiente tiempo sin evadir
+            if (timeSinceReference >= reducirCadaMs) {
+                int currentEvasions = evasionCount.getOrDefault(uuid, 0);
+                if (currentEvasions > 0) {
+                    evasionCount.put(uuid, currentEvasions - 1);
+                    lastGoodBehaviorCheck.put(uuid, now);
+                    
+                    // Notificar si está online
+                    org.bukkit.entity.Player player = org.bukkit.Bukkit.getPlayer(uuid);
+                    if (player != null) {
+                        player.sendMessage("§a✓ Por no evadir en " + 
+                            (reducirCadaMs / 3600000) + "h, se te redujo 1 evasión.");
+                        player.sendMessage("§7Evasiones actuales: §e" + (currentEvasions - 1));
+                    }
+                    
+                    if (plugin.getConfigManager().isEvasionDebug()) {
+                        plugin.getLogger().info("[EvasionTracker] UUID " + uuid + 
+                            " redujo 1 evasión por tiempo sin evadir");
+                    }
+                }
+            }
+        }
+        
+        saveData();
     }
     
     /**
@@ -380,6 +627,7 @@ public class DisasterEvasionTracker {
         String permiso = plugin.getConfigManager().getEvasionNotificacionesPermiso();
         String mensaje = plugin.getConfigManager().getEvasionNotificacionesMensaje()
             .replace("{player}", playerName)
+            .replace("{uuid}", uuid.toString().substring(0, 8))
             .replace("{evasiones}", String.valueOf(totalEvasiones))
             .replace("{nivel}", String.valueOf(nivel))
             .replace("{ps_perdidos}", String.valueOf(psLoss));
