@@ -163,7 +163,9 @@ public class SusurroPiedraRotaListener implements Listener {
     }
     
     /**
-     * ALTAR 3: Detectar muerte de mobs hostiles naturales cerca del altar
+     * ALTAR 4 y 5: Detectar muerte de mobs hostiles cerca del altar
+     * Altar 4: La Caza - cuenta kills para progresar
+     * Altar 5: La Unión - da XP generoso a los jugadores
      */
     @EventHandler
     public void onMobHostilDeath(EntityDeathEvent event) {
@@ -173,20 +175,20 @@ public class SusurroPiedraRotaListener implements Listener {
         // Solo en Acto 1 (Piedra Despierta - donde están los altares)
         if (evento.getActoActual() != SusurroPiedraRotaEvent.Acto.PIEDRA_DESPIERTA) return;
         
-        // Solo si Altar 3 está activo
-        if (evento.getAltarActualGlobal() != 3) return;
-        
         LivingEntity entity = event.getEntity();
-        
-        // No procesar criaturas del evento
-        if (evento.getCriaturasDeAltar().contains(entity.getUniqueId())) return;
-        
-        // Necesita killer
         Player killer = entity.getKiller();
         if (killer == null) return;
         
-        // Delegar al evento para verificar tipo y distancia
-        evento.procesarKillMobHostilAltar3(killer, entity);
+        int altarActual = evento.getAltarActualGlobal();
+        
+        // Altar 4: La Caza - procesar kill para progreso
+        if (altarActual == 4) {
+            evento.procesarKillMobHostilAltar4(killer, entity);
+        }
+        // Altar 5: La Unión - solo dar XP generoso
+        else if (altarActual == 5) {
+            evento.procesarKillMobAltar5(killer, entity);
+        }
     }
     
     /**

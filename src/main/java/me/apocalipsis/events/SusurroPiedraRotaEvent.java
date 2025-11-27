@@ -112,8 +112,10 @@ public class SusurroPiedraRotaEvent extends EventBase {
     private Map<UUID, Long> tiempoInicioAltarJugador = new HashMap<>(); // Para Altar 1 (permanecer quieto)
     private Map<UUID, Location> posicionInicioAltarJugador = new HashMap<>(); // Para detectar movimiento
     private Map<UUID, Double> vidaInicioAltarJugador = new HashMap<>(); // Para Altar 3 (sacrificio) - LEGACY
-    private Map<UUID, Integer> criaturasEliminadasPorJugador = new HashMap<>(); // Para Altar 4 (purificación)
-    private int mobsHostilesEliminadosAltar3 = 0; // Para Altar 3 (caza de mobs naturales)
+    private Map<UUID, Integer> criaturasEliminadasPorJugador = new HashMap<>(); // Para conteo de kills
+    private int itemsSacrificadosAltar3 = 0; // Para Altar 3 (sacrificio de items valiosos)
+    private Set<UUID> itemsProcesadosSacrificio = new HashSet<>(); // Items ya procesados en sacrificio
+    private int mobsHostilesEliminadosAltar4 = 0; // Para Altar 4 (caza de mobs)
     private Location altarActualLocation = null; // Ubicación del altar en progreso
     private Set<UUID> criaturasDeAltar = new HashSet<>(); // UUIDs de criaturas spawneadas por altares
     
@@ -608,7 +610,9 @@ public class SusurroPiedraRotaEvent extends EventBase {
         
         // 5. LIMPIAR CONTADORES DE ALTARES
         perlasEntregadasAltar2 = 0;
-        mobsHostilesEliminadosAltar3 = 0;
+        itemsSacrificadosAltar3 = 0;
+        itemsProcesadosSacrificio.clear();
+        mobsHostilesEliminadosAltar4 = 0;
         altarActualLocation = null;
         itemsProcesadosEnAltar.clear();
         
@@ -2474,7 +2478,7 @@ public class SusurroPiedraRotaEvent extends EventBase {
             case 1: return "§5Altar del Despertar";
             case 2: return "§5Altar de la Resonancia";
             case 3: return "§5Altar del Sacrificio";
-            case 4: return "§5Altar de la Purificación";
+            case 4: return "§5Altar de la Caza";
             case 5: return "§5Altar de la Unión";
             default: return "§5Altar Antiguo";
         }
@@ -2528,27 +2532,27 @@ public class SusurroPiedraRotaEvent extends EventBase {
                     broadcastNarrative("    §8(El altar absorberá la energía dimensional)");
                     break;
                 case 3:
-                    broadcastNarrative("    §8El Observador§7: §o\"...el fragmento ansía sangre de la tierra...\"");
-                    broadcastNarrative("    §8El Observador§7: §o\"...las criaturas de este mundo guardan secretos...\"");
-                    broadcastNarrative("    §8El Observador§7: §o\"...caza a los hostiles... alimenta la memoria...\"");
+                    broadcastNarrative("    §8El Observador§7: §o\"...el fragmento ansía riquezas de la tierra...\"");
+                    broadcastNarrative("    §8El Observador§7: §o\"...metales preciosos... gemas brillantes...\"");
+                    broadcastNarrative("    §8El Observador§7: §o\"...sacrificad vuestros tesoros... alimentad la memoria...\"");
                     broadcastNarrative("");
                     broadcastNarrative("    §e⚡ INSTRUCCIONES:");
-                    broadcastNarrative("    §f1. §7Eliminad §cmobs hostiles naturales §7cerca del altar");
-                    broadcastNarrative("    §f2. §7Solo cuentan mobs en §eun radio de 50 bloques");
-                    broadcastNarrative("    §f3. §7Total necesario: §c5 mobs §7eliminados");
-                    broadcastNarrative("    §8(Zombies, Esqueletos, Creepers, Arañas...)");
+                    broadcastNarrative("    §f1. §7Tirad §6items valiosos §7cerca del altar:");
+                    broadcastNarrative("       §7• §bDiamante §7= 3 pts §7| §6Oro §7= 1 pt");
+                    broadcastNarrative("       §7• §aEsmeralda §7= 2 pts §7| §4Netherite §7= 5 pts");
+                    broadcastNarrative("    §f2. §7Total necesario: §610 puntos §7de ofrendas");
+                    broadcastNarrative("    §8(El altar consume los materiales valiosos)");
                     break;
                 case 4:
-                    broadcastNarrative("    §8El Observador§7: §o\"...copias erróneas emergen de la grieta...\"");
-                    broadcastNarrative("    §8El Observador§7: §o\"...una plaga de recuerdos defectuosos...\"");
-                    broadcastNarrative("    §8El Observador§7: §o\"...el mundo roto los multiplica sin cesar...\"");
-                    broadcastNarrative("    §8El Observador§7: §o\"...purificad el error, destruid a todos...\"");
+                    broadcastNarrative("    §8El Observador§7: §o\"...criaturas del vacío emergen...\"");
+                    broadcastNarrative("    §8El Observador§7: §o\"...la sangre de los hostiles alimenta la memoria...\"");
+                    broadcastNarrative("    §8El Observador§7: §o\"...caza a las bestias... purifica el fragmento...\"");
                     broadcastNarrative("");
                     broadcastNarrative("    §e⚡ INSTRUCCIONES:");
-                    broadcastNarrative("    §f1. §712 recuerdos corruptos §7aparecerán");
-                    broadcastNarrative("    §f2. §7Eliminad a §ltodos §7para purificar el altar");
-                    broadcastNarrative("    §f3. §7Progreso: §c0/12 §7eliminados");
-                    broadcastNarrative("    §8(Son versiones distorsionadas de criaturas)");
+                    broadcastNarrative("    §f1. §7Enemigos aparecerán cerca del altar");
+                    broadcastNarrative("    §f2. §7Eliminad §c5 mobs hostiles");
+                    broadcastNarrative("    §f3. §7Mobs naturales también cuentan (50 bloques)");
+                    broadcastNarrative("    §8(Zombies, Esqueletos, Husks, Strays...)");
                     break;
                 case 5:
                     broadcastNarrative("    §8El Observador§7: §o\"...los cuatro fragmentos resuenan juntos...\"");
@@ -2601,15 +2605,19 @@ public class SusurroPiedraRotaEvent extends EventBase {
         }
         
         if (numAltar == 3) {
-            // Reset contadores de Altar 3 (Caza de mobs hostiles)
-            mobsHostilesEliminadosAltar3 = 0;
+            // Reset contadores de Altar 3 (Sacrificio de items)
+            itemsSacrificadosAltar3 = 0;
+            itemsProcesadosSacrificio.clear();
             altarActualLocation = altarLoc;
-            plugin.getLogger().info("[SusurroPiedraRota] Altar 3 iniciado - contador de mobs reseteado");
+            plugin.getLogger().info("[SusurroPiedraRota] Altar 3 iniciado - contador de sacrificios reseteado");
         }
         
-        // Spawneo especial para altar 4
         if (numAltar == 4) {
-            spawnearCriaturasAltar4(altarLoc);
+            // Reset contadores de Altar 4 (Caza de mobs hostiles)
+            mobsHostilesEliminadosAltar4 = 0;
+            altarActualLocation = altarLoc;
+            criaturasDeAltar.clear();
+            plugin.getLogger().info("[SusurroPiedraRota] Altar 4 iniciado - contador de mobs reseteado");
         }
     }
     
@@ -2664,10 +2672,10 @@ public class SusurroPiedraRotaEvent extends EventBase {
                     procesarAltar2ResonanciaGrupal(p, altarLoc);
                     break;
                 case 3:
-                    procesarAltar3SacrificioGrupal(p, altarLoc);
+                    procesarAltar3SacrificioGrupal(p, altarLoc); // Sacrificio de items valiosos
                     break;
                 case 4:
-                    procesarAltar4PurificacionGrupal(p, altarLoc);
+                    procesarAltar4CazaGrupal(p, altarLoc); // Caza de mobs
                     break;
                 case 5:
                     procesarAltar5UnionGrupal(p, altarLoc);
@@ -2859,58 +2867,120 @@ public class SusurroPiedraRotaEvent extends EventBase {
     }
     
     /**
-     * ALTAR 3 GRUPAL: LA CAZA - Spawnea mobs hostiles que los jugadores deben eliminar
+     * ALTAR 3 GRUPAL: EL SACRIFICIO - Tirar items valiosos al altar
+     * Items aceptados: Diamantes, Oro, Esmeraldas, Netherite
      */
     private void procesarAltar3SacrificioGrupal(Player player, Location altarLoc) {
-        // Guardar ubicación del altar para verificación de kills
+        // Guardar ubicación del altar
         altarActualLocation = altarLoc;
         
-        // ✨ NUEVO: Spawn progresivo de mobs cada 3 segundos si hay menos de 3 vivos
-        if (ticksEnActo % 60 == 0) { // Cada 3 segundos
-            // Contar mobs vivos del altar
-            int mobsVivos = 0;
-            for (UUID mobId : criaturasDeAltar) {
-                Entity e = Bukkit.getEntity(mobId);
-                if (e != null && e.isValid() && !e.isDead()) {
-                    mobsVivos++;
+        // Si ya se completó, no seguir procesando
+        if (itemsSacrificadosAltar3 >= 10) {
+            return;
+        }
+        
+        // === SISTEMA DE DETECCIÓN DE ITEMS VALIOSOS EN ÁREA DEL ALTAR ===
+        double radioDeteccion = 5.0;
+        
+        // Buscar items valiosos en el área del altar
+        for (Entity entity : altarLoc.getWorld().getNearbyEntities(altarLoc, radioDeteccion, radioDeteccion, radioDeteccion)) {
+            if (!(entity instanceof Item)) continue;
+            
+            Item itemEntity = (Item) entity;
+            ItemStack itemStack = itemEntity.getItemStack();
+            
+            // Evitar procesar el mismo item dos veces
+            if (itemsProcesadosSacrificio.contains(entity.getUniqueId())) continue;
+            
+            // Determinar valor del item
+            int valorItem = obtenerValorSacrificio(itemStack.getType());
+            if (valorItem <= 0) continue; // No es un item de sacrificio válido
+            
+            // Marcar como procesado
+            itemsProcesadosSacrificio.add(entity.getUniqueId());
+            
+            // Cantidad total de valor
+            int valorTotal = valorItem * itemStack.getAmount();
+            
+            // === ANIMACIÓN DE SACRIFICIO ===
+            Location itemLoc = itemEntity.getLocation();
+            World world = itemLoc.getWorld();
+            
+            // 1. Partículas de absorción hacia el altar
+            Location centroAltar = altarLoc.clone().add(0.5, 1.5, 0.5);
+            Vector direccion = centroAltar.toVector().subtract(itemLoc.toVector()).normalize();
+            
+            // Partículas de estela hacia el altar (rojo/naranja para sacrificio)
+            for (double d = 0; d < itemLoc.distance(centroAltar); d += 0.3) {
+                Location particleLoc = itemLoc.clone().add(direccion.clone().multiply(d));
+                world.spawnParticle(Particle.FLAME, particleLoc, 2, 0.1, 0.1, 0.1, 0.01);
+                world.spawnParticle(Particle.DUST, particleLoc, 3, 0.1, 0.1, 0.1, 
+                    new Particle.DustOptions(org.bukkit.Color.ORANGE, 1.0f));
+            }
+            
+            // 2. Explosión de partículas en el altar
+            world.spawnParticle(Particle.LAVA, centroAltar, 20, 0.3, 0.3, 0.3, 0);
+            world.spawnParticle(Particle.SOUL_FIRE_FLAME, centroAltar, 30, 0.5, 0.5, 0.5, 0.05);
+            
+            // 3. Sonidos místicos de sacrificio
+            world.playSound(itemLoc, Sound.BLOCK_FIRE_EXTINGUISH, 0.8f, 0.5f);
+            world.playSound(centroAltar, Sound.ENTITY_BLAZE_SHOOT, 0.5f, 0.8f);
+            world.playSound(centroAltar, Sound.BLOCK_RESPAWN_ANCHOR_CHARGE, 0.7f, 1.2f);
+            
+            // 4. Eliminar el item (¡consumido por el altar!)
+            itemEntity.remove();
+            
+            // 5. Incrementar contador
+            itemsSacrificadosAltar3 += valorTotal;
+            if (itemsSacrificadosAltar3 > 10) itemsSacrificadosAltar3 = 10; // Cap
+            
+            // 6. Feedback a todos los jugadores en el altar
+            String nombreItem = obtenerNombreSacrificio(itemStack.getType());
+            for (UUID uid : jugadoresPresentesEnAltar) {
+                Player p = Bukkit.getPlayer(uid);
+                if (p != null) {
+                    p.sendMessage("§5⧖ §6" + nombreItem + " §7sacrificado al altar! §f(" + itemsSacrificadosAltar3 + "/10)");
+                    
+                    // Efecto de título sutil
+                    if (itemsSacrificadosAltar3 <= 10) {
+                        p.sendTitle("", "§6✦ §f" + itemsSacrificadosAltar3 + "/10 §6✦", 5, 20, 10);
+                    }
                 }
             }
             
-            // Spawnear si hay menos de 3 mobs vivos y aún no se completó
-            if (mobsVivos < 3 && mobsHostilesEliminadosAltar3 < 5) {
-                spawnearMobAltar3(altarLoc);
-            }
+            // Log
+            plugin.getLogger().info("[SusurroPiedraRota] Sacrificio: " + itemStack.getType().name() + " x" + itemStack.getAmount() + " = +" + valorTotal + " (Total: " + itemsSacrificadosAltar3 + "/10)");
         }
         
-        // Feedback visual cada segundo
+        // Mostrar progreso en ActionBar
         if (ticksEnActo % 20 == 0) {
-            String barra = crearBarraProgreso(mobsHostilesEliminadosAltar3, 5, "§c", "§7");
+            String barra = crearBarraProgreso(itemsSacrificadosAltar3, 10, "§6", "§7");
             for (UUID uid : jugadoresPresentesEnAltar) {
                 Player p = Bukkit.getPlayer(uid);
                 if (p != null) {
-                    p.sendActionBar("§5⧖ Caza: " + barra + " §c" + mobsHostilesEliminadosAltar3 + "/5 ☠");
+                    p.sendActionBar("§5⧖ Sacrificio: " + barra + " §6" + itemsSacrificadosAltar3 + "/10 ofrendas");
                 }
             }
             
-            // Partículas de sangre intensificándose con el progreso
-            if (mobsHostilesEliminadosAltar3 > 0) {
+            // Partículas de fuego intensificándose con el progreso
+            if (itemsSacrificadosAltar3 > 0) {
                 Location centro = altarLoc.clone().add(0.5, 1, 0.5);
-                int cantidadParticulas = 3 + (mobsHostilesEliminadosAltar3 * 3);
-                centro.getWorld().spawnParticle(Particle.DUST, centro, cantidadParticulas, 
-                    0.5, 0.5, 0.5, 
-                    new Particle.DustOptions(org.bukkit.Color.RED, 1.5f));
+                int intensidad = 3 + (itemsSacrificadosAltar3 * 2);
+                centro.getWorld().spawnParticle(Particle.SOUL_FIRE_FLAME, centro, intensidad, 0.4, 0.4, 0.4, 0.02);
+                
+                // Columna de humo
+                centro.getWorld().spawnParticle(Particle.SMOKE, centro.clone().add(0, 1, 0), 5, 0.2, 0.5, 0.2, 0.01);
             }
         }
         
-        // Completar si eliminaron 5+ mobs hostiles
-        if (mobsHostilesEliminadosAltar3 >= 5) {
-            // Efecto dramático para todos
+        // Completar altar cuando se alcancen 10 puntos de sacrificio
+        if (itemsSacrificadosAltar3 >= 10) {
+            // Efecto dramático
             for (UUID uid : jugadoresPresentesEnAltar) {
                 Player p = Bukkit.getPlayer(uid);
                 if (p != null) {
-                    p.addPotionEffect(new org.bukkit.potion.PotionEffect(
-                        org.bukkit.potion.PotionEffectType.STRENGTH, 200, 0));
                     soundUtil.playSound(p, Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.2f);
+                    p.sendActionBar("§a§l✓ ¡SACRIFICIO ACEPTADO!");
                 }
             }
             
@@ -2921,9 +2991,117 @@ public class SusurroPiedraRotaEvent extends EventBase {
     }
     
     /**
-     * ✨ NUEVO: Spawnea un mob hostil para el Altar 3
+     * Obtiene el valor de sacrificio de un item
      */
-    private void spawnearMobAltar3(Location altarLoc) {
+    private int obtenerValorSacrificio(Material material) {
+        switch (material) {
+            case DIAMOND:
+                return 3; // Diamante = 3 puntos
+            case EMERALD:
+                return 2; // Esmeralda = 2 puntos
+            case GOLD_INGOT:
+                return 1; // Oro = 1 punto
+            case GOLD_BLOCK:
+                return 5; // Bloque de oro = 5 puntos
+            case DIAMOND_BLOCK:
+                return 10; // Bloque de diamante = 10 puntos (completa instant)
+            case EMERALD_BLOCK:
+                return 8; // Bloque de esmeralda = 8 puntos
+            case NETHERITE_INGOT:
+                return 5; // Netherite = 5 puntos
+            case NETHERITE_SCRAP:
+                return 2; // Scrap = 2 puntos
+            case ANCIENT_DEBRIS:
+                return 3; // Ancient debris = 3 puntos
+            case IRON_INGOT:
+                return 1; // Hierro = 1 punto (menos valioso)
+            case IRON_BLOCK:
+                return 3; // Bloque de hierro = 3 puntos
+            case LAPIS_LAZULI:
+                return 1; // Lapis = 1 punto
+            case LAPIS_BLOCK:
+                return 3; // Bloque de lapis = 3 puntos
+            default:
+                return 0;
+        }
+    }
+    
+    /**
+     * Obtiene el nombre para mostrar de un item de sacrificio
+     */
+    private String obtenerNombreSacrificio(Material material) {
+        switch (material) {
+            case DIAMOND: return "Diamante";
+            case DIAMOND_BLOCK: return "Bloque de Diamante";
+            case EMERALD: return "Esmeralda";
+            case EMERALD_BLOCK: return "Bloque de Esmeralda";
+            case GOLD_INGOT: return "Lingote de Oro";
+            case GOLD_BLOCK: return "Bloque de Oro";
+            case NETHERITE_INGOT: return "Lingote de Netherite";
+            case NETHERITE_SCRAP: return "Fragmento de Netherite";
+            case ANCIENT_DEBRIS: return "Escombros Ancestrales";
+            case IRON_INGOT: return "Lingote de Hierro";
+            case IRON_BLOCK: return "Bloque de Hierro";
+            case LAPIS_LAZULI: return "Lapislázuli";
+            case LAPIS_BLOCK: return "Bloque de Lapislázuli";
+            default: return material.name();
+        }
+    }
+    
+    /**
+     * ALTAR 4 GRUPAL: LA CAZA - Matar mobs hostiles spawneados
+     */
+    private void procesarAltar4CazaGrupal(Player player, Location altarLoc) {
+        // Guardar ubicación del altar para verificación de kills
+        altarActualLocation = altarLoc;
+        
+        // Si ya se completó, no seguir procesando
+        if (mobsHostilesEliminadosAltar4 >= 5) {
+            return;
+        }
+        
+        // ✨ Spawn progresivo de mobs cada 3 segundos si hay menos de 3 vivos
+        if (ticksEnActo % 60 == 0) { // Cada 3 segundos
+            // Contar mobs vivos del altar
+            int mobsVivos = 0;
+            for (UUID mobId : criaturasDeAltar) {
+                Entity e = Bukkit.getEntity(mobId);
+                if (e != null && e.isValid() && !e.isDead()) {
+                    mobsVivos++;
+                }
+            }
+            
+            // Spawnear si hay menos de 3 mobs vivos
+            if (mobsVivos < 3) {
+                spawnearMobAltar4(altarLoc);
+            }
+        }
+        
+        // Feedback visual cada segundo
+        if (ticksEnActo % 20 == 0) {
+            String barra = crearBarraProgreso(mobsHostilesEliminadosAltar4, 5, "§c", "§7");
+            for (UUID uid : jugadoresPresentesEnAltar) {
+                Player p = Bukkit.getPlayer(uid);
+                if (p != null) {
+                    p.sendActionBar("§5⧖ Caza: " + barra + " §c" + mobsHostilesEliminadosAltar4 + "/5 ☠");
+                }
+            }
+            
+            // Partículas de sangre intensificándose con el progreso
+            if (mobsHostilesEliminadosAltar4 > 0) {
+                Location centro = altarLoc.clone().add(0.5, 1, 0.5);
+                int cantidadParticulas = 3 + (mobsHostilesEliminadosAltar4 * 3);
+                centro.getWorld().spawnParticle(Particle.DUST, centro, cantidadParticulas, 
+                    0.5, 0.5, 0.5, 
+                    new Particle.DustOptions(org.bukkit.Color.RED, 1.5f));
+            }
+        }
+    }
+    
+    /**
+     * Spawnea un mob hostil para el Altar 4 (La Caza)
+     */
+    private void spawnearMobAltar4(Location altarLoc) {
         // Elegir posición aleatoria alrededor del altar (8-15 bloques)
         double angulo = Math.random() * Math.PI * 2;
         double distancia = 8 + Math.random() * 7;
@@ -2955,6 +3133,16 @@ public class SusurroPiedraRotaEvent extends EventBase {
         mob.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).setBaseValue(25.0);
         mob.setHealth(25.0);
         
+        // ✨ XP DINÁMICO GENEROSO - Las criaturas del altar dan mucha XP
+        // Base: 15-25 XP por mob (los mobs normales dan 5)
+        int xpBase = 15 + (int)(Math.random() * 11); // 15-25 XP
+        if (mob instanceof org.bukkit.entity.Zombie) {
+            ((org.bukkit.entity.Zombie) mob).setShouldBurnInDay(false);
+        }
+        // Guardamos el XP en metadata para darlo al morir
+        mob.setMetadata("apocalipsis_xp", new org.bukkit.metadata.FixedMetadataValue(plugin, xpBase));
+        mob.setMetadata("apocalipsis_altar", new org.bukkit.metadata.FixedMetadataValue(plugin, 4));
+        
         // Registrar como criatura del altar
         criaturasDeAltar.add(mob.getUniqueId());
         
@@ -2966,35 +3154,40 @@ public class SusurroPiedraRotaEvent extends EventBase {
             }
         }
         
-        plugin.getLogger().info("[SusurroPiedraRota] Altar 3: Spawneado " + tipo.name());
+        plugin.getLogger().info("[SusurroPiedraRota] Altar 4: Spawneado " + tipo.name());
     }
     
     /**
-     * Procesa la muerte de un mob hostil para el Altar 3
+     * Procesa la muerte de un mob hostil para el Altar 4 (La Caza)
      * Llamado desde el listener cuando un jugador mata un mob
      */
-    public void procesarKillMobHostilAltar3(Player killer, LivingEntity mob) {
-        // Solo procesar si estamos en Acto 1 (Piedra Despierta) y Altar 3 está activo
-        if (actoActual != Acto.PIEDRA_DESPIERTA || altarActualGlobal != 3 || !altarEnProgreso) {
+    public void procesarKillMobHostilAltar4(Player killer, LivingEntity mob) {
+        // Solo procesar si estamos en Acto 1 (Piedra Despierta) y Altar 4 está activo
+        if (actoActual != Acto.PIEDRA_DESPIERTA || altarActualGlobal != 4 || !altarEnProgreso) {
+            plugin.getLogger().info("[SusurroPiedraRota] Kill ignorado - altar=" + altarActualGlobal + ", enProgreso=" + altarEnProgreso);
             return;
         }
         
         // Verificar que el altar tenga ubicación
         if (altarActualLocation == null) {
+            plugin.getLogger().info("[SusurroPiedraRota] Kill ignorado - altarLocation es null");
             return;
         }
         
         // Verificar que el mob esté dentro del rango (50 bloques del altar)
-        if (mob.getLocation().distance(altarActualLocation) > 50) {
+        double distancia = mob.getLocation().distance(altarActualLocation);
+        if (distancia > 50) {
+            plugin.getLogger().info("[SusurroPiedraRota] Kill ignorado - mob muy lejos: " + distancia + " bloques");
             return;
         }
         
-        // ✨ NUEVO: Aceptar tanto mobs spawneados del altar como mobs naturales
+        // ✨ Aceptar tanto mobs spawneados del altar como mobs naturales
         boolean esMobDelAltar = criaturasDeAltar.contains(mob.getUniqueId());
         boolean esMobNatural = esMobHostilNatural(mob);
         
         if (!esMobDelAltar && !esMobNatural) {
-            return; // No es ni del altar ni natural hostil
+            plugin.getLogger().info("[SusurroPiedraRota] Kill ignorado - no es mob válido: " + mob.getType().name());
+            return;
         }
         
         // Si es mob del altar, removerlo de la lista
@@ -3003,19 +3196,72 @@ public class SusurroPiedraRotaEvent extends EventBase {
         }
         
         // ¡Contar el kill!
-        mobsHostilesEliminadosAltar3++;
+        mobsHostilesEliminadosAltar4++;
         
-        // Feedback
-        killer.sendMessage("§5§l[⧖] §7Mob eliminado: §c" + mobsHostilesEliminadosAltar3 + "/5");
+        // Feedback inmediato al killer
+        killer.sendMessage("§5§l[⧖] §7Mob eliminado: §c" + mobsHostilesEliminadosAltar4 + "/5");
         soundUtil.playSound(killer, Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.5f, 1.2f);
+        
+        // ✨ Actualizar ActionBar inmediatamente a TODOS los jugadores presentes
+        String barra = crearBarraProgreso(mobsHostilesEliminadosAltar4, 5, "§c", "§7");
+        for (UUID uid : jugadoresPresentesEnAltar) {
+            Player p = Bukkit.getPlayer(uid);
+            if (p != null) {
+                p.sendActionBar("§5⧖ Caza: " + barra + " §c" + mobsHostilesEliminadosAltar4 + "/5 ☠");
+            }
+        }
         
         // Partículas en el mob muerto
         mob.getWorld().spawnParticle(Particle.SOUL, mob.getLocation().add(0, 1, 0), 15, 0.3, 0.5, 0.3, 0.05);
         
+        // ✨ DAR XP GENEROSO AL JUGADOR
+        org.bukkit.NamespacedKey xpKey = new org.bukkit.NamespacedKey(plugin, "evento_xp");
+        final int xpGanado;
+        
+        if (mob.getPersistentDataContainer().has(xpKey, org.bukkit.persistence.PersistentDataType.INTEGER)) {
+            // XP configurado para mobs del altar (50-70 XP)
+            xpGanado = mob.getPersistentDataContainer().get(xpKey, org.bukkit.persistence.PersistentDataType.INTEGER);
+        } else {
+            // XP para mobs naturales (menos que los del altar pero aún generoso)
+            xpGanado = 15 + (int)(Math.random() * 10); // 15-24 XP para naturales
+        }
+        
+        // Dar experiencia real y orbes visuales
+        killer.giveExp(xpGanado);
+        mob.getWorld().spawn(mob.getLocation().add(0, 0.5, 0), org.bukkit.entity.ExperienceOrb.class, orb -> {
+            orb.setExperience(xpGanado / 4); // Orbes visuales extra (25% bonus visual)
+        });
+        
+        killer.sendMessage("§a§l✦ +" + xpGanado + " XP §a§oBonus del evento!");
+        
+        // Partículas de XP épicas
+        mob.getWorld().spawnParticle(Particle.HAPPY_VILLAGER, mob.getLocation().add(0, 1.2, 0), 20, 0.5, 0.7, 0.5, 0.1);
+        mob.getWorld().spawnParticle(Particle.ENCHANT, mob.getLocation().add(0, 1, 0), 15, 0.3, 0.5, 0.3, 0.5);
+        
         plugin.getLogger().info(String.format(
-            "[SusurroPiedraRota] Altar 3: %s eliminó %s (%d/5)",
-            killer.getName(), mob.getType().name(), mobsHostilesEliminadosAltar3
+            "[SusurroPiedraRota] Altar 4: %s eliminó %s (%d/5) +%dXP - delAltar=%s, natural=%s",
+            killer.getName(), mob.getType().name(), mobsHostilesEliminadosAltar4, xpGanado, esMobDelAltar, esMobNatural
         ));
+        
+        // Verificar completado inmediatamente después del kill
+        if (mobsHostilesEliminadosAltar4 >= 5) {
+            plugin.getLogger().info("[SusurroPiedraRota] Altar 4: ¡Objetivo completado! Iniciando secuencia de completar...");
+            
+            // Efecto dramático para todos
+            for (UUID uid : jugadoresPresentesEnAltar) {
+                Player p = Bukkit.getPlayer(uid);
+                if (p != null) {
+                    p.addPotionEffect(new org.bukkit.potion.PotionEffect(
+                        org.bukkit.potion.PotionEffectType.STRENGTH, 200, 0));
+                    soundUtil.playSound(p, Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.2f);
+                    p.sendActionBar("§a§l✓ ¡CAZA COMPLETADA! §7Preparando siguiente fase...");
+                }
+            }
+            
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                completarAltarGrupal(4, altarActualLocation);
+            }, 40L);
+        }
     }
     
     /**
@@ -3059,36 +3305,67 @@ public class SusurroPiedraRotaEvent extends EventBase {
     }
     
     /**
-     * ALTAR 4 GRUPAL: LA PURIFICACIÓN - Contar muertes totales
+     * Procesar kill de mobs en Altar 5 - Solo da XP generoso, no cuenta para progreso
      */
-    private void procesarAltar4PurificacionGrupal(Player player, Location altarLoc) {
-        // Contar criaturas eliminadas por el grupo
-        int totalEliminadas = 0;
-        for (UUID uid : jugadoresPresentesEnAltar) {
-            totalEliminadas += criaturasEliminadasPorJugador.getOrDefault(uid, 0);
+    public void procesarKillMobAltar5(Player killer, LivingEntity mob) {
+        // Solo procesar si estamos en Acto 1 (Piedra Despierta) y Altar 5 está activo
+        if (actoActual != Acto.PIEDRA_DESPIERTA || altarActualGlobal != 5 || !altarEnProgreso) {
+            return;
         }
         
-        // Mostrar progreso
-        if (ticksEnActo % 20 == 0) {
-            String barra = crearBarraProgreso(totalEliminadas, 12, "§e", "§7");
-            for (UUID uid : jugadoresPresentesEnAltar) {
-                Player p = Bukkit.getPlayer(uid);
-                if (p != null) {
-                    p.sendActionBar("§5⧖ Purificación: " + barra + " §f" + totalEliminadas + "/12 ☠");
-                }
-            }
-            
-            // Partículas de purificación (smoke + soul flame)
-            if (totalEliminadas > 0) {
-                Location centro = altarLoc.clone().add(0.5, 1, 0.5);
-                centro.getWorld().spawnParticle(Particle.SOUL_FIRE_FLAME, centro, 5, 0.5, 0.5, 0.5, 0.02);
-            }
+        // Verificar que el altar tenga ubicación
+        if (altarActualLocation == null) return;
+        
+        // Verificar que el mob esté dentro del rango (60 bloques del altar)
+        double distancia = mob.getLocation().distance(altarActualLocation);
+        if (distancia > 60) return;
+        
+        // ✨ Verificar si es un mob del evento (tiene XP configurado)
+        org.bukkit.NamespacedKey xpKey = new org.bukkit.NamespacedKey(plugin, "evento_xp");
+        final int xpGanado;
+        
+        if (mob.getPersistentDataContainer().has(xpKey, org.bukkit.persistence.PersistentDataType.INTEGER)) {
+            // XP configurado para mobs de oleadas (60-100+ XP dependiendo de oleada)
+            xpGanado = mob.getPersistentDataContainer().get(xpKey, org.bukkit.persistence.PersistentDataType.INTEGER);
+        } else {
+            // XP para mobs naturales durante altar 5
+            xpGanado = 20 + (int)(Math.random() * 15); // 20-34 XP para naturales
         }
         
-        // Completar si eliminaron 12
-        if (totalEliminadas >= 12) {
-            completarAltarGrupal(4, altarLoc);
+        // Dar experiencia real y orbes visuales épicos
+        killer.giveExp(xpGanado);
+        
+        // Múltiples orbes de XP visual para efecto dramático
+        final Location mobLoc = mob.getLocation();
+        final World mobWorld = mob.getWorld();
+        for (int i = 0; i < 3; i++) {
+            final int delay = i * 2;
+            final int xpOrb = xpGanado / 6;
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                mobWorld.spawn(mobLoc.clone().add(
+                    Math.random() * 0.5 - 0.25, 
+                    0.5 + Math.random() * 0.3, 
+                    Math.random() * 0.5 - 0.25), 
+                    org.bukkit.entity.ExperienceOrb.class, orb -> {
+                        orb.setExperience(xpOrb);
+                    });
+            }, delay);
         }
+        
+        killer.sendMessage("§6§l⚔ +" + xpGanado + " XP §e§oVictoria en la Unión!");
+        
+        // Partículas épicas de XP
+        mob.getWorld().spawnParticle(Particle.HAPPY_VILLAGER, mob.getLocation().add(0, 1.2, 0), 25, 0.6, 0.8, 0.6, 0.1);
+        mob.getWorld().spawnParticle(Particle.ENCHANT, mob.getLocation().add(0, 1, 0), 20, 0.4, 0.6, 0.4, 0.7);
+        mob.getWorld().spawnParticle(Particle.SOUL_FIRE_FLAME, mob.getLocation().add(0, 1, 0), 8, 0.3, 0.5, 0.3, 0.02);
+        
+        // Sonido satisfactorio
+        soundUtil.playSound(killer, Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.8f, 1.3f);
+        
+        plugin.getLogger().info(String.format(
+            "[SusurroPiedraRota] Altar 5: %s eliminó %s +%dXP",
+            killer.getName(), mob.getType().name(), xpGanado
+        ));
     }
     
     /**
@@ -3181,72 +3458,22 @@ public class SusurroPiedraRotaEvent extends EventBase {
             criatura.getAttribute(org.bukkit.attribute.Attribute.ATTACK_DAMAGE).setBaseValue(4.0 + oleada);
             criatura.getAttribute(org.bukkit.attribute.Attribute.MOVEMENT_SPEED).setBaseValue(0.25 + (oleada * 0.05));
             
+            // ✨ XP DINÁMICO MUY GENEROSO - Altar 5 da aún más XP
+            // Oleada 1: 20-30 XP | Oleada 2: 30-45 XP (son más difíciles)
+            int xpBase = (oleada == 1) ? (20 + (int)(Math.random() * 11)) : (30 + (int)(Math.random() * 16));
+            if (criatura instanceof org.bukkit.entity.Zombie) {
+                ((org.bukkit.entity.Zombie) criatura).setShouldBurnInDay(false);
+            }
+            // Guardamos el XP en metadata para darlo al morir
+            criatura.setMetadata("apocalipsis_xp", new org.bukkit.metadata.FixedMetadataValue(plugin, xpBase));
+            criatura.setMetadata("apocalipsis_altar", new org.bukkit.metadata.FixedMetadataValue(plugin, 5));
+            
             criaturasDeAltar.add(criatura.getUniqueId());
             
             // Efectos visuales dramáticos
             spawnLoc.getWorld().spawnParticle(Particle.SOUL_FIRE_FLAME, spawnLoc, 40, 0.5, 1, 0.5, 0.15);
             spawnLoc.getWorld().spawnParticle(Particle.SMOKE, spawnLoc, 20, 0.5, 0.5, 0.5, 0.1);
             spawnLoc.getWorld().spawnParticle(Particle.LAVA, spawnLoc, 5, 0.3, 0.3, 0.3, 0);
-        }
-    }
-    
-    /**
-     * Spawnear criaturas para Altar 4
-     */
-    private void spawnearCriaturasAltar4(Location altarLoc) {
-        String[] nombres = {
-            "§8Recuerdo Defectuoso",
-            "§8Eco Corrupto",
-            "§8Memoria Fragmentada",
-            "§8Copia Errónea",
-            "§8Fragmento Hostil",
-            "§8Sombra del Vacío",
-            "§8Reflejo Distorsionado",
-            "§8Resto Dimensional",
-            "§8Eco Resentido",
-            "§8Forma Olvidada",
-            "§8Vestigio Corrupto",
-            "§8Memoria Hostil"
-        };
-        
-        for (int i = 0; i < 12; i++) {
-            double angle = Math.toRadians(i * 30); // 360/12 = 30 grados entre cada uno
-            double radio = (i % 2 == 0) ? 5 : 7; // Dos anillos de criaturas
-            Location spawnLoc = altarLoc.clone().add(
-                Math.cos(angle) * radio,
-                0,
-                Math.sin(angle) * radio
-            );
-            spawnLoc.setY(altarLoc.getWorld().getHighestBlockYAt(spawnLoc) + 1);
-            
-            // Variar entre zombies, skeletons y ocasionalmente husks/strays
-            EntityType tipo;
-            if (i % 4 == 0) {
-                tipo = EntityType.HUSK; // Más resistentes
-            } else if (i % 4 == 1) {
-                tipo = EntityType.STRAY; // Con efecto slowness
-            } else if (i % 2 == 0) {
-                tipo = EntityType.ZOMBIE;
-            } else {
-                tipo = EntityType.SKELETON;
-            }
-            
-            org.bukkit.entity.LivingEntity criatura = (org.bukkit.entity.LivingEntity) 
-                spawnLoc.getWorld().spawnEntity(spawnLoc, tipo);
-            
-            criatura.customName(net.kyori.adventure.text.Component.text(nombres[i]));
-            criatura.setCustomNameVisible(true);
-            
-            // Buffear las criaturas para hacerlas más desafiantes
-            criatura.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).setBaseValue(30.0);
-            criatura.setHealth(30.0);
-            criatura.getAttribute(org.bukkit.attribute.Attribute.ATTACK_DAMAGE).setBaseValue(5.0);
-            
-            criaturasDeAltar.add(criatura.getUniqueId());
-            
-            // Partículas de spawn más intensas
-            spawnLoc.getWorld().spawnParticle(Particle.SOUL_FIRE_FLAME, spawnLoc, 30, 0.5, 0.5, 0.5, 0.1);
-            spawnLoc.getWorld().spawnParticle(Particle.SMOKE, spawnLoc, 10, 0.3, 0.5, 0.3, 0.05);
         }
     }
     
