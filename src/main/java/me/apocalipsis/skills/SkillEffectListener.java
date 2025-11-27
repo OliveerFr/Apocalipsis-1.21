@@ -7,8 +7,8 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
-import org.bukkit.attribute.Attribute;
 import org.bukkit.block.Block;
+import org.bukkit.entity.ExperienceOrb;
 import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -16,6 +16,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.entity.FoodLevelChangeEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -40,15 +41,18 @@ public class SkillEffectListener implements Listener {
     // Cache de jugadores cayendo para Vuelo de Emergencia
     private final Set<UUID> playersGliding = new HashSet<>();
     
-    // Cache de última ubicación para detectar caída
-    private final Map<UUID, Double> lastFallDistance = new HashMap<>();
-    
     // Jugadores que deben revivir con Fénix
     private final Map<UUID, Location> phoenixRevive = new HashMap<>();
+    
+    // Items que ya fueron procesados por auto-recolección
+    private final Set<UUID> processedItems = new HashSet<>();
     
     public SkillEffectListener(Apocalipsis plugin, SkillService skillService) {
         this.plugin = plugin;
         this.skillService = skillService;
+        
+        // Limpiar items procesados cada minuto
+        Bukkit.getScheduler().runTaskTimer(plugin, processedItems::clear, 1200L, 1200L);
     }
     
     // ==================== JOIN/QUIT ====================
@@ -59,14 +63,13 @@ public class SkillEffectListener implements Listener {
         // Aplicar efectos al unirse
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             skillService.applySkillEffects(player);
-        }, 20L); // 1 segundo después para asegurar que cargó todo
+        }, 20L);
     }
     
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
         UUID uuid = event.getPlayer().getUniqueId();
         playersGliding.remove(uuid);
-        lastFallDistance.remove(uuid);
         phoenixRevive.remove(uuid);
     }
     
@@ -97,7 +100,7 @@ public class SkillEffectListener implements Listener {
             
             if (skillService.hasSkill(uuid, Skill.IGNIFUGO)) {
                 reduction = 0.40; // -40%
-                // Inmune a daño por pisar fuego (fire_tick)
+                // Inmune a daño por pisar fuego
                 if (cause == EntityDamageEvent.DamageCause.FIRE_TICK) {
                     Block below = player.getLocation().subtract(0, 1, 0).getBlock();
                     if (below.getType() == Material.FIRE || below.getType() == Material.SOUL_FIRE) {
@@ -135,10 +138,7 @@ public class SkillEffectListener implements Listener {
         double fallDistance = player.getFallDistance();
         
         if (fallDistance >= 15 && player.getVelocity().getY() < -0.5) {
-            // Verificar cooldown
             if (!skillService.isGlideReady(player)) return;
-            
-            // ¡Activar vuelo de emergencia!
             activateEmergencyGlide(player);
         }
     }
@@ -153,7 +153,7 @@ public class SkillEffectListener implements Listener {
         
         // Ralentizar la caída
         Vector velocity = player.getVelocity();
-        velocity.setY(-0.5); // Reducir velocidad de caída
+        velocity.setY(-0.5);
         player.setVelocity(velocity);
         
         // Efecto de planeo por 3 segundos
@@ -171,7 +171,7 @@ public class SkillEffectListener implements Listener {
                 p.setGliding(false);
                 p.sendMessage("§7Vuelo de Emergencia terminado. §8(Cooldown: 1 min)");
             }
-        }, 60L); // 3 segundos
+        }, 60L);
     }
     
     // ==================== FÉNIX ====================
@@ -181,19 +181,26 @@ public class SkillEffectListener implements Listener {
         Player player = event.getEntity();
         UUID uuid = player.getUniqueId();
         
-        // Verificar Fénix
-        if (!skillService.hasSkill(uuid, Skill.FENIX)) return;
-        if (!skillService.isPhoenixReady(player)) return;
+        // === VOID STORAGE - No dropear items ===
+        if (skillService.hasSkill(uuid, Skill.VOID_STORAGE)) {
+            event.setKeepInventory(true);
+            event.getDrops().clear();
+            event.setKeepLevel(true);
+            event.setDroppedExp(0);
+            player.sendMessage("§d§l✦ §5Void Storage protegió tu inventario!");
+        }
         
-        // Marcar para revivir
-        phoenixRevive.put(uuid, player.getLocation().clone());
-        skillService.usePhoenix(player);
-        
-        // Modificar mensaje de muerte
-        event.setDeathMessage(null);
-        
-        // Notificar
-        player.sendMessage("§6§l✦ §e¡Fénix activado! Revivirás en tu ubicación...");
+        // === FÉNIX ===
+        if (skillService.hasSkill(uuid, Skill.FENIX)) {
+            if (skillService.isPhoenixReady(player)) {
+                // Marcar para revivir
+                phoenixRevive.put(uuid, player.getLocation().clone());
+                skillService.usePhoenix(player);
+                
+                event.setDeathMessage(null);
+                player.sendMessage("§6§l✦ §e¡Fénix activado! Revivirás en tu ubicación...");
+            }
+        }
     }
     
     @EventHandler(priority = EventPriority.HIGHEST)
@@ -211,18 +218,15 @@ public class SkillEffectListener implements Listener {
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             Player p = Bukkit.getPlayer(uuid);
             if (p != null && p.isOnline()) {
-                // Establecer vida a 3 corazones (6 HP)
-                p.setHealth(6);
+                p.setHealth(6); // 3 corazones
                 p.setFoodLevel(10);
                 
                 // Efectos visuales
                 p.getWorld().spawnParticle(Particle.FLAME, p.getLocation().add(0, 1, 0), 50, 0.5, 1, 0.5, 0.1);
                 p.playSound(p.getLocation(), Sound.ENTITY_BLAZE_SHOOT, 1.0f, 0.5f);
                 
-                // Broadcast
                 Bukkit.broadcastMessage("§6§l✦ §e" + p.getName() + " §fha renacido de las cenizas!");
                 
-                // Mensaje de cooldown
                 long remaining = skillService.getPhoenixCooldownRemaining(p);
                 long hours = remaining / (60 * 60 * 1000);
                 p.sendMessage("§7Fénix en cooldown por §e" + hours + " horas§7.");
@@ -244,69 +248,120 @@ public class SkillEffectListener implements Listener {
         double reduction = 0;
         
         if (skillService.hasSkill(uuid, Skill.METABOLISMO_LENTO)) {
-            reduction = 0.40; // 40% más lento
+            reduction = 0.40;
         } else if (skillService.hasSkill(uuid, Skill.ESTOMAGO_HIERRO)) {
-            reduction = 0.20; // 20% más lento
+            reduction = 0.20;
         }
         
         if (reduction > 0) {
-            // Probabilidad de cancelar la pérdida
             if (Math.random() < reduction) {
                 event.setCancelled(true);
             }
         }
     }
     
-    // ==================== MINERÍA ====================
+    // ==================== MINERÍA Y AUTO-RECOLECCIÓN ====================
     
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
         Player player = event.getPlayer();
         UUID uuid = player.getUniqueId();
         Block block = event.getBlock();
         
-        // === TOQUE DE FORTUNA ===
-        if (skillService.hasSkill(uuid, Skill.TOQUE_FORTUNA)) {
-            // +10% drop para minerales
-            if (isOre(block.getType())) {
-                if (Math.random() < 0.10) {
-                    // Duplicar drop
-                    for (ItemStack drop : block.getDrops(player.getInventory().getItemInMainHand())) {
+        // === AUTO-RECOLECCIÓN ===
+        if (skillService.hasSkill(uuid, Skill.AUTO_RECOLECCION) && 
+            skillService.isSkillEnabled(uuid, Skill.AUTO_RECOLECCION)) {
+            
+            // Obtener los drops antes de que se rompan
+            Collection<ItemStack> drops = block.getDrops(player.getInventory().getItemInMainHand());
+            
+            // Cancelar drops normales
+            event.setDropItems(false);
+            
+            // Dar los items directamente al jugador
+            for (ItemStack drop : drops) {
+                HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(drop);
+                // Si no cabe, dropearlo
+                for (ItemStack item : leftover.values()) {
+                    block.getWorld().dropItemNaturally(block.getLocation(), item);
+                }
+            }
+            
+            // También dar experiencia si aplica
+            int expToDrop = getExpToDrop(block.getType());
+            if (expToDrop > 0) {
+                player.giveExp(expToDrop);
+            }
+        }
+        
+        // === TOQUE DE FORTUNA (después de auto-recolección) ===
+        if (skillService.hasSkill(uuid, Skill.TOQUE_FORTUNA) && isOre(block.getType())) {
+            if (Math.random() < 0.10) {
+                // +10% drop extra
+                Collection<ItemStack> bonusDrops = block.getDrops(player.getInventory().getItemInMainHand());
+                for (ItemStack drop : bonusDrops) {
+                    if (skillService.hasSkill(uuid, Skill.AUTO_RECOLECCION)) {
+                        HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(drop);
+                        for (ItemStack item : leftover.values()) {
+                            block.getWorld().dropItemNaturally(block.getLocation(), item);
+                        }
+                    } else {
                         block.getWorld().dropItemNaturally(block.getLocation(), drop);
                     }
                 }
+                player.sendMessage("§a§l⚡ §a¡Toque de Fortuna! (+10% drops)");
             }
         }
         
         // === TOQUE DE SEDA NATURAL ===
         if (skillService.hasSkill(uuid, Skill.SEDA_NATURAL)) {
-            // 5% chance de silk touch
-            if (Math.random() < 0.05) {
-                // Cancelar drop normal y dropear el bloque
-                event.setDropItems(false);
+            if (Math.random() < 0.05 && canSilkTouch(block.getType())) {
+                // 5% chance de silk touch
+                if (!skillService.hasSkill(uuid, Skill.AUTO_RECOLECCION)) {
+                    event.setDropItems(false);
+                }
                 ItemStack silkDrop = new ItemStack(block.getType());
-                block.getWorld().dropItemNaturally(block.getLocation(), silkDrop);
+                if (skillService.hasSkill(uuid, Skill.AUTO_RECOLECCION)) {
+                    HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(silkDrop);
+                    for (ItemStack item : leftover.values()) {
+                        block.getWorld().dropItemNaturally(block.getLocation(), item);
+                    }
+                } else {
+                    block.getWorld().dropItemNaturally(block.getLocation(), silkDrop);
+                }
                 player.sendMessage("§d✦ §fToque de Seda Natural!");
             }
         }
+    }
+    
+    // Recoger items cercanos para auto-recolección (items que no son de minado)
+    @EventHandler
+    public void onItemPickup(EntityPickupItemEvent event) {
+        if (!(event.getEntity() instanceof Player player)) return;
         
-        // === AUTO-RECOLECCIÓN ===
-        if (skillService.hasSkill(uuid, Skill.AUTO_RECOLECCION)) {
-            // Los items cercanos van al inventario
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                Location loc = block.getLocation().add(0.5, 0.5, 0.5);
-                Collection<Item> nearbyItems = loc.getWorld().getNearbyEntitiesByType(Item.class, loc, 3);
-                
-                for (Item item : nearbyItems) {
-                    if (!item.isDead()) {
-                        HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(item.getItemStack());
-                        if (leftover.isEmpty()) {
-                            item.remove();
-                        }
-                    }
-                }
-            }, 5L);
-        }
+        UUID uuid = player.getUniqueId();
+        if (!skillService.hasSkill(uuid, Skill.AUTO_RECOLECCION)) return;
+        if (!skillService.isSkillEnabled(uuid, Skill.AUTO_RECOLECCION)) return;
+        
+        // Aumentar el rango de recogida de items
+        Item item = event.getItem();
+        if (processedItems.contains(item.getUniqueId())) return;
+        
+        // Marcar como procesado
+        processedItems.add(item.getUniqueId());
+    }
+    
+    private int getExpToDrop(Material material) {
+        return switch (material) {
+            case COAL_ORE, DEEPSLATE_COAL_ORE -> (int) (Math.random() * 2) + 1;
+            case DIAMOND_ORE, DEEPSLATE_DIAMOND_ORE -> (int) (Math.random() * 5) + 3;
+            case EMERALD_ORE, DEEPSLATE_EMERALD_ORE -> (int) (Math.random() * 5) + 3;
+            case LAPIS_ORE, DEEPSLATE_LAPIS_ORE -> (int) (Math.random() * 4) + 2;
+            case REDSTONE_ORE, DEEPSLATE_REDSTONE_ORE -> (int) (Math.random() * 4) + 1;
+            case NETHER_QUARTZ_ORE -> (int) (Math.random() * 4) + 2;
+            case SPAWNER -> (int) (Math.random() * 29) + 15;
+            default -> 0;
+        };
     }
     
     private boolean isOre(Material material) {
@@ -325,9 +380,22 @@ public class SkillEffectListener implements Listener {
         };
     }
     
+    private boolean canSilkTouch(Material material) {
+        return switch (material) {
+            case STONE, COBBLESTONE, GRASS_BLOCK, DIRT, 
+                 COAL_ORE, DEEPSLATE_COAL_ORE,
+                 DIAMOND_ORE, DEEPSLATE_DIAMOND_ORE,
+                 EMERALD_ORE, DEEPSLATE_EMERALD_ORE,
+                 LAPIS_ORE, DEEPSLATE_LAPIS_ORE,
+                 REDSTONE_ORE, DEEPSLATE_REDSTONE_ORE,
+                 GLASS, GLASS_PANE, ICE, BLUE_ICE, PACKED_ICE,
+                 GLOWSTONE, SEA_LANTERN -> true;
+            default -> false;
+        };
+    }
+    
     // ==================== NADADOR ====================
     
-    // Se maneja con un task periódico cuando está en agua
     public void applySwimBoost(Player player) {
         if (!skillService.hasSkill(player, Skill.NADADOR)) return;
         if (!skillService.isSkillEnabled(player, Skill.NADADOR)) return;
@@ -343,15 +411,14 @@ public class SkillEffectListener implements Listener {
         UUID uuid = player.getUniqueId();
         
         if (skillService.hasSkill(uuid, Skill.ANFIBIO)) {
-            // Respiración infinita
             if (player.isInWater()) {
                 player.setRemainingAir(player.getMaximumAir());
             }
         } else if (skillService.hasSkill(uuid, Skill.BRANQUIAS)) {
-            // +60% tiempo de respiración
             if (player.isInWater() && player.getRemainingAir() < player.getMaximumAir()) {
-                int extraAir = (int) (player.getMaximumAir() * 0.60);
-                player.setMaximumAir(player.getMaximumAir() + extraAir);
+                // Restaurar aire más lento que perderlo
+                int newAir = Math.min(player.getRemainingAir() + 30, player.getMaximumAir());
+                player.setRemainingAir(newAir);
             }
         }
     }

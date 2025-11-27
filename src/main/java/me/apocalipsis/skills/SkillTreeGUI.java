@@ -1,6 +1,7 @@
 package me.apocalipsis.skills;
 
 import me.apocalipsis.Apocalipsis;
+import me.apocalipsis.missions.MissionRank;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Sound;
@@ -13,12 +14,12 @@ import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.SkullMeta;
 
 import java.util.*;
 
 /**
- * GUI del árbol de habilidades estilo logros de Minecraft.
- * Usa InventoryHolder personalizado para identificar los menús.
+ * GUI del árbol de habilidades con menú principal.
  */
 public class SkillTreeGUI implements Listener {
     
@@ -31,6 +32,17 @@ public class SkillTreeGUI implements Listener {
     }
     
     // ==================== INVENTORY HOLDERS ====================
+    
+    /**
+     * Holder para el menú principal de habilidades
+     */
+    public class MainMenuHolder implements InventoryHolder {
+        private Inventory inventory;
+        
+        @Override
+        public Inventory getInventory() { return inventory; }
+        public void setInventory(Inventory inv) { this.inventory = inv; }
+    }
     
     /**
      * Holder para el menú del árbol de habilidades
@@ -47,7 +59,6 @@ public class SkillTreeGUI implements Listener {
         
         @Override
         public Inventory getInventory() { return inventory; }
-        
         public void setInventory(Inventory inv) { this.inventory = inv; }
     }
     
@@ -69,29 +80,44 @@ public class SkillTreeGUI implements Listener {
         
         @Override
         public Inventory getInventory() { return inventory; }
-        
         public void setInventory(Inventory inv) { this.inventory = inv; }
     }
     
     // ==================== ABRIR MENÚS ====================
     
+    /**
+     * Abre el menú principal de habilidades
+     */
     public void openMainMenu(Player player) {
-        openBranchMenu(player, SkillBranch.ALMACENAMIENTO);
+        MainMenuHolder holder = new MainMenuHolder();
+        String title = "§6§l✦ §e§lHabilidades §6§l✦";
+        Inventory inv = Bukkit.createInventory(holder, 54, title);
+        holder.setInventory(inv);
+        
+        renderMainMenu(inv, player);
+        
+        player.openInventory(inv);
+        player.playSound(player.getLocation(), Sound.BLOCK_ENDER_CHEST_OPEN, 0.7f, 1.2f);
     }
     
+    /**
+     * Abre el árbol de una rama específica
+     */
     public void openBranchMenu(Player player, SkillBranch branch) {
         TreeMenuHolder holder = new TreeMenuHolder(branch);
         String title = getBranchTitle(branch);
         Inventory inv = Bukkit.createInventory(holder, 54, title);
         holder.setInventory(inv);
         
-        // Renderizar
         renderTreeMenu(inv, player, branch);
         
         player.openInventory(inv);
         player.playSound(player.getLocation(), Sound.ITEM_BOOK_PAGE_TURN, 0.7f, 1.0f);
     }
     
+    /**
+     * Abre confirmación de compra
+     */
     public void openConfirmMenu(Player player, Skill skill, SkillBranch returnBranch) {
         ConfirmMenuHolder holder = new ConfirmMenuHolder(skill, returnBranch);
         String title = "§8Confirmar: §6" + skill.getDisplayName();
@@ -104,18 +130,184 @@ public class SkillTreeGUI implements Listener {
         player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 0.5f, 1.2f);
     }
     
+    // ==================== RENDERIZADO MENÚ PRINCIPAL ====================
+    
+    private void renderMainMenu(Inventory inv, Player player) {
+        UUID uuid = player.getUniqueId();
+        
+        // Fondo decorativo
+        ItemStack blackBg = createItem(Material.BLACK_STAINED_GLASS_PANE, " ");
+        ItemStack grayBg = createItem(Material.GRAY_STAINED_GLASS_PANE, " ");
+        
+        // Fondo negro
+        for (int i = 0; i < 54; i++) {
+            inv.setItem(i, blackBg);
+        }
+        
+        // Bordes decorativos grises
+        int[] graySlots = {0, 8, 9, 17, 36, 44, 45, 53};
+        for (int slot : graySlots) {
+            inv.setItem(slot, grayBg);
+        }
+        
+        // === CABEZA DEL JUGADOR CON STATS ===
+        ItemStack playerHead = createPlayerHead(player);
+        inv.setItem(4, playerHead);
+        
+        // === TRES RAMAS ===
+        
+        // Almacenamiento (izquierda)
+        inv.setItem(20, createBranchButton(SkillBranch.ALMACENAMIENTO, player));
+        
+        // Utilidad (centro)
+        inv.setItem(22, createBranchButton(SkillBranch.UTILIDAD, player));
+        
+        // Supervivencia (derecha)
+        inv.setItem(24, createBranchButton(SkillBranch.SUPERVIVENCIA, player));
+        
+        // === INFO EXTRA ===
+        
+        // Total XP gastada
+        int totalXpGastada = skillService.getTotalXpGastada(uuid);
+        int totalSkills = skillService.getUnlockedSkills(uuid).size();
+        int maxSkills = Skill.values().length;
+        
+        List<String> statsLore = new ArrayList<>();
+        statsLore.add("§7Habilidades: §e" + totalSkills + "§7/§6" + maxSkills);
+        statsLore.add("§7XP invertida: §a" + String.format("%,d", totalXpGastada));
+        statsLore.add("");
+        statsLore.add("§8Selecciona una rama para ver");
+        statsLore.add("§8el árbol de habilidades.");
+        
+        ItemStack statsItem = createItem(Material.BOOK, "§e§lTu Progreso", statsLore);
+        inv.setItem(40, statsItem);
+        
+        // Cerrar
+        inv.setItem(49, createItem(Material.BARRIER, "§c§lCerrar", "§7Click para cerrar"));
+    }
+    
+    private ItemStack createPlayerHead(Player player) {
+        UUID uuid = player.getUniqueId();
+        ItemStack head = new ItemStack(Material.PLAYER_HEAD);
+        SkullMeta meta = (SkullMeta) head.getItemMeta();
+        
+        if (meta != null) {
+            meta.setOwningPlayer(player);
+            meta.setDisplayName("§6§l" + player.getName());
+            
+            List<String> lore = new ArrayList<>();
+            lore.add("");
+            
+            // XP actual
+            int xp = plugin.getExperienceService().getXP(player);
+            lore.add("§7XP actual: §a" + String.format("%,d", xp));
+            
+            // Rango
+            MissionRank rank = plugin.getRankService().getRank(player);
+            lore.add("§7Rango: " + rank.getPrefix());
+            
+            // Skills desbloqueadas
+            int skills = skillService.getUnlockedSkills(uuid).size();
+            lore.add("§7Habilidades: §e" + skills);
+            
+            lore.add("");
+            lore.add("§8Árbol de Habilidades");
+            
+            meta.setLore(lore);
+            head.setItemMeta(meta);
+        }
+        
+        return head;
+    }
+    
+    private ItemStack createBranchButton(SkillBranch branch, Player player) {
+        UUID uuid = player.getUniqueId();
+        Material mat;
+        String name;
+        String color;
+        
+        switch (branch) {
+            case ALMACENAMIENTO -> {
+                mat = Material.CHEST;
+                name = "Almacenamiento";
+                color = "§6";
+            }
+            case UTILIDAD -> {
+                mat = Material.DIAMOND_PICKAXE;
+                name = "Utilidad";
+                color = "§b";
+            }
+            case SUPERVIVENCIA -> {
+                mat = Material.TOTEM_OF_UNDYING;
+                name = "Supervivencia";
+                color = "§c";
+            }
+            default -> {
+                mat = Material.BARRIER;
+                name = "???";
+                color = "§7";
+            }
+        }
+        
+        // Contar skills de esta rama
+        List<Skill> branchSkills = Skill.getByBranch(branch);
+        int unlocked = 0;
+        for (Skill skill : branchSkills) {
+            if (skillService.hasSkill(uuid, skill)) {
+                unlocked++;
+            }
+        }
+        
+        List<String> lore = new ArrayList<>();
+        lore.add("");
+        lore.add("§7Progreso: " + color + unlocked + "§7/" + color + branchSkills.size());
+        lore.add("");
+        
+        // Descripción de la rama
+        switch (branch) {
+            case ALMACENAMIENTO -> {
+                lore.add("§7Expande tu inventario y");
+                lore.add("§7ender chest. Mejora la");
+                lore.add("§7recolección de items.");
+            }
+            case UTILIDAD -> {
+                lore.add("§7Velocidad, minería eficiente,");
+                lore.add("§7menos hambre y bonificaciones");
+                lore.add("§7de recursos.");
+            }
+            case SUPERVIVENCIA -> {
+                lore.add("§7Más vida, resistencias,");
+                lore.add("§7regeneración y habilidades");
+                lore.add("§7que te salvan la vida.");
+            }
+        }
+        
+        lore.add("");
+        lore.add("§e▶ Click para ver árbol");
+        
+        ItemStack item = new ItemStack(mat);
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName(color + "§l" + name);
+            meta.setLore(lore);
+            meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES, ItemFlag.HIDE_ENCHANTS);
+            item.setItemMeta(meta);
+        }
+        
+        return item;
+    }
+    
     // ==================== RENDERIZADO DEL ÁRBOL ====================
     
     private void renderTreeMenu(Inventory inv, Player player, SkillBranch branch) {
         // Fondo
         ItemStack darkBg = createItem(Material.BLACK_STAINED_GLASS_PANE, " ");
-        ItemStack grayBg = createItem(Material.GRAY_STAINED_GLASS_PANE, " ");
         for (int i = 0; i < 54; i++) {
             inv.setItem(i, darkBg);
         }
         
         // === FILA 0: PESTAÑAS ===
-        // Borde izquierdo y derecho
+        ItemStack grayBg = createItem(Material.GRAY_STAINED_GLASS_PANE, " ");
         inv.setItem(0, grayBg);
         inv.setItem(8, grayBg);
         
@@ -142,11 +334,14 @@ public class SkillTreeGUI implements Listener {
         }
         
         // === FILA 5: INFO Y CONTROLES ===
-        // Info del jugador
-        inv.setItem(45, createPlayerInfo(player));
+        // Volver al menú principal
+        inv.setItem(45, createItem(Material.ARROW, "§e§lVolver", "§7Al menú principal"));
         
         // Leyenda
         inv.setItem(47, createLegendItem());
+        
+        // Info del jugador
+        inv.setItem(49, createPlayerInfo(player));
         
         // Cerrar
         inv.setItem(53, createItem(Material.BARRIER, "§c§lCerrar", "§7Click para cerrar"));
@@ -181,42 +376,49 @@ public class SkillTreeGUI implements Listener {
     }
     
     private void drawLine(Inventory inv, int from, int to, Material material) {
-        int fromCol = from % 9;
         int fromRow = from / 9;
-        int toCol = to % 9;
+        int fromCol = from % 9;
         int toRow = to / 9;
+        int toCol = to % 9;
+        
+        ItemStack line = createItem(material, " ");
         
         // Línea horizontal
         if (fromRow == toRow) {
-            int minCol = Math.min(fromCol, toCol);
+            int minCol = Math.min(fromCol, toCol) + 1;
             int maxCol = Math.max(fromCol, toCol);
-            for (int col = minCol + 1; col < maxCol; col++) {
+            for (int col = minCol; col < maxCol; col++) {
                 int slot = fromRow * 9 + col;
-                if (inv.getItem(slot) == null || inv.getItem(slot).getType() == Material.BLACK_STAINED_GLASS_PANE) {
-                    inv.setItem(slot, createItem(material, "§7→"));
+                if (inv.getItem(slot) == null || 
+                    inv.getItem(slot).getType() == Material.BLACK_STAINED_GLASS_PANE) {
+                    inv.setItem(slot, line);
                 }
             }
         }
-        // Línea vertical (una fila de diferencia)
-        else if (fromCol == toCol && Math.abs(toRow - fromRow) == 1) {
-            // No hay slot intermedio
-        }
-        // Diagonal (una fila abajo/arriba y columnas a la derecha)
-        else if (Math.abs(toRow - fromRow) == 1) {
-            // Poner conexión en el slot intermedio horizontal
-            int minCol = Math.min(fromCol, toCol);
-            int maxCol = Math.max(fromCol, toCol);
-            int row = Math.min(fromRow, toRow);
-            for (int col = minCol + 1; col < maxCol; col++) {
-                int slot = row * 9 + col;
-                if (inv.getItem(slot) == null || inv.getItem(slot).getType() == Material.BLACK_STAINED_GLASS_PANE) {
-                    inv.setItem(slot, createItem(material, "§7↘"));
+        // Línea vertical
+        else if (fromCol == toCol) {
+            int minRow = Math.min(fromRow, toRow) + 1;
+            int maxRow = Math.max(fromRow, toRow);
+            for (int row = minRow; row < maxRow; row++) {
+                int slot = row * 9 + fromCol;
+                if (inv.getItem(slot) == null || 
+                    inv.getItem(slot).getType() == Material.BLACK_STAINED_GLASS_PANE) {
+                    inv.setItem(slot, line);
                 }
+            }
+        }
+        // Línea diagonal/L
+        else {
+            // Primero horizontal, luego vertical
+            int midSlot = fromRow * 9 + toCol;
+            if (inv.getItem(midSlot) == null || 
+                inv.getItem(midSlot).getType() == Material.BLACK_STAINED_GLASS_PANE) {
+                inv.setItem(midSlot, line);
             }
         }
     }
     
-    // ==================== POSICIONES DE HABILIDADES ====================
+    // ==================== POSICIONES DE SKILLS ====================
     
     private Map<Skill, Integer> getSkillPositions(SkillBranch branch) {
         Map<Skill, Integer> positions = new HashMap<>();
@@ -225,26 +427,25 @@ public class SkillTreeGUI implements Listener {
             case ALMACENAMIENTO -> {
                 /*
                  * Layout Almacenamiento:
+                 * Tier 1          Tier 2          Tier 3
                  * 
-                 *    Col: 1     2     3     4     5     6     7
-                 * Row 1: [BOL_PROF] ─── [BOL_SIN] ─── [INV_INF]
-                 *             │
-                 * Row 2:      └──── [AUTO_REC]
+                 * [BOLSILLOS] ─── [SIN_FONDO] ─── [INFINITO]
+                 *      └───────── [AUTO_REC]
                  * 
-                 * Row 3: [COFRE_INT] ── [COFRE_DIM] ── [VOID_ST]
+                 * [COFRE_INT] ─── [COFRE_DIM] ─── [VOID]
                  */
                 // Tier 1
-                positions.put(Skill.BOLSILLOS_PROFUNDOS, 19);  // Row 2, Col 1
-                positions.put(Skill.COFRE_INTERIOR, 37);       // Row 4, Col 1
+                positions.put(Skill.BOLSILLOS_PROFUNDOS, 19);
+                positions.put(Skill.COFRE_INTERIOR, 37);
                 
                 // Tier 2
-                positions.put(Skill.BOLSILLOS_SIN_FONDO, 21);  // Row 2, Col 3
-                positions.put(Skill.AUTO_RECOLECCION, 28);     // Row 3, Col 1 (rama alternativa)
-                positions.put(Skill.COFRE_DIMENSIONAL, 39);    // Row 4, Col 3
+                positions.put(Skill.BOLSILLOS_SIN_FONDO, 21);
+                positions.put(Skill.AUTO_RECOLECCION, 28);
+                positions.put(Skill.COFRE_DIMENSIONAL, 39);
                 
                 // Tier 3
-                positions.put(Skill.INVENTARIO_INFINITO, 23);  // Row 2, Col 5
-                positions.put(Skill.VOID_STORAGE, 41);         // Row 4, Col 5
+                positions.put(Skill.INVENTARIO_INFINITO, 23);
+                positions.put(Skill.VOID_STORAGE, 41);
             }
             
             case UTILIDAD -> {
@@ -256,33 +457,29 @@ public class SkillTreeGUI implements Listener {
                  * [MINERO] ───── [FORTUNA] ──── [SEDA_NAT]
                  * 
                  * [ESTOMAGO] ─── [METAB] ────── [AUTOSUF]
-                 * 
-                 * [CRAFTEO] ─────────────────── [MESA_PORT]
                  */
                 // Tier 1
-                positions.put(Skill.PASO_LIGERO, 10);         // Row 1, Col 1
-                positions.put(Skill.MINERO_EFICIENTE, 19);    // Row 2, Col 1
-                positions.put(Skill.ESTOMAGO_HIERRO, 28);     // Row 3, Col 1
-                positions.put(Skill.CRAFTEO_RAPIDO, 37);      // Row 4, Col 1
+                positions.put(Skill.PASO_LIGERO, 19);
+                positions.put(Skill.MINERO_EFICIENTE, 28);
+                positions.put(Skill.ESTOMAGO_HIERRO, 37);
                 
                 // Tier 2
-                positions.put(Skill.ZANCADAS, 12);            // Row 1, Col 3
-                positions.put(Skill.TOQUE_FORTUNA, 21);       // Row 2, Col 3
-                positions.put(Skill.METABOLISMO_LENTO, 30);   // Row 3, Col 3
+                positions.put(Skill.ZANCADAS, 21);
+                positions.put(Skill.TOQUE_FORTUNA, 30);
+                positions.put(Skill.METABOLISMO_LENTO, 39);
                 
                 // Tier 3
-                positions.put(Skill.VELOCISTA, 14);           // Row 1, Col 5
-                positions.put(Skill.SEDA_NATURAL, 23);        // Row 2, Col 5
-                positions.put(Skill.AUTOSUFICIENTE, 32);      // Row 3, Col 5
-                positions.put(Skill.MESA_PORTATIL, 39);       // Row 4, Col 3
+                positions.put(Skill.VELOCISTA, 23);
+                positions.put(Skill.SEDA_NATURAL, 32);
+                positions.put(Skill.AUTOSUFICIENTE, 41);
             }
             
             case SUPERVIVENCIA -> {
                 /*
-                 * Layout Supervivencia:
+                 * Layout Supervivencia (bien ordenado):
                  * 
-                 * [PIEL_GR] ─┬─ [TANQUE] ───── [INMORTAL]
-                 *            └─ [REGEN] ────── [FENIX]
+                 * [PIEL_GR] ─── [TANQUE] ───── [INMORTAL]
+                 *      └─────── [REGEN] ────── [FENIX]
                  * 
                  * [CAIDA] ───── [PLUMA] ────── [VUELO_EM]
                  * 
@@ -290,24 +487,24 @@ public class SkillTreeGUI implements Listener {
                  * 
                  * [NADADOR] ─── [BRANQ] ────── [ANFIBIO]
                  */
-                // Tier 1
-                positions.put(Skill.PIEL_GRUESA, 10);          // Row 1, Col 1
-                positions.put(Skill.CAIDA_SUAVE, 19);          // Row 2, Col 1
-                positions.put(Skill.RESISTENCIA_FUEGO, 28);    // Row 3, Col 1
-                positions.put(Skill.NADADOR, 37);              // Row 4, Col 1
+                // Tier 1 - Columna izquierda
+                positions.put(Skill.PIEL_GRUESA, 10);
+                positions.put(Skill.CAIDA_SUAVE, 28);
+                positions.put(Skill.RESISTENCIA_FUEGO, 37);
+                positions.put(Skill.NADADOR, 46);
                 
-                // Tier 2
-                positions.put(Skill.TANQUE, 12);               // Row 1, Col 3
-                positions.put(Skill.REGENERACION_PASIVA, 21);  // Row 2, Col 3 (desde PIEL_GRUESA también)
-                positions.put(Skill.PLUMA, 30);                // Row 3, Col 3 (viene de CAIDA_SUAVE row2)
-                positions.put(Skill.IGNIFUGO, 39);             // Row 4, Col 3
-                positions.put(Skill.BRANQUIAS, 46);            // Row 5, Col 1
+                // Tier 2 - Columna central
+                positions.put(Skill.TANQUE, 12);
+                positions.put(Skill.REGENERACION_PASIVA, 21);
+                positions.put(Skill.PLUMA, 30);
+                positions.put(Skill.IGNIFUGO, 39);
+                positions.put(Skill.BRANQUIAS, 48);
                 
-                // Tier 3
-                positions.put(Skill.INMORTAL, 14);             // Row 1, Col 5
-                positions.put(Skill.FENIX, 23);                // Row 2, Col 5
-                positions.put(Skill.VUELO_EMERGENCIA, 32);     // Row 3, Col 5
-                positions.put(Skill.ANFIBIO, 48);              // Row 5, Col 3
+                // Tier 3 - Columna derecha
+                positions.put(Skill.INMORTAL, 14);
+                positions.put(Skill.FENIX, 23);
+                positions.put(Skill.VUELO_EMERGENCIA, 32);
+                positions.put(Skill.ANFIBIO, 50);
             }
         }
         
@@ -326,24 +523,23 @@ public class SkillTreeGUI implements Listener {
             }
             
             case UTILIDAD -> {
-                connections.put(10, List.of(12));  // PASO -> ZANCADAS
-                connections.put(12, List.of(14));  // ZANCADAS -> VELOCISTA
-                connections.put(19, List.of(21));  // MINERO -> FORTUNA
-                connections.put(21, List.of(23));  // FORTUNA -> SEDA
-                connections.put(28, List.of(30));  // ESTOMAGO -> METAB
-                connections.put(30, List.of(32));  // METAB -> AUTOSUF
-                connections.put(37, List.of(39));  // CRAFTEO -> MESA
+                connections.put(19, List.of(21));  // PASO -> ZANCADAS
+                connections.put(21, List.of(23));  // ZANCADAS -> VELOCISTA
+                connections.put(28, List.of(30));  // MINERO -> FORTUNA
+                connections.put(30, List.of(32));  // FORTUNA -> SEDA
+                connections.put(37, List.of(39));  // ESTOMAGO -> METAB
+                connections.put(39, List.of(41));  // METAB -> AUTOSUF
             }
             
             case SUPERVIVENCIA -> {
                 connections.put(10, Arrays.asList(12, 21)); // PIEL -> TANQUE, REGEN
                 connections.put(12, List.of(14));           // TANQUE -> INMORTAL
                 connections.put(21, List.of(23));           // REGEN -> FENIX
-                connections.put(19, List.of(30));           // CAIDA -> PLUMA
+                connections.put(28, List.of(30));           // CAIDA -> PLUMA
                 connections.put(30, List.of(32));           // PLUMA -> VUELO
-                connections.put(28, List.of(39));           // RES_FUEGO -> IGNIFUGO
-                connections.put(37, List.of(46));           // NADADOR -> BRANQUIAS
-                connections.put(46, List.of(48));           // BRANQUIAS -> ANFIBIO
+                connections.put(37, List.of(39));           // RES_FUEGO -> IGNIFUGO
+                connections.put(46, List.of(48));           // NADADOR -> BRANQUIAS
+                connections.put(48, List.of(50));           // BRANQUIAS -> ANFIBIO
             }
         }
         
@@ -364,163 +560,164 @@ public class SkillTreeGUI implements Listener {
     
     private void renderConfirmMenu(Inventory inv, Player player, Skill skill) {
         // Fondo
-        ItemStack bg = createItem(Material.GRAY_STAINED_GLASS_PANE, " ");
+        ItemStack grayBg = createItem(Material.GRAY_STAINED_GLASS_PANE, " ");
         for (int i = 0; i < 27; i++) {
-            inv.setItem(i, bg);
+            inv.setItem(i, grayBg);
         }
         
-        // Skill info (centro arriba)
-        inv.setItem(4, createSkillItem(player, skill));
+        // Info de la habilidad en el centro
+        inv.setItem(13, createSkillItem(player, skill));
         
         // Preview de compra
         SkillService.PurchasePreview preview = skillService.previewPurchase(player, skill);
         
-        List<String> previewLore = new ArrayList<>();
-        previewLore.add("");
-        previewLore.add("§7XP Actual: §e" + preview.currentXP);
-        previewLore.add("§7Costo: §c-" + preview.cost + " XP");
-        previewLore.add("§7XP Después: §a" + preview.newXP);
-        previewLore.add("");
-        previewLore.add("§7Rango Actual: " + preview.currentRank.getDisplayName());
-        if (preview.willDropRank) {
-            previewLore.add("§c⚠ Nuevo Rango: " + preview.newRank.getDisplayName());
-            previewLore.add("§c   ¡BAJARÁS DE RANGO!");
-        } else {
-            previewLore.add("§7Nuevo Rango: " + preview.newRank.getDisplayName());
+        // Confirmar (izquierda)
+        List<String> confirmLore = new ArrayList<>();
+        confirmLore.add("");
+        confirmLore.add("§7Costo: §e" + skill.getBaseCost() + " XP");
+        confirmLore.add("");
+        confirmLore.add("§7XP actual: §a" + String.format("%,d", preview.currentXP()));
+        confirmLore.add("§7XP después: §" + (preview.newXP() < 0 ? "c" : "e") + String.format("%,d", preview.newXP()));
+        
+        if (preview.willDropRank()) {
+            confirmLore.add("");
+            confirmLore.add("§c§l⚠ Perderás tu rango actual!");
+            confirmLore.add("§c" + preview.currentRank().getPrefix() + " §7→ " + preview.newRank().getPrefix());
         }
         
-        inv.setItem(13, createItem(Material.PAPER, "§e§lResumen de Compra", previewLore.toArray(new String[0])));
+        confirmLore.add("");
+        confirmLore.add("§a▶ Click para comprar");
         
-        // Botón confirmar
-        ItemStack confirm = createItem(Material.LIME_CONCRETE, "§a§l✓ CONFIRMAR",
-            "",
-            "§7Gastarás §e" + preview.cost + " XP",
-            "",
-            preview.willDropRank ? "§c⚠ ¡Bajarás de rango!" : "§aTu rango no cambiará",
-            "",
-            "§a▶ Click para comprar"
-        );
-        inv.setItem(11, confirm);
+        ItemStack confirmBtn = createItem(Material.LIME_CONCRETE, "§a§l✓ Confirmar", confirmLore);
+        inv.setItem(11, confirmBtn);
         
-        // Botón cancelar
-        ItemStack cancel = createItem(Material.RED_CONCRETE, "§c§l✗ CANCELAR",
-            "",
-            "§7Volver al árbol",
-            "",
-            "§c▶ Click para cancelar"
-        );
-        inv.setItem(15, cancel);
+        // Cancelar (derecha)
+        ItemStack cancelBtn = createItem(Material.RED_CONCRETE, "§c§l✗ Cancelar", "§7Volver al árbol");
+        inv.setItem(15, cancelBtn);
     }
     
-    // ==================== CREACIÓN DE ITEMS ====================
+    // ==================== CREAR ITEMS ====================
     
     private ItemStack createBranchTab(SkillBranch branch, boolean selected, Player player) {
         Material mat;
         String name;
-        
-        int unlocked = countUnlockedInBranch(player, branch);
-        int total = Skill.getByBranch(branch).size();
+        String color;
         
         switch (branch) {
             case ALMACENAMIENTO -> {
-                mat = selected ? Material.CHEST : Material.BARREL;
-                name = "§6§l📦 ALMACENAMIENTO";
+                mat = selected ? Material.ORANGE_STAINED_GLASS_PANE : Material.GRAY_STAINED_GLASS_PANE;
+                name = "Almacenamiento";
+                color = "§6";
             }
             case UTILIDAD -> {
-                mat = selected ? Material.COMPASS : Material.CLOCK;
-                name = "§e§l⚡ UTILIDAD";
+                mat = selected ? Material.LIGHT_BLUE_STAINED_GLASS_PANE : Material.GRAY_STAINED_GLASS_PANE;
+                name = "Utilidad";
+                color = "§b";
             }
             case SUPERVIVENCIA -> {
-                mat = selected ? Material.SHIELD : Material.IRON_CHESTPLATE;
-                name = "§c§l🛡 SUPERVIVENCIA";
+                mat = selected ? Material.RED_STAINED_GLASS_PANE : Material.GRAY_STAINED_GLASS_PANE;
+                name = "Supervivencia";
+                color = "§c";
             }
             default -> {
-                mat = Material.BARRIER;
-                name = "§c???";
+                mat = Material.GRAY_STAINED_GLASS_PANE;
+                name = "???";
+                color = "§7";
+            }
+        }
+        
+        // Contar progreso
+        List<Skill> branchSkills = Skill.getByBranch(branch);
+        int unlocked = 0;
+        for (Skill skill : branchSkills) {
+            if (skillService.hasSkill(player, skill)) {
+                unlocked++;
             }
         }
         
         List<String> lore = new ArrayList<>();
-        lore.add("");
-        lore.add("§7Progreso: §b" + unlocked + "§7/§b" + total);
-        lore.add("");
-        if (selected) {
-            lore.add("§a▶ Rama actual");
-        } else {
+        lore.add("§7Progreso: " + color + unlocked + "§7/" + color + branchSkills.size());
+        if (!selected) {
+            lore.add("");
             lore.add("§e▶ Click para ver");
         }
         
-        ItemStack item = createItem(mat, name, lore.toArray(new String[0]));
-        
-        if (selected) {
-            ItemMeta meta = item.getItemMeta();
-            if (meta != null) {
-                meta.addEnchant(org.bukkit.enchantments.Enchantment.UNBREAKING, 1, true);
-                meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
-                item.setItemMeta(meta);
-            }
-        }
-        
-        return item;
+        return createItem(mat, color + (selected ? "§l" : "") + name, lore);
     }
     
     private ItemStack createSkillItem(Player player, Skill skill) {
         boolean owned = skillService.hasSkill(player, skill);
         boolean meetsReqs = skillService.meetsRequirements(player, skill);
+        boolean isEnabled = owned && skill.isToggleable() && skillService.isSkillEnabled(player, skill);
         
-        Material icon;
+        Material displayMat;
         String prefix;
-        List<String> lore = new ArrayList<>();
-        
-        // Info básica
-        lore.add("§7" + skill.getDescription());
-        lore.add("");
-        lore.add(skill.getTier().getDisplayName() + " §8| " + skill.getRarity().getDisplayName());
-        lore.add("");
         
         if (owned) {
-            // DESBLOQUEADA
-            icon = skill.getIcon();
-            prefix = "§a✓ ";
-            lore.add("§a§l✓ DESBLOQUEADA");
-            
+            displayMat = skill.getIcon();
+            prefix = "§a§l✓ ";
             if (skill.isToggleable()) {
-                boolean enabled = skillService.isSkillEnabled(player, skill);
-                lore.add("");
-                lore.add(enabled ? "§aEstado: §l⬤ ON" : "§cEstado: §l○ OFF");
-                lore.add("§e▶ Click para " + (enabled ? "desactivar" : "activar"));
+                prefix = isEnabled ? "§a§l⚡ " : "§7§l○ ";
             }
         } else if (meetsReqs) {
-            // DISPONIBLE PARA COMPRAR
-            icon = skill.getIcon();
-            prefix = "§e◆ ";
-            lore.add("§e§l◆ DISPONIBLE");
-            lore.add("");
-            lore.add("§7Costo: §e" + skill.getFinalCost() + " XP");
-            lore.add("");
-            lore.add("§a▶ Click para comprar");
+            displayMat = skill.getIcon();
+            prefix = "§e§l◈ ";
         } else {
-            // BLOQUEADA
-            icon = Material.COAL_BLOCK;
-            prefix = "§8✗ ";
-            lore.add("§c§l✗ BLOQUEADA");
+            displayMat = Material.COAL_BLOCK;
+            prefix = "§8§l✗ ";
+        }
+        
+        List<String> lore = new ArrayList<>();
+        lore.add("");
+        
+        // Descripción
+        lore.add("§7" + skill.getDescription());
+        lore.add("");
+        
+        // Tier y Rareza
+        lore.add("§8Tier: " + skill.getTier().getDisplayName() + " §8| " + skill.getRarity().getColoredName());
+        
+        // Requisitos
+        if (skill.getRequirements().length > 0) {
             lore.add("");
             lore.add("§7Requisitos:");
-            List<Skill> missing = skillService.getMissingRequirements(player, skill);
-            for (Skill req : missing) {
-                lore.add("§c  ✗ " + req.getDisplayName());
+            for (String reqId : skill.getRequirements()) {
+                Skill req = Skill.fromId(reqId);
+                if (req != null) {
+                    boolean hasReq = skillService.hasSkill(player, req);
+                    String reqColor = hasReq ? "§a✓ " : "§c✗ ";
+                    lore.add("  " + reqColor + req.getDisplayName());
+                }
             }
         }
         
-        ItemStack item = createItem(icon, prefix + skill.getColoredName(), lore.toArray(new String[0]));
+        lore.add("");
         
+        // Estado y acciones
         if (owned) {
-            ItemMeta meta = item.getItemMeta();
-            if (meta != null) {
-                meta.addEnchant(org.bukkit.enchantments.Enchantment.UNBREAKING, 1, true);
-                meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
-                item.setItemMeta(meta);
+            lore.add("§a§l✓ DESBLOQUEADA");
+            if (skill.isToggleable()) {
+                String state = isEnabled ? "§aACTIVA" : "§cDESACTIVA";
+                lore.add("§7Estado: " + state);
+                lore.add("");
+                lore.add("§e▶ Click para alternar");
             }
+        } else if (meetsReqs) {
+            lore.add("§7Costo: §e" + skill.getBaseCost() + " XP");
+            lore.add("");
+            lore.add("§e▶ Click para comprar");
+        } else {
+            lore.add("§c§l✗ BLOQUEADA");
+            lore.add("§7Desbloquea los requisitos primero.");
+        }
+        
+        ItemStack item = new ItemStack(displayMat);
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName(prefix + skill.getColoredName());
+            meta.setLore(lore);
+            meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES, ItemFlag.HIDE_ENCHANTS);
+            item.setItemMeta(meta);
         }
         
         return item;
@@ -528,71 +725,64 @@ public class SkillTreeGUI implements Listener {
     
     private ItemStack createPlayerInfo(Player player) {
         int xp = plugin.getExperienceService().getXP(player);
-        String rank = plugin.getRankService().getRank(player).getDisplayName();
-        int skills = skillService.getSkillCount(player);
-        int total = skillService.getTotalSkillCount();
-        int xpGastada = skillService.getXpGastada(player);
+        MissionRank rank = plugin.getRankService().getRank(player);
+        int totalSkills = skillService.getUnlockedSkills(player.getUniqueId()).size();
+        int totalXpGastada = skillService.getTotalXpGastada(player.getUniqueId());
         
-        return createItem(Material.PLAYER_HEAD, "§e§l⭐ Tu Progreso",
-            "",
-            "§7XP Disponible: §a" + xp,
-            "§7XP Gastada en Skills: §c" + xpGastada,
-            "§7Rango: " + rank,
-            "",
-            "§7Habilidades: §b" + skills + "§7/§b" + total,
-            "",
-            "§8Comprar habilidades consume XP",
-            "§8y puede bajar tu rango."
-        );
+        List<String> lore = new ArrayList<>();
+        lore.add("");
+        lore.add("§7XP disponible: §a" + String.format("%,d", xp));
+        lore.add("§7XP gastada: §e" + String.format("%,d", totalXpGastada));
+        lore.add("§7Rango: " + rank.getPrefix());
+        lore.add("");
+        lore.add("§7Habilidades: §e" + totalSkills + "§7/§6" + Skill.values().length);
+        
+        return createItem(Material.EXPERIENCE_BOTTLE, "§b§lTu Info", lore);
     }
     
     private ItemStack createLegendItem() {
-        return createItem(Material.BOOK, "§f§lLeyenda",
-            "",
-            "§a✓ Verde §8= Desbloqueada",
-            "§e◆ Amarillo §8= Disponible",
-            "§c✗ Rojo §8= Bloqueada",
-            "",
-            "§aLínea verde §8= Camino completo",
-            "§eLínea amarilla §8= Siguiente paso",
-            "§7Línea gris §8= Camino cerrado"
-        );
-    }
-    
-    private ItemStack createItem(Material material, String name, String... lore) {
-        ItemStack item = new ItemStack(material);
-        ItemMeta meta = item.getItemMeta();
-        if (meta != null) {
-            meta.setDisplayName(name);
-            if (lore.length > 0) {
-                List<String> loreList = new ArrayList<>();
-                for (String line : lore) {
-                    if (line != null) {
-                        loreList.add(line);
-                    }
-                }
-                meta.setLore(loreList);
-            }
-            meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES, ItemFlag.HIDE_ADDITIONAL_TOOLTIP);
-            item.setItemMeta(meta);
-        }
-        return item;
-    }
-    
-    private int countUnlockedInBranch(Player player, SkillBranch branch) {
-        int count = 0;
-        for (Skill skill : skillService.getUnlockedSkills(player)) {
-            if (skill.getBranch() == branch) count++;
-        }
-        return count;
+        List<String> lore = new ArrayList<>();
+        lore.add("");
+        lore.add("§a§l✓ §aDesbloqueada §7- Ya la tienes");
+        lore.add("§e§l◈ §eDisponible §7- Puedes comprar");
+        lore.add("§8§l✗ §8Bloqueada §7- Faltan requisitos");
+        lore.add("");
+        lore.add("§7Líneas de conexión:");
+        lore.add("  §a━ §7Ambas desbloqueadas");
+        lore.add("  §e━ §7Puedes avanzar");
+        lore.add("  §8━ §7Bloqueada");
+        
+        return createItem(Material.PAINTING, "§d§lLeyenda", lore);
     }
     
     private String getBranchTitle(SkillBranch branch) {
         return switch (branch) {
-            case ALMACENAMIENTO -> "§8Árbol: §6📦 Almacenamiento";
-            case UTILIDAD -> "§8Árbol: §e⚡ Utilidad";
-            case SUPERVIVENCIA -> "§8Árbol: §c🛡 Supervivencia";
+            case ALMACENAMIENTO -> "§6§l✦ Almacenamiento";
+            case UTILIDAD -> "§b§l✦ Utilidad";
+            case SUPERVIVENCIA -> "§c§l✦ Supervivencia";
         };
+    }
+    
+    private ItemStack createItem(Material material, String name) {
+        return createItem(material, name, (List<String>) null);
+    }
+    
+    private ItemStack createItem(Material material, String name, String lore) {
+        return createItem(material, name, lore == null ? null : Collections.singletonList(lore));
+    }
+    
+    private ItemStack createItem(Material material, String name, List<String> lore) {
+        ItemStack item = new ItemStack(material);
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName(name);
+            if (lore != null) {
+                meta.setLore(lore);
+            }
+            meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+            item.setItemMeta(meta);
+        }
+        return item;
     }
     
     // ==================== EVENTOS ====================
@@ -602,39 +792,60 @@ public class SkillTreeGUI implements Listener {
         if (!(event.getWhoClicked() instanceof Player player)) return;
         
         Inventory inv = event.getInventory();
+        InventoryHolder holder = inv.getHolder();
         
-        // Verificar si es nuestro menú
-        if (inv.getHolder() instanceof TreeMenuHolder holder) {
+        // Verificar si es uno de nuestros menús
+        if (holder instanceof MainMenuHolder) {
             event.setCancelled(true);
-            handleTreeClick(player, event.getRawSlot(), holder);
-        }
-        else if (inv.getHolder() instanceof ConfirmMenuHolder holder) {
+            handleMainMenuClick(player, event.getRawSlot());
+        } else if (holder instanceof TreeMenuHolder treeHolder) {
             event.setCancelled(true);
-            handleConfirmClick(player, event.getRawSlot(), holder);
+            handleTreeClick(player, event.getRawSlot(), treeHolder.getBranch());
+        } else if (holder instanceof ConfirmMenuHolder confirmHolder) {
+            event.setCancelled(true);
+            handleConfirmClick(player, event.getRawSlot(), confirmHolder);
         }
     }
     
-    private void handleTreeClick(Player player, int slot, TreeMenuHolder holder) {
-        SkillBranch currentBranch = holder.getBranch();
+    private void handleMainMenuClick(Player player, int slot) {
+        switch (slot) {
+            case 20 -> openBranchMenu(player, SkillBranch.ALMACENAMIENTO);
+            case 22 -> openBranchMenu(player, SkillBranch.UTILIDAD);
+            case 24 -> openBranchMenu(player, SkillBranch.SUPERVIVENCIA);
+            case 49 -> player.closeInventory();
+        }
+    }
+    
+    private void handleTreeClick(Player player, int slot, SkillBranch currentBranch) {
+        // === PESTAÑAS ===
+        if (slot == 2) {
+            if (currentBranch != SkillBranch.ALMACENAMIENTO) {
+                openBranchMenu(player, SkillBranch.ALMACENAMIENTO);
+            }
+            return;
+        }
+        if (slot == 4) {
+            if (currentBranch != SkillBranch.UTILIDAD) {
+                openBranchMenu(player, SkillBranch.UTILIDAD);
+            }
+            return;
+        }
+        if (slot == 6) {
+            if (currentBranch != SkillBranch.SUPERVIVENCIA) {
+                openBranchMenu(player, SkillBranch.SUPERVIVENCIA);
+            }
+            return;
+        }
         
-        // === PESTAÑAS (fila 0) ===
-        if (slot == 2 && currentBranch != SkillBranch.ALMACENAMIENTO) {
-            openBranchMenu(player, SkillBranch.ALMACENAMIENTO);
-            return;
-        }
-        if (slot == 4 && currentBranch != SkillBranch.UTILIDAD) {
-            openBranchMenu(player, SkillBranch.UTILIDAD);
-            return;
-        }
-        if (slot == 6 && currentBranch != SkillBranch.SUPERVIVENCIA) {
-            openBranchMenu(player, SkillBranch.SUPERVIVENCIA);
+        // === VOLVER ===
+        if (slot == 45) {
+            openMainMenu(player);
             return;
         }
         
         // === CERRAR ===
         if (slot == 53) {
             player.closeInventory();
-            player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 0.5f, 1.0f);
             return;
         }
         
@@ -675,44 +886,43 @@ public class SkillTreeGUI implements Listener {
     
     private void handleConfirmClick(Player player, int slot, ConfirmMenuHolder holder) {
         Skill skill = holder.getSkill();
-        SkillBranch returnBranch = holder.getReturnBranch();
+        SkillBranch branch = holder.getReturnBranch();
         
-        // Confirmar (slot 11)
         if (slot == 11) {
+            // Confirmar compra
             SkillService.PurchaseResult result = skillService.purchaseSkill(player, skill);
             
             switch (result) {
                 case SUCCESS -> {
-                    player.sendMessage("§a§l✓ §a¡Desbloqueaste " + skill.getColoredName() + "§a!");
-                    player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
+                    player.sendMessage("§a§l✓ §a¡Has desbloqueado §e" + skill.getDisplayName() + "§a!");
+                    player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.2f);
+                    
                     // Volver al árbol
-                    openBranchMenu(player, returnBranch);
+                    openBranchMenu(player, branch);
                 }
                 case NOT_ENOUGH_XP -> {
                     player.sendMessage("§c§l✗ §cNo tienes suficiente XP.");
-                    player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
+                    player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 0.7f, 1.0f);
                 }
                 case WOULD_DROP_TOO_LOW -> {
-                    player.sendMessage("§c§l✗ §cNo puedes quedar con menos de 100 XP.");
-                    player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
-                }
-                case DURING_DISASTER -> {
-                    player.sendMessage("§c§l✗ §cNo puedes comprar durante un desastre activo.");
-                    player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
+                    player.sendMessage("§c§l✗ §cEsto te dejaría con muy poca XP.");
+                    player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 0.7f, 1.0f);
                 }
                 case ALREADY_OWNED -> {
                     player.sendMessage("§7Ya tienes esta habilidad.");
-                    openBranchMenu(player, returnBranch);
+                    openBranchMenu(player, branch);
+                }
+                case REQUIREMENTS_NOT_MET -> {
+                    player.sendMessage("§c§l✗ §cNo cumples los requisitos.");
+                    player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 0.7f, 1.0f);
                 }
                 default -> {
-                    player.sendMessage("§c§l✗ §cError al comprar la habilidad.");
+                    player.sendMessage("§c§l✗ §cError al comprar.");
                 }
             }
-        }
-        // Cancelar (slot 15)
-        else if (slot == 15) {
-            openBranchMenu(player, returnBranch);
-            player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 0.5f, 1.0f);
+        } else if (slot == 15) {
+            // Cancelar
+            openBranchMenu(player, branch);
         }
     }
 }

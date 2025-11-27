@@ -11,39 +11,39 @@ public enum Skill {
     // ================= ALMACENAMIENTO =================
     // Tier 1
     BOLSILLOS_PROFUNDOS("bolsillos_profundos", "Bolsillos Profundos", 
-        "+9 slots de inventario (4ª fila)", 
+        "Mochila de 9 slots (/mochila)", 
         SkillBranch.ALMACENAMIENTO, SkillTier.TIER_1, SkillRarity.COMUN, 
         500, Material.CHEST, false, new String[]{}),
     
     COFRE_INTERIOR("cofre_interior", "Cofre Interior", 
-        "Ender Chest +9 slots", 
+        "/echest - Abre ender chest en cualquier lugar", 
         SkillBranch.ALMACENAMIENTO, SkillTier.TIER_1, SkillRarity.COMUN, 
         400, Material.ENDER_CHEST, false, new String[]{}),
     
     // Tier 2
     BOLSILLOS_SIN_FONDO("bolsillos_sin_fondo", "Bolsillos Sin Fondo", 
-        "+18 slots de inventario (5ª fila)", 
+        "Mochila de 27 slots", 
         SkillBranch.ALMACENAMIENTO, SkillTier.TIER_2, SkillRarity.RARO, 
         1500, Material.CHEST, false, new String[]{"bolsillos_profundos"}),
     
     COFRE_DIMENSIONAL("cofre_dimensional", "Cofre Dimensional", 
-        "Ender Chest +18 slots (total 45)", 
+        "Ender chest compartido con aliados del clan", 
         SkillBranch.ALMACENAMIENTO, SkillTier.TIER_2, SkillRarity.RARO, 
         1200, Material.ENDER_CHEST, false, new String[]{"cofre_interior"}),
     
     AUTO_RECOLECCION("auto_recoleccion", "Auto-Recolección", 
-        "Items van directo al inventario (radio 3 bloques)", 
+        "Items van directo al inventario al minar", 
         SkillBranch.ALMACENAMIENTO, SkillTier.TIER_2, SkillRarity.EPICO, 
-        2000, Material.HOPPER, false, new String[]{"bolsillos_profundos"}),
+        2000, Material.HOPPER, true, new String[]{"bolsillos_profundos"}),
     
     // Tier 3
     INVENTARIO_INFINITO("inventario_infinito", "Inventario Infinito", 
-        "+27 slots (6ª fila, máximo)", 
+        "Mochila de 54 slots (cofre doble)", 
         SkillBranch.ALMACENAMIENTO, SkillTier.TIER_3, SkillRarity.LEGENDARIO, 
         4000, Material.CHEST, false, new String[]{"bolsillos_sin_fondo"}),
     
     VOID_STORAGE("void_storage", "Void Storage", 
-        "Ender Chest de 54 slots (cofre doble)", 
+        "Los items no se pierden al morir", 
         SkillBranch.ALMACENAMIENTO, SkillTier.TIER_3, SkillRarity.LEGENDARIO, 
         3500, Material.ENDER_EYE, false, new String[]{"cofre_dimensional"}),
     
@@ -80,11 +80,6 @@ public enum Skill {
         SkillBranch.UTILIDAD, SkillTier.TIER_2, SkillRarity.RARO, 
         1000, Material.GOLDEN_CARROT, false, new String[]{"estomago_hierro"}),
     
-    CRAFTEO_RAPIDO("crafteo_rapido", "Crafteo Rápido", 
-        "Shift+click craftea stacks completos", 
-        SkillBranch.UTILIDAD, SkillTier.TIER_2, SkillRarity.COMUN, 
-        1200, Material.CRAFTING_TABLE, false, new String[]{}),
-    
     // Tier 3
     VELOCISTA("velocista", "Velocista", 
         "+30% velocidad + sin penalización sneaking", 
@@ -100,11 +95,6 @@ public enum Skill {
         "Regenera 0.5 hambre cada 30s", 
         SkillBranch.UTILIDAD, SkillTier.TIER_3, SkillRarity.EPICO, 
         3000, Material.CAKE, false, new String[]{"metabolismo_lento"}),
-    
-    MESA_PORTATIL("mesa_portatil", "Mesa Portátil", 
-        "/craft - Abre mesa de crafteo en cualquier lugar", 
-        SkillBranch.UTILIDAD, SkillTier.TIER_3, SkillRarity.RARO, 
-        2500, Material.CRAFTING_TABLE, false, new String[]{"crafteo_rapido"}),
     
     // ================= SUPERVIVENCIA =================
     // Tier 1

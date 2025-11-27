@@ -45,6 +45,7 @@ import me.apocalipsis.commands.RecompensaCommand;
 import me.apocalipsis.skills.SkillService;
 import me.apocalipsis.skills.SkillTreeGUI;
 import me.apocalipsis.skills.SkillEffectListener;
+import me.apocalipsis.skills.BackpackService;
 
 public final class Apocalipsis extends JavaPlugin {
 
@@ -70,6 +71,7 @@ public final class Apocalipsis extends JavaPlugin {
     // Servicios de árbol de habilidades
     private SkillService skillService;
     private SkillTreeGUI skillTreeGUI;
+    private BackpackService backpackService;
 
     // UI
     private MessageBus messageBus;
@@ -128,8 +130,10 @@ public final class Apocalipsis extends JavaPlugin {
         // Inicializar árbol de habilidades
         skillService = new SkillService(this);
         skillTreeGUI = new SkillTreeGUI(this, skillService);
+        backpackService = new BackpackService(this, skillService);
         getServer().getPluginManager().registerEvents(skillTreeGUI, this);
         getServer().getPluginManager().registerEvents(new SkillEffectListener(this, skillService), this);
+        getServer().getPluginManager().registerEvents(backpackService, this);
         getLogger().info("[SkillService] ✓ Sistema de árbol de habilidades iniciado");
         
         // Iniciar tarea de habilidades pasivas
@@ -414,6 +418,10 @@ public final class Apocalipsis extends JavaPlugin {
     
     public SkillTreeGUI getSkillTreeGUI() {
         return skillTreeGUI;
+    }
+    
+    public BackpackService getBackpackService() {
+        return backpackService;
     }
     
     /**

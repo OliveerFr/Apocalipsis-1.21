@@ -167,6 +167,16 @@ public class ApocalipsisCommand implements CommandExecutor {
             case "skills":
                 cmdHabilidades(sender, args);
                 break;
+            case "mochila":
+            case "backpack":
+            case "bag":
+                cmdMochila(sender);
+                break;
+            case "echest":
+            case "enderchest":
+            case "ec":
+                cmdEnderChest(sender);
+                break;
             default:
                 sender.sendMessage("§cSubcomando desconocido. Usa /avo para ver ayuda.");
                 break;
@@ -3303,8 +3313,8 @@ public class ApocalipsisCommand implements CommandExecutor {
             return;
         }
         
-        // Abrir menú de confirmación
-        plugin.getSkillTreeGUI().openConfirmMenu(player, skill);
+        // Abrir menú de confirmación (incluir la rama de la skill)
+        plugin.getSkillTreeGUI().openConfirmMenu(player, skill, skill.getBranch());
     }
     
     private void cmdHabilidadesAdmin(Player player, String[] args) {
@@ -3385,6 +3395,32 @@ public class ApocalipsisCommand implements CommandExecutor {
                 player.sendMessage("§cSubcomando admin desconocido.");
                 break;
         }
+    }
+    
+    // ==================== COMANDOS DE MOCHILA ====================
+    
+    /**
+     * Abre la mochila del jugador
+     */
+    private void cmdMochila(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage("§cEste comando solo puede ser usado por jugadores.");
+            return;
+        }
+        
+        plugin.getBackpackService().openBackpack(player);
+    }
+    
+    /**
+     * Abre el ender chest portable
+     */
+    private void cmdEnderChest(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage("§cEste comando solo puede ser usado por jugadores.");
+            return;
+        }
+        
+        plugin.getBackpackService().openPortableEnderChest(player);
     }
 }
 
