@@ -36,25 +36,23 @@ Un sistema de **habilidades desbloqueables** similar al menú de logros de Minec
 
 ### Tier 1 - Básico
 | Habilidad | Efecto | Costo XP | Requisito |
-|-----------|--------|----------|-----------|
+|-----------|--------|----------|----------|
 | **Bolsillos Profundos** | +9 slots de inventario (4ª fila) | 500 XP | Ninguno |
 | **Cofre Interior** | Ender Chest +9 slots | 400 XP | Ninguno |
-| **Mochila Espiritual** | /mochila - 9 slots extra portátiles | 600 XP | Ninguno |
 
 ### Tier 2 - Intermedio
 | Habilidad | Efecto | Costo XP | Requisito |
-|-----------|--------|----------|-----------|
+|-----------|--------|----------|----------|
 | **Bolsillos Sin Fondo** | +18 slots de inventario (5ª fila) | 1,500 XP | Bolsillos Profundos |
 | **Cofre Dimensional** | Ender Chest +18 slots (total 45) | 1,200 XP | Cofre Interior |
-| **Mochila Expandida** | /mochila ahora tiene 27 slots | 1,800 XP | Mochila Espiritual |
 | **Auto-Recolección** | Items van directo al inventario (radio 3 bloques) | 2,000 XP | Bolsillos Profundos |
 
 ### Tier 3 - Avanzado
 | Habilidad | Efecto | Costo XP | Requisito |
-|-----------|--------|----------|-----------|
+|-----------|--------|----------|----------|
 | **Inventario Infinito** | +27 slots (6ª fila, máximo) | 4,000 XP | Bolsillos Sin Fondo |
 | **Void Storage** | Ender Chest de 54 slots (cofre doble) | 3,500 XP | Cofre Dimensional |
-| **Mochila Legendaria** | /mochila con 54 slots + no se pierde al morir | 5,000 XP | Mochila Expandida |
+
 
 ---
 
@@ -66,7 +64,7 @@ Un sistema de **habilidades desbloqueables** similar al menú de logros de Minec
 | **Paso Ligero** | +10% velocidad de movimiento permanente | 400 XP | Ninguno |
 | **Minero Eficiente** | +15% velocidad de minado | 450 XP | Ninguno |
 | **Estómago de Hierro** | Hambre baja 20% más lento | 350 XP | Ninguno |
-| **Visión Nocturna** | /nv - Toggle visión nocturna (30s cooldown) | 500 XP | Ninguno |
+
 
 ### Tier 2 - Intermedio
 | Habilidad | Efecto | Costo XP | Requisito |
@@ -74,7 +72,6 @@ Un sistema de **habilidades desbloqueables** similar al menú de logros de Minec
 | **Zancadas** | +20% velocidad + salto mejorado | 1,400 XP | Paso Ligero |
 | **Toque de Fortuna** | +10% drop de minerales | 1,600 XP | Minero Eficiente |
 | **Metabolismo Lento** | Hambre baja 40% más lento | 1,000 XP | Estómago de Hierro |
-| **Brújula Interna** | Ver coordenadas siempre en action bar | 800 XP | Ninguno |
 | **Crafteo Rápido** | Shift+click craftea stacks completos | 1,200 XP | Ninguno |
 
 ### Tier 3 - Avanzado
@@ -124,9 +121,7 @@ Un sistema de **habilidades desbloqueables** similar al menú de logros de Minec
 | **Comerciante** | -5% precios con villagers | 500 XP |
 | **Negociador** | -15% precios con villagers | 1,500 XP |
 | **Magnate** | -25% precios + trades extra | 4,000 XP |
-| **Teletransporte** | /tpa una vez cada 10 min | 800 XP |
-| **Home Extra** | +1 home adicional | 600 XP |
-| **Homes Múltiples** | +3 homes adicionales | 2,000 XP |
+
 
 ---
 
@@ -209,17 +204,17 @@ Nueva XP: 3,000 → ¡BAJA A SOBREVIVIENTE!
 ║           📦 ALMACENAMIENTO                               ║
 ╠═══════════════════════════════════════════════════════════╣
 ║                                                           ║
-║   TIER 1:  [✅]──────[✅]──────[🔒]                       ║
-║            Bolsillos  Cofre    Mochila                    ║
-║            Profundos  Interior Espiritual                 ║
+║   TIER 1:  [✅]──────[✅]                                 ║
+║            Bolsillos  Cofre                               ║
+║            Profundos  Interior                            ║
 ║               │          │                                ║
-║   TIER 2:  [🔓]──────[🔒]──────[🔒]──────[🔒]            ║
-║            Bolsillos  Cofre    Mochila   Auto-            ║
-║            Sin Fondo  Dimens.  Expandida Recolección      ║
-║               │          │         │                      ║
-║   TIER 3:  [🔒]      [🔒]      [🔒]                       ║
-║            Inventario Void     Mochila                    ║
-║            Infinito   Storage  Legendaria                 ║
+║   TIER 2:  [🔓]──────[🔒]──────[🔒]                       ║
+║            Bolsillos  Cofre    Auto-                      ║
+║            Sin Fondo  Dimens.  Recolección                ║
+║               │          │                                ║
+║   TIER 3:  [🔒]      [🔒]                                 ║
+║            Inventario Void                                ║
+║            Infinito   Storage                             ║
 ║                                                           ║
 ║   ✅ = Desbloqueado   🔓 = Disponible   🔒 = Bloqueado   ║
 ╚═══════════════════════════════════════════════════════════╝
@@ -329,9 +324,28 @@ src/main/java/me/apocalipsis/
 /habilidades                    - Abre el árbol de habilidades
 /habilidades info <id>          - Info de una habilidad
 /habilidades mis                - Lista tus habilidades
+/habilidades toggle <id>        - Activa/desactiva una habilidad (solo las marcadas con ✅)
+/habilidades toggles            - Ver estado de todas tus habilidades toggleables
 /habilidades admin give <player> <skill>   - Admin: dar habilidad
 /habilidades admin remove <player> <skill> - Admin: quitar habilidad
 /habilidades admin reset <player>          - Admin: resetear todo
+```
+
+### Sistema de Toggle
+Algunas habilidades pueden resultar molestas en ciertas situaciones (ej: velocidad extra al construir).
+Las habilidades marcadas con **✅ Toggle** pueden activarse/desactivarse:
+
+```yaml
+# player_habilidades.yml
+players:
+  uuid-jugador:
+    habilidades_desbloqueadas:
+      - "paso_ligero"
+      - "zancadas"
+      - "nadador"
+    toggles_desactivados:          # Habilidades que el jugador apagó
+      - "paso_ligero"              # No quiere velocidad extra ahora
+    # "zancadas" y "nadador" siguen activos
 ```
 
 ---
@@ -381,9 +395,10 @@ src/main/java/me/apocalipsis/
 - [ ] Integración con sistema de XP
 
 ### Fase 2: Habilidades Básicas (3-4 días)
-- [ ] Rama Almacenamiento (inventario, ender chest, mochila)
+- [ ] Rama Almacenamiento (inventario, ender chest)
 - [ ] Rama Supervivencia (vida, resistencias)
 - [ ] Efectos básicos funcionando
+- [ ] Sistema de toggle para habilidades de movilidad
 
 ### Fase 3: Habilidades Avanzadas (3-4 días)
 - [ ] Rama Utilidad (velocidad, minado, crafteo)
