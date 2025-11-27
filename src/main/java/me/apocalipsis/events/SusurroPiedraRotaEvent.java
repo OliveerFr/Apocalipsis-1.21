@@ -1369,6 +1369,7 @@ public class SusurroPiedraRotaEvent extends EventBase {
     /**
      * Terraforma un área 37x37 para crear el lugar perfecto para un fragmento
      * Analiza el bioma circundante y usa sus bloques para integración natural
+     * MEJORADO: Detecta el bioma real y adapta completamente la estética
      */
     private void terraformarLugarPerfecto(World world, Location centro) {
         int cx = centro.getBlockX();
@@ -1376,105 +1377,178 @@ public class SusurroPiedraRotaEvent extends EventBase {
         int cz = centro.getBlockZ();
         Random rand = new Random();
         
-        // 🔍 ANÁLISIS DEL BIOMA: Detectar bloques predominantes en el área
+        // 🌍 DETECCIÓN INTELIGENTE DEL BIOMA
+        org.bukkit.block.Biome bioma = world.getBiome(cx, cy, cz);
+        BiomaTerraformData biomaData = obtenerDatosBioma(bioma);
+        
+        // 🔍 ANÁLISIS DEL TERRENO: Detectar bloques predominantes en el área
         Map<Material, Integer> bloquesBioma = new HashMap<>();
-        for (int scanX = cx - 25; scanX <= cx + 25; scanX += 3) {
-            for (int scanZ = cz - 25; scanZ <= cz + 25; scanZ += 3) {
+        int promedioAltura = 0;
+        int contadorAltura = 0;
+        
+        for (int scanX = cx - 20; scanX <= cx + 20; scanX += 2) {
+            for (int scanZ = cz - 20; scanZ <= cz + 20; scanZ += 2) {
                 Block bloque = world.getBlockAt(scanX, cy - 1, scanZ);
                 Material mat = bloque.getType();
-                if (mat.isSolid() && !mat.isAir()) {
+                if (mat.isSolid() && !mat.isAir() && !mat.name().contains("LEAVES")) {
                     bloquesBioma.put(mat, bloquesBioma.getOrDefault(mat, 0) + 1);
                 }
+                promedioAltura += world.getHighestBlockYAt(scanX, scanZ);
+                contadorAltura++;
             }
         }
+        promedioAltura = contadorAltura > 0 ? promedioAltura / contadorAltura : cy;
         
-        // Ordenar por frecuencia y obtener los 3 bloques más comunes
+        // Obtener bloques comunes del terreno para mezcla
         List<Material> bloquesComunes = bloquesBioma.entrySet().stream()
+            .filter(e -> esBloqueTerrenoValido(e.getKey()))
             .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
             .limit(3)
             .map(Map.Entry::getKey)
             .collect(Collectors.toList());
         
-        // Materiales base y decorativos según el bioma
-        Material baseSuperficie = bloquesComunes.isEmpty() ? Material.STONE : bloquesComunes.get(0);
-        Material baseSubsuelo = obtenerVarianteOscura(baseSuperficie);
-        Material decoracion1 = bloquesComunes.size() > 1 ? bloquesComunes.get(1) : Material.STONE_BRICKS;
-        Material decoracion2 = bloquesComunes.size() > 2 ? bloquesComunes.get(2) : Material.MOSSY_COBBLESTONE;
+        // Combinar datos del bioma con bloques detectados
+        Material baseSuperficie = !bloquesComunes.isEmpty() ? bloquesComunes.get(0) : biomaData.superficie;
+        Material baseSubsuelo = biomaData.subsuelo;
+        Material piedraBase = biomaData.piedraBase;
+        Material decoracion1 = biomaData.decoracion1;
+        Material decoracion2 = biomaData.decoracion2;
+        Material acento = biomaData.acento;
+        Material vegetacion = biomaData.vegetacion;
         
         plugin.getLogger().info(String.format(
-            "[SusurroPiedraRota] 🌍 Bioma detectado - Base: %s, Decoración: %s, %s",
-            baseSuperficie, decoracion1, decoracion2
+            "[SusurroPiedraRota] 🌍 Bioma: %s - Superficie: %s, Piedra: %s, Vegetación: %s",
+            bioma.name(), baseSuperficie, piedraBase, vegetacion != null ? vegetacion : "ninguna"
         ));
         
-        // 🎭 Área ÉPICA: 37x37 (radio 18) con transición gradual
+        // 🎭 Área ÉPICA: 37x37 (radio 18) con transición gradual y adaptación al terreno
         for (int x = cx - 18; x <= cx + 18; x++) {
             for (int z = cz - 18; z <= cz + 18; z++) {
                 double distCentro = Math.sqrt(Math.pow(x - cx, 2) + Math.pow(z - cz, 2));
+                double angulo = Math.atan2(z - cz, x - cx);
                 
-                // 1. Base sólida adaptativa (3 capas usando bloques del bioma)
-                world.getBlockAt(x, cy - 3, z).setType(Material.DEEPSLATE);
-                world.getBlockAt(x, cy - 2, z).setType(baseSubsuelo);
+                // Variación orgánica usando ruido
+                double ruido = Math.sin(x * 0.3) * Math.cos(z * 0.3) * 2;
+                double distEfectiva = distCentro + ruido;
+                
+                // 1. Base sólida adaptativa (4 capas con transición)
+                world.getBlockAt(x, cy - 4, z).setType(Material.DEEPSLATE);
+                world.getBlockAt(x, cy - 3, z).setType(piedraBase);
+                world.getBlockAt(x, cy - 2, z).setType(rand.nextDouble() < 0.7 ? baseSubsuelo : piedraBase);
                 world.getBlockAt(x, cy - 1, z).setType(baseSuperficie);
                 
-                // 2. Limpiar espacio arriba (8 bloques - ALTAR MÁS ALTO)
+                // 2. Limpiar espacio arriba (8 bloques)
                 for (int dy = 0; dy < 8; dy++) {
                     world.getBlockAt(x, cy + dy, z).setType(Material.AIR);
                 }
                 
-                // 3. Transición gradual con bloques del bioma (más natural)
-                if (distCentro >= 16 && distCentro <= 18) {
-                    // Anillo exterior - Mezcla con terreno natural
-                    if (rand.nextDouble() < 0.6) {
-                        world.getBlockAt(x, cy, z).setType(baseSuperficie);
-                    } else if (rand.nextDouble() < 0.3) {
-                        world.getBlockAt(x, cy, z).setType(Material.CRACKED_STONE_BRICKS);
+                // 3. SISTEMA DE CAPAS ORGÁNICAS
+                if (distEfectiva >= 16 && distCentro <= 18.5) {
+                    // 🌿 Borde exterior - Transición SUAVE con vegetación del bioma
+                    double fade = (18.5 - distCentro) / 2.5;
+                    if (rand.nextDouble() < fade * 0.8) {
+                        // Mantener terreno natural con algunos toques
+                        if (rand.nextDouble() < 0.3 && vegetacion != null) {
+                            world.getBlockAt(x, cy, z).setType(vegetacion);
+                        }
                     }
-                } else if (distCentro >= 12 && distCentro < 16) {
-                    // Anillo medio - Decoración del bioma
-                    if (rand.nextDouble() < 0.5) {
+                    // Ocasionalmente colocar bloques sueltos del bioma
+                    if (rand.nextDouble() < 0.15) {
+                        world.getBlockAt(x, cy, z).setType(rand.nextBoolean() ? decoracion1 : baseSuperficie);
+                    }
+                } else if (distEfectiva >= 12 && distEfectiva < 16) {
+                    // 🪨 Anillo medio - Ruinas antiguas mezcladas con bioma
+                    double probabilidad = rand.nextDouble();
+                    if (probabilidad < 0.35) {
                         world.getBlockAt(x, cy, z).setType(decoracion1);
-                    } else if (rand.nextDouble() < 0.3) {
-                        world.getBlockAt(x, cy, z).setType(Material.MOSSY_COBBLESTONE);
-                    }
-                } else if (distCentro >= 8 && distCentro < 12) {
-                    // Anillo interno - Mezcla bioma + piedra antigua
-                    if (rand.nextDouble() < 0.4) {
+                    } else if (probabilidad < 0.55) {
                         world.getBlockAt(x, cy, z).setType(decoracion2);
-                    } else if (rand.nextDouble() < 0.25) {
+                    } else if (probabilidad < 0.7) {
+                        world.getBlockAt(x, cy, z).setType(acento);
+                    }
+                    // Vegetación dispersa
+                    if (rand.nextDouble() < 0.1 && vegetacion != null) {
+                        world.getBlockAt(x, cy + 1, z).setType(vegetacion);
+                    }
+                } else if (distEfectiva >= 7 && distEfectiva < 12) {
+                    // 🏛️ Anillo interno - Ruinas más definidas
+                    double probabilidad = rand.nextDouble();
+                    if (probabilidad < 0.4) {
                         world.getBlockAt(x, cy, z).setType(Material.STONE_BRICKS);
+                    } else if (probabilidad < 0.6) {
+                        world.getBlockAt(x, cy, z).setType(Material.CRACKED_STONE_BRICKS);
+                    } else if (probabilidad < 0.75) {
+                        world.getBlockAt(x, cy, z).setType(Material.MOSSY_STONE_BRICKS);
+                    } else if (probabilidad < 0.85) {
+                        world.getBlockAt(x, cy, z).setType(acento);
+                    }
+                } else if (distEfectiva >= 3 && distEfectiva < 7) {
+                    // ⬛ Plataforma central - Piedra oscura ritual
+                    if (rand.nextDouble() < 0.6) {
+                        world.getBlockAt(x, cy, z).setType(Material.DEEPSLATE_BRICKS);
+                    } else if (rand.nextDouble() < 0.5) {
+                        world.getBlockAt(x, cy, z).setType(Material.POLISHED_DEEPSLATE);
+                    } else {
+                        world.getBlockAt(x, cy, z).setType(Material.DEEPSLATE_TILES);
                     }
                 }
                 
-                // 4. Columnas decorativas adaptativas en puntos cardinales
-                int distX = Math.abs(x - cx);
-                int distZ = Math.abs(z - cz);
-                if ((distX == 15 && distZ == 0) || (distX == 0 && distZ == 15)) {
-                    for (int h = 1; h <= 3; h++) {
-                        world.getBlockAt(x, cy + h, z).setType(Material.CHISELED_STONE_BRICKS);
+                // 4. 🏛️ Columnas decorativas adaptadas al bioma (8 columnas)
+                if (distCentro >= 13 && distCentro <= 15) {
+                    double anguloNormalizado = (angulo + Math.PI) / (2 * Math.PI);
+                    int sector = (int)(anguloNormalizado * 8);
+                    double sectorInicio = sector / 8.0 * 2 * Math.PI - Math.PI;
+                    double sectorMedio = sectorInicio + Math.PI / 8;
+                    
+                    if (Math.abs(angulo - sectorMedio) < 0.15 && rand.nextDouble() < 0.25) {
+                        Material columna = biomaData.columna;
+                        for (int h = 0; h <= 3 + rand.nextInt(2); h++) {
+                            world.getBlockAt(x, cy + h, z).setType(columna);
+                        }
+                        // Tope decorativo
+                        world.getBlockAt(x, cy + 4 + rand.nextInt(2), z).setType(biomaData.topeColumna);
                     }
-                    world.getBlockAt(x, cy + 4, z).setType(Material.LANTERN);
+                }
+                
+                // 5. 🪦 Ruinas aleatorias dispersas
+                if (distCentro >= 10 && distCentro <= 16 && rand.nextDouble() < 0.02) {
+                    int alturaRuina = 1 + rand.nextInt(3);
+                    for (int h = 0; h < alturaRuina; h++) {
+                        world.getBlockAt(x, cy + h, z).setType(
+                            rand.nextBoolean() ? Material.COBBLESTONE_WALL : Material.STONE_BRICK_WALL
+                        );
+                    }
                 }
             }
         }
         
+        // 6. 🔥 Antorchas/luces adaptadas al bioma
+        colocarIluminacionBioma(world, centro, biomaData, rand);
+        
+        // 7. 🌿 Vegetación extra según el bioma
+        if (vegetacion != null) {
+            colocarVegetacionBioma(world, centro, vegetacion, biomaData, rand);
+        }
+        
         // 🎆 Efecto visual ÉPICO al terminar terraformación
-        for (int i = 0; i < 360; i += 20) {
+        Particle particulaBioma = biomaData.particula;
+        for (int i = 0; i < 360; i += 15) {
             double angle = Math.toRadians(i);
             double radius = 18.0;
             double x = centro.getX() + Math.cos(angle) * radius;
             double z = centro.getZ() + Math.sin(angle) * radius;
             
             world.spawnParticle(
-                Particle.SOUL_FIRE_FLAME,
+                particulaBioma,
                 x, centro.getY() + 1, z,
-                10,
+                8,
                 0.3, 1.0, 0.3,
                 0.05
             );
             world.spawnParticle(
                 Particle.ELECTRIC_SPARK,
                 x, centro.getY() + 2, z,
-                5,
+                3,
                 0.2, 0.5, 0.2,
                 0.08
             );
@@ -1485,9 +1559,289 @@ public class SusurroPiedraRotaEvent extends EventBase {
         world.playSound(centro, Sound.BLOCK_RESPAWN_ANCHOR_CHARGE, 0.5f, 0.8f);
         
         plugin.getLogger().info(String.format(
-            "[SusurroPiedraRota] 🎭 Terraformado ÉPICO 37x37 completado en %s (integrado con bioma: %s)",
-            locationToString(centro), baseSuperficie
+            "[SusurroPiedraRota] 🎭 Terraformado ÉPICO 37x37 completado en %s (bioma: %s)",
+            locationToString(centro), bioma.name()
         ));
+    }
+    
+    /**
+     * Verifica si un material es válido para considerar como terreno
+     */
+    private boolean esBloqueTerrenoValido(Material mat) {
+        String nombre = mat.name();
+        return mat.isSolid() && !mat.isAir() &&
+               !nombre.contains("LEAVES") && !nombre.contains("LOG") &&
+               !nombre.contains("PLANKS") && !nombre.contains("FENCE") &&
+               !nombre.contains("DOOR") && !nombre.contains("CHEST") &&
+               !nombre.contains("SPAWNER") && !nombre.contains("ORE");
+    }
+    
+    /**
+     * Coloca iluminación adaptada al bioma
+     */
+    private void colocarIluminacionBioma(World world, Location centro, BiomaTerraformData data, Random rand) {
+        int cx = centro.getBlockX();
+        int cy = centro.getBlockY();
+        int cz = centro.getBlockZ();
+        
+        // 8 puntos de luz en círculo
+        for (int i = 0; i < 8; i++) {
+            double angulo = i * Math.PI / 4;
+            int lx = cx + (int)(Math.cos(angulo) * 12);
+            int lz = cz + (int)(Math.sin(angulo) * 12);
+            
+            // Verificar que hay suelo
+            Block base = world.getBlockAt(lx, cy - 1, lz);
+            if (base.getType().isSolid()) {
+                // Poste de luz
+                world.getBlockAt(lx, cy, lz).setType(data.columna);
+                world.getBlockAt(lx, cy + 1, lz).setType(data.columna);
+                world.getBlockAt(lx, cy + 2, lz).setType(data.luz);
+            }
+        }
+        
+        // Luces adicionales más cerca del centro
+        for (int i = 0; i < 4; i++) {
+            double angulo = i * Math.PI / 2 + Math.PI / 4;
+            int lx = cx + (int)(Math.cos(angulo) * 6);
+            int lz = cz + (int)(Math.sin(angulo) * 6);
+            
+            Block base = world.getBlockAt(lx, cy, lz);
+            if (base.getType() == Material.AIR) {
+                world.getBlockAt(lx, cy, lz).setType(data.luz);
+            }
+        }
+    }
+    
+    /**
+     * Coloca vegetación específica del bioma
+     */
+    private void colocarVegetacionBioma(World world, Location centro, Material vegetacion, BiomaTerraformData data, Random rand) {
+        int cx = centro.getBlockX();
+        int cy = centro.getBlockY();
+        int cz = centro.getBlockZ();
+        
+        for (int i = 0; i < 20; i++) {
+            double angulo = rand.nextDouble() * 2 * Math.PI;
+            double radio = 14 + rand.nextDouble() * 4;
+            int vx = cx + (int)(Math.cos(angulo) * radio);
+            int vz = cz + (int)(Math.sin(angulo) * radio);
+            
+            Block suelo = world.getBlockAt(vx, cy - 1, vz);
+            Block espacio = world.getBlockAt(vx, cy, vz);
+            
+            if (suelo.getType().isSolid() && espacio.getType() == Material.AIR) {
+                // Colocar vegetación solo sobre superficies compatibles
+                if (esSuperficieCompatible(suelo.getType(), vegetacion)) {
+                    espacio.setType(vegetacion);
+                }
+            }
+        }
+    }
+    
+    /**
+     * Verifica si la vegetación puede colocarse sobre el bloque
+     */
+    private boolean esSuperficieCompatible(Material suelo, Material vegetacion) {
+        String nombreVeg = vegetacion.name();
+        String nombreSuelo = suelo.name();
+        
+        // Plantas normales sobre tierra/grass
+        if (nombreVeg.contains("GRASS") || nombreVeg.contains("FERN") || 
+            nombreVeg.contains("FLOWER") || nombreVeg.contains("TULIP") ||
+            nombreVeg.contains("POPPY") || nombreVeg.contains("DANDELION")) {
+            return suelo == Material.GRASS_BLOCK || suelo == Material.DIRT ||
+                   suelo == Material.PODZOL || suelo == Material.COARSE_DIRT;
+        }
+        // Cactus sobre arena
+        if (vegetacion == Material.DEAD_BUSH || vegetacion == Material.CACTUS) {
+            return nombreSuelo.contains("SAND") || suelo == Material.TERRACOTTA ||
+                   nombreSuelo.contains("TERRACOTTA");
+        }
+        // Hongos
+        if (nombreVeg.contains("MUSHROOM") || nombreVeg.contains("FUNGUS")) {
+            return suelo == Material.MYCELIUM || suelo == Material.PODZOL ||
+                   nombreSuelo.contains("NYLIUM");
+        }
+        // Nieve
+        if (vegetacion == Material.SNOW) {
+            return true;
+        }
+        return false;
+    }
+    
+    /**
+     * Clase interna para datos de terraformación por bioma
+     */
+    private static class BiomaTerraformData {
+        Material superficie;
+        Material subsuelo;
+        Material piedraBase;
+        Material decoracion1;
+        Material decoracion2;
+        Material acento;
+        Material columna;
+        Material topeColumna;
+        Material luz;
+        Material vegetacion;
+        Particle particula;
+        
+        BiomaTerraformData(Material superficie, Material subsuelo, Material piedraBase,
+                          Material decoracion1, Material decoracion2, Material acento,
+                          Material columna, Material topeColumna, Material luz,
+                          Material vegetacion, Particle particula) {
+            this.superficie = superficie;
+            this.subsuelo = subsuelo;
+            this.piedraBase = piedraBase;
+            this.decoracion1 = decoracion1;
+            this.decoracion2 = decoracion2;
+            this.acento = acento;
+            this.columna = columna;
+            this.topeColumna = topeColumna;
+            this.luz = luz;
+            this.vegetacion = vegetacion;
+            this.particula = particula;
+        }
+    }
+    
+    /**
+     * Obtiene los datos de terraformación específicos para cada bioma
+     */
+    private BiomaTerraformData obtenerDatosBioma(org.bukkit.block.Biome bioma) {
+        String nombre = bioma.name();
+        
+        // 🏜️ DESIERTO / BADLANDS
+        if (nombre.contains("DESERT") || nombre.contains("BADLANDS") || nombre.contains("MESA")) {
+            Material superficie = nombre.contains("BADLANDS") ? Material.RED_SAND : Material.SAND;
+            Material deco = nombre.contains("BADLANDS") ? Material.TERRACOTTA : Material.SANDSTONE;
+            return new BiomaTerraformData(
+                superficie, Material.SANDSTONE, Material.SMOOTH_SANDSTONE,
+                deco, Material.CHISELED_SANDSTONE, Material.CUT_SANDSTONE,
+                Material.SANDSTONE_WALL, Material.SANDSTONE_STAIRS, Material.TORCH,
+                Material.DEAD_BUSH, Particle.DUST_PLUME
+            );
+        }
+        
+        // ❄️ NIEVE / HIELO
+        if (nombre.contains("SNOW") || nombre.contains("ICE") || nombre.contains("FROZEN") || 
+            nombre.contains("COLD") || nombre.contains("GROVE") || nombre.contains("PEAKS")) {
+            return new BiomaTerraformData(
+                Material.SNOW_BLOCK, Material.PACKED_ICE, Material.BLUE_ICE,
+                Material.PACKED_ICE, Material.STONE_BRICKS, Material.PRISMARINE_BRICKS,
+                Material.PACKED_ICE, Material.ICE, Material.SEA_LANTERN,
+                Material.SNOW, Particle.SNOWFLAKE
+            );
+        }
+        
+        // 🍄 HONGOS (Mushroom / Nether)
+        if (nombre.contains("MUSHROOM")) {
+            return new BiomaTerraformData(
+                Material.MYCELIUM, Material.DIRT, Material.STONE,
+                Material.MUSHROOM_STEM, Material.RED_MUSHROOM_BLOCK, Material.BROWN_MUSHROOM_BLOCK,
+                Material.MUSHROOM_STEM, Material.SHROOMLIGHT, Material.SHROOMLIGHT,
+                Material.RED_MUSHROOM, Particle.SPORE_BLOSSOM_AIR
+            );
+        }
+        
+        // 🌲 TAIGA / BOSQUE OSCURO
+        if (nombre.contains("TAIGA") || nombre.contains("DARK_FOREST") || nombre.contains("OLD_GROWTH")) {
+            return new BiomaTerraformData(
+                Material.PODZOL, Material.COARSE_DIRT, Material.STONE,
+                Material.MOSSY_COBBLESTONE, Material.MOSSY_STONE_BRICKS, Material.COBBLESTONE,
+                Material.SPRUCE_LOG, Material.SPRUCE_LEAVES, Material.LANTERN,
+                Material.FERN, Particle.FALLING_SPORE_BLOSSOM
+            );
+        }
+        
+        // 🌴 JUNGLA
+        if (nombre.contains("JUNGLE") || nombre.contains("BAMBOO")) {
+            return new BiomaTerraformData(
+                Material.GRASS_BLOCK, Material.DIRT, Material.MOSSY_COBBLESTONE,
+                Material.MOSSY_COBBLESTONE, Material.MOSSY_STONE_BRICKS, Material.VINE,
+                Material.JUNGLE_LOG, Material.JUNGLE_LEAVES, Material.LANTERN,
+                Material.FERN, Particle.COMPOSTER
+            );
+        }
+        
+        // 🌊 PANTANO / MANGLAR
+        if (nombre.contains("SWAMP") || nombre.contains("MANGROVE")) {
+            return new BiomaTerraformData(
+                Material.GRASS_BLOCK, Material.MUD, Material.MUDDY_MANGROVE_ROOTS,
+                Material.MOSSY_COBBLESTONE, Material.MUD_BRICKS, Material.PACKED_MUD,
+                Material.DARK_OAK_LOG, Material.DARK_OAK_LEAVES, Material.SOUL_LANTERN,
+                Material.LILY_PAD, Particle.FALLING_WATER
+            );
+        }
+        
+        // 🏔️ MONTAÑA / EXTREME HILLS
+        if (nombre.contains("MOUNTAIN") || nombre.contains("HILL") || nombre.contains("WINDSWEPT") ||
+            nombre.contains("STONY") || nombre.contains("MEADOW")) {
+            return new BiomaTerraformData(
+                Material.STONE, Material.COBBLESTONE, Material.ANDESITE,
+                Material.COBBLESTONE, Material.MOSSY_COBBLESTONE, Material.ANDESITE,
+                Material.STONE_BRICK_WALL, Material.STONE_BRICK_STAIRS, Material.LANTERN,
+                Material.SHORT_GRASS, Particle.ASH
+            );
+        }
+        
+        // 🌸 CHERRY GROVE
+        if (nombre.contains("CHERRY")) {
+            return new BiomaTerraformData(
+                Material.GRASS_BLOCK, Material.DIRT, Material.STONE,
+                Material.CHERRY_PLANKS, Material.PINK_PETALS, Material.CHERRY_LOG,
+                Material.CHERRY_LOG, Material.CHERRY_LEAVES, Material.LANTERN,
+                Material.PINK_PETALS, Particle.CHERRY_LEAVES
+            );
+        }
+        
+        // 🌵 SAVANNA
+        if (nombre.contains("SAVANNA")) {
+            return new BiomaTerraformData(
+                Material.GRASS_BLOCK, Material.COARSE_DIRT, Material.STONE,
+                Material.ACACIA_PLANKS, Material.TERRACOTTA, Material.ORANGE_TERRACOTTA,
+                Material.ACACIA_LOG, Material.ACACIA_LEAVES, Material.TORCH,
+                Material.SHORT_GRASS, Particle.DUST_PLUME
+            );
+        }
+        
+        // 🏝️ PLAYA
+        if (nombre.contains("BEACH") || nombre.contains("SHORE")) {
+            return new BiomaTerraformData(
+                Material.SAND, Material.SANDSTONE, Material.STONE,
+                Material.SANDSTONE, Material.SMOOTH_SANDSTONE, Material.PRISMARINE,
+                Material.OAK_LOG, Material.OAK_PLANKS, Material.LANTERN,
+                null, Particle.FALLING_WATER
+            );
+        }
+        
+        // 🕳️ DEEP DARK
+        if (nombre.contains("DEEP_DARK")) {
+            return new BiomaTerraformData(
+                Material.SCULK, Material.DEEPSLATE, Material.REINFORCED_DEEPSLATE,
+                Material.DEEPSLATE_BRICKS, Material.DEEPSLATE_TILES, Material.SCULK_CATALYST,
+                Material.DEEPSLATE_BRICK_WALL, Material.CHISELED_DEEPSLATE, Material.SOUL_LANTERN,
+                null, Particle.SCULK_CHARGE_POP
+            );
+        }
+        
+        // 🌳 BOSQUE NORMAL (default para forests)
+        if (nombre.contains("FOREST") || nombre.contains("BIRCH") || nombre.contains("FLOWER")) {
+            Material veg = nombre.contains("FLOWER") ? Material.POPPY : Material.FERN;
+            return new BiomaTerraformData(
+                Material.GRASS_BLOCK, Material.DIRT, Material.STONE,
+                Material.MOSSY_COBBLESTONE, Material.COBBLESTONE, Material.STONE_BRICKS,
+                Material.OAK_LOG, Material.OAK_LEAVES, Material.LANTERN,
+                veg, Particle.COMPOSTER
+            );
+        }
+        
+        // 🌾 LLANURA (default)
+        return new BiomaTerraformData(
+            Material.GRASS_BLOCK, Material.DIRT, Material.STONE,
+            Material.COBBLESTONE, Material.STONE_BRICKS, Material.MOSSY_COBBLESTONE,
+            Material.STONE_BRICK_WALL, Material.CHISELED_STONE_BRICKS, Material.LANTERN,
+            Material.SHORT_GRASS, Particle.SOUL_FIRE_FLAME
+        );
     }
     
     /**
@@ -1502,6 +1856,8 @@ public class SusurroPiedraRotaEvent extends EventBase {
             case PODZOL -> Material.DIRT;
             case MYCELIUM -> Material.DIRT;
             case GRAVEL -> Material.STONE;
+            case MUD -> Material.PACKED_MUD;
+            case SCULK -> Material.DEEPSLATE;
             case TERRACOTTA, RED_TERRACOTTA, ORANGE_TERRACOTTA -> Material.BROWN_TERRACOTTA;
             default -> Material.STONE;
         };

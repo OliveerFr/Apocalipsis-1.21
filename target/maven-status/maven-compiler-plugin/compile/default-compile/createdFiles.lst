@@ -85,6 +85,7 @@ me\apocalipsis\events\gameplay\EventAudioSystem$1.class
 me\apocalipsis\events\gameplay\CinematicSystem$5.class
 me\apocalipsis\events\gameplay\ParticleEffectSystem$3.class
 me\apocalipsis\events\gameplay\ParticleEffectSystem$ParticleTrailType.class
+me\apocalipsis\events\SusurroPiedraRotaEvent$BiomaTerraformData.class
 me\apocalipsis\events\gameplay\QTESystem$QTEType.class
 me\apocalipsis\events\gameplay\GuardianPhaseSystem$2.class
 me\apocalipsis\events\EcoSombrasEvent$1.class
