@@ -22,6 +22,7 @@ me\apocalipsis\events\gameplay\FeedbackSystem$ComboTracker.class
 me\apocalipsis\events\gameplay\CinematicSystem.class
 me\apocalipsis\events\gameplay\CinematicSystem$2.class
 me\apocalipsis\ui\FeedbackSystem$2.class
+me\apocalipsis\ui\RewardClaimSystem$RewardPackage.class
 me\apocalipsis\events\EventBase.class
 me\apocalipsis\experience\ExperienceService.class
 me\apocalipsis\events\testing\scenarios\AnclaSealingScenario.class
@@ -63,12 +64,14 @@ me\apocalipsis\events\gameplay\EnvironmentSystem.class
 me\apocalipsis\events\gameplay\EventLootSystem$Difficulty.class
 me\apocalipsis\events\gameplay\GuardianPhaseSystem$3.class
 me\apocalipsis\missions\MissionType.class
+me\apocalipsis\ui\RewardClaimSystem.class
 me\apocalipsis\events\gameplay\DifficultyScaler.class
 me\apocalipsis\events\testing\scenarios\AnclaCompletionScenario.class
 me\apocalipsis\state\StateManager.class
 me\apocalipsis\events\testing\scenarios\GrietaClosingScenario.class
 me\apocalipsis\events\testing\EventTestBot$BotPersonality.class
 me\apocalipsis\events\gameplay\FeedbackSystem$1.class
+me\apocalipsis\commands\RecompensaCommand.class
 me\apocalipsis\events\testing\BotBehaviorProfile.class
 me\apocalipsis\ui\FeedbackSystem.class
 me\apocalipsis\events\EcoSombrasEvent$2.class
@@ -184,6 +187,7 @@ me\apocalipsis\events\gameplay\EventAudioSystem.class
 me\apocalipsis\commands\ApocalipsisCommand.class
 me\apocalipsis\events\gameplay\ChoiceSystem$Choice.class
 me\apocalipsis\utils\BlockOwnershipTracker.class
+me\apocalipsis\events\SusurroPiedraRotaItems$RangoRecompensa.class
 me\apocalipsis\events\SusurroPiedraRotaEvent$12.class
 me\apocalipsis\events\gameplay\EventAudioSystem$MusicTrack.class
 me\apocalipsis\events\gameplay\LoreSystem.class
@@ -210,6 +214,7 @@ me\apocalipsis\state\TimeService.class
 me\apocalipsis\events\gameplay\EventAudioSystem$SoundType.class
 me\apocalipsis\events\gameplay\EventAudioSystem$StingerType.class
 me\apocalipsis\events\gameplay\ProtectionSystem$ProtectedZone.class
+me\apocalipsis\events\SusurroPiedraRotaEvent$13.class
 me\apocalipsis\events\gameplay\EnvironmentSystem$6.class
 me\apocalipsis\events\gameplay\DialogSystem$1.class
 me\apocalipsis\events\gameplay\TelegraphedAttack.class

@@ -12,6 +12,7 @@ C:\Users\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\di
 C:\Users\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\events\gameplay\QTESystem.java
 C:\Users\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\events\SusurroPiedraRotaItems.java
 C:\Users\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\disaster\DisasterController.java
+C:\Users\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\commands\RecompensaCommand.java
 C:\Users\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\ScoreboardManager.java
 C:\Users\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\events\testing\scenarios\AnclaSealingScenario.java
 C:\Users\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\events\gameplay\TelegraphedAttack.java
@@ -22,6 +23,7 @@ C:\Users\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ev
 C:\Users\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\events\gameplay\ChoiceSystem.java
 C:\Users\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\events\testing\BotBehaviorProfile.java
 C:\Users\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\experience\AbilityService.java
+C:\Users\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\RewardClaimSystem.java
 C:\Users\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\listeners\MissionListener.java
 C:\Users\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\events\gameplay\GuardianPhaseSystem.java
 C:\Users\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\events\testing\scenarios\NucleoDefeatScenario.java

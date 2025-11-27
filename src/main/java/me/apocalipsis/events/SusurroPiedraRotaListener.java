@@ -3,15 +3,16 @@ package me.apocalipsis.events;
 import me.apocalipsis.Apocalipsis;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.entity.EntityType;
-import org.bukkit.entity.Player;
-import org.bukkit.entity.Silverfish;
+import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.event.entity.ItemSpawnEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.inventory.ItemStack;
 
 import java.util.UUID;
 
@@ -103,7 +104,94 @@ public class SusurroPiedraRotaListener implements Listener {
     }
     
     /**
+     * ALTAR 2: Los drops de Ender Pearl ahora son manejados directamente
+     * por procesarAltar2ResonanciaGrupal() que detecta items en el área.
+     * Este listener solo previene que las perlas reboten lejos del altar.
+     */
+    @EventHandler
+    public void onPlayerDropItem(PlayerDropItemEvent event) {
+        SusurroPiedraRotaEvent evento = getEventoActivo();
+        if (evento == null || !evento.isActive()) return;
+        
+        if (evento.getActoActual() != SusurroPiedraRotaEvent.Acto.PIEDRA_DESPIERTA) return;
+        
+        ItemStack item = event.getItemDrop().getItemStack();
+        
+        // Si es Ender Pearl y el altar actual es 2, dar feedback
+        if (item.getType() == Material.ENDER_PEARL && evento.getAltarActualGlobal() == 2) {
+            Player player = event.getPlayer();
+            player.sendMessage("§5⧖ §7Lanza la perla hacia el altar... el altar la absorberá.");
+        }
+    }
+    
+    /**
+     * ALTAR 4: Detectar muerte de criaturas de altar
+     */
+    @EventHandler
+    public void onCriaturaAltarDeath(EntityDeathEvent event) {
+        SusurroPiedraRotaEvent evento = getEventoActivo();
+        if (evento == null || !evento.isActive()) return;
+        
+        if (evento.getActoActual() != SusurroPiedraRotaEvent.Acto.PIEDRA_DESPIERTA) return;
+        
+        LivingEntity entity = event.getEntity();
+        
+        // Verificar si es criatura de altar
+        if (!evento.getCriaturasDeAltar().contains(entity.getUniqueId())) return;
+        
+        // Encontrar quién la mató
+        Player killer = entity.getKiller();
+        if (killer == null) return;
+        
+        UUID uuid = killer.getUniqueId();
+        
+        // Incrementar contador
+        int eliminadas = evento.getCriaturasEliminadasPorJugador().getOrDefault(uuid, 0);
+        eliminadas++;
+        evento.getCriaturasEliminadasPorJugador().put(uuid, eliminadas);
+        
+        // Efecto visual
+        Location loc = entity.getLocation();
+        loc.getWorld().spawnParticle(org.bukkit.Particle.SOUL_FIRE_FLAME, loc, 20, 0.5, 0.5, 0.5, 0.1);
+        loc.getWorld().playSound(loc, org.bukkit.Sound.ENTITY_VEX_DEATH, 0.8f, 0.6f);
+        
+        killer.sendMessage("§5⧖ §eRecuerdo purificado: §f" + eliminadas + "/5");
+        
+        // Limpiar drops
+        event.getDrops().clear();
+        event.setDroppedExp(0);
+    }
+    
+    /**
+     * ALTAR 3: Detectar muerte de mobs hostiles naturales cerca del altar
+     */
+    @EventHandler
+    public void onMobHostilDeath(EntityDeathEvent event) {
+        SusurroPiedraRotaEvent evento = getEventoActivo();
+        if (evento == null || !evento.isActive()) return;
+        
+        // Solo en Acto 1 (Piedra Despierta - donde están los altares)
+        if (evento.getActoActual() != SusurroPiedraRotaEvent.Acto.PIEDRA_DESPIERTA) return;
+        
+        // Solo si Altar 3 está activo
+        if (evento.getAltarActualGlobal() != 3) return;
+        
+        LivingEntity entity = event.getEntity();
+        
+        // No procesar criaturas del evento
+        if (evento.getCriaturasDeAltar().contains(entity.getUniqueId())) return;
+        
+        // Necesita killer
+        Player killer = entity.getKiller();
+        if (killer == null) return;
+        
+        // Delegar al evento para verificar tipo y distancia
+        evento.procesarKillMobHostilAltar3(killer, entity);
+    }
+    
+    /**
      * Detectar cuando jugador pisa pressure plate del puzzle de memoria
+     * NOTA: Este listener está desactivado pero se mantiene por si se reactiva
      */
     @EventHandler
     public void onPlayerMove(PlayerMoveEvent event) {
@@ -112,18 +200,8 @@ public class SusurroPiedraRotaListener implements Listener {
             return;
         }
         
-        Player player = event.getPlayer();
-        Location to = event.getTo();
-        
-        if (to == null) return;
-        
         // LISTENER DE PATRÓN ELIMINADO - Ya no hay minijuego de patrón
-        // Verificar si pisó pressure plate del puzzle de memoria (Acto 2)
-        // Material bloqueAbajo = to.clone().subtract(0, 1, 0).getBlock().getType();
-        // if (bloqueAbajo == Material.GOLD_BLOCK || bloqueAbajo == Material.GLOWSTONE) {
-        //     Location bloquePatron = to.clone().subtract(0, 1, 0);
-        //     evento.verificarPatronJugadorPublic(player, bloquePatron);
-        // }
+        // El código comentado se mantiene como referencia para futuras implementaciones
     }
     
     /**

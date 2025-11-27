@@ -16,6 +16,10 @@ commands:
   apocalipsis:
     description: Alias principal de Apocalipsis
     usage: /apocalipsis <subcommand>
+  recompensa:
+    description: Abre el menú de recompensas pendientes
+    usage: /recompensa
+    aliases: [rewards, reward, recompensas]
 
 permissions:
   avo.admin:

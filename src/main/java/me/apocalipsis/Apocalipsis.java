@@ -40,6 +40,8 @@ import me.apocalipsis.utils.BlockOwnershipTracker;
 import me.apocalipsis.utils.ConfigManager;
 import me.apocalipsis.utils.OnlinePlayersCache;
 import me.apocalipsis.utils.VelocityManager;
+import me.apocalipsis.ui.RewardClaimSystem;
+import me.apocalipsis.commands.RecompensaCommand;
 
 public final class Apocalipsis extends JavaPlugin {
 
@@ -67,6 +69,7 @@ public final class Apocalipsis extends JavaPlugin {
     private SoundUtil soundUtil;
     private ScoreboardManager scoreboardManager;
     private TablistManager tablistManager;
+    private RewardClaimSystem rewardClaimSystem;
 
     // Listeners
     private MissionListener missionListener;
@@ -142,6 +145,9 @@ public final class Apocalipsis extends JavaPlugin {
         // Inicializar UI
         scoreboardManager = new ScoreboardManager(this, stateManager, disasterController, missionService, rankService);
         tablistManager = new TablistManager(this, stateManager, performanceAdapter, rankService);
+        
+        // Inicializar sistema de recompensas reclamables
+        rewardClaimSystem = new RewardClaimSystem(this);
 
         // Registrar desastres (ahora con PerformanceAdapter)
         disasterRegistry.registerDefaults(this, messageBus, soundUtil, timeService, performanceAdapter);
@@ -161,6 +167,7 @@ public final class Apocalipsis extends JavaPlugin {
         // Registrar comandos y tab completer
         getCommand("avo").setExecutor(new ApocalipsisCommand(this, stateManager, disasterController, eventController, missionService, timeService, messageBus));
         getCommand("avo").setTabCompleter(new AvoTabCompleter(this));
+        getCommand("recompensa").setExecutor(new RecompensaCommand(this));
 
         // Registrar listeners
         getServer().getPluginManager().registerEvents(new PlayerListener(this, scoreboardManager, tablistManager), this);
@@ -280,6 +287,11 @@ public final class Apocalipsis extends JavaPlugin {
             tablistManager.cancelTask();
             tablistManager.clearAll();
         }
+        
+        // Detener sistema de recompensas
+        if (rewardClaimSystem != null) {
+            rewardClaimSystem.shutdown();
+        }
 
         getLogger().info("§c✗ Apocalipsis desactivado");
     }
@@ -370,6 +382,10 @@ public final class Apocalipsis extends JavaPlugin {
     
     public VelocityManager getVelocityManager() {
         return velocityManager;
+    }
+    
+    public RewardClaimSystem getRewardClaimSystem() {
+        return rewardClaimSystem;
     }
     
     /**
