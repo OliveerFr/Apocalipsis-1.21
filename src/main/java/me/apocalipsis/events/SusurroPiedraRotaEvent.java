@@ -2506,64 +2506,114 @@ public class SusurroPiedraRotaEvent extends EventBase {
         // Mostrar diálogo narrativo SOLO si este altar NO ha sido completado aún
         // Esto evita mostrar diálogos de altares futuros cuando llegas a un fragmento
         if (!fragmentosInspeccionados.contains(altarLoc)) {
-            // Mostrar diálogo narrativo ANTES de la actividad
+            // Mostrar diálogo narrativo ANTES de la actividad con suspenso
             switch (numAltar) {
                 case 1:
                     broadcastNarrative("    §8El Observador§7: §o\"...el primer fragmento yace ante ustedes...\"");
-                    broadcastNarrative("    §8El Observador§7: §o\"...deben quedarse quietos... muy quietos...\"");
-                    broadcastNarrative("    §8El Observador§7: §o\"...solo así podrán escuchar lo que susurra...\"");
+                    broadcastNarrative("    §8El Observador§7: §o\"...pero está dormido... muy dormido...\"");
                     broadcastNarrative("");
-                    broadcastNarrative("    §e⚡ ¿QUÉ DEBEN HACER?");
-                    broadcastNarrative("    §f1. §7Acérquense al altar (15 bloques)");
-                    broadcastNarrative("    §f2. §7Quédense §lcompletamente quietos");
-                    broadcastNarrative("    §f3. §7Aguanten §e10 segundos §7sin moverse");
-                    broadcastNarrative("    §8(El altar responde a la calma total)");
+                    // Pausa dramática antes de revelar
+                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                        broadcastNarrative("    §8El Observador§7: §o\"...para despertarlo...\"");
+                        broadcastNarrative("    §8El Observador§7: §o\"...deben...\"");
+                    }, 30L);
+                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                        broadcastNarrative("");
+                        broadcastNarrative("    §5§l☽ EL DESPERTAR ☽");
+                        broadcastNarrative("    §d§oQuietud absoluta...");
+                        broadcastNarrative("");
+                        broadcastNarrative("    §e▸ §fQuédense §lcompletamente inmóviles");
+                        broadcastNarrative("    §e▸ §fDuración: §a10 segundos");
+                        broadcastNarrative("    §e▸ §fDistancia: §a15 bloques §7del altar");
+                        broadcastNarrative("");
+                        broadcastNarrative("    §8§o\"El altar solo escucha a quienes callan...\"");
+                        playSoundToAll(Sound.BLOCK_AMETHYST_BLOCK_CHIME, 0.8f, 0.6f);
+                    }, 60L);
                     break;
                 case 2:
-                    broadcastNarrative("    §8El Observador§7: §o\"...escuchen... los ecos del vacío resuenan...\"");
-                    broadcastNarrative("    §8El Observador§7: §o\"...objetos que viajaron entre dimensiones...\"");
-                    broadcastNarrative("    §8El Observador§7: §o\"...aliméntenlo con esa energía... ¡denle más!\"");
+                    broadcastNarrative("    §8El Observador§7: §o\"...escuchen... algo resuena en el vacío...\"");
+                    broadcastNarrative("    §8El Observador§7: §o\"...energía de otra dimensión...\"");
                     broadcastNarrative("");
-                    broadcastNarrative("    §e⚡ ¿QUÉ DEBEN HACER?");
-                    broadcastNarrative("    §f1. §7Consigan §e8 Ender Pearls §7(perlas del End)");
-                    broadcastNarrative("    §f2. §7Tírenlas cerca del altar (con Q)");
-                    broadcastNarrative("    §f3. §7Progreso: §a0/8 §7perlas entregadas");
-                    broadcastNarrative("    §8(El altar absorbe la energía dimensional)");
+                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                        broadcastNarrative("    §8El Observador§7: §o\"...el fragmento la necesita...\"");
+                        broadcastNarrative("    §8El Observador§7: §o\"...dennos...\"");
+                    }, 30L);
+                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                        broadcastNarrative("");
+                        broadcastNarrative("    §5§l◈ LA RESONANCIA ◈");
+                        broadcastNarrative("    §d§oObjetos del vacío...");
+                        broadcastNarrative("");
+                        broadcastNarrative("    §e▸ §fConsigan §b8 Ender Pearls");
+                        broadcastNarrative("    §e▸ §fTírenlas cerca del altar §7(tecla Q)");
+                        broadcastNarrative("    §e▸ §fProgreso: §a0/8 §7perlas");
+                        broadcastNarrative("");
+                        broadcastNarrative("    §8§o\"Las perlas atravesaron dimensiones... su energía es pura...\"");
+                        playSoundToAll(Sound.BLOCK_PORTAL_AMBIENT, 0.6f, 1.2f);
+                    }, 60L);
                     break;
                 case 3:
-                    broadcastNarrative("    §8El Observador§7: §o\"...este fragmento tiene hambre de riquezas...\"");
-                    broadcastNarrative("    §8El Observador§7: §o\"...metales preciosos... piedras brillantes...\"");
-                    broadcastNarrative("    §8El Observador§7: §o\"...sacrifiquen sus tesoros para alimentar la memoria...\"");
+                    broadcastNarrative("    §8El Observador§7: §o\"...este fragmento... tiene hambre...\"");
+                    broadcastNarrative("    §8El Observador§7: §o\"...hambre de algo valioso...\"");
                     broadcastNarrative("");
-                    broadcastNarrative("    §e⚡ ¿QUÉ DEBEN HACER?");
-                    broadcastNarrative("    §f1. §7Tiren §6objetos valiosos §7cerca del altar:");
-                    broadcastNarrative("       §7• §bDiamante §7= 3 pts §7| §6Oro §7= 1 pt");
-                    broadcastNarrative("       §7• §aEsmeralda §7= 2 pts §7| §4Netherite §7= 5 pts");
-                    broadcastNarrative("    §f2. §7Necesitan juntar §610 puntos §7de ofrendas");
-                    broadcastNarrative("    §8(El altar consume los materiales valiosos)");
+                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                        broadcastNarrative("    §8El Observador§7: §o\"...sus tesoros...\"");
+                        broadcastNarrative("    §8El Observador§7: §o\"...deben...\"");
+                    }, 30L);
+                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                        broadcastNarrative("");
+                        broadcastNarrative("    §6§l✦ EL SACRIFICIO ✦");
+                        broadcastNarrative("    §d§oOfrendas de valor...");
+                        broadcastNarrative("");
+                        broadcastNarrative("    §e▸ §fTiren §6objetos valiosos §fal altar:");
+                        broadcastNarrative("       §bDiamante §8= §f3 pts  §7|  §6Oro §8= §f1 pt");
+                        broadcastNarrative("       §aEsmeralda §8= §f2 pts  §7|  §4Netherite §8= §f5 pts");
+                        broadcastNarrative("    §e▸ §fMeta: §610 puntos §7de ofrendas");
+                        broadcastNarrative("");
+                        broadcastNarrative("    §8§o\"El altar consume lo que más valoran...\"");
+                        playSoundToAll(Sound.BLOCK_FIRE_AMBIENT, 0.8f, 0.8f);
+                    }, 60L);
                     break;
                 case 4:
-                    broadcastNarrative("    §8El Observador§7: §o\"...¡cuidado! Criaturas del vacío están emergiendo...\"");
-                    broadcastNarrative("    §8El Observador§7: §o\"...la sangre de los hostiles alimenta la memoria...\"");
-                    broadcastNarrative("    §8El Observador§7: §o\"...cacen a las bestias... purifiquen el fragmento...\"");
+                    broadcastNarrative("    §8El Observador§7: §o\"...algo viene...\"");
+                    broadcastNarrative("    §8El Observador§7: §o\"...puedo sentirlo...\"");
                     broadcastNarrative("");
-                    broadcastNarrative("    §e⚡ ¿QUÉ DEBEN HACER?");
-                    broadcastNarrative("    §f1. §7Van a aparecer enemigos cerca del altar");
-                    broadcastNarrative("    §f2. §7Eliminen §c5 mobs hostiles");
-                    broadcastNarrative("    §f3. §7Los mobs naturales también sirven (50 bloques)");
-                    broadcastNarrative("    §8(Zombies, Esqueletos, Husks, Strays...)");
+                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                        broadcastNarrative("    §8El Observador§7: §o\"...criaturas del vacío...\"");
+                        broadcastNarrative("    §8El Observador§7: §o\"...prepárense para...\"");
+                    }, 30L);
+                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                        broadcastNarrative("");
+                        broadcastNarrative("    §c§l☠ LA CAZA ☠");
+                        broadcastNarrative("    §d§oSangre por memorias...");
+                        broadcastNarrative("");
+                        broadcastNarrative("    §e▸ §fEnemigos van a aparecer cerca del altar");
+                        broadcastNarrative("    §e▸ §fEliminen §c5 mobs hostiles");
+                        broadcastNarrative("    §e▸ §fMobs naturales §7(50 bloques) §ftambién cuentan");
+                        broadcastNarrative("");
+                        broadcastNarrative("    §8§o\"La sangre derramada alimenta la memoria rota...\"");
+                        playSoundToAll(Sound.ENTITY_WARDEN_HEARTBEAT, 0.6f, 0.8f);
+                    }, 60L);
                     break;
                 case 5:
-                    broadcastNarrative("    §8El Observador§7: §o\"...los cuatro fragmentos resuenan como uno...\"");
-                    broadcastNarrative("    §8El Observador§7: §o\"...pero la memoria todavía no está completa...\"");
-                    broadcastNarrative("    §8El Observador§7: §o\"...algo más grande... más oscuro... está despertando...\"");
-                    broadcastNarrative("    §8El Observador§7: §o\"...y no los va a dejar ir sin pelear...\"");
+                    broadcastNarrative("    §8El Observador§7: §o\"...los cuatro fragmentos resuenan...\"");
+                    broadcastNarrative("    §8El Observador§7: §o\"...pero algo más despierta...\"");
                     broadcastNarrative("");
-                    broadcastNarrative("    §c⚡ DESAFÍO FINAL - ¿QUÉ DEBEN HACER?");
-                    broadcastNarrative("    §f1. §7Quédense cerca del altar (15 bloques)");
-                    broadcastNarrative("    §f2. §7Van a venir oleadas de enemigos");
-                    broadcastNarrative("    §f3. §7Aguanten §e30 segundos §7de resistencia");
-                    broadcastNarrative("    §8(La memoria corrupta lucha por sacarlos)");
+                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                        broadcastNarrative("    §8El Observador§7: §o\"...algo oscuro...\"");
+                        broadcastNarrative("    §8El Observador§7: §o\"...algo que no quiere dejarlos ir...\"");
+                    }, 30L);
+                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                        broadcastNarrative("");
+                        broadcastNarrative("    §5§l⚔ LA UNIÓN FINAL ⚔");
+                        broadcastNarrative("    §d§oResistan... o mueran...");
+                        broadcastNarrative("");
+                        broadcastNarrative("    §e▸ §fQuédense cerca del altar §7(15 bloques)");
+                        broadcastNarrative("    §e▸ §fOleadas de enemigos vendrán por ustedes");
+                        broadcastNarrative("    §e▸ §fAguanten §c30 segundos §fde resistencia");
+                        broadcastNarrative("");
+                        broadcastNarrative("    §8§o\"La memoria corrupta los probará... ¿son dignos?\"");
+                        playSoundToAll(Sound.ENTITY_ENDER_DRAGON_GROWL, 0.4f, 0.6f);
+                    }, 60L);
                     break;
             }
             
