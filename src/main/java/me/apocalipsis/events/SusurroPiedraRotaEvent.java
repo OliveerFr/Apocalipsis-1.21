@@ -7130,8 +7130,6 @@ public class SusurroPiedraRotaEvent extends EventBase {
         // 🗣️ DIÁLOGO - Núcleo recogido, instrucción de llevarlo al altar
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (isActive()) {
-                mostrarDialogoForma("NUCLEO_RECOGIDO");
-                
                 // Establecer ubicación del altar (primer fragmento) con verificación null safety
                 if (!fragmentosLocations.isEmpty()) {
                     altarLocation = fragmentosLocations.get(0).clone();
@@ -7143,27 +7141,46 @@ public class SusurroPiedraRotaEvent extends EventBase {
                     plugin.getLogger().warning("[SusurroPiedraRota] No hay fragmentos para altar, usando spawn");
                 }
                 
-                // Anuncio en chat con instrucciones claras
-                broadcastNarrative("§8§m══════════════════════════════════════════════════");
-                broadcastNarrative("");
-                broadcastNarrative("          §5§l⚠ ¡LLEVAD EL NÚCLEO AL ALTAR! ⚠");
-                broadcastNarrative("");
-                broadcastNarrative("    §e✦ El núcleo aún vive y debe ser destruido");
-                broadcastNarrative("    §a✦ Regresad al PRIMER FRAGMENTO (donde empezó todo)");
-                broadcastNarrative("    §c✦ ¡El núcleo invocará defensores mientras huís!");
-                broadcastNarrative("");
-                broadcastNarrative("§8§m══════════════════════════════════════════════════");
+                // ⚔️ PRIMERO: Spawnear enemigos para que los jugadores los maten
+                spawnearOleadaActo3();
                 
-                // Actualizar brújulas para que apunten al altar
-                for (Player p : Bukkit.getOnlinePlayers()) {
-                    if (participantesOriginales.contains(p.getUniqueId())) {
-                        p.setCompassTarget(altarLocation);
-                        objetivosPorJugador.put(p.getUniqueId(), altarLocation);
-                    }
-                }
+                // Mensaje de alerta de combate
+                broadcastNarrative("");
+                broadcastNarrative("    §c§l⚔ ¡DEFENSORES DEL NÚCLEO! ⚔");
+                broadcastNarrative("    §7Eliminen a las criaturas antes de continuar...");
+                playSoundToAll(Sound.ENTITY_ENDER_DRAGON_GROWL, 0.7f, 0.6f);
                 
-                // Spawn agresivo de criaturas durante el retorno (más presión)
-                iniciarSpawnsRetorno();
+                // Verificar cuando se eliminen todos los enemigos para continuar narrativa
+                esperarEliminacionEnemigosActo3(() -> {
+                    if (!isActive()) return;
+                    
+                    mostrarDialogoForma("NUCLEO_RECOGIDO");
+                    
+                    // Anuncio en chat con instrucciones claras
+                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                        if (!isActive()) return;
+                        broadcastNarrative("§8§m══════════════════════════════════════════════════");
+                        broadcastNarrative("");
+                        broadcastNarrative("          §5§l⚠ ¡LLEVEN EL NÚCLEO AL ALTAR! ⚠");
+                        broadcastNarrative("");
+                        broadcastNarrative("    §e✦ El núcleo aún vive y debe ser destruido");
+                        broadcastNarrative("    §a✦ Regresen al PRIMER FRAGMENTO (donde empezó todo)");
+                        broadcastNarrative("    §c✦ ¡El núcleo invocará defensores mientras huyen!");
+                        broadcastNarrative("");
+                        broadcastNarrative("§8§m══════════════════════════════════════════════════");
+                        
+                        // Actualizar brújulas para que apunten al altar
+                        for (Player p : Bukkit.getOnlinePlayers()) {
+                            if (participantesOriginales.contains(p.getUniqueId())) {
+                                p.setCompassTarget(altarLocation);
+                                objetivosPorJugador.put(p.getUniqueId(), altarLocation);
+                            }
+                        }
+                        
+                        // Spawn agresivo de criaturas durante el retorno (más presión)
+                        iniciarSpawnsRetorno();
+                    }, 100L); // 5 segundos después del diálogo
+                });
             }
         }, 60L); // 3 segundos para ver efectos
     }
@@ -7230,6 +7247,148 @@ public class SusurroPiedraRotaEvent extends EventBase {
         if (ritualDestruccionIniciado && !ritualDestruccionCompletado) {
             procesarRitualDestruccion();
         }
+    }
+    
+    // ═══════════════════════════════════════════════════════════════
+    // SISTEMA DE OLEADAS ACTO 3 - MATAR ANTES DE NARRATIVA
+    // ═══════════════════════════════════════════════════════════════
+    
+    private Set<UUID> enemigosOleadaActo3 = new HashSet<>();
+    private Runnable callbackOleadaCompletada = null;
+    
+    /**
+     * Spawnea una oleada de enemigos que deben ser eliminados antes de continuar
+     */
+    private void spawnearOleadaActo3() {
+        enemigosOleadaActo3.clear();
+        
+        // Contar jugadores vivos
+        int jugadoresVivos = 0;
+        Location spawnRef = nucleoLocation != null ? nucleoLocation : altarLocation;
+        
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (participantesOriginales.contains(p.getUniqueId()) && 
+                p.getGameMode() == org.bukkit.GameMode.SURVIVAL) {
+                jugadoresVivos++;
+                if (spawnRef == null) spawnRef = p.getLocation();
+            }
+        }
+        if (jugadoresVivos == 0 || spawnRef == null) return;
+        
+        // Spawnear 4-6 enemigos según jugadores
+        int cantidad = 4 + Math.min(jugadoresVivos, 3);
+        Random rand = new Random();
+        
+        for (int i = 0; i < cantidad; i++) {
+            double angulo = (2 * Math.PI * i) / cantidad;
+            Location spawnLoc = spawnRef.clone().add(
+                Math.cos(angulo) * (6 + rand.nextInt(4)),
+                0,
+                Math.sin(angulo) * (6 + rand.nextInt(4))
+            );
+            spawnLoc.setY(spawnLoc.getWorld().getHighestBlockYAt(spawnLoc) + 1);
+            
+            // Spawnear criatura y trackear
+            LivingEntity criatura = spawnearCriaturaTrackeada(spawnLoc, rand);
+            if (criatura != null) {
+                enemigosOleadaActo3.add(criatura.getUniqueId());
+                // Efecto visual de spawn
+                spawnLoc.getWorld().spawnParticle(Particle.SOUL, spawnLoc, 15, 0.5, 0.5, 0.5, 0.1);
+            }
+        }
+        
+        plugin.getLogger().info("[SusurroPiedraRota] Oleada Acto 3: " + enemigosOleadaActo3.size() + " enemigos spawneados");
+    }
+    
+    /**
+     * Spawnea una criatura y la retorna para tracking
+     */
+    private LivingEntity spawnearCriaturaTrackeada(Location loc, Random rand) {
+        EntityType[] tipos = {EntityType.ZOMBIE, EntityType.SKELETON, EntityType.WITCH, EntityType.VINDICATOR};
+        EntityType tipo = tipos[rand.nextInt(tipos.length)];
+        
+        org.bukkit.entity.Entity entity = loc.getWorld().spawnEntity(loc, tipo);
+        if (!(entity instanceof LivingEntity)) {
+            return null;
+        }
+        LivingEntity criatura = (LivingEntity) entity;
+        criatura.setCustomName("§5Defensor del Núcleo");
+        criatura.setCustomNameVisible(true);
+        
+        // Dar XP al morir
+        criatura.getPersistentDataContainer().set(
+            new org.bukkit.NamespacedKey(plugin, "evento_xp"),
+            org.bukkit.persistence.PersistentDataType.INTEGER,
+            60 + rand.nextInt(30) // 60-90 XP
+        );
+        
+        criaturasActivas.add(criatura);
+        return criatura;
+    }
+    
+    /**
+     * Espera a que se eliminen todos los enemigos de la oleada para ejecutar callback
+     */
+    private void esperarEliminacionEnemigosActo3(Runnable callback) {
+        this.callbackOleadaCompletada = callback;
+        
+        // Verificar cada segundo
+        Bukkit.getScheduler().runTaskTimer(plugin, new org.bukkit.scheduler.BukkitRunnable() {
+            @Override
+            public void run() {
+                if (!isActive()) {
+                    this.cancel();
+                    return;
+                }
+                
+                // Limpiar enemigos muertos del set
+                enemigosOleadaActo3.removeIf(uuid -> {
+                    for (Entity e : criaturasActivas) {
+                        if (e.getUniqueId().equals(uuid) && !e.isDead()) {
+                            return false;
+                        }
+                    }
+                    return true;
+                });
+                
+                // Mostrar progreso
+                if (!enemigosOleadaActo3.isEmpty() && System.currentTimeMillis() % 5000 < 1000) {
+                    for (Player p : Bukkit.getOnlinePlayers()) {
+                        if (participantesOriginales.contains(p.getUniqueId())) {
+                            p.sendActionBar(net.kyori.adventure.text.Component.text(
+                                "§c⚔ Enemigos restantes: §l" + enemigosOleadaActo3.size() + " §c⚔"
+                            ));
+                        }
+                    }
+                }
+                
+                // Si no quedan enemigos, ejecutar callback
+                if (enemigosOleadaActo3.isEmpty()) {
+                    this.cancel();
+                    
+                    // Mensaje de victoria
+                    broadcastNarrative("");
+                    broadcastNarrative("    §a§l✓ ¡DEFENSORES ELIMINADOS! §a✓");
+                    playSoundToAll(Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.2f);
+                    playSoundToAll(Sound.UI_TOAST_CHALLENGE_COMPLETE, 0.8f, 1.0f);
+                    
+                    // Ejecutar callback después de pequeña pausa
+                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                        if (callbackOleadaCompletada != null) {
+                            callbackOleadaCompletada.run();
+                            callbackOleadaCompletada = null;
+                        }
+                    }, 40L); // 2 segundos
+                }
+            }
+        }, 20L, 20L);
+    }
+    
+    /**
+     * Llamado cuando un enemigo de la oleada muere
+     */
+    public void procesarMuerteEnemigoOleadaActo3(UUID enemigoUUID) {
+        enemigosOleadaActo3.remove(enemigoUUID);
     }
     
     private void iniciarSpawnsRetorno() {
@@ -7323,28 +7482,7 @@ public class SusurroPiedraRotaEvent extends EventBase {
         pedestalNucleo.setFixed(true);
         pedestalNucleo.setInvulnerable(true);
         
-        // Título a todos los jugadores
-        for (Player p : Bukkit.getOnlinePlayers()) {
-            if (participantesOriginales.contains(p.getUniqueId())) {
-                p.sendTitle(
-                    ChatColor.DARK_RED + "⚔ RITUAL DE DESTRUCCIÓN ⚔",
-                    ChatColor.GRAY + "Permaneced unidos 10 segundos",
-                    10, 80, 20
-                );
-            }
-        }
-        
-        // Diálogo del Observador
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (isActive()) {
-                mostrarDialogoForma("RITUAL_DESTRUCCION");
-            }
-        }, 20L);
-        
-        // Iniciar efectos visuales
-        iniciarEfectosRitual();
-        
-        // Contar jugadores vivos
+        // ⚔️ PRIMERO: Spawnear defensores finales que deben ser eliminados
         int jugadoresVivos = 0;
         for (Player p : Bukkit.getOnlinePlayers()) {
             if (participantesOriginales.contains(p.getUniqueId()) && 
@@ -7354,8 +7492,22 @@ public class SusurroPiedraRotaEvent extends EventBase {
         }
         if (jugadoresVivos == 0) jugadoresVivos = 1;
         
+        // Título de alerta de combate
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (participantesOriginales.contains(p.getUniqueId())) {
+                p.sendTitle(
+                    ChatColor.DARK_RED + "⚔ ¡ÚLTIMA DEFENSA! ⚔",
+                    ChatColor.GRAY + "Eliminen a los defensores del núcleo",
+                    10, 80, 20
+                );
+            }
+        }
+        
         // Spawnear defensores finales (Forma intenta impedir el ritual)
-        int cantidadDefensores = 5 + jugadoresVivos;
+        enemigosOleadaActo3.clear();
+        int cantidadDefensores = 6 + jugadoresVivos * 2;
+        Random rand = new Random();
+        
         for (int i = 0; i < cantidadDefensores; i++) {
             double angulo = (2 * Math.PI * i) / cantidadDefensores;
             Location spawnLoc = altarLocation.clone().add(
@@ -7363,9 +7515,45 @@ public class SusurroPiedraRotaEvent extends EventBase {
                 0,
                 Math.sin(angulo) * 12
             );
-            spawnLoc.setY(altarLocation.getWorld().getHighestBlockYAt(spawnLoc));
-            spawnearEnUbicacion(spawnLoc);
+            spawnLoc.setY(altarLocation.getWorld().getHighestBlockYAt(spawnLoc) + 1);
+            
+            LivingEntity criatura = spawnearCriaturaTrackeada(spawnLoc, rand);
+            if (criatura != null) {
+                enemigosOleadaActo3.add(criatura.getUniqueId());
+                criatura.setCustomName("§4Guardián Final");
+            }
         }
+        
+        playSoundToAll(Sound.ENTITY_WITHER_SPAWN, 0.8f, 0.5f);
+        broadcastNarrative("");
+        broadcastNarrative("    §c§l⚔ ¡GUARDIANES FINALES INVOCADOS! ⚔");
+        broadcastNarrative("    §7Elimínenlos para comenzar el ritual de destrucción...");
+        
+        // Esperar a que maten a todos para continuar con el ritual
+        esperarEliminacionEnemigosActo3(() -> {
+            if (!isActive()) return;
+            
+            // AHORA sí mostrar título y diálogo del ritual
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                if (participantesOriginales.contains(p.getUniqueId())) {
+                    p.sendTitle(
+                        ChatColor.DARK_PURPLE + "✦ RITUAL DE DESTRUCCIÓN ✦",
+                        ChatColor.GRAY + "Permanezcan unidos 10 segundos",
+                        10, 80, 20
+                    );
+                }
+            }
+            
+            // Diálogo del Observador
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (isActive()) {
+                    mostrarDialogoForma("RITUAL_DESTRUCCION");
+                }
+            }, 20L);
+            
+            // Iniciar efectos visuales y el ritual propiamente
+            iniciarEfectosRitual();
+        });
     }
     
     private void procesarRitualDestruccion() {
@@ -10366,8 +10554,10 @@ public class SusurroPiedraRotaEvent extends EventBase {
      * Envía un título cinematográfico animado con efectos de gradiente.
      */
     private void enviarTituloCinematico(Player player, String titulo, String subtitulo, int duracion) {
+        // Si el título ya tiene formato especial (§k para ofuscado, etc), no aplicar gradiente
+        String tituloFinal = titulo.contains("§k") || titulo.contains("§l§") ? titulo : formatearGradiente(titulo);
         player.sendTitle(
-            formatearGradiente(titulo),
+            tituloFinal,
             formatearItalico(subtitulo),
             10, duracion, 20
         );

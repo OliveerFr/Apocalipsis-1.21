@@ -2,6 +2,7 @@ me\apocalipsis\events\gameplay\EnvironmentSystem$1.class
 me\apocalipsis\ui\TablistManager$1.class
 me\apocalipsis\events\gameplay\FeedbackSystem$2.class
 me\apocalipsis\events\gameplay\GuardianPhaseSystem$7.class
+me\apocalipsis\events\SusurroPiedraRotaEvent$14.class
 me\apocalipsis\events\gameplay\FeedbackSystem.class
 me\apocalipsis\missions\MissionRenderer$1.class
 me\apocalipsis\utils\VelocityManager$VelocityTask.class
