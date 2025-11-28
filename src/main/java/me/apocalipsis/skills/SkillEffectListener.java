@@ -447,4 +447,44 @@ public class SkillEffectListener implements Listener {
             }
         }
     }
+    
+    // ==================== WAYPOINT (EXPLORADOR) ====================
+    
+    private final Map<UUID, Location> playerWaypoints = new HashMap<>();
+    
+    /**
+     * Establece un waypoint en la ubicación actual del jugador.
+     */
+    public void setWaypoint(Player player) {
+        UUID uuid = player.getUniqueId();
+        Location loc = player.getLocation();
+        playerWaypoints.put(uuid, loc);
+        
+        player.sendMessage("§a✓ §eWaypoint establecido en: §f" + 
+            loc.getBlockX() + ", " + loc.getBlockY() + ", " + loc.getBlockZ());
+        player.playSound(loc, Sound.BLOCK_NOTE_BLOCK_PLING, 0.8f, 1.2f);
+        
+        // Efecto visual
+        loc.getWorld().spawnParticle(Particle.END_ROD, loc.add(0, 1, 0), 30, 0.5, 0.5, 0.5, 0.05);
+    }
+    
+    /**
+     * Teleporta al jugador a su waypoint guardado.
+     */
+    public void teleportToWaypoint(Player player) {
+        UUID uuid = player.getUniqueId();
+        Location waypoint = playerWaypoints.get(uuid);
+        
+        if (waypoint == null) {
+            player.sendMessage("§c✖ §7No tienes un waypoint establecido. Usa §e/waypoint set §7primero.");
+            return;
+        }
+        
+        player.teleport(waypoint);
+        player.sendMessage("§a✓ §eTeletransportado al waypoint.");
+        player.playSound(waypoint, Sound.ENTITY_ENDERMAN_TELEPORT, 0.8f, 1.0f);
+        
+        // Efecto visual
+        waypoint.getWorld().spawnParticle(Particle.REVERSE_PORTAL, waypoint.clone().add(0, 1, 0), 50, 0.5, 0.5, 0.5, 0.1);
+    }
 }

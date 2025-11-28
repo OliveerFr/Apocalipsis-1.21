@@ -7790,25 +7790,6 @@ public class SusurroPiedraRotaEvent extends EventBase {
     }
     
     /**
-     * Crea una barra de progreso visual con caracteres
-     */
-    private String crearBarraProgreso(int actual, int total) {
-        int barras = 20;
-        int llenas = (int) ((double) actual / total * barras);
-        
-        StringBuilder sb = new StringBuilder("§8[");
-        for (int i = 0; i < barras; i++) {
-            if (i < llenas) {
-                sb.append("§a█");
-            } else {
-                sb.append("§4░");
-            }
-        }
-        sb.append("§8]");
-        return sb.toString();
-    }
-    
-    /**
      * Llamado cuando un enemigo de la oleada muere
      */
     public void procesarMuerteEnemigoOleadaActo3(UUID enemigoUUID) {
