@@ -1890,73 +1890,130 @@ public class SusurroPiedraRotaEvent extends EventBase {
     }
     
     /**
-     * Validación exhaustiva para encontrar ubicación PERFECTA en radio 15 bloques
+     * Validación exhaustiva para encontrar ubicación PERFECTA para altares
+     * MEJORADO: Evita agua, acantilados, y verifica terreno real sólido
      */
     private boolean esUbicacionPerfecta(World world, Location loc) {
         int x = loc.getBlockX();
         int y = loc.getBlockY();
         int z = loc.getBlockZ();
         
-        // 1. Verificar bloque base
+        // 1. Verificar que estemos sobre terreno sólido REAL (no agua superficial)
         Material bloqueAbajo = world.getBlockAt(x, y - 1, z).getType();
-        if (bloqueAbajo == Material.WATER || bloqueAbajo == Material.LAVA ||
-            bloqueAbajo == Material.AIR || bloqueAbajo.name().contains("LEAVES") ||
-            bloqueAbajo.name().contains("LOG") || bloqueAbajo == Material.BEDROCK) {
+        if (!esTerrenoSolidoReal(bloqueAbajo)) {
             return false;
         }
         
-        if (!bloqueAbajo.isSolid()) {
-            return false;
-        }
-        
-        // 2. Verificar NO agua/lava en radio 10 bloques (más estricto)
-        for (int checkX = -10; checkX <= 10; checkX++) {
-            for (int checkZ = -10; checkZ <= 10; checkZ++) {
-                Material checkMat = world.getBlockAt(x + checkX, y - 1, z + checkZ).getType();
-                if (checkMat == Material.WATER || checkMat == Material.LAVA) {
-                    return false;
-                }
-            }
-        }
-        
-        // 3. Verificar terreno COMPLETAMENTE PLANO en radio 15 bloques (±1 bloque máximo)
+        // 2. Verificar NO agua/lava en radio 15 bloques (MUY ESTRICTO) - en múltiples niveles
         for (int checkX = -15; checkX <= 15; checkX++) {
             for (int checkZ = -15; checkZ <= 15; checkZ++) {
-                int alturaCercana = world.getHighestBlockYAt(x + checkX, z + checkZ);
-                if (Math.abs(alturaCercana - y) > 1) { // Solo ±1 bloque de desnivel
-                    return false;
-                }
-            }
-        }
-        
-        // 4. Verificar espacio vertical amplio (7 bloques, más espacio)
-        for (int checkY = 0; checkY < 7; checkY++) {
-            Material checkBlock = world.getBlockAt(x, y + checkY, z).getType();
-            if (checkBlock.isSolid() && checkBlock != Material.AIR) {
-                return false;
-            }
-        }
-        
-        // 5. Verificar NO árboles cercanos en radio 12 bloques y altura 15 (MÁS ESTRICTO)
-        for (int checkX = -12; checkX <= 12; checkX++) {
-            for (int checkZ = -12; checkZ <= 12; checkZ++) {
-                for (int checkY = 0; checkY < 15; checkY++) {
+                for (int checkY = -5; checkY <= 2; checkY++) {
                     Material checkMat = world.getBlockAt(x + checkX, y + checkY, z + checkZ).getType();
-                    if (checkMat.name().contains("LOG") || checkMat.name().contains("LEAVES") ||
-                        checkMat.name().contains("WOOD") || checkMat == Material.VINE) {
+                    if (checkMat == Material.WATER || checkMat == Material.LAVA ||
+                        checkMat == Material.SEAGRASS || checkMat == Material.KELP ||
+                        checkMat == Material.KELP_PLANT) {
                         return false;
                     }
                 }
             }
         }
         
-        // 6. Verificar tipo de superficie jugable (preferir grass, stone, etc.)
-        if (bloqueAbajo == Material.SAND || bloqueAbajo == Material.GRAVEL || 
-            bloqueAbajo == Material.SOUL_SAND || bloqueAbajo.name().contains("ICE")) {
-            return false; // Evitar superficies inestables
+        // 3. Verificar que NO estamos en un acantilado o borde de precipicio
+        // Calculamos la altura en los bordes - si hay caídas grandes, rechazar
+        int alturaMinima = Integer.MAX_VALUE;
+        int alturaMaxima = Integer.MIN_VALUE;
+        int alturaCentro = y;
+        
+        for (int checkX = -12; checkX <= 12; checkX += 3) {
+            for (int checkZ = -12; checkZ <= 12; checkZ += 3) {
+                int alturaCheck = world.getHighestBlockYAt(x + checkX, z + checkZ);
+                alturaMinima = Math.min(alturaMinima, alturaCheck);
+                alturaMaxima = Math.max(alturaMaxima, alturaCheck);
+            }
         }
         
-        return true; // ¡Ubicación PERFECTA!
+        // Rechazar si hay más de 8 bloques de desnivel total (acantilado)
+        if (alturaMaxima - alturaMinima > 8) {
+            return false;
+        }
+        
+        // Rechazar si el centro está muy por encima del punto más bajo (borde de precipicio)
+        if (alturaCentro - alturaMinima > 5) {
+            return false;
+        }
+        
+        // 4. Verificar terreno razonablemente uniforme en radio 8 bloques (zona del altar)
+        int terrenoIrregular = 0;
+        for (int checkX = -8; checkX <= 8; checkX += 2) {
+            for (int checkZ = -8; checkZ <= 8; checkZ += 2) {
+                int alturaCercana = world.getHighestBlockYAt(x + checkX, z + checkZ);
+                if (Math.abs(alturaCercana - y) > 3) {
+                    terrenoIrregular++;
+                }
+            }
+        }
+        // Permitir algo de irregularidad, pero no demasiada
+        if (terrenoIrregular > 12) {
+            return false;
+        }
+        
+        // 5. Verificar espacio vertical amplio (10 bloques)
+        for (int checkY = 0; checkY < 10; checkY++) {
+            Material checkBlock = world.getBlockAt(x, y + checkY, z).getType();
+            if (checkBlock.isSolid() && checkBlock != Material.AIR &&
+                !checkBlock.name().contains("LEAVES") && !checkBlock.name().contains("LOG")) {
+                return false;
+            }
+        }
+        
+        // 6. Verificar NO árboles MUY cercanos (radio 8 - más permisivo en los bordes)
+        for (int checkX = -8; checkX <= 8; checkX++) {
+            for (int checkZ = -8; checkZ <= 8; checkZ++) {
+                for (int checkY = 0; checkY < 12; checkY++) {
+                    Material checkMat = world.getBlockAt(x + checkX, y + checkY, z + checkZ).getType();
+                    if (checkMat.name().contains("LOG")) {
+                        // Troncos muy cerca = rechazar
+                        double dist = Math.sqrt(checkX * checkX + checkZ * checkZ);
+                        if (dist < 6) {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+        
+        // 7. Verificar que hay suficiente terreno sólido debajo (no cuevas)
+        int bloquesSolidos = 0;
+        for (int checkY = -1; checkY >= -8; checkY--) {
+            if (world.getBlockAt(x, y + checkY, z).getType().isSolid()) {
+                bloquesSolidos++;
+            }
+        }
+        if (bloquesSolidos < 5) {
+            return false; // Posible cueva debajo
+        }
+        
+        return true; // ¡Ubicación VÁLIDA!
+    }
+    
+    /**
+     * Verifica si un material es terreno sólido real (no agua, no plantas, no inestable)
+     */
+    private boolean esTerrenoSolidoReal(Material mat) {
+        if (mat == null || mat == Material.AIR) return false;
+        if (mat == Material.WATER || mat == Material.LAVA) return false;
+        if (mat == Material.BEDROCK) return false;
+        if (!mat.isSolid()) return false;
+        
+        String name = mat.name();
+        if (name.contains("LEAVES") || name.contains("LOG") || name.contains("WOOD")) return false;
+        if (name.contains("SAPLING") || name.contains("FLOWER") || name.contains("GRASS") && !name.equals("GRASS_BLOCK")) return false;
+        if (name.contains("SNOW") && !name.equals("SNOW_BLOCK")) return false;
+        if (name.contains("ICE") || name.contains("POWDER")) return false;
+        if (mat == Material.SAND || mat == Material.GRAVEL || mat == Material.SOUL_SAND) return false;
+        if (mat == Material.CACTUS || mat == Material.BAMBOO || mat == Material.SUGAR_CANE) return false;
+        
+        return true;
     }
     
     private void construirFragmentoPiedra(Location loc) {
@@ -1964,96 +2021,135 @@ public class SusurroPiedraRotaEvent extends EventBase {
     }
     
     /**
-     * Construye un altar adaptado al terreno con diseño único según el tipo de ritual
-     * @param loc Ubicación central del altar
-     * @param tipoAltar 1=Despertar(quietud), 2=Resonancia(perlas), 3=Sacrificio(items), 
-     *                  4=Caza(mobs), 5=Unión Final(defensa), 0=genérico
+     * Construye un altar COMPLETAMENTE adaptado al terreno con diseño único
+     * SISTEMA MEJORADO: Terrazas naturales, transiciones suaves, sin cortes bruscos
      */
     private void construirFragmentoPiedra(Location loc, int tipoAltar) {
         World world = loc.getWorld();
         Random rand = new Random();
+        int centroX = loc.getBlockX();
+        int centroZ = loc.getBlockZ();
         
         // ═══════════════════════════════════════════════════════════════════
-        // FASE 1: ADAPTACIÓN NATURAL DEL TERRENO
-        // Suaviza el área sin cortar montañas bruscamente
+        // FASE 1: ANÁLISIS PROFUNDO DEL TERRENO
         // ═══════════════════════════════════════════════════════════════════
         
-        int centroY = loc.getBlockY();
-        int radioAdaptacion = 8; // Radio donde adaptamos el terreno
+        // Mapa de alturas del terreno original
+        int[][] mapaAlturas = new int[25][25]; // -12 a +12
+        int alturaMinima = Integer.MAX_VALUE;
+        int alturaMaxima = Integer.MIN_VALUE;
         
-        // Analizar el terreno circundante para encontrar altura promedio
-        int sumaAlturas = 0;
-        int conteoAlturas = 0;
-        for (int x = -radioAdaptacion; x <= radioAdaptacion; x++) {
-            for (int z = -radioAdaptacion; z <= radioAdaptacion; z++) {
-                double dist = Math.sqrt(x * x + z * z);
-                if (dist <= radioAdaptacion) {
-                    int altura = world.getHighestBlockYAt(loc.getBlockX() + x, loc.getBlockZ() + z);
-                    sumaAlturas += altura;
-                    conteoAlturas++;
-                }
+        for (int dx = -12; dx <= 12; dx++) {
+            for (int dz = -12; dz <= 12; dz++) {
+                int altura = obtenerAlturaTerrenoReal(world, centroX + dx, centroZ + dz);
+                mapaAlturas[dx + 12][dz + 12] = altura;
+                alturaMinima = Math.min(alturaMinima, altura);
+                alturaMaxima = Math.max(alturaMaxima, altura);
             }
         }
-        int alturaPromedio = conteoAlturas > 0 ? sumaAlturas / conteoAlturas : centroY;
-        int alturaBase = Math.max(centroY - 2, alturaPromedio - 1); // Elegir altura razonable
         
-        // Adaptar terreno con transición suave (más suave en bordes)
-        for (int x = -radioAdaptacion; x <= radioAdaptacion; x++) {
-            for (int z = -radioAdaptacion; z <= radioAdaptacion; z++) {
-                double dist = Math.sqrt(x * x + z * z);
-                if (dist > radioAdaptacion) continue;
+        // Altura base del altar: ligeramente por encima del promedio del centro
+        int sumaAlturaCentro = 0;
+        int conteo = 0;
+        for (int dx = -3; dx <= 3; dx++) {
+            for (int dz = -3; dz <= 3; dz++) {
+                sumaAlturaCentro += mapaAlturas[dx + 12][dz + 12];
+                conteo++;
+            }
+        }
+        int alturaBase = sumaAlturaCentro / conteo;
+        
+        // ═══════════════════════════════════════════════════════════════════
+        // FASE 2: PREPARACIÓN DEL TERRENO CON TERRAZAS NATURALES
+        // ═══════════════════════════════════════════════════════════════════
+        
+        // Detectar el material predominante del bioma
+        Material materialBiomaPrincipal = detectarBiomaPredominante(world, centroX, centroZ, alturaBase);
+        Material materialTransicion = obtenerMaterialTransicion(materialBiomaPrincipal);
+        
+        for (int dx = -12; dx <= 12; dx++) {
+            for (int dz = -12; dz <= 12; dz++) {
+                double dist = Math.sqrt(dx * dx + dz * dz);
+                if (dist > 12) continue;
                 
-                int worldX = loc.getBlockX() + x;
-                int worldZ = loc.getBlockZ() + z;
-                int alturaActual = world.getHighestBlockYAt(worldX, worldZ);
+                int worldX = centroX + dx;
+                int worldZ = centroZ + dz;
+                int alturaOriginal = mapaAlturas[dx + 12][dz + 12];
                 
-                // Factor de suavizado: más fuerte en el centro, más suave en los bordes
-                double factorSuavizado = 1.0 - (dist / radioAdaptacion);
-                factorSuavizado = factorSuavizado * factorSuavizado; // Curva cuadrática
-                
-                // Calcular altura objetivo con transición gradual
+                // Calcular altura objetivo con terrazas suaves
                 int alturaObjetivo;
                 if (dist <= 4) {
-                    // Centro del altar: plano
+                    // Centro del altar: completamente plano
                     alturaObjetivo = alturaBase;
+                } else if (dist <= 7) {
+                    // Primera terraza: transición suave
+                    double factor = (dist - 4) / 3.0;
+                    int alturaIntermedia = alturaBase + (int)((alturaOriginal - alturaBase) * factor * 0.3);
+                    alturaObjetivo = alturaIntermedia;
+                } else if (dist <= 10) {
+                    // Segunda terraza: más natural
+                    double factor = (dist - 7) / 3.0;
+                    int alturaIntermedia = alturaBase + (int)((alturaOriginal - alturaBase) * (0.3 + factor * 0.4));
+                    alturaObjetivo = alturaIntermedia;
                 } else {
-                    // Zona de transición: mezcla entre altura actual y altura base
-                    alturaObjetivo = (int) (alturaBase * factorSuavizado + alturaActual * (1 - factorSuavizado));
+                    // Borde exterior: casi sin modificar, solo suavizado
+                    double factor = (dist - 10) / 2.0;
+                    alturaObjetivo = alturaBase + (int)((alturaOriginal - alturaBase) * (0.7 + factor * 0.3));
                 }
                 
-                // Detectar material del bioma para usar en rellenos
-                Material materialBioma = detectarMaterialBioma(world, worldX, worldZ, alturaActual);
-                
-                // Aplicar cambios de terreno
-                if (alturaActual > alturaObjetivo + 1) {
-                    // Terreno muy alto: recortar gradualmente (no de golpe)
-                    int recorte = Math.min(alturaActual - alturaObjetivo, 3); // Max 3 bloques por pasada
-                    for (int y = alturaActual; y > alturaActual - recorte && y > alturaObjetivo; y--) {
+                // Aplicar modificaciones de terreno
+                if (alturaOriginal > alturaObjetivo) {
+                    // Necesitamos bajar el terreno
+                    for (int y = alturaOriginal; y > alturaObjetivo; y--) {
                         Block block = world.getBlockAt(worldX, y, worldZ);
-                        if (!block.getType().name().contains("BEDROCK")) {
-                            // Convertir en aire o dejar vegetación en bordes
-                            if (dist <= 5 || !esVegetacion(block.getType())) {
-                                block.setType(Material.AIR);
-                            }
+                        Material mat = block.getType();
+                        // No remover bedrock
+                        if (mat != Material.BEDROCK) {
+                            block.setType(Material.AIR);
                         }
                     }
-                    // Poner material natural en la nueva superficie
-                    if (dist <= 5) {
-                        world.getBlockAt(worldX, alturaObjetivo, worldZ).setType(materialBioma);
+                    // Colocar superficie natural
+                    if (dist <= 10) {
+                        colocarSuperficieNatural(world, worldX, alturaObjetivo, worldZ, materialBiomaPrincipal, dist, rand);
                     }
-                } else if (alturaActual < alturaObjetivo - 1) {
-                    // Terreno muy bajo: rellenar gradualmente
-                    for (int y = alturaActual + 1; y <= alturaObjetivo; y++) {
-                        Material relleno = (y == alturaObjetivo) ? materialBioma : Material.STONE;
+                } else if (alturaOriginal < alturaObjetivo) {
+                    // Necesitamos subir el terreno (rellenar)
+                    for (int y = alturaOriginal + 1; y <= alturaObjetivo; y++) {
+                        Material relleno;
+                        if (y == alturaObjetivo) {
+                            relleno = materialBiomaPrincipal;
+                        } else if (y >= alturaObjetivo - 2) {
+                            relleno = Material.DIRT;
+                        } else {
+                            relleno = Material.STONE;
+                        }
                         world.getBlockAt(worldX, y, worldZ).setType(relleno);
                     }
                 }
                 
-                // Limpiar espacio aéreo sobre el altar (vegetación, hojas, etc.)
+                // Asegurar base sólida debajo del altar
                 if (dist <= 6) {
-                    for (int y = alturaObjetivo + 1; y <= alturaObjetivo + 12; y++) {
+                    for (int y = alturaObjetivo - 1; y >= alturaObjetivo - 4; y--) {
                         Block block = world.getBlockAt(worldX, y, worldZ);
-                        if (esVegetacion(block.getType()) || block.getType().name().contains("LEAVES")) {
+                        if (!block.getType().isSolid() || block.getType() == Material.WATER) {
+                            block.setType(y >= alturaObjetivo - 2 ? Material.DIRT : Material.STONE);
+                        }
+                    }
+                }
+                
+                // Limpiar espacio aéreo (vegetación, hojas, troncos flotantes)
+                for (int y = alturaObjetivo + 1; y <= alturaObjetivo + 15; y++) {
+                    Block block = world.getBlockAt(worldX, y, worldZ);
+                    Material mat = block.getType();
+                    if (dist <= 8) {
+                        // Centro: limpiar todo
+                        if (esVegetacion(mat) || mat.name().contains("LEAVES") || 
+                            mat.name().contains("LOG") || mat.name().contains("SNOW")) {
+                            block.setType(Material.AIR);
+                        }
+                    } else if (dist <= 11) {
+                        // Bordes: solo limpiar hojas y nieve
+                        if (mat.name().contains("LEAVES") || mat == Material.SNOW) {
                             block.setType(Material.AIR);
                         }
                     }
@@ -2061,58 +2157,179 @@ public class SusurroPiedraRotaEvent extends EventBase {
             }
         }
         
-        // Actualizar ubicación del altar a la altura adaptada
-        Location locAdaptada = loc.clone();
-        locAdaptada.setY(alturaBase + 1);
+        // ═══════════════════════════════════════════════════════════════════
+        // FASE 3: AÑADIR DETALLES NATURALES DE TRANSICIÓN
+        // ═══════════════════════════════════════════════════════════════════
+        
+        agregarDetallesTransicion(world, centroX, centroZ, alturaBase, materialBiomaPrincipal, rand);
         
         // ═══════════════════════════════════════════════════════════════════
-        // FASE 2: CONSTRUCCIÓN DEL ALTAR SEGÚN TIPO
-        // Cada altar tiene diseño único que refleja su actividad
+        // FASE 4: CONSTRUCCIÓN DEL ALTAR SEGÚN TIPO
         // ═══════════════════════════════════════════════════════════════════
+        
+        Location locAltar = new Location(world, centroX, alturaBase + 1, centroZ);
         
         switch (tipoAltar) {
             case 1:
-                construirAltarDespertar(locAdaptada, world, rand);
+                construirAltarDespertar(locAltar, world, rand);
                 break;
             case 2:
-                construirAltarResonancia(locAdaptada, world, rand);
+                construirAltarResonancia(locAltar, world, rand);
                 break;
             case 3:
-                construirAltarSacrificio(locAdaptada, world, rand);
+                construirAltarSacrificio(locAltar, world, rand);
                 break;
             case 4:
-                construirAltarCaza(locAdaptada, world, rand);
+                construirAltarCaza(locAltar, world, rand);
                 break;
             case 5:
-                construirAltarUnionFinal(locAdaptada, world, rand);
+                construirAltarUnionFinal(locAltar, world, rand);
                 break;
             default:
-                construirAltarGenerico(locAdaptada, world, rand);
+                construirAltarGenerico(locAltar, world, rand);
                 break;
         }
         
-        // Efectos visuales de construcción
-        efectoConstruccionAltar(locAdaptada, world, tipoAltar);
+        // Efectos visuales
+        efectoConstruccionAltar(locAltar, world, tipoAltar);
     }
     
     /**
-     * Detecta el material natural del bioma para usar en adaptación de terreno
+     * Obtiene la altura real del terreno ignorando agua, nieve superficial y vegetación
      */
-    private Material detectarMaterialBioma(World world, int x, int z, int y) {
-        // Buscar el bloque sólido más alto
-        for (int checkY = y; checkY > y - 5 && checkY > 0; checkY--) {
+    private int obtenerAlturaTerrenoReal(World world, int x, int z) {
+        int y = world.getHighestBlockYAt(x, z);
+        
+        // Bajar hasta encontrar terreno sólido real
+        for (int checkY = y; checkY > 0; checkY--) {
             Material mat = world.getBlockAt(x, checkY, z).getType();
-            if (mat == Material.GRASS_BLOCK) return Material.GRASS_BLOCK;
-            if (mat == Material.DIRT) return Material.DIRT;
-            if (mat == Material.SAND) return Material.SAND;
-            if (mat == Material.RED_SAND) return Material.RED_SAND;
-            if (mat == Material.PODZOL) return Material.PODZOL;
-            if (mat == Material.MYCELIUM) return Material.MYCELIUM;
-            if (mat == Material.SNOW_BLOCK) return Material.SNOW_BLOCK;
-            if (mat == Material.STONE) return Material.STONE;
-            if (mat == Material.TERRACOTTA || mat.name().contains("TERRACOTTA")) return mat;
+            if (mat == Material.WATER || mat == Material.LAVA) {
+                // Si hay agua, buscar el fondo
+                continue;
+            }
+            if (esVegetacion(mat) || mat.name().contains("SNOW") && mat != Material.SNOW_BLOCK) {
+                continue;
+            }
+            if (mat.name().contains("LEAVES") || mat.name().contains("LOG")) {
+                continue;
+            }
+            if (mat.isSolid() && mat != Material.AIR) {
+                return checkY;
+            }
         }
-        return Material.GRASS_BLOCK; // Default
+        return y;
+    }
+    
+    /**
+     * Detecta el material predominante del bioma analizando múltiples puntos
+     */
+    private Material detectarBiomaPredominante(World world, int x, int z, int y) {
+        Map<Material, Integer> conteo = new java.util.HashMap<>();
+        
+        int[][] puntos = {{0,0}, {3,0}, {-3,0}, {0,3}, {0,-3}, {2,2}, {-2,-2}};
+        for (int[] punto : puntos) {
+            for (int checkY = y; checkY > y - 5 && checkY > 0; checkY--) {
+                Material mat = world.getBlockAt(x + punto[0], checkY, z + punto[1]).getType();
+                if (mat == Material.GRASS_BLOCK || mat == Material.DIRT || mat == Material.STONE ||
+                    mat == Material.PODZOL || mat == Material.MYCELIUM || mat == Material.SNOW_BLOCK ||
+                    mat.name().contains("TERRACOTTA")) {
+                    conteo.merge(mat, 1, Integer::sum);
+                    break;
+                }
+            }
+        }
+        
+        // Retornar el más común
+        return conteo.entrySet().stream()
+            .max(Map.Entry.comparingByValue())
+            .map(Map.Entry::getKey)
+            .orElse(Material.GRASS_BLOCK);
+    }
+    
+    /**
+     * Obtiene un material de transición apropiado para el bioma
+     */
+    private Material obtenerMaterialTransicion(Material biomaPrincipal) {
+        if (biomaPrincipal == Material.GRASS_BLOCK) return Material.COARSE_DIRT;
+        if (biomaPrincipal == Material.PODZOL) return Material.COARSE_DIRT;
+        if (biomaPrincipal == Material.MYCELIUM) return Material.DIRT;
+        if (biomaPrincipal == Material.SNOW_BLOCK) return Material.POWDER_SNOW;
+        if (biomaPrincipal.name().contains("TERRACOTTA")) return Material.TERRACOTTA;
+        return Material.DIRT;
+    }
+    
+    /**
+     * Coloca superficie natural con variación según distancia del centro
+     */
+    private void colocarSuperficieNatural(World world, int x, int y, int z, Material bioma, double dist, Random rand) {
+        if (dist <= 5) {
+            // Centro: deepslate para transición al altar
+            if (rand.nextFloat() < 0.3) {
+                world.getBlockAt(x, y, z).setType(Material.DEEPSLATE);
+            } else {
+                world.getBlockAt(x, y, z).setType(Material.STONE);
+            }
+        } else if (dist <= 8) {
+            // Transición: mezcla de piedra y bioma
+            if (rand.nextFloat() < 0.5) {
+                world.getBlockAt(x, y, z).setType(Material.COBBLESTONE);
+            } else {
+                world.getBlockAt(x, y, z).setType(bioma);
+            }
+        } else {
+            // Exterior: bioma natural con algo de grava
+            if (rand.nextFloat() < 0.15) {
+                world.getBlockAt(x, y, z).setType(Material.GRAVEL);
+            } else {
+                world.getBlockAt(x, y, z).setType(bioma);
+            }
+        }
+    }
+    
+    /**
+     * Añade detalles naturales de transición alrededor del altar
+     */
+    private void agregarDetallesTransicion(World world, int cx, int cz, int baseY, Material bioma, Random rand) {
+        // Rocas decorativas dispersas en los bordes
+        for (int i = 0; i < 12; i++) {
+            double angulo = rand.nextDouble() * Math.PI * 2;
+            double radio = 6 + rand.nextDouble() * 4;
+            int rx = cx + (int)(Math.cos(angulo) * radio);
+            int rz = cz + (int)(Math.sin(angulo) * radio);
+            int ry = obtenerAlturaTerrenoReal(world, rx, rz);
+            
+            // Solo colocar si está cerca de la altura base
+            if (Math.abs(ry - baseY) <= 3) {
+                Block superficie = world.getBlockAt(rx, ry, rz);
+                if (superficie.getType().isSolid() && superficie.getType() != Material.WATER) {
+                    Block encima = world.getBlockAt(rx, ry + 1, rz);
+                    if (encima.getType() == Material.AIR) {
+                        // Colocar roca pequeña
+                        Material[] rocas = {Material.COBBLESTONE_WALL, Material.MOSSY_COBBLESTONE_WALL, 
+                                           Material.STONE_BUTTON, Material.MOSSY_COBBLESTONE_SLAB};
+                        encima.setType(rocas[rand.nextInt(rocas.length)]);
+                    }
+                }
+            }
+        }
+        
+        // Musgo y vegetación en transiciones
+        if (bioma == Material.GRASS_BLOCK || bioma == Material.PODZOL) {
+            for (int i = 0; i < 8; i++) {
+                double angulo = rand.nextDouble() * Math.PI * 2;
+                double radio = 5 + rand.nextDouble() * 3;
+                int mx = cx + (int)(Math.cos(angulo) * radio);
+                int mz = cz + (int)(Math.sin(angulo) * radio);
+                int my = obtenerAlturaTerrenoReal(world, mx, mz);
+                
+                Block bloque = world.getBlockAt(mx, my, mz);
+                if (bloque.getType() == Material.COBBLESTONE || bloque.getType() == Material.STONE) {
+                    if (rand.nextFloat() < 0.4) {
+                        bloque.setType(Material.MOSSY_COBBLESTONE);
+                    }
+                }
+            }
+        }
     }
     
     /**
