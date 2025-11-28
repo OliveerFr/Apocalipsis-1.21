@@ -184,9 +184,38 @@ public final class Apocalipsis extends JavaPlugin {
         getLogger().info("[EventController] ✓ Eventos narrativos registrados (Eco de Brasas, Eco de Sombras, Susurro Piedra Rota)");
 
         // Registrar comandos y tab completer
-        getCommand("avo").setExecutor(new ApocalipsisCommand(this, stateManager, disasterController, eventController, missionService, timeService, messageBus));
+        ApocalipsisCommand avoCommand = new ApocalipsisCommand(this, stateManager, disasterController, eventController, missionService, timeService, messageBus);
+        getCommand("avo").setExecutor(avoCommand);
         getCommand("avo").setTabCompleter(new AvoTabCompleter(this));
         getCommand("recompensa").setExecutor(new RecompensaCommand(this));
+        
+        // Comandos directos para jugadores
+        getCommand("habilidades").setExecutor((sender, cmd, label, args) -> {
+            if (sender instanceof org.bukkit.entity.Player player) {
+                skillTreeGUI.openMainMenu(player);
+            } else {
+                sender.sendMessage("§cEste comando solo puede ser usado por jugadores.");
+            }
+            return true;
+        });
+        
+        getCommand("mochila").setExecutor((sender, cmd, label, args) -> {
+            if (sender instanceof org.bukkit.entity.Player player) {
+                backpackService.openBackpack(player);
+            } else {
+                sender.sendMessage("§cEste comando solo puede ser usado por jugadores.");
+            }
+            return true;
+        });
+        
+        getCommand("echest").setExecutor((sender, cmd, label, args) -> {
+            if (sender instanceof org.bukkit.entity.Player player) {
+                backpackService.openPortableEnderChest(player);
+            } else {
+                sender.sendMessage("§cEste comando solo puede ser usado por jugadores.");
+            }
+            return true;
+        });
 
         // Registrar listeners
         getServer().getPluginManager().registerEvents(new PlayerListener(this, scoreboardManager, tablistManager), this);

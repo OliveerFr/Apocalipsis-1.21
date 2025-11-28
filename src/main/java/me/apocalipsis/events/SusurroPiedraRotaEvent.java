@@ -252,6 +252,19 @@ public class SusurroPiedraRotaEvent extends EventBase {
     private Map<UUID, Integer> participacionCriaturas = new HashMap<>();
     private Set<UUID> participantesOriginales = new HashSet<>();
     
+    // ═══════════════════════════════════════════════════════════════════
+    // SISTEMA AVANZADO DE ESTADÍSTICAS
+    // ═══════════════════════════════════════════════════════════════════
+    
+    private Map<UUID, Integer> muertesJugador = new HashMap<>(); // Muertes durante el evento
+    private Map<UUID, Double> danoHechoJugador = new HashMap<>(); // Daño total infligido
+    private Map<UUID, Double> danoRecibidoJugador = new HashMap<>(); // Daño total recibido
+    private Map<UUID, Integer> comboMaximoJugador = new HashMap<>(); // Racha máxima de kills
+    private Map<UUID, Long> tiempoPorAltar = new HashMap<>(); // Tiempo acumulado por altar
+    private Map<UUID, Integer> curacionesUsadas = new HashMap<>(); // Items de curación usados
+    private Set<UUID> jugadoresSinMorir = new HashSet<>(); // Jugadores que no murieron
+    private int miniBossesEliminados = 0; // Contador de mini-bosses
+    
     // Sistema de guía con action bar
     private BukkitTask guiaActionBarTask;
     private Map<UUID, Location> objetivosPorJugador = new ConcurrentHashMap<>();
@@ -381,9 +394,17 @@ public class SusurroPiedraRotaEvent extends EventBase {
         ticksEnActo = 0;
         ticksTotales = 0;
         
-        // Registrar participantes originales
+        // Registrar participantes originales e inicializar estadísticas
         for (Player p : Bukkit.getOnlinePlayers()) {
-            participantesOriginales.add(p.getUniqueId());
+            UUID uuid = p.getUniqueId();
+            participantesOriginales.add(uuid);
+            jugadoresSinMorir.add(uuid); // Todos empiezan sin morir
+            muertesJugador.put(uuid, 0);
+            danoHechoJugador.put(uuid, 0.0);
+            danoRecibidoJugador.put(uuid, 0.0);
+            comboMaximoJugador.put(uuid, 0);
+            tiempoPorAltar.put(uuid, 0L);
+            curacionesUsadas.put(uuid, 0);
         }
         
         // ✨ NUEVO: Crear BossBar de progreso
@@ -8541,7 +8562,7 @@ public class SusurroPiedraRotaEvent extends EventBase {
     }
     
     /**
-     * Calcula rangos dinámicos basados en participación y tiempo
+     * Calcula rangos dinámicos basados en participación, tiempo y estadísticas avanzadas
      */
     private void calcularRangosRecompensaDinamicos() {
         long tiempoTotal = tiempoCompletadoEvento - tiempoInicioEvento;
@@ -8555,6 +8576,10 @@ public class SusurroPiedraRotaEvent extends EventBase {
             int puzzles = puzzlesCompletados.getOrDefault(uuid, 0);
             int criaturas = participacionCriaturas.getOrDefault(uuid, 0);
             boolean recogioNucleo = uuid.equals(jugadorQueRecogio);
+            int muertes = muertesJugador.getOrDefault(uuid, 0);
+            int comboMax = comboMaximoJugador.getOrDefault(uuid, 0);
+            boolean sinMorir = jugadoresSinMorir.contains(uuid);
+            double danoHecho = danoHechoJugador.getOrDefault(uuid, 0.0);
             
             // Puntuación total
             int puntuacion = 0;
@@ -8563,18 +8588,34 @@ public class SusurroPiedraRotaEvent extends EventBase {
             puntuacion += criaturas * 2;         // 2 pts por criatura
             if (recogioNucleo) puntuacion += 50; // 50 pts por núcleo
             
+            // ✨ NUEVO: Bonus por NO morir
+            if (sinMorir) {
+                puntuacion += 60; // Gran bonus por sobrevivir todo el evento
+            } else {
+                // Penalización por muertes (máximo -30 pts)
+                puntuacion -= Math.min(muertes * 10, 30);
+            }
+            
+            // ✨ NUEVO: Bonus por combo máximo
+            if (comboMax >= 10) puntuacion += 25;
+            else if (comboMax >= 5) puntuacion += 10;
+            
+            // ✨ NUEVO: Bonus por daño hecho
+            if (danoHecho >= 500) puntuacion += 20;
+            else if (danoHecho >= 200) puntuacion += 10;
+            
             // Bonus por tiempo (más rápido = más puntos)
             if (minutosTotal <= 8) puntuacion += 40;
             else if (minutosTotal <= 12) puntuacion += 25;
             else if (minutosTotal <= 18) puntuacion += 10;
             
-            // Determinar rango
+            // Determinar rango (umbrales ajustados por nuevos puntos)
             String rango;
-            if (puntuacion >= 120) {
+            if (puntuacion >= 180) {
                 rango = "PLATINUM";
-            } else if (puntuacion >= 80) {
+            } else if (puntuacion >= 120) {
                 rango = "GOLD";
-            } else if (puntuacion >= 40) {
+            } else if (puntuacion >= 60) {
                 rango = "SILVER";
             } else {
                 rango = "BRONZE";
@@ -8583,8 +8624,8 @@ public class SusurroPiedraRotaEvent extends EventBase {
             rangoRecompensa.put(uuid, rango);
             
             plugin.getLogger().info(String.format(
-                "[SusurroPiedraRota] %s: %d pts = %s (frags:%d, puzzles:%d, crits:%d, nucleo:%s)",
-                player.getName(), puntuacion, rango, fragmentos, puzzles, criaturas, recogioNucleo
+                "[SusurroPiedraRota] %s: %d pts = %s (frags:%d, kills:%d, muertes:%d, combo:%d, sinMorir:%s)",
+                player.getName(), puntuacion, rango, fragmentos, criaturas, muertes, comboMax, sinMorir
             ));
         }
     }
@@ -8653,9 +8694,13 @@ public class SusurroPiedraRotaEvent extends EventBase {
         int baseParticipacion = 30;
         int fragmentos = participacionFragmentos.getOrDefault(uuid, 0);
         int criaturas = participacionCriaturas.getOrDefault(uuid, 0);
+        boolean sinMorir = jugadoresSinMorir.contains(uuid);
         
         int psTotal = baseParticipacion + (fragmentos * 10) + (criaturas * 5);
         if (uuid.equals(jugadorQueRecogio)) psTotal += 50;
+        
+        // Bonus por no morir
+        if (sinMorir) psTotal += 50;
         
         String rango = rangoRecompensa.getOrDefault(uuid, "BRONZE");
         switch (rango) {
@@ -8665,20 +8710,34 @@ public class SusurroPiedraRotaEvent extends EventBase {
             default: psTotal += 20; break;
         }
         
-        return Math.min(psTotal, 300);
+        return Math.min(psTotal, 400); // Aumentado máximo
     }
     
     private void enviarMensajeRangoDinamico(Player player, SusurroPiedraRotaItems.RangoRecompensa rango, 
                                             int fragmentos, boolean recogioNucleo, int itemsRecibidos, int psTotal) {
+        UUID uuid = player.getUniqueId();
+        int muertes = muertesJugador.getOrDefault(uuid, 0);
+        int comboMax = comboMaximoJugador.getOrDefault(uuid, 0);
+        int criaturas = participacionCriaturas.getOrDefault(uuid, 0);
+        boolean sinMorir = jugadoresSinMorir.contains(uuid);
+        
         player.sendMessage("");
         player.sendMessage("§8§m════════════════════════════════════════════");
         player.sendMessage("");
         player.sendMessage("           " + rango.nombre);
         player.sendMessage("");
-        player.sendMessage("  §7Fragmentos visitados: §e" + fragmentos);
-        if (recogioNucleo) {
-            player.sendMessage("  §d✦ Recogiste el Núcleo de Forma");
+        
+        // Estadísticas detalladas
+        player.sendMessage("  §8┌─ §7Estadísticas §8─────────────");
+        player.sendMessage("  §8│ §7Fragmentos: §e" + fragmentos + "  §8│ §7Kills: §c" + criaturas);
+        player.sendMessage("  §8│ §7Muertes: §c" + muertes + "  §8│ §7Combo máx: §6" + comboMax);
+        if (sinMorir) {
+            player.sendMessage("  §8│ §a§l★ ¡SUPERVIVIENTE PERFECTO! ★");
         }
+        if (recogioNucleo) {
+            player.sendMessage("  §8│ §d✦ Portador del Núcleo");
+        }
+        player.sendMessage("  §8└────────────────────────────");
         player.sendMessage("");
         player.sendMessage("  §a✦ §f" + itemsRecibidos + " §aitems únicos te esperan");
         player.sendMessage("  §a✦ §f+" + psTotal + " §aPS otorgados");
@@ -8691,7 +8750,7 @@ public class SusurroPiedraRotaEvent extends EventBase {
                 player.sendMessage("  §b\"Pocos muestran tal determinación.\"");
                 break;
             case GOLD:
-                player.sendMessage("  §6\"Has demostrado valor ante el vacío.\"");
+                player.sendMessage("  §6\"Demostraste valor ante el vacío.\"");
                 player.sendMessage("  §6\"El Observador te recuerda.\"");
                 break;
             case SILVER:
@@ -12293,5 +12352,100 @@ public class SusurroPiedraRotaEvent extends EventBase {
             }, i * delayEntreLineas);
         }
     }
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // SISTEMA AVANZADO DE ESTADÍSTICAS - MÉTODOS PÚBLICOS
+    // ═══════════════════════════════════════════════════════════════════
+    
+    /**
+     * Registra la muerte de un jugador durante el evento
+     */
+    public void registrarMuerteJugador(UUID uuid) {
+        if (!isActive() || !participantesOriginales.contains(uuid)) return;
+        
+        muertesJugador.merge(uuid, 1, Integer::sum);
+        jugadoresSinMorir.remove(uuid); // Ya no puede obtener el bonus
+        
+        // Reset del combo
+        combosJugador.put(uuid, 0);
+        
+        Player player = Bukkit.getPlayer(uuid);
+        if (player != null) {
+            player.sendMessage("§c☠ §7Has muerto. Tu racha de combo se ha reiniciado.");
+            player.sendMessage("§8(El bonus de 'Superviviente Perfecto' ya no está disponible)");
+        }
+        
+        plugin.getLogger().info("[SusurroPiedraRota] Muerte registrada para " + uuid);
+    }
+    
+    /**
+     * Registra daño hecho por un jugador
+     */
+    public void registrarDanoHecho(UUID uuid, double dano) {
+        if (!isActive() || !participantesOriginales.contains(uuid)) return;
+        danoHechoJugador.merge(uuid, dano, Double::sum);
+    }
+    
+    /**
+     * Registra daño recibido por un jugador
+     */
+    public void registrarDanoRecibido(UUID uuid, double dano) {
+        if (!isActive() || !participantesOriginales.contains(uuid)) return;
+        danoRecibidoJugador.merge(uuid, dano, Double::sum);
+    }
+    
+    /**
+     * Registra un kill y actualiza el sistema de combos
+     */
+    public void registrarKill(UUID uuid) {
+        if (!isActive() || !participantesOriginales.contains(uuid)) return;
+        
+        long ahora = System.currentTimeMillis();
+        long ultimoKill = ultimoKillJugador.getOrDefault(uuid, 0L);
+        
+        // Combo válido si el kill fue en menos de 5 segundos
+        int comboActual = combosJugador.getOrDefault(uuid, 0);
+        if (ahora - ultimoKill < 5000) {
+            comboActual++;
+        } else {
+            comboActual = 1;
+        }
+        
+        combosJugador.put(uuid, comboActual);
+        ultimoKillJugador.put(uuid, ahora);
+        
+        // Actualizar combo máximo
+        int comboMax = comboMaximoJugador.getOrDefault(uuid, 0);
+        if (comboActual > comboMax) {
+            comboMaximoJugador.put(uuid, comboActual);
+            
+            // Notificar logros de combo
+            Player player = Bukkit.getPlayer(uuid);
+            if (player != null) {
+                if (comboActual == 5) {
+                    player.sendMessage("§6§l⚡ ¡COMBO x5! §eEstás en racha...");
+                    player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.5f);
+                } else if (comboActual == 10) {
+                    player.sendMessage("§c§l🔥 ¡¡COMBO x10!! §6¡Imparable!");
+                    player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.8f);
+                    // Efecto visual épico
+                    player.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING, player.getLocation().add(0, 1, 0), 30, 0.5, 1, 0.5, 0.3);
+                } else if (comboActual == 15) {
+                    player.sendMessage("§d§l⭐ ¡¡¡COMBO x15!!! §5¡LEGENDARIO!");
+                    player.playSound(player.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
+                    broadcastNarrative("§d§l⭐ §5" + player.getName() + " §dha alcanzado un combo de §l15 kills§d!");
+                }
+            }
+        }
+    }
+    
+    /**
+     * Getters para el listener
+     */
+    public Map<UUID, Integer> getMuertesJugador() { return muertesJugador; }
+    public Map<UUID, Double> getDanoHechoJugador() { return danoHechoJugador; }
+    public Map<UUID, Double> getDanoRecibidoJugador() { return danoRecibidoJugador; }
+    public Set<UUID> getJugadoresSinMorir() { return jugadoresSinMorir; }
 }
+
 

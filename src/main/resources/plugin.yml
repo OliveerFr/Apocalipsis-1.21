@@ -20,6 +20,18 @@ commands:
     description: Abre el menú de recompensas pendientes
     usage: /recompensa
     aliases: [rewards, reward, recompensas]
+  habilidades:
+    description: Abre el menú de habilidades
+    usage: /habilidades
+    aliases: [habilidad, skills, skill]
+  mochila:
+    description: Abre tu mochila virtual
+    usage: /mochila
+    aliases: [backpack, bag, bp]
+  echest:
+    description: Abre tu ender chest portátil
+    usage: /echest
+    aliases: [enderchest, ec]
 
 permissions:
   avo.admin:
