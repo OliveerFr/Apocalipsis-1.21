@@ -582,7 +582,7 @@ public class SkillTreeGUI implements Listener {
         if (preview.willDropRank()) {
             confirmLore.add("");
             confirmLore.add("§c§l⚠ Perderás tu rango actual!");
-            confirmLore.add("§c" + preview.currentRank().getPrefix() + " §7→ " + preview.newRank().getPrefix());
+            confirmLore.add("§c" + preview.currentRank().getDisplayName() + " §7→ " + preview.newRank().getDisplayName());
         }
         
         confirmLore.add("");
@@ -733,7 +733,7 @@ public class SkillTreeGUI implements Listener {
         lore.add("");
         lore.add("§7XP disponible: §a" + String.format("%,d", xp));
         lore.add("§7XP gastada: §e" + String.format("%,d", totalXpGastada));
-        lore.add("§7Rango: " + rank.getPrefix());
+        lore.add("§7Rango: " + rank.getDisplayName());
         lore.add("");
         lore.add("§7Habilidades: §e" + totalSkills + "§7/§6" + Skill.values().length);
         
