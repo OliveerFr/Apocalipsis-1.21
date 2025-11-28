@@ -40,6 +40,10 @@ commands:
     description: Muestra tus coordenadas actuales
     usage: /coords
     aliases: [coordenadas, ubicacion, pos]
+  toggle:
+    description: Activa o desactiva una habilidad
+    usage: /toggle <habilidad>
+    aliases: [skill, hab]
 
 permissions:
   avo.admin:

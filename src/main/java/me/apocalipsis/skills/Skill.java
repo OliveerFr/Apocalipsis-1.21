@@ -243,7 +243,7 @@ public enum Skill {
         400, Material.GOLDEN_CARROT, true, new String[]{}),
     
     BRUJULA_INTERNA("brujula_interna", "Brújula Interna",
-        "Muestra coordenadas en el HUD",
+        "Muestra coordenadas en el HUD (desactivable si interfiere)",
         SkillBranch.EXPLORACION, SkillTier.TIER_1, SkillRarity.COMUN,
         300, Material.COMPASS, true, new String[]{}),
     
@@ -280,7 +280,7 @@ public enum Skill {
     
     // Tier 3
     OJO_AGUILA("ojo_aguila", "Ojo de Águila",
-        "Marca enemigos a través de paredes (Glowing)",
+        "Marca enemigos cercanos con Glowing (desactivable)",
         SkillBranch.EXPLORACION, SkillTier.TIER_3, SkillRarity.EPICO,
         3500, Material.ENDER_EYE, true, new String[]{"telescopio"}),
     

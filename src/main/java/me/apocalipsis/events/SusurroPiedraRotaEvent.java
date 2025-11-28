@@ -2275,10 +2275,17 @@ public class SusurroPiedraRotaEvent extends EventBase {
                 double distancia = player.getLocation().distance(fragmento);
                 
                 if (distancia < 5.0) {
-                    // Jugador descubrió fragmento
+                    // Jugador descubrió fragmento - solo marcar como descubierto sin animaciones excesivas
+                    // Las animaciones principales se muestran a 15 bloques en verificarProximidadAltares()
                     if (!fragmentosDescubiertos.contains(fragmento)) {
                         fragmentosDescubiertos.add(fragmento);
-                        onFragmentoDescubierto(player, fragmento);
+                        // Solo registrar, sin llamar a onFragmentoDescubierto que tiene muchas animaciones
+                        participacionFragmentos.put(
+                            player.getUniqueId(),
+                            participacionFragmentos.getOrDefault(player.getUniqueId(), 0) + 1
+                        );
+                        jugadoresFragmentosVistos.putIfAbsent(player.getUniqueId(), new HashSet<>());
+                        jugadoresFragmentosVistos.get(player.getUniqueId()).add(fragmento);
                     }
                 }
             }
@@ -2763,13 +2770,13 @@ public class SusurroPiedraRotaEvent extends EventBase {
                                 player.sendMessage("§8  La esencia del End sanará sus heridas.");
                             }
                             case 3 -> {
-                                player.sendMessage("§c§oEl Observador advierte:");
+                                player.sendMessage("§6§oEl Observador susurra:");
                                 player.sendMessage("§8  \"...la memoria tiene un precio... siempre lo tuvo...\"");
                                 player.sendMessage("§8  \"...¿están dispuestos a pagar?...\"");
                                 player.sendMessage("");
-                                player.sendMessage("§7✦ Este altar requiere un §csacrificio de sangre§7.");
-                                player.sendMessage("§7✦ Pierdan §e10 corazones§7 de vida cerca de él.");
-                                player.sendMessage("§8  Solo el dolor puede despertar lo dormido.");
+                                player.sendMessage("§7✦ Este altar requiere §6ofrendas de valor§7.");
+                                player.sendMessage("§7✦ Lancen §eobjetos valiosos§7 hacia el altar.");
+                                player.sendMessage("§8  Diamantes, oro, esmeraldas, netherite...");
                             }
                             case 4 -> {
                                 player.sendMessage("§6§oEl Observador clama:");

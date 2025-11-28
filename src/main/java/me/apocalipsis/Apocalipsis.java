@@ -244,6 +244,63 @@ public final class Apocalipsis extends JavaPlugin {
                 " §f| Y: §a" + loc.getBlockY() + " §f| Z: §a" + loc.getBlockZ());
             return true;
         });
+        
+        // Comando para toggle de habilidades
+        getCommand("toggle").setExecutor((sender, cmd, label, args) -> {
+            if (!(sender instanceof org.bukkit.entity.Player player)) {
+                sender.sendMessage("§cEste comando solo puede ser usado por jugadores.");
+                return true;
+            }
+            
+            if (args.length == 0) {
+                // Mostrar lista de habilidades toggleables
+                player.sendMessage("§6§l⚡ Habilidades Activables:");
+                for (me.apocalipsis.skills.Skill skill : me.apocalipsis.skills.Skill.getToggleable()) {
+                    if (skillService.hasSkill(player, skill)) {
+                        boolean enabled = skillService.isSkillEnabled(player, skill);
+                        String status = enabled ? "§a✓ ACTIVA" : "§c✗ INACTIVA";
+                        player.sendMessage("  §7- §e" + skill.getDisplayName() + " §8[" + status + "§8]");
+                    }
+                }
+                player.sendMessage("§7Uso: §e/toggle <nombre_habilidad>");
+                return true;
+            }
+            
+            String skillName = String.join("_", args).toLowerCase();
+            me.apocalipsis.skills.Skill skill = me.apocalipsis.skills.Skill.fromId(skillName);
+            
+            if (skill == null) {
+                // Buscar por nombre parcial
+                for (me.apocalipsis.skills.Skill s : me.apocalipsis.skills.Skill.values()) {
+                    if (s.getDisplayName().toLowerCase().contains(args[0].toLowerCase()) ||
+                        s.getId().contains(args[0].toLowerCase())) {
+                        skill = s;
+                        break;
+                    }
+                }
+            }
+            
+            if (skill == null) {
+                player.sendMessage("§cHabilidad no encontrada: §e" + args[0]);
+                return true;
+            }
+            
+            if (!skill.isToggleable()) {
+                player.sendMessage("§cEsta habilidad no se puede activar/desactivar.");
+                return true;
+            }
+            
+            if (!skillService.hasSkill(player, skill)) {
+                player.sendMessage("§cNo tienes desbloqueada esta habilidad.");
+                return true;
+            }
+            
+            skillService.toggleSkill(player, skill);
+            boolean nowEnabled = skillService.isSkillEnabled(player, skill);
+            String newStatus = nowEnabled ? "§a§lACTIVADA" : "§c§lDESACTIVADA";
+            player.sendMessage("§e" + skill.getDisplayName() + " §7ahora está " + newStatus);
+            return true;
+        });
 
         // Registrar listeners
         getServer().getPluginManager().registerEvents(new PlayerListener(this, scoreboardManager, tablistManager), this);
