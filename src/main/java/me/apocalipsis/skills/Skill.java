@@ -1,8 +1,9 @@
 package me.apocalipsis.skills;
 
-import org.bukkit.Material;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.List;
+
+import org.bukkit.Material;
 
 /**
  * Enum que define todas las habilidades disponibles en el árbol.
@@ -28,7 +29,7 @@ public enum Skill {
         1500, Material.BARREL, false, new String[]{"bolsillos_profundos"}),
     
     COFRE_DIMENSIONAL("cofre_dimensional", "Cofre Dimensional", 
-        "Ender chest compartido con aliados del clan", 
+        "Ender chest expandido a 54 slots (doble capacidad)", 
         SkillBranch.ALMACENAMIENTO, SkillTier.TIER_2, SkillRarity.RARO, 
         1200, Material.ENDER_CHEST, false, new String[]{"cofre_interior"}),
     
