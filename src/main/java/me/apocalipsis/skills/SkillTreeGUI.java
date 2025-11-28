@@ -675,7 +675,7 @@ public class SkillTreeGUI implements Listener {
         lore.add("");
         
         // Tier y Rareza
-        lore.add("§8Tier: " + skill.getTier().getDisplayName() + " §8| " + skill.getRarity().getColoredName());
+        lore.add("§8Tier: " + skill.getTier().getDisplayName() + " §8| " + skill.getRarity().getDisplayName());
         
         // Requisitos
         if (skill.getRequirements().length > 0) {
