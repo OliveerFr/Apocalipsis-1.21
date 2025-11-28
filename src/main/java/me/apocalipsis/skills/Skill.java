@@ -28,8 +28,8 @@ public enum Skill {
         SkillBranch.ALMACENAMIENTO, SkillTier.TIER_2, SkillRarity.RARO, 
         1500, Material.BARREL, false, new String[]{"bolsillos_profundos"}),
     
-    COFRE_DIMENSIONAL("cofre_dimensional", "Cofre Dimensional", 
-        "Ender chest expandido a 54 slots (doble capacidad)", 
+    COFRE_DIMENSIONAL("cofre_dimensional", "Acceso Remoto", 
+        "Abre tu ender chest desde cualquier lugar (/enderchest)", 
         SkillBranch.ALMACENAMIENTO, SkillTier.TIER_2, SkillRarity.RARO, 
         1200, Material.ENDER_CHEST, false, new String[]{"cofre_interior"}),
     
