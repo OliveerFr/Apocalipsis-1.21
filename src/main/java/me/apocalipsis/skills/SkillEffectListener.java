@@ -262,35 +262,55 @@ public class SkillEffectListener implements Listener {
     
     // ==================== MINERÍA Y AUTO-RECOLECCIÓN ====================
     
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
         Player player = event.getPlayer();
         UUID uuid = player.getUniqueId();
         Block block = event.getBlock();
+        ItemStack tool = player.getInventory().getItemInMainHand();
         
         // === AUTO-RECOLECCIÓN ===
         if (skillService.hasSkill(uuid, Skill.AUTO_RECOLECCION) && 
             skillService.isSkillEnabled(uuid, Skill.AUTO_RECOLECCION)) {
             
-            // Obtener los drops antes de que se rompan
-            Collection<ItemStack> drops = block.getDrops(player.getInventory().getItemInMainHand());
+            // Si está en modo creativo, ignorar
+            if (player.getGameMode() == GameMode.CREATIVE) return;
+            
+            // Obtener los drops respetando el encantamiento de la herramienta
+            Collection<ItemStack> drops = block.getDrops(tool, player);
+            
+            // Si no hay drops (ej: rompiendo con herramienta incorrecta), ignorar
+            if (drops.isEmpty()) return;
             
             // Cancelar drops normales
             event.setDropItems(false);
             
             // Dar los items directamente al jugador
+            int itemsCollected = 0;
             for (ItemStack drop : drops) {
-                HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(drop);
-                // Si no cabe, dropearlo
+                if (drop == null || drop.getType() == Material.AIR) continue;
+                
+                HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(drop.clone());
+                itemsCollected += drop.getAmount();
+                
+                // Si no cabe, dropearlo normalmente
                 for (ItemStack item : leftover.values()) {
-                    block.getWorld().dropItemNaturally(block.getLocation(), item);
+                    block.getWorld().dropItemNaturally(block.getLocation().add(0.5, 0.5, 0.5), item);
+                    itemsCollected -= item.getAmount();
                 }
             }
             
             // También dar experiencia si aplica
-            int expToDrop = getExpToDrop(block.getType());
+            int expToDrop = event.getExpToDrop();
             if (expToDrop > 0) {
                 player.giveExp(expToDrop);
+                event.setExpToDrop(0);
+            }
+            
+            // Efecto visual sutil
+            if (itemsCollected > 0 && Math.random() < 0.1) {
+                player.getWorld().spawnParticle(Particle.HAPPY_VILLAGER, 
+                    block.getLocation().add(0.5, 0.5, 0.5), 3, 0.2, 0.2, 0.2, 0);
             }
         }
         
@@ -298,10 +318,13 @@ public class SkillEffectListener implements Listener {
         if (skillService.hasSkill(uuid, Skill.TOQUE_FORTUNA) && isOre(block.getType())) {
             if (Math.random() < 0.10) {
                 // +10% drop extra
-                Collection<ItemStack> bonusDrops = block.getDrops(player.getInventory().getItemInMainHand());
+                Collection<ItemStack> bonusDrops = block.getDrops(tool, player);
                 for (ItemStack drop : bonusDrops) {
-                    if (skillService.hasSkill(uuid, Skill.AUTO_RECOLECCION)) {
-                        HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(drop);
+                    if (drop == null || drop.getType() == Material.AIR) continue;
+                    
+                    if (skillService.hasSkill(uuid, Skill.AUTO_RECOLECCION) && 
+                        skillService.isSkillEnabled(uuid, Skill.AUTO_RECOLECCION)) {
+                        HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(drop.clone());
                         for (ItemStack item : leftover.values()) {
                             block.getWorld().dropItemNaturally(block.getLocation(), item);
                         }
@@ -309,7 +332,7 @@ public class SkillEffectListener implements Listener {
                         block.getWorld().dropItemNaturally(block.getLocation(), drop);
                     }
                 }
-                player.sendMessage("§a§l⚡ §a¡Toque de Fortuna! (+10% drops)");
+                player.sendMessage("§a§l⚡ §a¡Toque de Fortuna! (+drop extra)");
             }
         }
         
@@ -317,17 +340,20 @@ public class SkillEffectListener implements Listener {
         if (skillService.hasSkill(uuid, Skill.SEDA_NATURAL)) {
             if (Math.random() < 0.05 && canSilkTouch(block.getType())) {
                 // 5% chance de silk touch
-                if (!skillService.hasSkill(uuid, Skill.AUTO_RECOLECCION)) {
+                if (!skillService.hasSkill(uuid, Skill.AUTO_RECOLECCION) || 
+                    !skillService.isSkillEnabled(uuid, Skill.AUTO_RECOLECCION)) {
                     event.setDropItems(false);
                 }
                 ItemStack silkDrop = new ItemStack(block.getType());
-                if (skillService.hasSkill(uuid, Skill.AUTO_RECOLECCION)) {
+                if (skillService.hasSkill(uuid, Skill.AUTO_RECOLECCION) && 
+                    skillService.isSkillEnabled(uuid, Skill.AUTO_RECOLECCION)) {
                     HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(silkDrop);
                     for (ItemStack item : leftover.values()) {
                         block.getWorld().dropItemNaturally(block.getLocation(), item);
                     }
                 } else {
                     block.getWorld().dropItemNaturally(block.getLocation(), silkDrop);
+                }
                 }
                 player.sendMessage("§d✦ §fToque de Seda Natural!");
             }

@@ -476,35 +476,45 @@ public class SkillTreeGUI implements Listener {
             
             case SUPERVIVENCIA -> {
                 /*
-                 * Layout Supervivencia (bien ordenado):
-                 * 
-                 * [PIEL_GR] ─── [TANQUE] ───── [INMORTAL]
-                 *      └─────── [REGEN] ────── [FENIX]
-                 * 
-                 * [CAIDA] ───── [PLUMA] ────── [VUELO_EM]
-                 * 
-                 * [RES_FUE] ─── [IGNIFUGO]
-                 * 
-                 * [NADADOR] ─── [BRANQ] ────── [ANFIBIO]
+                 * Layout Supervivencia (6 filas):
+                 * Fila 0: Header con título
+                 * Fila 1: Vida (PIEL → TANQUE → INMORTAL) y Regeneración (→ REGEN → FENIX)
+                 * Fila 2: Espacio/conexiones
+                 * Fila 3: Caída (CAIDA → PLUMA → VUELO)
+                 * Fila 4: Fuego (FUEGO → IGNIFUGO) y Agua (NADADOR → BRANQUIAS → ANFIBIO)
+                 * Fila 5: Footer con botones
                  */
-                // Tier 1 - Columna izquierda
-                positions.put(Skill.PIEL_GRUESA, 10);
-                positions.put(Skill.CAIDA_SUAVE, 28);
-                positions.put(Skill.RESISTENCIA_FUEGO, 37);
-                positions.put(Skill.NADADOR, 46);
+                // === RAMA DE VIDA Y REGENERACIÓN ===
+                // Tier 1
+                positions.put(Skill.PIEL_GRUESA, 10);      // Fila 1, izquierda
+                // Tier 2
+                positions.put(Skill.TANQUE, 12);           // Fila 1, centro-izq
+                positions.put(Skill.REGENERACION_PASIVA, 14); // Fila 1, centro-der
+                // Tier 3
+                positions.put(Skill.INMORTAL, 16);         // Fila 1, derecha
+                positions.put(Skill.FENIX, 25);            // Fila 2, abajo de regen
                 
-                // Tier 2 - Columna central
-                positions.put(Skill.TANQUE, 12);
-                positions.put(Skill.REGENERACION_PASIVA, 21);
-                positions.put(Skill.PLUMA, 30);
-                positions.put(Skill.IGNIFUGO, 39);
-                positions.put(Skill.BRANQUIAS, 48);
+                // === RAMA DE CAÍDA/VUELO ===
+                // Tier 1
+                positions.put(Skill.CAIDA_SUAVE, 28);      // Fila 3, izquierda
+                // Tier 2
+                positions.put(Skill.PLUMA, 30);            // Fila 3, centro
+                // Tier 3
+                positions.put(Skill.VUELO_EMERGENCIA, 32); // Fila 3, derecha
                 
-                // Tier 3 - Columna derecha
-                positions.put(Skill.INMORTAL, 14);
-                positions.put(Skill.FENIX, 23);
-                positions.put(Skill.VUELO_EMERGENCIA, 32);
-                positions.put(Skill.ANFIBIO, 50);
+                // === RAMA DE FUEGO ===
+                // Tier 1
+                positions.put(Skill.RESISTENCIA_FUEGO, 37);// Fila 4, izquierda
+                // Tier 2
+                positions.put(Skill.IGNIFUGO, 39);         // Fila 4, centro-izq
+                
+                // === RAMA DE AGUA ===
+                // Tier 1
+                positions.put(Skill.NADADOR, 41);          // Fila 4, centro-der
+                // Tier 2
+                positions.put(Skill.BRANQUIAS, 43);        // Fila 4, derecha-izq
+                // Tier 3
+                positions.put(Skill.ANFIBIO, 34);          // Fila 3, derecha (arriba de branquias)
             }
         }
         
@@ -532,14 +542,21 @@ public class SkillTreeGUI implements Listener {
             }
             
             case SUPERVIVENCIA -> {
-                connections.put(10, Arrays.asList(12, 21)); // PIEL -> TANQUE, REGEN
-                connections.put(12, List.of(14));           // TANQUE -> INMORTAL
-                connections.put(21, List.of(23));           // REGEN -> FENIX
+                // Rama de vida
+                connections.put(10, List.of(12));           // PIEL -> TANQUE
+                connections.put(12, Arrays.asList(14, 16)); // TANQUE -> REGEN, INMORTAL
+                connections.put(14, List.of(25));           // REGEN -> FENIX
+                
+                // Rama de caída
                 connections.put(28, List.of(30));           // CAIDA -> PLUMA
                 connections.put(30, List.of(32));           // PLUMA -> VUELO
+                
+                // Rama de fuego
                 connections.put(37, List.of(39));           // RES_FUEGO -> IGNIFUGO
-                connections.put(46, List.of(48));           // NADADOR -> BRANQUIAS
-                connections.put(48, List.of(50));           // BRANQUIAS -> ANFIBIO
+                
+                // Rama de agua
+                connections.put(41, List.of(43));           // NADADOR -> BRANQUIAS
+                connections.put(43, List.of(34));           // BRANQUIAS -> ANFIBIO
             }
         }
         

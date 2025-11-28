@@ -170,7 +170,7 @@ public class ApocalipsisCommand implements CommandExecutor {
             case "mochila":
             case "backpack":
             case "bag":
-                cmdMochila(sender);
+                cmdMochila(sender, args);
                 break;
             case "echest":
             case "enderchest":
@@ -3400,15 +3400,117 @@ public class ApocalipsisCommand implements CommandExecutor {
     // ==================== COMANDOS DE MOCHILA ====================
     
     /**
-     * Abre la mochila del jugador
+     * Comando de mochila con subcomandos de moderación
+     * /avo mochila - Abre tu mochila
+     * /avo mochila ver <jugador> - Ver mochila de otro (requiere permiso)
+     * /avo mochila lista - Lista mochilas con contenido (requiere permiso)
+     * /avo mochila vaciar <jugador> - Vacía mochila de otro (requiere permiso)
      */
-    private void cmdMochila(CommandSender sender) {
-        if (!(sender instanceof Player player)) {
-            sender.sendMessage("§cEste comando solo puede ser usado por jugadores.");
+    private void cmdMochila(CommandSender sender, String[] args) {
+        // Sin argumentos: abrir mochila propia
+        if (args.length == 1) {
+            if (!(sender instanceof Player player)) {
+                sender.sendMessage("§cEste comando solo puede ser usado por jugadores.");
+                return;
+            }
+            plugin.getBackpackService().openBackpack(player);
             return;
         }
         
-        plugin.getBackpackService().openBackpack(player);
+        String subCmd = args[1].toLowerCase();
+        
+        switch (subCmd) {
+            case "ver", "view", "inspect" -> {
+                if (!sender.hasPermission("apocalipsis.mochila.mod")) {
+                    sender.sendMessage("§c✗ No tienes permiso para ver mochilas ajenas.");
+                    return;
+                }
+                if (args.length < 3) {
+                    sender.sendMessage("§cUso: /avo mochila ver <jugador>");
+                    return;
+                }
+                if (!(sender instanceof Player player)) {
+                    sender.sendMessage("§cEste comando solo puede ser usado por jugadores.");
+                    return;
+                }
+                
+                String targetName = args[2];
+                Player target = Bukkit.getPlayer(targetName);
+                
+                if (target != null) {
+                    plugin.getBackpackService().openBackpackAsAdmin(player, target.getUniqueId(), target.getName());
+                } else {
+                    // Buscar jugador offline
+                    @SuppressWarnings("deprecation")
+                    org.bukkit.OfflinePlayer offline = Bukkit.getOfflinePlayer(targetName);
+                    if (offline.hasPlayedBefore()) {
+                        plugin.getBackpackService().openBackpackAsAdmin(player, offline.getUniqueId(), 
+                            offline.getName() != null ? offline.getName() : targetName);
+                    } else {
+                        sender.sendMessage("§c✗ Jugador no encontrado: " + targetName);
+                    }
+                }
+            }
+            
+            case "lista", "list" -> {
+                if (!sender.hasPermission("apocalipsis.mochila.mod")) {
+                    sender.sendMessage("§c✗ No tienes permiso para listar mochilas.");
+                    return;
+                }
+                
+                java.util.List<String> mochilas = plugin.getBackpackService().getBackpackList();
+                if (mochilas.isEmpty()) {
+                    sender.sendMessage("§7No hay mochilas con contenido.");
+                } else {
+                    sender.sendMessage("§6§l✦ §eMochilas con contenido (" + mochilas.size() + "):");
+                    for (String name : mochilas) {
+                        sender.sendMessage("  §7• §f" + name);
+                    }
+                }
+            }
+            
+            case "vaciar", "clear", "empty" -> {
+                if (!sender.hasPermission("apocalipsis.mochila.admin")) {
+                    sender.sendMessage("§c✗ No tienes permiso para vaciar mochilas.");
+                    return;
+                }
+                if (args.length < 3) {
+                    sender.sendMessage("§cUso: /avo mochila vaciar <jugador>");
+                    return;
+                }
+                if (!(sender instanceof Player player)) {
+                    sender.sendMessage("§cEste comando solo puede ser usado por jugadores.");
+                    return;
+                }
+                
+                String targetName = args[2];
+                @SuppressWarnings("deprecation")
+                org.bukkit.OfflinePlayer offline = Bukkit.getOfflinePlayer(targetName);
+                
+                if (offline.hasPlayedBefore() || offline.isOnline()) {
+                    boolean cleared = plugin.getBackpackService().clearBackpack(offline.getUniqueId(), player);
+                    if (cleared) {
+                        sender.sendMessage("§a✓ Mochila de §e" + targetName + " §avaciada.");
+                    } else {
+                        sender.sendMessage("§c✗ La mochila de " + targetName + " está vacía o no existe.");
+                    }
+                } else {
+                    sender.sendMessage("§c✗ Jugador no encontrado: " + targetName);
+                }
+            }
+            
+            default -> {
+                sender.sendMessage("§cSubcomandos de mochila:");
+                sender.sendMessage("  §e/avo mochila §7- Abre tu mochila");
+                if (sender.hasPermission("apocalipsis.mochila.mod")) {
+                    sender.sendMessage("  §e/avo mochila ver <jugador> §7- Ver mochila ajena");
+                    sender.sendMessage("  §e/avo mochila lista §7- Listar mochilas");
+                }
+                if (sender.hasPermission("apocalipsis.mochila.admin")) {
+                    sender.sendMessage("  §e/avo mochila vaciar <jugador> §7- Vaciar mochila");
+                }
+            }
+        }
     }
     
     /**

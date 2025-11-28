@@ -143,21 +143,39 @@ public class BackpackService implements Listener {
         if (!(event.getPlayer() instanceof Player player)) return;
         
         Inventory inv = event.getInventory();
-        if (!(inv.getHolder() instanceof BackpackHolder holder)) return;
         
-        UUID uuid = holder.getOwner();
-        
-        // Guardar contenido
-        ItemStack[] contents = new ItemStack[inv.getSize()];
-        for (int i = 0; i < inv.getSize(); i++) {
-            contents[i] = inv.getItem(i);
+        // Mochila propia
+        if (inv.getHolder() instanceof BackpackHolder holder) {
+            UUID uuid = holder.getOwner();
+            
+            // Guardar contenido
+            ItemStack[] contents = new ItemStack[inv.getSize()];
+            for (int i = 0; i < inv.getSize(); i++) {
+                contents[i] = inv.getItem(i);
+            }
+            backpacks.put(uuid, contents);
+            
+            // Guardar a archivo
+            saveBackpacks();
+            
+            player.playSound(player.getLocation(), Sound.BLOCK_CHEST_CLOSE, 0.7f, 1.2f);
         }
-        backpacks.put(uuid, contents);
         
-        // Guardar a archivo
-        saveBackpacks();
-        
-        player.playSound(player.getLocation(), Sound.BLOCK_CHEST_CLOSE, 0.7f, 1.2f);
+        // Mochila vista por moderador (también guardar cambios)
+        if (inv.getHolder() instanceof ModViewHolder modHolder) {
+            UUID ownerUuid = modHolder.getOwner();
+            
+            // Guardar contenido modificado
+            ItemStack[] contents = new ItemStack[inv.getSize()];
+            for (int i = 0; i < inv.getSize(); i++) {
+                contents[i] = inv.getItem(i);
+            }
+            backpacks.put(ownerUuid, contents);
+            saveBackpacks();
+            
+            player.playSound(player.getLocation(), Sound.BLOCK_CHEST_CLOSE, 0.7f, 0.8f);
+            player.sendMessage("§a✓ Cambios guardados en la mochila.");
+        }
     }
     
     @EventHandler
@@ -165,10 +183,12 @@ public class BackpackService implements Listener {
         if (!(event.getWhoClicked() instanceof Player)) return;
         
         Inventory inv = event.getInventory();
-        if (!(inv.getHolder() instanceof BackpackHolder)) return;
         
-        // Permitir todas las operaciones normales de inventario
-        // No cancelamos nada aquí
+        // Permitir interacción normal con mochilas propias
+        if (inv.getHolder() instanceof BackpackHolder) return;
+        
+        // Permitir interacción de moderadores con mochilas ajenas
+        if (inv.getHolder() instanceof ModViewHolder) return;
     }
     
     // ==================== PERSISTENCIA ====================
@@ -231,5 +251,100 @@ public class BackpackService implements Listener {
      */
     public boolean hasBackpack(UUID uuid) {
         return getBackpackSize(uuid) > 0;
+    }
+    
+    // ==================== MODERACIÓN ====================
+    
+    /**
+     * Holder para mochilas vistas por moderadores
+     */
+    public class ModViewHolder implements InventoryHolder {
+        private final UUID owner;
+        private final UUID moderator;
+        private Inventory inventory;
+        
+        public ModViewHolder(UUID owner, UUID moderator) {
+            this.owner = owner;
+            this.moderator = moderator;
+        }
+        
+        public UUID getOwner() { return owner; }
+        public UUID getModerator() { return moderator; }
+        
+        @Override
+        public Inventory getInventory() { return inventory; }
+        public void setInventory(Inventory inv) { this.inventory = inv; }
+    }
+    
+    /**
+     * Permite a un moderador ver la mochila de otro jugador
+     */
+    public void openBackpackAsAdmin(Player moderator, UUID targetUuid, String targetName) {
+        int size = getBackpackSize(targetUuid);
+        if (size == 0) {
+            moderator.sendMessage("§c✗ " + targetName + " no tiene mochila desbloqueada.");
+            return;
+        }
+        
+        ModViewHolder holder = new ModViewHolder(targetUuid, moderator.getUniqueId());
+        String title = "§c[MOD] §eMochila de " + targetName;
+        Inventory inv = Bukkit.createInventory(holder, size, title);
+        holder.setInventory(inv);
+        
+        // Cargar contenido
+        ItemStack[] contents = backpacks.get(targetUuid);
+        if (contents != null) {
+            for (int i = 0; i < Math.min(contents.length, size); i++) {
+                inv.setItem(i, contents[i]);
+            }
+        }
+        
+        moderator.openInventory(inv);
+        moderator.playSound(moderator.getLocation(), Sound.BLOCK_CHEST_OPEN, 0.7f, 0.8f);
+        moderator.sendMessage("§a✓ Viendo mochila de §e" + targetName);
+        
+        // Log para seguridad
+        plugin.getLogger().info("[MOCHILA-MOD] " + moderator.getName() + " abrió mochila de " + targetName);
+    }
+    
+    /**
+     * Lista todas las mochilas con contenido
+     */
+    public List<String> getBackpackList() {
+        List<String> list = new ArrayList<>();
+        for (Map.Entry<UUID, ItemStack[]> entry : backpacks.entrySet()) {
+            UUID uuid = entry.getKey();
+            ItemStack[] contents = entry.getValue();
+            int itemCount = 0;
+            for (ItemStack item : contents) {
+                if (item != null && item.getType() != Material.AIR) {
+                    itemCount++;
+                }
+            }
+            if (itemCount > 0) {
+                String name = Bukkit.getOfflinePlayer(uuid).getName();
+                list.add(name != null ? name : uuid.toString().substring(0, 8));
+            }
+        }
+        return list;
+    }
+    
+    /**
+     * Vacía la mochila de un jugador (comando de moderación)
+     */
+    public boolean clearBackpack(UUID targetUuid, Player moderator) {
+        if (!backpacks.containsKey(targetUuid)) {
+            return false;
+        }
+        
+        ItemStack[] old = backpacks.get(targetUuid);
+        backpacks.put(targetUuid, new ItemStack[54]);
+        saveBackpacks();
+        
+        // Log para seguridad
+        String targetName = Bukkit.getOfflinePlayer(targetUuid).getName();
+        plugin.getLogger().warning("[MOCHILA-MOD] " + moderator.getName() + " vació la mochila de " + targetName);
+        
+        return true;
     }
 }
