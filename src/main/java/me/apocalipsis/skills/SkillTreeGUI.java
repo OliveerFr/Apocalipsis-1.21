@@ -1042,30 +1042,61 @@ public class SkillTreeGUI implements Listener {
     
     private void handleMainMenuClick(Player player, int slot) {
         switch (slot) {
-            case 20 -> openBranchMenu(player, SkillBranch.ALMACENAMIENTO);
-            case 22 -> openBranchMenu(player, SkillBranch.UTILIDAD);
-            case 24 -> openBranchMenu(player, SkillBranch.SUPERVIVENCIA);
+            // Fila superior: slots 19, 21, 23, 25
+            case 19 -> openBranchMenu(player, SkillBranch.ALMACENAMIENTO);
+            case 21 -> openBranchMenu(player, SkillBranch.UTILIDAD);
+            case 23 -> openBranchMenu(player, SkillBranch.SUPERVIVENCIA);
+            case 25 -> openBranchMenu(player, SkillBranch.COMBATE);
+            // Fila inferior: slots 29, 31, 33
+            case 29 -> openBranchMenu(player, SkillBranch.EXPLORACION);
+            case 31 -> openBranchMenu(player, SkillBranch.INVOCACION);
+            case 33 -> openBranchMenu(player, SkillBranch.SINERGIAS);
+            // Cerrar
             case 49 -> player.closeInventory();
         }
     }
     
     private void handleTreeClick(Player player, int slot, SkillBranch currentBranch) {
-        // === PESTAÑAS ===
-        if (slot == 2) {
+        // === PESTAÑAS (slots 1-7) ===
+        if (slot == 1) {
             if (currentBranch != SkillBranch.ALMACENAMIENTO) {
                 openBranchMenu(player, SkillBranch.ALMACENAMIENTO);
             }
             return;
         }
-        if (slot == 4) {
+        if (slot == 2) {
             if (currentBranch != SkillBranch.UTILIDAD) {
                 openBranchMenu(player, SkillBranch.UTILIDAD);
             }
             return;
         }
-        if (slot == 6) {
+        if (slot == 3) {
             if (currentBranch != SkillBranch.SUPERVIVENCIA) {
                 openBranchMenu(player, SkillBranch.SUPERVIVENCIA);
+            }
+            return;
+        }
+        if (slot == 4) {
+            if (currentBranch != SkillBranch.COMBATE) {
+                openBranchMenu(player, SkillBranch.COMBATE);
+            }
+            return;
+        }
+        if (slot == 5) {
+            if (currentBranch != SkillBranch.EXPLORACION) {
+                openBranchMenu(player, SkillBranch.EXPLORACION);
+            }
+            return;
+        }
+        if (slot == 6) {
+            if (currentBranch != SkillBranch.INVOCACION) {
+                openBranchMenu(player, SkillBranch.INVOCACION);
+            }
+            return;
+        }
+        if (slot == 7) {
+            if (currentBranch != SkillBranch.SINERGIAS) {
+                openBranchMenu(player, SkillBranch.SINERGIAS);
             }
             return;
         }
