@@ -154,16 +154,18 @@ public class SkillTreeGUI implements Listener {
         ItemStack playerHead = createPlayerHead(player);
         inv.setItem(4, playerHead);
         
-        // === CINCO RAMAS EN DOS FILAS ===
+        // === SIETE RAMAS EN DOS FILAS ===
         
-        // Fila superior: Almacenamiento, Utilidad, Supervivencia
-        inv.setItem(20, createBranchButton(SkillBranch.ALMACENAMIENTO, player));
-        inv.setItem(22, createBranchButton(SkillBranch.UTILIDAD, player));
-        inv.setItem(24, createBranchButton(SkillBranch.SUPERVIVENCIA, player));
+        // Fila superior: Almacenamiento, Utilidad, Supervivencia, Combate
+        inv.setItem(19, createBranchButton(SkillBranch.ALMACENAMIENTO, player));
+        inv.setItem(21, createBranchButton(SkillBranch.UTILIDAD, player));
+        inv.setItem(23, createBranchButton(SkillBranch.SUPERVIVENCIA, player));
+        inv.setItem(25, createBranchButton(SkillBranch.COMBATE, player));
         
-        // Fila inferior: Combate, Exploración
-        inv.setItem(30, createBranchButton(SkillBranch.COMBATE, player));
-        inv.setItem(32, createBranchButton(SkillBranch.EXPLORACION, player));
+        // Fila inferior: Exploración, Invocación, Sinergias
+        inv.setItem(29, createBranchButton(SkillBranch.EXPLORACION, player));
+        inv.setItem(31, createBranchButton(SkillBranch.INVOCACION, player));
+        inv.setItem(33, createBranchButton(SkillBranch.SINERGIAS, player));
         
         // === INFO EXTRA ===
         
@@ -222,9 +224,9 @@ public class SkillTreeGUI implements Listener {
     
     private ItemStack createBranchButton(SkillBranch branch, Player player) {
         UUID uuid = player.getUniqueId();
-        Material mat;
-        String name;
-        String color;
+        Material mat = Material.BARRIER;
+        String name = "???";
+        String color = "§7";
         
         switch (branch) {
             case ALMACENAMIENTO -> {
@@ -242,10 +244,25 @@ public class SkillTreeGUI implements Listener {
                 name = "Supervivencia";
                 color = "§c";
             }
-            default -> {
-                mat = Material.BARRIER;
-                name = "???";
-                color = "§7";
+            case COMBATE -> {
+                mat = Material.NETHERITE_SWORD;
+                name = "Combate";
+                color = "§4";
+            }
+            case EXPLORACION -> {
+                mat = Material.COMPASS;
+                name = "Exploración";
+                color = "§a";
+            }
+            case INVOCACION -> {
+                mat = Material.WOLF_SPAWN_EGG;
+                name = "Invocación";
+                color = "§d";
+            }
+            case SINERGIAS -> {
+                mat = Material.NETHER_STAR;
+                name = "Sinergias";
+                color = "§5";
             }
         }
         
@@ -280,6 +297,26 @@ public class SkillTreeGUI implements Listener {
                 lore.add("§7regeneración y habilidades");
                 lore.add("§7que te salvan la vida.");
             }
+            case COMBATE -> {
+                lore.add("§7Daño aumentado, combos,");
+                lore.add("§7técnicas de ataque y");
+                lore.add("§7bonificaciones ofensivas.");
+            }
+            case EXPLORACION -> {
+                lore.add("§7Velocidad de viaje, visión");
+                lore.add("§7nocturna, y habilidades");
+                lore.add("§7para explorar el mundo.");
+            }
+            case INVOCACION -> {
+                lore.add("§7Invoca criaturas aliadas");
+                lore.add("§7que te ayudan en combate");
+                lore.add("§7y recolección de recursos.");
+            }
+            case SINERGIAS -> {
+                lore.add("§7Combina habilidades de");
+                lore.add("§7múltiples ramas para crear");
+                lore.add("§7poderosos efectos únicos.");
+            }
         }
         
         lore.add("");
@@ -306,30 +343,34 @@ public class SkillTreeGUI implements Listener {
             inv.setItem(i, darkBg);
         }
         
-        // === FILA 0: PESTAÑAS DE 5 RAMAS ===
-        ItemStack grayBg = createItem(Material.GRAY_STAINED_GLASS_PANE, " ");
-        inv.setItem(0, grayBg);
-        inv.setItem(8, grayBg);
-        
+        // === FILA 0: PESTAÑAS DE 7 RAMAS ===
         // Tab Almacenamiento (slot 1)
         boolean isAlmac = branch == SkillBranch.ALMACENAMIENTO;
         inv.setItem(1, createBranchTab(SkillBranch.ALMACENAMIENTO, isAlmac, player));
         
         // Tab Utilidad (slot 2)
         boolean isUtil = branch == SkillBranch.UTILIDAD;
-        inv.setItem(3, createBranchTab(SkillBranch.UTILIDAD, isUtil, player));
+        inv.setItem(2, createBranchTab(SkillBranch.UTILIDAD, isUtil, player));
         
-        // Tab Supervivencia (slot 4)
+        // Tab Supervivencia (slot 3)
         boolean isSurv = branch == SkillBranch.SUPERVIVENCIA;
-        inv.setItem(4, createBranchTab(SkillBranch.SUPERVIVENCIA, isSurv, player));
+        inv.setItem(3, createBranchTab(SkillBranch.SUPERVIVENCIA, isSurv, player));
         
-        // Tab Combate (slot 5)
+        // Tab Combate (slot 4)
         boolean isCombat = branch == SkillBranch.COMBATE;
-        inv.setItem(5, createBranchTab(SkillBranch.COMBATE, isCombat, player));
+        inv.setItem(4, createBranchTab(SkillBranch.COMBATE, isCombat, player));
         
-        // Tab Exploración (slot 7)
+        // Tab Exploración (slot 5)
         boolean isExplor = branch == SkillBranch.EXPLORACION;
-        inv.setItem(7, createBranchTab(SkillBranch.EXPLORACION, isExplor, player));
+        inv.setItem(5, createBranchTab(SkillBranch.EXPLORACION, isExplor, player));
+        
+        // Tab Invocación (slot 6)
+        boolean isInvoc = branch == SkillBranch.INVOCACION;
+        inv.setItem(6, createBranchTab(SkillBranch.INVOCACION, isInvoc, player));
+        
+        // Tab Sinergias (slot 7)
+        boolean isSin = branch == SkillBranch.SINERGIAS;
+        inv.setItem(7, createBranchTab(SkillBranch.SINERGIAS, isSin, player));
         
         // === ÁREA DEL ÁRBOL (filas 1-4) ===
         // Renderizar conexiones primero
@@ -580,6 +621,56 @@ public class SkillTreeGUI implements Listener {
                 positions.put(Skill.XRAY_DIAMANTES, 32);
                 positions.put(Skill.FANTASMA, 41);
             }
+            
+            case INVOCACION -> {
+                /*
+                 * Layout Invocación:
+                 * 
+                 * [LOBO] ──────── [MANADA] ───── [WARDEN]
+                 * 
+                 * [GATO] ──────── [ABEJAS] ───── [GOLEM]
+                 * 
+                 * [ALLAY] ─────── [VEX] ──────── (avanzado)
+                 */
+                // Tier 1
+                positions.put(Skill.LOBO_COMPANERO, 10);
+                positions.put(Skill.GATO_GUARDIAN, 19);
+                positions.put(Skill.ALLAY_RECOLECTOR, 28);
+                
+                // Tier 2
+                positions.put(Skill.MANADA_LOBOS, 12);
+                positions.put(Skill.ABEJAS_PROTECTORAS, 21);
+                positions.put(Skill.VEX_VENGADOR, 30);
+                
+                // Tier 3
+                positions.put(Skill.WARDEN_TEMPORAL, 14);
+                positions.put(Skill.GOLEM_PROTECTOR, 23);
+            }
+            
+            case SINERGIAS -> {
+                /*
+                 * Layout Sinergias:
+                 * 
+                 * [CAZADOR] ──── [DOMADOR] ──── [AVATAR]
+                 * 
+                 * [MINERO] ───── [GUERRERO] ─── [OMNIPRESENTE]
+                 * 
+                 * [EXPLORADOR] ─ [MERCADER] ─── (legendario)
+                 */
+                // Tier 1
+                positions.put(Skill.CAZADOR_EXPERTO, 10);
+                positions.put(Skill.MINERO_GUERRERO, 19);
+                positions.put(Skill.EXPLORADOR_LIGERO, 28);
+                
+                // Tier 2
+                positions.put(Skill.DOMADOR_BESTIAS, 12);
+                positions.put(Skill.GUERRERO_INMORTAL, 21);
+                positions.put(Skill.MERCADER_SUPREMO, 30);
+                
+                // Tier 3
+                positions.put(Skill.AVATAR_CAOS, 14);
+                positions.put(Skill.OMNIPRESENTE, 23);
+            }
         }
         
         return positions;
@@ -648,6 +739,22 @@ public class SkillTreeGUI implements Listener {
                 connections.put(37, List.of(39));  // PISADAS -> SOMBRA
                 connections.put(39, List.of(41));  // SOMBRA -> FANTASMA
             }
+            
+            case INVOCACION -> {
+                connections.put(10, List.of(12));  // LOBO -> MANADA
+                connections.put(12, List.of(14));  // MANADA -> WARDEN
+                connections.put(19, List.of(21));  // GATO -> ABEJAS
+                connections.put(21, List.of(23));  // ABEJAS -> GOLEM
+                connections.put(28, List.of(30));  // ALLAY -> VEX
+            }
+            
+            case SINERGIAS -> {
+                connections.put(10, List.of(12));  // CAZADOR -> DOMADOR
+                connections.put(12, List.of(14));  // DOMADOR -> AVATAR
+                connections.put(19, List.of(21));  // MINERO -> GUERRERO
+                connections.put(21, List.of(23));  // GUERRERO -> OMNIPRESENTE
+                connections.put(28, List.of(30));  // EXPLORADOR -> MERCADER
+            }
         }
         
         return connections;
@@ -706,9 +813,9 @@ public class SkillTreeGUI implements Listener {
     // ==================== CREAR ITEMS ====================
     
     private ItemStack createBranchTab(SkillBranch branch, boolean selected, Player player) {
-        Material mat;
-        String name;
-        String color;
+        Material mat = Material.GRAY_STAINED_GLASS_PANE;
+        String name = "???";
+        String color = "§7";
         
         switch (branch) {
             case ALMACENAMIENTO -> {
@@ -726,10 +833,25 @@ public class SkillTreeGUI implements Listener {
                 name = "Supervivencia";
                 color = "§c";
             }
-            default -> {
-                mat = Material.GRAY_STAINED_GLASS_PANE;
-                name = "???";
-                color = "§7";
+            case COMBATE -> {
+                mat = selected ? Material.RED_STAINED_GLASS_PANE : Material.GRAY_STAINED_GLASS_PANE;
+                name = "Combate";
+                color = "§4";
+            }
+            case EXPLORACION -> {
+                mat = selected ? Material.LIME_STAINED_GLASS_PANE : Material.GRAY_STAINED_GLASS_PANE;
+                name = "Exploración";
+                color = "§a";
+            }
+            case INVOCACION -> {
+                mat = selected ? Material.PINK_STAINED_GLASS_PANE : Material.GRAY_STAINED_GLASS_PANE;
+                name = "Invocación";
+                color = "§d";
+            }
+            case SINERGIAS -> {
+                mat = selected ? Material.PURPLE_STAINED_GLASS_PANE : Material.GRAY_STAINED_GLASS_PANE;
+                name = "Sinergias";
+                color = "§5";
             }
         }
         
@@ -869,7 +991,8 @@ public class SkillTreeGUI implements Listener {
             case SUPERVIVENCIA -> "§c§l✦ Supervivencia";
             case COMBATE -> "§4§l✦ Combate";
             case EXPLORACION -> "§a§l✦ Exploración";
-            default -> "§7§l✦ Desconocido";
+            case INVOCACION -> "§d§l✦ Invocación";
+            case SINERGIAS -> "§5§l✦ Sinergias";
         };
     }
     
