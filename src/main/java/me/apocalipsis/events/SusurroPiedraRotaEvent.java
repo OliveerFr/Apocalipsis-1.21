@@ -1890,91 +1890,43 @@ public class SusurroPiedraRotaEvent extends EventBase {
     }
     
     /**
-     * Validación exhaustiva para encontrar ubicación PERFECTA para altares
-     * MEJORADO: Evita agua, acantilados, y verifica terreno real sólido
+     * Validación ULTRA-EXHAUSTIVA para encontrar ubicación PERFECTA para altares
+     * v2.0: Detecta hielo, agua congelada, lagos, océanos y cualquier superficie inestable
      */
     private boolean esUbicacionPerfecta(World world, Location loc) {
         int x = loc.getBlockX();
         int y = loc.getBlockY();
         int z = loc.getBlockZ();
         
-        // 1. Verificar que estemos sobre terreno sólido REAL (no agua superficial)
-        Material bloqueAbajo = world.getBlockAt(x, y - 1, z).getType();
+        // 1. PRIMERO: Obtener la altura del terreno SÓLIDO REAL (ignorando hielo, nieve, agua)
+        int alturaTerrenoReal = obtenerAlturaTerrenoSolidoAbsoluto(world, x, z);
+        
+        // 2. Verificar que el terreno real no esté demasiado por debajo (indica agua/lago)
+        if (y - alturaTerrenoReal > 5) {
+            return false; // Hay demasiada agua/hielo debajo, rechazar
+        }
+        
+        // 3. Verificar que hay terreno sólido REAL debajo, no hielo/nieve/agua
+        Material bloqueAbajo = world.getBlockAt(x, alturaTerrenoReal, z).getType();
         if (!esTerrenoSolidoReal(bloqueAbajo)) {
             return false;
         }
         
-        // 2. Verificar NO agua/lava en radio 15 bloques (MUY ESTRICTO) - en múltiples niveles
-        for (int checkX = -15; checkX <= 15; checkX++) {
-            for (int checkZ = -15; checkZ <= 15; checkZ++) {
-                for (int checkY = -5; checkY <= 2; checkY++) {
+        // 4. Buscar CUALQUIER tipo de agua, hielo o superficie inestable en radio 18 bloques
+        // Esto incluye hielo (congelado), agua, nieve profunda, etc.
+        int bloquesInestables = 0;
+        for (int checkX = -18; checkX <= 18; checkX += 2) {
+            for (int checkZ = -18; checkZ <= 18; checkZ += 2) {
+                double dist = Math.sqrt(checkX * checkX + checkZ * checkZ);
+                if (dist > 18) continue;
+                
+                // Buscar en columna vertical completa
+                for (int checkY = -15; checkY <= 5; checkY++) {
                     Material checkMat = world.getBlockAt(x + checkX, y + checkY, z + checkZ).getType();
-                    if (checkMat == Material.WATER || checkMat == Material.LAVA ||
-                        checkMat == Material.SEAGRASS || checkMat == Material.KELP ||
-                        checkMat == Material.KELP_PLANT) {
-                        return false;
-                    }
-                }
-            }
-        }
-        
-        // 3. Verificar que NO estamos en un acantilado o borde de precipicio
-        // Calculamos la altura en los bordes - si hay caídas grandes, rechazar
-        int alturaMinima = Integer.MAX_VALUE;
-        int alturaMaxima = Integer.MIN_VALUE;
-        int alturaCentro = y;
-        
-        for (int checkX = -12; checkX <= 12; checkX += 3) {
-            for (int checkZ = -12; checkZ <= 12; checkZ += 3) {
-                int alturaCheck = world.getHighestBlockYAt(x + checkX, z + checkZ);
-                alturaMinima = Math.min(alturaMinima, alturaCheck);
-                alturaMaxima = Math.max(alturaMaxima, alturaCheck);
-            }
-        }
-        
-        // Rechazar si hay más de 8 bloques de desnivel total (acantilado)
-        if (alturaMaxima - alturaMinima > 8) {
-            return false;
-        }
-        
-        // Rechazar si el centro está muy por encima del punto más bajo (borde de precipicio)
-        if (alturaCentro - alturaMinima > 5) {
-            return false;
-        }
-        
-        // 4. Verificar terreno razonablemente uniforme en radio 8 bloques (zona del altar)
-        int terrenoIrregular = 0;
-        for (int checkX = -8; checkX <= 8; checkX += 2) {
-            for (int checkZ = -8; checkZ <= 8; checkZ += 2) {
-                int alturaCercana = world.getHighestBlockYAt(x + checkX, z + checkZ);
-                if (Math.abs(alturaCercana - y) > 3) {
-                    terrenoIrregular++;
-                }
-            }
-        }
-        // Permitir algo de irregularidad, pero no demasiada
-        if (terrenoIrregular > 12) {
-            return false;
-        }
-        
-        // 5. Verificar espacio vertical amplio (10 bloques)
-        for (int checkY = 0; checkY < 10; checkY++) {
-            Material checkBlock = world.getBlockAt(x, y + checkY, z).getType();
-            if (checkBlock.isSolid() && checkBlock != Material.AIR &&
-                !checkBlock.name().contains("LEAVES") && !checkBlock.name().contains("LOG")) {
-                return false;
-            }
-        }
-        
-        // 6. Verificar NO árboles MUY cercanos (radio 8 - más permisivo en los bordes)
-        for (int checkX = -8; checkX <= 8; checkX++) {
-            for (int checkZ = -8; checkZ <= 8; checkZ++) {
-                for (int checkY = 0; checkY < 12; checkY++) {
-                    Material checkMat = world.getBlockAt(x + checkX, y + checkY, z + checkZ).getType();
-                    if (checkMat.name().contains("LOG")) {
-                        // Troncos muy cerca = rechazar
-                        double dist = Math.sqrt(checkX * checkX + checkZ * checkZ);
-                        if (dist < 6) {
+                    if (esSuperficieInestable(checkMat)) {
+                        bloquesInestables++;
+                        if (dist < 10) {
+                            // Muy cerca del centro = rechazo inmediato
                             return false;
                         }
                     }
@@ -1982,18 +1934,166 @@ public class SusurroPiedraRotaEvent extends EventBase {
             }
         }
         
-        // 7. Verificar que hay suficiente terreno sólido debajo (no cuevas)
+        // Si hay más del 15% de bloques inestables en el área, rechazar
+        if (bloquesInestables > 50) {
+            return false;
+        }
+        
+        // 5. Verificar que NO estamos sobre un lago/río congelado
+        // Buscar agua debajo del hielo en un radio de 12 bloques
+        for (int checkX = -12; checkX <= 12; checkX += 2) {
+            for (int checkZ = -12; checkZ <= 12; checkZ += 2) {
+                int checkAltura = world.getHighestBlockYAt(x + checkX, z + checkZ);
+                for (int checkY = checkAltura; checkY >= checkAltura - 20 && checkY > 0; checkY--) {
+                    Material mat = world.getBlockAt(x + checkX, checkY, z + checkZ).getType();
+                    if (mat == Material.WATER) {
+                        return false; // Hay agua debajo = lago congelado
+                    }
+                    if (mat.isSolid() && !mat.name().contains("ICE") && !mat.name().contains("SNOW")) {
+                        break; // Encontramos terreno sólido real, seguir
+                    }
+                }
+            }
+        }
+        
+        // 6. Verificar desnivel del terreno REAL (no superficial)
+        int alturaMinima = Integer.MAX_VALUE;
+        int alturaMaxima = Integer.MIN_VALUE;
+        
+        for (int checkX = -12; checkX <= 12; checkX += 3) {
+            for (int checkZ = -12; checkZ <= 12; checkZ += 3) {
+                int alturaCheck = obtenerAlturaTerrenoSolidoAbsoluto(world, x + checkX, z + checkZ);
+                alturaMinima = Math.min(alturaMinima, alturaCheck);
+                alturaMaxima = Math.max(alturaMaxima, alturaCheck);
+            }
+        }
+        
+        // Rechazar si hay más de 10 bloques de desnivel (acantilado severo)
+        if (alturaMaxima - alturaMinima > 10) {
+            return false;
+        }
+        
+        // 7. Verificar terreno razonablemente uniforme en zona central
+        int terrenoIrregular = 0;
+        for (int checkX = -8; checkX <= 8; checkX += 2) {
+            for (int checkZ = -8; checkZ <= 8; checkZ += 2) {
+                int alturaCercana = obtenerAlturaTerrenoSolidoAbsoluto(world, x + checkX, z + checkZ);
+                if (Math.abs(alturaCercana - alturaTerrenoReal) > 4) {
+                    terrenoIrregular++;
+                }
+            }
+        }
+        if (terrenoIrregular > 15) {
+            return false;
+        }
+        
+        // 8. Verificar espacio vertical amplio
+        for (int checkY = 1; checkY < 12; checkY++) {
+            Material checkBlock = world.getBlockAt(x, alturaTerrenoReal + checkY, z).getType();
+            if (checkBlock.isSolid() && !esVegetacionORemovible(checkBlock)) {
+                return false;
+            }
+        }
+        
+        // 9. Verificar NO árboles muy cercanos
+        for (int checkX = -6; checkX <= 6; checkX++) {
+            for (int checkZ = -6; checkZ <= 6; checkZ++) {
+                for (int checkY = 0; checkY < 15; checkY++) {
+                    Material checkMat = world.getBlockAt(x + checkX, alturaTerrenoReal + checkY, z + checkZ).getType();
+                    if (checkMat.name().contains("LOG")) {
+                        double dist = Math.sqrt(checkX * checkX + checkZ * checkZ);
+                        if (dist < 5) {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+        
+        // 10. Verificar cimentación sólida (no cuevas)
         int bloquesSolidos = 0;
-        for (int checkY = -1; checkY >= -8; checkY--) {
-            if (world.getBlockAt(x, y + checkY, z).getType().isSolid()) {
+        for (int checkY = 0; checkY >= -10; checkY--) {
+            Material mat = world.getBlockAt(x, alturaTerrenoReal + checkY, z).getType();
+            if (mat.isSolid() && !esSuperficieInestable(mat)) {
                 bloquesSolidos++;
             }
         }
-        if (bloquesSolidos < 5) {
-            return false; // Posible cueva debajo
+        if (bloquesSolidos < 6) {
+            return false;
         }
         
         return true; // ¡Ubicación VÁLIDA!
+    }
+    
+    /**
+     * Obtiene la altura del terreno SÓLIDO ABSOLUTO
+     * Ignora completamente: hielo, nieve, agua, plantas, hojas
+     * Baja hasta encontrar piedra, tierra, arena o similar
+     */
+    private int obtenerAlturaTerrenoSolidoAbsoluto(World world, int x, int z) {
+        int y = world.getHighestBlockYAt(x, z);
+        
+        for (int checkY = y; checkY > 0; checkY--) {
+            Material mat = world.getBlockAt(x, checkY, z).getType();
+            
+            // Ignorar completamente estas superficies
+            if (esSuperficieInestable(mat)) continue;
+            if (esVegetacionORemovible(mat)) continue;
+            if (mat == Material.AIR) continue;
+            
+            // Encontramos terreno sólido real
+            if (esTerrenoSolidoReal(mat)) {
+                return checkY;
+            }
+        }
+        
+        return y; // Fallback
+    }
+    
+    /**
+     * Verifica si un material es una superficie inestable (agua, hielo, nieve, etc.)
+     */
+    private boolean esSuperficieInestable(Material mat) {
+        if (mat == null) return false;
+        String name = mat.name();
+        
+        // Agua y lava
+        if (mat == Material.WATER || mat == Material.LAVA) return true;
+        if (mat == Material.SEAGRASS || mat == Material.KELP || mat == Material.KELP_PLANT) return true;
+        
+        // Todo tipo de hielo
+        if (name.contains("ICE")) return true; // ICE, PACKED_ICE, BLUE_ICE, FROSTED_ICE
+        
+        // Nieve (excepto bloque sólido de nieve compactada)
+        if (mat == Material.SNOW) return true;
+        if (mat == Material.POWDER_SNOW) return true;
+        
+        // Bloques que se caen
+        if (mat == Material.SAND || mat == Material.RED_SAND || mat == Material.GRAVEL) return true;
+        
+        // Plantas acuáticas
+        if (name.contains("LILY") || name.contains("CORAL") || name.contains("SEA")) return true;
+        
+        return false;
+    }
+    
+    /**
+     * Verifica si un material es vegetación o algo removible
+     */
+    private boolean esVegetacionORemovible(Material mat) {
+        if (mat == null || mat == Material.AIR) return true;
+        String name = mat.name();
+        
+        if (name.contains("LEAVES")) return true;
+        if (name.contains("LOG") || name.contains("WOOD")) return true;
+        if (name.contains("GRASS") && !name.equals("GRASS_BLOCK")) return true;
+        if (name.contains("FLOWER") || name.contains("TULIP") || name.contains("DANDELION")) return true;
+        if (name.contains("FERN") || name.contains("BUSH") || name.contains("SAPLING")) return true;
+        if (name.contains("VINE") || name.contains("MUSHROOM")) return true;
+        if (mat == Material.TALL_GRASS || mat == Material.SHORT_GRASS) return true;
+        if (mat == Material.SNOW) return true;
+        
+        return false;
     }
     
     /**
@@ -2001,19 +2101,32 @@ public class SusurroPiedraRotaEvent extends EventBase {
      */
     private boolean esTerrenoSolidoReal(Material mat) {
         if (mat == null || mat == Material.AIR) return false;
-        if (mat == Material.WATER || mat == Material.LAVA) return false;
-        if (mat == Material.BEDROCK) return false;
+        if (esSuperficieInestable(mat)) return false;
         if (!mat.isSolid()) return false;
         
         String name = mat.name();
-        if (name.contains("LEAVES") || name.contains("LOG") || name.contains("WOOD")) return false;
-        if (name.contains("SAPLING") || name.contains("FLOWER") || name.contains("GRASS") && !name.equals("GRASS_BLOCK")) return false;
-        if (name.contains("SNOW") && !name.equals("SNOW_BLOCK")) return false;
-        if (name.contains("ICE") || name.contains("POWDER")) return false;
-        if (mat == Material.SAND || mat == Material.GRAVEL || mat == Material.SOUL_SAND) return false;
-        if (mat == Material.CACTUS || mat == Material.BAMBOO || mat == Material.SUGAR_CANE) return false;
         
-        return true;
+        // Rechazar vegetación y madera
+        if (name.contains("LEAVES") || name.contains("LOG") || name.contains("WOOD")) return false;
+        if (name.contains("SAPLING") || name.contains("FLOWER")) return false;
+        if (name.contains("GRASS") && !name.equals("GRASS_BLOCK")) return false;
+        
+        // Rechazar cosas que se caen o son inestables
+        if (mat == Material.CACTUS || mat == Material.BAMBOO || mat == Material.SUGAR_CANE) return false;
+        if (mat == Material.SCAFFOLDING) return false;
+        
+        // Aceptar terrenos normales
+        if (mat == Material.GRASS_BLOCK || mat == Material.DIRT || mat == Material.STONE) return true;
+        if (mat == Material.DEEPSLATE || mat == Material.COBBLESTONE) return true;
+        if (name.contains("TERRACOTTA")) return true;
+        if (mat == Material.PODZOL || mat == Material.MYCELIUM) return true;
+        if (mat == Material.MUD || mat == Material.CLAY) return true;
+        if (mat == Material.SNOW_BLOCK) return true; // Bloque sólido de nieve sí es válido
+        if (name.contains("SANDSTONE")) return true;
+        if (mat == Material.NETHERRACK || mat == Material.END_STONE) return true;
+        
+        // Por defecto, aceptar si es sólido y no rechazado anteriormente
+        return mat.isSolid();
     }
     
     private void construirFragmentoPiedra(Location loc) {

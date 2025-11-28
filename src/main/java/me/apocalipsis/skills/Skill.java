@@ -297,7 +297,95 @@ public enum Skill {
     FANTASMA("fantasma", "Fantasma",
         "Invisible por 10s al recibir daño crítico (cooldown 2 min)",
         SkillBranch.EXPLORACION, SkillTier.TIER_3, SkillRarity.EPICO,
-        4000, Material.PHANTOM_MEMBRANE, false, new String[]{"sombra"});
+        4000, Material.PHANTOM_MEMBRANE, false, new String[]{"sombra"}),
+    
+    // ================= INVOCACION (8 skills) =================
+    // Tier 1 - Compañeros básicos
+    LOBO_COMPANERO("lobo_companero", "Lobo Compañero",
+        "Invoca un lobo que te sigue y ataca enemigos (15 min)",
+        SkillBranch.INVOCACION, SkillTier.TIER_1, SkillRarity.COMUN,
+        600, Material.BONE, false, new String[]{}),
+    
+    GATO_GUARDIAN("gato_guardian", "Gato Guardián",
+        "Invoca un gato que ahuyenta creepers y phantoms",
+        SkillBranch.INVOCACION, SkillTier.TIER_1, SkillRarity.COMUN,
+        500, Material.COD, false, new String[]{}),
+    
+    // Tier 2 - Compañeros mejorados
+    MANADA_LOBOS("manada_lobos", "Manada de Lobos",
+        "Invoca 3 lobos en lugar de 1",
+        SkillBranch.INVOCACION, SkillTier.TIER_2, SkillRarity.RARO,
+        1500, Material.WOLF_ARMOR, false, new String[]{"lobo_companero"}),
+    
+    ALLAY_RECOLECTOR("allay_recolector", "Allay Recolector",
+        "Invoca un allay que recoge items cercanos por ti",
+        SkillBranch.INVOCACION, SkillTier.TIER_2, SkillRarity.RARO,
+        1800, Material.AMETHYST_SHARD, false, new String[]{}),
+    
+    ABEJAS_PROTECTORAS("abejas_protectoras", "Abejas Protectoras",
+        "Invoca abejas que atacan a quien te dañe",
+        SkillBranch.INVOCACION, SkillTier.TIER_2, SkillRarity.EPICO,
+        2000, Material.HONEYCOMB, true, new String[]{"gato_guardian"}),
+    
+    // Tier 3 - Compañeros legendarios
+    GOLEM_PROTECTOR("golem_protector", "Gólem Protector",
+        "Invoca un golem de hierro temporal (5 min, cd 10 min)",
+        SkillBranch.INVOCACION, SkillTier.TIER_3, SkillRarity.LEGENDARIO,
+        5000, Material.IRON_BLOCK, false, new String[]{"manada_lobos"}),
+    
+    VEX_VENGADOR("vex_vengador", "Vex Vengador",
+        "Invoca 2 vex que atacan a tu objetivo actual",
+        SkillBranch.INVOCACION, SkillTier.TIER_3, SkillRarity.EPICO,
+        4000, Material.TOTEM_OF_UNDYING, false, new String[]{"abejas_protectoras"}),
+    
+    WARDEN_TEMPORAL("warden_temporal", "Warden Temporal",
+        "Invoca un mini-warden aliado por 30s (cd 30 min)",
+        SkillBranch.INVOCACION, SkillTier.TIER_3, SkillRarity.LEGENDARIO,
+        8000, Material.SCULK_CATALYST, false, new String[]{"golem_protector", "vex_vengador"}),
+    
+    // ================= SINERGIAS (8 skills) =================
+    // Requieren habilidades de múltiples ramas
+    // Tier 2 - Sinergias básicas
+    CAZADOR_EXPERTO("cazador_experto", "Cazador Experto",
+        "+25% daño a mobs + doble loot de carne",
+        SkillBranch.SINERGIAS, SkillTier.TIER_2, SkillRarity.RARO,
+        2000, Material.BOW, false, new String[]{"golpe_critico", "detector_spawners"}),
+    
+    MINERO_GUERRERO("minero_guerrero", "Minero Guerrero",
+        "Pico hace +50% daño a mobs de piedra/mineral",
+        SkillBranch.SINERGIAS, SkillTier.TIER_2, SkillRarity.RARO,
+        1800, Material.DIAMOND_PICKAXE, false, new String[]{"minero_eficiente", "golpe_critico"}),
+    
+    EXPLORADOR_LIGERO("explorador_ligero", "Explorador Ligero",
+        "+20% velocidad cuando llevas mochila llena",
+        SkillBranch.SINERGIAS, SkillTier.TIER_2, SkillRarity.RARO,
+        1500, Material.FEATHER, true, new String[]{"bolsillos_profundos", "paso_ligero"}),
+    
+    // Tier 3 - Sinergias avanzadas
+    GUERRERO_INMORTAL("guerrero_inmortal", "Guerrero Inmortal",
+        "Al morir, revives con 50% HP (cd 30 min)",
+        SkillBranch.SINERGIAS, SkillTier.TIER_3, SkillRarity.LEGENDARIO,
+        6000, Material.TOTEM_OF_UNDYING, false, new String[]{"fuerza_interior", "regeneracion_pasiva", "sed_sangre"}),
+    
+    MERCADER_SUPREMO("mercader_supremo", "Mercader Supremo",
+        "Villagers dan 50% descuento + trades infinitos",
+        SkillBranch.SINERGIAS, SkillTier.TIER_3, SkillRarity.EPICO,
+        4500, Material.EMERALD_BLOCK, false, new String[]{"encantador_nato", "reparacion_automatica"}),
+    
+    DOMADOR_BESTIAS("domador_bestias", "Domador de Bestias",
+        "Todos tus compañeros invocados son 2x más fuertes",
+        SkillBranch.SINERGIAS, SkillTier.TIER_3, SkillRarity.LEGENDARIO,
+        5500, Material.LEAD, false, new String[]{"lobo_companero", "gato_guardian", "allay_recolector"}),
+    
+    OMNIPRESENTE("omnipresente", "Omnipresente",
+        "Puedes ver a través de paredes por 5s (cd 2 min)",
+        SkillBranch.SINERGIAS, SkillTier.TIER_3, SkillRarity.LEGENDARIO,
+        7000, Material.SPECTRAL_ARROW, false, new String[]{"ojo_aguila", "xray_diamantes", "brujula_interna"}),
+    
+    AVATAR_CAOS("avatar_caos", "Avatar del Caos",
+        "Activa TODAS tus habilidades toggleables por 30s (cd 1h)",
+        SkillBranch.SINERGIAS, SkillTier.TIER_3, SkillRarity.LEGENDARIO,
+        10000, Material.NETHER_STAR, false, new String[]{"guerrero_inmortal", "domador_bestias", "omnipresente"});
     
     // ================= PROPIEDADES =================
     private final String id;

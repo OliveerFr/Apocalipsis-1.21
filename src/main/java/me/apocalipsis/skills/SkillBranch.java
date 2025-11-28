@@ -4,7 +4,7 @@ import org.bukkit.Material;
 
 /**
  * Enum que define las ramas del árbol de habilidades.
- * 5 ramas: Almacenamiento, Utilidad, Supervivencia, Combate, Exploración
+ * 6 ramas + 1 especial de sinergias
  */
 public enum SkillBranch {
     ALMACENAMIENTO("almacenamiento", "§6Almacenamiento", Material.CHEST, "📦", 
@@ -16,7 +16,11 @@ public enum SkillBranch {
     COMBATE("combate", "§4Combate", Material.NETHERITE_SWORD, "⚔",
         "§7Daño aumentado, críticos", "§7y habilidades ofensivas."),
     EXPLORACION("exploracion", "§aExploración", Material.SPYGLASS, "🧭",
-        "§7Visión nocturna, navegación", "§7y descubrimiento.");
+        "§7Visión nocturna, navegación", "§7y descubrimiento."),
+    INVOCACION("invocacion", "§5Invocación", Material.WOLF_SPAWN_EGG, "🐺",
+        "§7Mascotas y familiares", "§7que te asisten."),
+    SINERGIAS("sinergias", "§d✦ Sinergias", Material.NETHER_STAR, "✦",
+        "§7Habilidades que combinan", "§7múltiples ramas.");
     
     private final String id;
     private final String displayName;
@@ -41,6 +45,13 @@ public enum SkillBranch {
     public String getEmoji() { return emoji; }
     public String getDescLine1() { return descLine1; }
     public String getDescLine2() { return descLine2; }
+    
+    /**
+     * Verifica si es una rama principal (no sinergias)
+     */
+    public boolean isPrimaryBranch() {
+        return this != SINERGIAS;
+    }
     
     public static SkillBranch fromId(String id) {
         for (SkillBranch branch : values()) {
