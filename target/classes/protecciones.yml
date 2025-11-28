@@ -1,0 +1,271 @@
+# ════════════════════════════════════════════════════════════════════
+# Apocalipsis — protecciones.yml
+# Guía completa del sistema de protección contra desastres
+# ════════════════════════════════════════════════════════════════════
+
+version: 1
+
+# ═══════════════════════════════════════════════════════════════════
+# SISTEMA DE NOTIFICACIONES Y TUTORIAL
+# ═══════════════════════════════════════════════════════════════════
+notificaciones:
+  enabled: true
+  mostrar_al_entrar: true            # Mostrar tips al hacer login
+  intervalo_recordatorio_min: 15     # Recordar cada X minutos
+  
+  # Mensajes educativos durante preparación
+  mensajes_preparacion:
+    - "&e&l🛡 PROTEGE TU BASE: &7Coloca &blana de colores&7, &aslime&7 o &bhielo&7 cerca para reducir daño de terremotos"
+    - "&e&l💧 CONTRA FUEGO: &7El &bagua&7 reduce explosiones de lluvia de fuego un &a60%&7 y apaga el fuego"
+    - "&e&l🏗 CONSTRUCCIÓN: &7Construye con &ebloques de miel&7, &eesponjas&7 o &ehay&7 para mejor protección"
+    - "&e&l⚡ TIP: &7Los bloques de protección dentro de &b6 bloques&7 reducen el daño hasta un &a75%"
+    - "&e&l🎯 ESTRATEGIA: &7Combina varios tipos de protección para máxima efectividad"
+
+# ═══════════════════════════════════════════════════════════════════
+# TERREMOTO - Protecciones con bloques absorbentes
+# ═══════════════════════════════════════════════════════════════════
+terremoto:
+  # Materiales que ABSORBEN el impacto del terremoto
+  materiales_protectores:
+    # Lanas (muy efectivas)
+    - material: "WHITE_WOOL"
+      nombre: "§fLana Blanca"
+      efectividad: "⭐⭐⭐⭐⭐"
+      descripcion: "Excelente absorción de vibraciones"
+      emoji: "🔲"
+    - material: "ORANGE_WOOL"
+      nombre: "§6Lana Naranja"
+      efectividad: "⭐⭐⭐⭐⭐"
+      descripcion: "Excelente absorción de vibraciones"
+      emoji: "🟧"
+    - material: "MAGENTA_WOOL"
+      nombre: "§dLana Magenta"
+      efectividad: "⭐⭐⭐⭐⭐"
+      descripcion: "Excelente absorción de vibraciones"
+      emoji: "🟪"
+    - material: "LIGHT_BLUE_WOOL"
+      nombre: "§bLana Azul Claro"
+      efectividad: "⭐⭐⭐⭐⭐"
+      descripcion: "Excelente absorción de vibraciones"
+      emoji: "🟦"
+    - material: "YELLOW_WOOL"
+      nombre: "§eLana Amarilla"
+      efectividad: "⭐⭐⭐⭐⭐"
+      descripcion: "Excelente absorción de vibraciones"
+      emoji: "🟨"
+    - material: "LIME_WOOL"
+      nombre: "§aLana Verde Lima"
+      efectividad: "⭐⭐⭐⭐⭐"
+      descripcion: "Excelente absorción de vibraciones"
+      emoji: "🟩"
+    - material: "PINK_WOOL"
+      nombre: "§dLana Rosa"
+      efectividad: "⭐⭐⭐⭐⭐"
+      descripcion: "Excelente absorción de vibraciones"
+      emoji: "🌸"
+    
+    # Bloques especiales (muy efectivos)
+    - material: "SLIME_BLOCK"
+      nombre: "§aBloque de Slime"
+      efectividad: "⭐⭐⭐⭐⭐"
+      descripcion: "Absorbe impacto elástico"
+      emoji: "💚"
+    - material: "HONEY_BLOCK"
+      nombre: "§6Bloque de Miel"
+      efectividad: "⭐⭐⭐⭐⭐"
+      descripcion: "Absorbe vibraciones viscosas"
+      emoji: "🍯"
+    
+    # Hielos (efectivos)
+    - material: "ICE"
+      nombre: "§bHielo"
+      efectividad: "⭐⭐⭐⭐"
+      descripcion: "Absorbe ondas sísmicas"
+      emoji: "🧊"
+    - material: "PACKED_ICE"
+      nombre: "§bHielo Compactado"
+      efectividad: "⭐⭐⭐⭐"
+      descripcion: "Mayor densidad de absorción"
+      emoji: "❄️"
+    - material: "BLUE_ICE"
+      nombre: "§9Hielo Azul"
+      efectividad: "⭐⭐⭐⭐"
+      descripcion: "Máxima densidad de hielo"
+      emoji: "🔷"
+    
+    # Otros materiales útiles
+    - material: "HAY_BLOCK"
+      nombre: "§ePaca de Heno"
+      efectividad: "⭐⭐⭐"
+      descripcion: "Amortigua caídas y vibraciones"
+      emoji: "🌾"
+    - material: "SPONGE"
+      nombre: "§eEsponja"
+      efectividad: "⭐⭐⭐"
+      descripcion: "Absorbe impactos"
+      emoji: "🧽"
+    - material: "WET_SPONGE"
+      nombre: "§eEsponja Mojada"
+      efectividad: "⭐⭐⭐"
+      descripcion: "Absorbe impactos (húmeda)"
+      emoji: "💦"
+  
+  # Reducción de efectos
+  reduccion_efectos:
+    shake: "45%"              # Reducción de temblor por bloque
+    rotura_bloques: "60%"     # Reducción de probabilidad de rotura
+    daño: "35%"               # Reducción de daño al jugador
+    radio_deteccion: "6 bloques"
+    max_bloques: 5            # Máximo de bloques que cuentan
+  
+  # Mensajes durante terremoto
+  mensajes:
+    proteccion_detectada: "&a&l🛡 PROTECCIÓN ACTIVA: &7Detectados &e%cantidad% &7bloques protectores (&a-%reduccion%%&7)"
+    sin_proteccion: "&c&l⚠ SIN PROTECCIÓN: &7¡Busca refugio cerca de &blana&7, &aslime&7 o &bhielo&7!"
+    proteccion_parcial: "&e&l⚠ PROTECCIÓN PARCIAL: &7Agrega más bloques para mayor seguridad"
+    proteccion_optima: "&a&l✓ PROTECCIÓN ÓPTIMA: &7Tu base está muy bien protegida"
+  
+  # Efectos visuales cuando hay protección
+  efectos_proteccion:
+    particulas: "HAPPY_VILLAGER"
+    cantidad: 5
+    sonido: "BLOCK_NOTE_BLOCK_PLING"
+    volumen: 0.6
+    pitch: 1.5
+
+# ═══════════════════════════════════════════════════════════════════
+# LLUVIA DE FUEGO - Protección con agua
+# ═══════════════════════════════════════════════════════════════════
+lluvia_fuego:
+  # Materiales que PROTEGEN contra fuego
+  materiales_protectores:
+    - material: "WATER"
+      nombre: "§bAgua"
+      efectividad: "⭐⭐⭐⭐⭐"
+      descripcion: "Reduce explosiones 60% y apaga fuego"
+      emoji: "💧"
+      consejos:
+        - "Coloca agua en el techo de tu base"
+        - "Crea canales de agua alrededor"
+        - "Agua profunda (2+ bloques) es más difícil de evaporar"
+    
+    - material: "COBBLESTONE"
+      nombre: "§7Piedra"
+      efectividad: "⭐⭐⭐"
+      descripcion: "Resistente al fuego, no se quema"
+      emoji: "🪨"
+    
+    - material: "STONE_BRICKS"
+      nombre: "§7Ladrillos de Piedra"
+      efectividad: "⭐⭐⭐"
+      descripcion: "Construcción resistente"
+      emoji: "🧱"
+    
+    - material: "TERRACOTTA"
+      nombre: "§6Terracota"
+      efectividad: "⭐⭐⭐"
+      descripcion: "Muy resistente al calor"
+      emoji: "🏺"
+  
+  # Reducción de efectos con agua
+  reduccion_con_agua:
+    explosion: "60%"
+    fuego: "100%"              # Agua apaga el fuego completamente
+    radio_deteccion: "3 bloques"
+  
+  # Mensajes durante lluvia de fuego
+  mensajes:
+    agua_protegiendo: "&b&l💧 AGUA PROTECTORA: &7Explosión reducida &a60%&7, fuego apagado"
+    sin_agua: "&c&l🔥 PELIGRO: &7¡Sin agua cerca! Las explosiones serán &c100% potentes"
+    agua_evaporada: "&e&l⚠ AGUA EVAPORADA: &7Repon el agua de tus defensas"
+    agua_profunda: "&a&l✓ AGUA PROFUNDA: &7Protección mejorada contra evaporación"
+  
+  # Efectos visuales de protección con agua
+  efectos_agua:
+    particulas_vapor: "CLOUD"
+    particulas_burbujas: "BUBBLE_POP"
+    sonido_vapor: "BLOCK_FIRE_EXTINGUISH"
+    sonido_splash: "ENTITY_GENERIC_SPLASH"
+
+# ═══════════════════════════════════════════════════════════════════
+# GUÍA DE CONSTRUCCIÓN DE BASES
+# ═══════════════════════════════════════════════════════════════════
+guia_construccion:
+  # Diseños recomendados
+  diseños:
+    basico:
+      nombre: "§eBase Básica"
+      dificultad: "⭐ Fácil"
+      materiales:
+        - "30-40 bloques de lana (cualquier color)"
+        - "10-15 cubos de agua"
+        - "Techo de piedra/terracota"
+      instrucciones:
+        - "1. Construye paredes de piedra/terracota (no se quema)"
+        - "2. Coloca &blana&7 en las esquinas y centro de tu base"
+        - "3. Pon &bagua&7 en el techo o alrededor"
+        - "4. Haz tu base bajo tierra para más seguridad"
+      proteccion: "~40-50% reducción de daño"
+    
+    intermedio:
+      nombre: "§6Base Intermedia"
+      dificultad: "⭐⭐⭐ Media"
+      materiales:
+        - "50-60 bloques de lana + slime"
+        - "20-30 cubos de agua (profunda)"
+        - "Bloques de miel para refuerzo"
+      instrucciones:
+        - "1. Capa externa: piedra/terracota resistente"
+        - "2. Capa interna: &blana&7 y &aslime&7 absorbente"
+        - "3. Techo: &bagua profunda&7 (2 bloques)"
+        - "4. Esquinas reforzadas con &emiel&7"
+        - "5. Bajo tierra con entrada laberíntica"
+      proteccion: "~60-70% reducción de daño"
+    
+    avanzado:
+      nombre: "§c§lBase Fortaleza"
+      dificultad: "⭐⭐⭐⭐⭐ Difícil"
+      materiales:
+        - "80-100 bloques protectores mixtos"
+        - "40+ cubos de agua estratégicos"
+        - "Capas múltiples de defensa"
+      instrucciones:
+        - "1. Capa externa: obsidiana/netherite"
+        - "2. Capa media: &bagua profunda&7 en canales"
+        - "3. Capa interna: alternancia &blana&7/&aslime&7/&emiel&7"
+        - "4. Techo de agua con &bhielo azul&7 bajo ella"
+        - "5. Piso de &epacas de heno&7 (amortigua caídas)"
+        - "6. Sistema de ventilación con agua"
+        - "7. Múltiples salidas de emergencia"
+      proteccion: "~75-85% reducción de daño"
+  
+  # Tips generales
+  tips_construccion:
+    - "&e💡 TIP: &7Combina diferentes materiales para máxima efectividad"
+    - "&e💡 TIP: &7El agua profunda (2+ bloques) es más difícil de evaporar"
+    - "&e💡 TIP: &7Construye bajo tierra para protección natural extra"
+    - "&e💡 TIP: &7Los bloques de protección funcionan en un radio de 6 bloques"
+    - "&e💡 TIP: &7Máximo 5 bloques de protección cuentan (no acumules más)"
+    - "&e💡 TIP: &7Distribuye los bloques protectores, no los pongas todos juntos"
+    - "&e💡 TIP: &7Construye con materiales no inflamables (piedra, terracota)"
+
+# ═══════════════════════════════════════════════════════════════════
+# VISUALIZACIÓN Y COMANDOS
+# ═══════════════════════════════════════════════════════════════════
+visualizacion:
+  # Mostrar partículas en bloques protectores cercanos
+  mostrar_particulas_proteccion:
+    enabled: true
+    durante_desastre: true
+    comando_manual: true       # /avo protecciones
+    radio_busqueda: 10
+    particula: "COMPOSTER"
+    duracion_segundos: 10
+  
+  # Escaneo de base
+  escaneo_base:
+    enabled: true
+    comando: "/avo escanear"   # Escanea tu base y muestra protecciones
+    radio: 15
+    mostrar_score: true        # Muestra puntuación de protección
+    particulas_temporales: true

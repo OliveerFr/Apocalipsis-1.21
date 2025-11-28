@@ -44,7 +44,7 @@ public enum Skill {
         4000, Material.SHULKER_BOX, false, new String[]{"bolsillos_sin_fondo"}),
     
     VOID_STORAGE("void_storage", "Void Storage", 
-        "Los items no se pierden al morir", 
+        "Guarda 9 items protegidos de la muerte (slot especial)", 
         SkillBranch.ALMACENAMIENTO, SkillTier.TIER_3, SkillRarity.LEGENDARIO, 
         3500, Material.ENDER_EYE, false, new String[]{"cofre_dimensional"}),
     
