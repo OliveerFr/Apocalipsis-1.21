@@ -249,9 +249,9 @@ public enum Skill {
         300, Material.COMPASS, true, new String[]{}),
     
     RASTRO_ORO("rastro_oro", "Rastro de Oro",
-        "Brillo amarillo marca minerales cercanos cada 30s",
+        "/avo habilidades rastro - Detecta minerales 15 bloques (10s, cd 60s)",
         SkillBranch.EXPLORACION, SkillTier.TIER_1, SkillRarity.RARO,
-        700, Material.RAW_GOLD, true, new String[]{}),
+        700, Material.RAW_GOLD, false, new String[]{}),
     
     PISADAS_SILENCIOSAS("pisadas_silenciosas", "Pisadas Silenciosas",
         "Mobs hostiles te detectan 30% menos",
@@ -270,9 +270,9 @@ public enum Skill {
         1200, Material.FILLED_MAP, false, new String[]{"brujula_interna"}),
     
     DETECTOR_SPAWNERS("detector_spawners", "Detector de Spawners",
-        "Partículas indican spawners en 20 bloques",
+        "/avo habilidades detector - Detecta spawners 30 bloques (15s, cd 90s)",
         SkillBranch.EXPLORACION, SkillTier.TIER_2, SkillRarity.EPICO,
-        2000, Material.SPAWNER, true, new String[]{"rastro_oro"}),
+        2000, Material.SPAWNER, false, new String[]{"rastro_oro"}),
     
     SOMBRA("sombra", "Sombra",
         "Mobs hostiles te ignoran 50% (sneaking)",
@@ -291,9 +291,9 @@ public enum Skill {
         5000, Material.LODESTONE, false, new String[]{"mapa_mental"}),
     
     XRAY_DIAMANTES("xray_diamantes", "Sentido del Diamante",
-        "Resalta diamantes en 10 bloques cada 60s",
+        "/avo habilidades diamantes - Detecta diamantes 12 bloques (8s, cd 120s)",
         SkillBranch.EXPLORACION, SkillTier.TIER_3, SkillRarity.LEGENDARIO,
-        6000, Material.DIAMOND_ORE, true, new String[]{"detector_spawners"}),
+        6000, Material.DIAMOND_ORE, false, new String[]{"detector_spawners"}),
     
     FANTASMA("fantasma", "Fantasma",
         "Invisible por 10s al recibir daño crítico (cooldown 2 min)",
@@ -427,6 +427,32 @@ public enum Skill {
     public boolean isToggleable() { return toggleable; }
     public String[] getRequirements() { return requirements; }
     
+    /**
+     * Verifica si esta habilidad puede ser mejorada.
+     * Algunas habilidades son binarias (on/off) y no tiene sentido mejorarlas.
+     */
+    public boolean isUpgradeable() {
+        // Skills que NO se pueden mejorar (binarias o con efecto fijo)
+        return switch (this) {
+            case COFRE_INTERIOR,           // Acceso a ender chest - binario
+                 COFRE_DIMENSIONAL,         // Acceso ilimitado - binario
+                 VISION_NOCTURNA,           // Night vision on/off - binario
+                 BRUJULA_INTERNA,           // Muestra coords - binario
+                 INVENTARIO_INFINITO,       // Ya es máximo (54 slots)
+                 ANFIBIO,                   // Respiración infinita - binario
+                 GOLEM_PROTECTOR,           // Siempre 1 golem
+                 WARDEN_TEMPORAL,           // Siempre 1 warden
+                 LOBO_COMPANERO,            // Se mejora con MANADA_LOBOS
+                 GATO_GUARDIAN,             // Efecto fijo (ahuyenta mobs)
+                 ALLAY_RECOLECTOR,          // Efecto fijo (recoge items)
+                 FENIX,                     // Revive 1 vez/día - binario
+                 WAYPOINT,                  // Teletransporte - el cooldown cambia pero es muy específico
+                 AVATAR_CAOS                // Habilidad única especial
+                 -> false;
+            default -> true;
+        };
+    }
+
     /**
      * Calcula el costo final de la habilidad
      * Fórmula: baseCost × tierMultiplier × rarityMultiplier

@@ -1,5 +1,5 @@
 name: Apocalipsis
-version: '1.21.14'
+version: '1.21.15'
 main: me.apocalipsis.Apocalipsis
 api-version: 1.21
 author: OliveerF
@@ -44,6 +44,10 @@ commands:
     description: Activa o desactiva una habilidad
     usage: /toggle <habilidad>
     aliases: [skill, hab]
+  invocar:
+    description: Invoca una entidad aliada
+    usage: /invocar <entidad>
+    aliases: [summon, invoke, invocacion]
 
 permissions:
   avo.admin:

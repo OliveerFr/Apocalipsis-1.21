@@ -44,6 +44,10 @@ commands:
     description: Activa o desactiva una habilidad
     usage: /toggle <habilidad>
     aliases: [skill, hab]
+  invocar:
+    description: Invoca una entidad aliada
+    usage: /invocar <entidad>
+    aliases: [summon, invoke, invocacion]
 
 permissions:
   avo.admin:

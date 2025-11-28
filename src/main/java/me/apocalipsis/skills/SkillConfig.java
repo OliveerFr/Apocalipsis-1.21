@@ -106,6 +106,14 @@ public class SkillConfig {
         addLevelEffect("ejercito_esqueletos", 2, 4, 6);          // esqueletos
         addLevelEffect("dragon_mini", 1, 1, 1);                  // siempre 1
         
+        // ===== INVOCACIÓN (adicionales) =====
+        addLevelEffect("lobo_companero", 1, 1, 2);               // número de lobos
+        addLevelEffect("manada_lobos", 2, 3, 5);                 // número de lobos en manada
+        addLevelEffect("abejas_protectoras", 2, 4, 6);           // número de abejas
+        addLevelEffect("golem_protector", 1, 1, 1);              // siempre 1 golem
+        addLevelEffect("vex_vengador", 1, 2, 3);                 // número de vex
+        addLevelEffect("warden_temporal", 30, 45, 60);           // duración segundos
+        
         // ===== SINERGIAS =====
         addLevelEffect("cazador_sigiloso", 25, 40, 60);          // % daño extra sigilo
         addLevelEffect("guerrero_inmortal", 30, 50, 75);         // % daño post-revive
@@ -113,6 +121,18 @@ public class SkillConfig {
         addLevelEffect("explorador_veloz", 40, 60, 80);          // % velocidad explorar
         addLevelEffect("guardian_bestial", 20, 35, 50);          // % daño mascotas
         addLevelEffect("maestro_elemental", 30, 50, 75);         // % resistencia total
+        
+        // ===== SINERGIAS (adicionales) =====
+        addLevelEffect("cazador_experto", 15, 25, 40);           // % daño extra a mobs
+        addLevelEffect("minero_guerrero", 25, 40, 60);           // % daño con pico
+        addLevelEffect("explorador_ligero", 20, 35, 50);         // % velocidad extra
+        addLevelEffect("mercader_supremo", 10, 20, 30);          // % descuento trades
+        addLevelEffect("domador_bestias", 20, 35, 50);           // % daño mascotas
+        addLevelEffect("omnipresente", 50, 75, 100);             // rango teleport
+        addLevelEffect("avatar_caos", 30, 50, 75);               // % stats totales
+        
+        // ===== ALMACENAMIENTO (adicional) =====
+        addLevelEffect("cofre_dimensional", 1, 1, 1);            // acceso ilimitado
     }
     
     private static void initConditions() {
@@ -265,6 +285,25 @@ public class SkillConfig {
      */
     public static String getLevel3Bonus(Skill skill) {
         return LEVEL_3_BONUS.get(skill.getId());
+    }
+    
+    /**
+     * Obtiene el valor del efecto para un nivel específico de una skill
+     * @param skillId ID de la skill
+     * @param level Nivel (1, 2 o 3)
+     * @return valor del efecto o 0 si no existe
+     */
+    public static double getLevelEffect(String skillId, int level) {
+        Map<Integer, Double> effects = LEVEL_EFFECTS.get(skillId);
+        if (effects == null) return 0;
+        return effects.getOrDefault(level, 0.0);
+    }
+    
+    /**
+     * Verifica si una skill tiene efectos por nivel configurados
+     */
+    public static boolean hasLevelEffects(String skillId) {
+        return LEVEL_EFFECTS.containsKey(skillId);
     }
     
     /**

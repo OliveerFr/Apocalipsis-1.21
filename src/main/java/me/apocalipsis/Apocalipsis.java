@@ -302,6 +302,58 @@ public final class Apocalipsis extends JavaPlugin {
             return true;
         });
 
+        // Comando para invocar entidades
+        getCommand("invocar").setExecutor((sender, cmd, label, args) -> {
+            if (!(sender instanceof org.bukkit.entity.Player player)) {
+                sender.sendMessage("§cEste comando solo puede ser usado por jugadores.");
+                return true;
+            }
+            
+            if (args.length == 0) {
+                player.sendMessage("§6§l🐺 Invocaciones Disponibles:");
+                player.sendMessage("  §7- §elobo §8- Lobo Compañero");
+                player.sendMessage("  §7- §egato §8- Gato Guardián");
+                player.sendMessage("  §7- §eallay §8- Allay Recolector");
+                player.sendMessage("  §7- §eabejas §8- Abejas Protectoras");
+                player.sendMessage("  §7- §egolem §8- Gólem Protector");
+                player.sendMessage("  §7- §evex §8- Vex Vengador");
+                player.sendMessage("  §7- §ewarden §8- Warden Temporal");
+                player.sendMessage("  §7- §cdespawn §8- Despedir invocaciones");
+                player.sendMessage("§7Uso: §e/invocar <entidad>");
+                return true;
+            }
+            
+            String entidad = args[0].toLowerCase();
+            switch (entidad) {
+                case "lobo", "lobos", "wolf" -> skillService.invocarLobo(player);
+                case "gato", "cat", "guardian" -> skillService.invocarGato(player);
+                case "allay", "recolector" -> skillService.invocarAllay(player);
+                case "abejas", "bees", "abeja" -> skillService.invocarAbejas(player);
+                case "golem", "iron", "hierro" -> skillService.invocarGolem(player);
+                case "vex", "vengador" -> {
+                    // Obtener entidad objetivo con ray trace
+                    org.bukkit.util.RayTraceResult result = player.getWorld().rayTraceEntities(
+                        player.getEyeLocation(),
+                        player.getLocation().getDirection(),
+                        30,
+                        entity -> entity instanceof org.bukkit.entity.LivingEntity && entity != player
+                    );
+                    org.bukkit.entity.LivingEntity target = null;
+                    if (result != null && result.getHitEntity() instanceof org.bukkit.entity.LivingEntity living) {
+                        target = living;
+                    }
+                    skillService.invocarVex(player, target);
+                }
+                case "warden", "guardian_oscuro" -> skillService.invocarWarden(player);
+                case "despawn", "dismiss", "despedir" -> {
+                    skillService.despawnEntidades(player.getUniqueId());
+                    player.sendMessage("§7Tus invocaciones han sido despedidas.");
+                }
+                default -> player.sendMessage("§cEntidad desconocida: §e" + entidad + "§c. Usa §e/invocar §cpara ver las opciones.");
+            }
+            return true;
+        });
+
         // Registrar listeners
         getServer().getPluginManager().registerEvents(new PlayerListener(this, scoreboardManager, tablistManager), this);
         missionListener = new MissionListener(missionService);

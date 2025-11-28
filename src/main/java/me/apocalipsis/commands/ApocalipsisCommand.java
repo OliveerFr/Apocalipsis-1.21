@@ -3181,6 +3181,86 @@ public class ApocalipsisCommand implements CommandExecutor {
                 }
                 cmdHabilidadesAdmin(player, args);
                 break;
+            
+            // === HABILIDADES DE DETECCIÓN ===
+            case "rastro":
+            case "oro":
+            case "rastro_oro":
+                plugin.getSkillService().activateRastroOro(player);
+                break;
+                
+            case "detector":
+            case "spawner":
+            case "spawners":
+            case "detector_spawners":
+                plugin.getSkillService().activateDetectorSpawners(player);
+                break;
+                
+            case "xray":
+            case "diamantes":
+            case "diamante":
+            case "xray_diamantes":
+                plugin.getSkillService().activateXrayDiamantes(player);
+                break;
+            
+            // === HABILIDADES DE INVOCACIÓN ===
+            case "lobo":
+            case "wolf":
+            case "lobos":
+                plugin.getSkillService().invocarLobo(player);
+                break;
+                
+            case "gato":
+            case "cat":
+            case "guardian":
+                plugin.getSkillService().invocarGato(player);
+                break;
+                
+            case "allay":
+            case "recolector":
+                plugin.getSkillService().invocarAllay(player);
+                break;
+                
+            case "abejas":
+            case "bees":
+                plugin.getSkillService().invocarAbejas(player);
+                break;
+                
+            case "golem":
+            case "iron":
+                plugin.getSkillService().invocarGolem(player);
+                break;
+                
+            case "vex":
+            case "vengador":
+                // Obtener target mirando
+                org.bukkit.entity.LivingEntity target = getTargetEntity(player, 30);
+                plugin.getSkillService().invocarVex(player, target);
+                break;
+                
+            case "warden":
+            case "guardian_oscuro":
+                plugin.getSkillService().invocarWarden(player);
+                break;
+                
+            case "despawn":
+            case "dismiss":
+                plugin.getSkillService().despawnEntidades(player.getUniqueId());
+                player.sendMessage("§7Tus invocaciones han sido despedidas.");
+                break;
+            
+            // === SINERGIAS AVANZADAS ===
+            case "omnipresente":
+            case "vision":
+            case "xray_total":
+                plugin.getSkillService().activateOmnipresente(player);
+                break;
+                
+            case "avatar":
+            case "caos":
+            case "avatar_caos":
+                plugin.getSkillService().activateAvatarCaos(player);
+                break;
                 
             default:
                 sender.sendMessage("§e=== Comandos de Habilidades ===");
@@ -3190,11 +3270,45 @@ public class ApocalipsisCommand implements CommandExecutor {
                 sender.sendMessage("§7/avo habilidades toggle <id> §f- Activar/desactivar");
                 sender.sendMessage("§7/avo habilidades toggles §f- Ver estado de toggles");
                 sender.sendMessage("§7/avo habilidades comprar <id> §f- Comprar habilidad");
+                sender.sendMessage("§e--- Detección (con cooldown) ---");
+                sender.sendMessage("§7/avo habilidades rastro §f- Detectar minerales (60s cd)");
+                sender.sendMessage("§7/avo habilidades detector §f- Detectar spawners (90s cd)");
+                sender.sendMessage("§7/avo habilidades diamantes §f- Detectar diamantes (120s cd)");
+                sender.sendMessage("§e--- Invocaciones ---");
+                sender.sendMessage("§7/avo habilidades lobo §f- Lobo compañero (20min cd)");
+                sender.sendMessage("§7/avo habilidades gato §f- Gato guardián (25min cd)");
+                sender.sendMessage("§7/avo habilidades allay §f- Allay recolector (15min cd)");
+                sender.sendMessage("§7/avo habilidades abejas §f- Abejas protectoras (10min cd)");
+                sender.sendMessage("§7/avo habilidades golem §f- Gólem de hierro (10min cd)");
+                sender.sendMessage("§7/avo habilidades vex §f- Vex vengadores (3min cd)");
+                sender.sendMessage("§7/avo habilidades warden §f- Warden temporal (30min cd)");
+                sender.sendMessage("§7/avo habilidades despawn §f- Despedir invocaciones");
+                sender.sendMessage("§e--- Sinergias ---");
+                sender.sendMessage("§7/avo habilidades omnipresente §f- Ver todo (2min cd)");
+                sender.sendMessage("§7/avo habilidades avatar §f- Avatar del Caos (1h cd)");
                 if (player.hasPermission("avo.admin")) {
                     sender.sendMessage("§c/avo habilidades admin §f- Comandos admin");
                 }
                 break;
         }
+    }
+    
+    /**
+     * Obtiene la entidad que el jugador está mirando
+     */
+    private org.bukkit.entity.LivingEntity getTargetEntity(Player player, int maxDistance) {
+        // Usar ray trace
+        org.bukkit.util.RayTraceResult result = player.getWorld().rayTraceEntities(
+            player.getEyeLocation(),
+            player.getLocation().getDirection(),
+            maxDistance,
+            entity -> entity instanceof org.bukkit.entity.LivingEntity && entity != player
+        );
+        
+        if (result != null && result.getHitEntity() instanceof org.bukkit.entity.LivingEntity living) {
+            return living;
+        }
+        return null;
     }
     
     private void cmdHabilidadesInfo(Player player, String skillId) {

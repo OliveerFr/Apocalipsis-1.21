@@ -17,7 +17,7 @@ public enum SkillBranch {
         "§7Daño aumentado, críticos", "§7y habilidades ofensivas."),
     EXPLORACION("exploracion", "§aExploración", Material.SPYGLASS, "🧭",
         "§7Visión nocturna, navegación", "§7y descubrimiento."),
-    INVOCACION("invocacion", "§5Invocación", Material.WOLF_SPAWN_EGG, "🐺",
+    INVOCACION("invocacion", "§5Invocación", Material.BONE, "🐺",
         "§7Mascotas y familiares", "§7que te asisten."),
     SINERGIAS("sinergias", "§d✦ Sinergias", Material.NETHER_STAR, "✦",
         "§7Habilidades que combinan", "§7múltiples ramas.");

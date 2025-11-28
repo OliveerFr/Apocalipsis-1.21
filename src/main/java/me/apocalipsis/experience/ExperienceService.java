@@ -190,6 +190,32 @@ public class ExperienceService {
     }
     
     /**
+     * Gasta XP del jugador (para compras de skills/upgrades)
+     * @return true si se pudo gastar, false si no había suficiente
+     */
+    public boolean spendXP(Player player, int amount) {
+        if (amount <= 0) return false;
+        
+        UUID uuid = player.getUniqueId();
+        PlayerExperienceData data = getData(uuid);
+        
+        if (data.getXp() < amount) {
+            return false; // No hay suficiente XP
+        }
+        
+        // Reducir XP
+        data.setXp(data.getXp() - amount);
+        
+        // Sincronizar PS con XP
+        if (plugin.getMissionService() != null) {
+            plugin.getMissionService().setPS(uuid, data.getXp());
+        }
+        
+        saveData();
+        return true;
+    }
+    
+    /**
      * Calcula el progreso hacia el siguiente nivel (0.0 - 1.0)
      */
     public double getProgressToNextLevel(Player player) {

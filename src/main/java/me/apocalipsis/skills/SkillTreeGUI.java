@@ -17,6 +17,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 
 import java.util.*;
+import java.util.Arrays;
 
 /**
  * GUI del árbol de habilidades con menú principal.
@@ -83,6 +84,27 @@ public class SkillTreeGUI implements Listener {
         public void setInventory(Inventory inv) { this.inventory = inv; }
     }
     
+    /**
+     * Holder para el menú de mejora de skill
+     */
+    public class UpgradeMenuHolder implements InventoryHolder {
+        private final Skill skill;
+        private final SkillBranch returnBranch;
+        private Inventory inventory;
+        
+        public UpgradeMenuHolder(Skill skill, SkillBranch returnBranch) {
+            this.skill = skill;
+            this.returnBranch = returnBranch;
+        }
+        
+        public Skill getSkill() { return skill; }
+        public SkillBranch getReturnBranch() { return returnBranch; }
+        
+        @Override
+        public Inventory getInventory() { return inventory; }
+        public void setInventory(Inventory inv) { this.inventory = inv; }
+    }
+    
     // ==================== ABRIR MENÚS ====================
     
     /**
@@ -128,6 +150,21 @@ public class SkillTreeGUI implements Listener {
         
         player.openInventory(inv);
         player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 0.5f, 1.2f);
+    }
+    
+    /**
+     * Abre el menú de mejora de skill
+     */
+    public void openUpgradeMenu(Player player, Skill skill, SkillBranch returnBranch) {
+        UpgradeMenuHolder holder = new UpgradeMenuHolder(skill, returnBranch);
+        String title = "§8Mejorar: §a" + skill.getDisplayName();
+        Inventory inv = Bukkit.createInventory(holder, 27, title);
+        holder.setInventory(inv);
+        
+        renderUpgradeMenu(inv, player, skill);
+        
+        player.openInventory(inv);
+        player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_PLACE, 0.5f, 1.5f);
     }
     
     // ==================== RENDERIZADO MENÚ PRINCIPAL ====================
@@ -224,9 +261,11 @@ public class SkillTreeGUI implements Listener {
     
     private ItemStack createBranchButton(SkillBranch branch, Player player) {
         UUID uuid = player.getUniqueId();
-        Material mat = Material.BARRIER;
-        String name = "???";
-        String color = "§7";
+        
+        // Definir material y nombre según la rama
+        Material mat;
+        String name;
+        String color;
         
         switch (branch) {
             case ALMACENAMIENTO -> {
@@ -240,7 +279,7 @@ public class SkillTreeGUI implements Listener {
                 color = "§b";
             }
             case SUPERVIVENCIA -> {
-                mat = Material.TOTEM_OF_UNDYING;
+                mat = Material.SHIELD;
                 name = "Supervivencia";
                 color = "§c";
             }
@@ -250,12 +289,12 @@ public class SkillTreeGUI implements Listener {
                 color = "§4";
             }
             case EXPLORACION -> {
-                mat = Material.COMPASS;
+                mat = Material.SPYGLASS;
                 name = "Exploración";
                 color = "§a";
             }
             case INVOCACION -> {
-                mat = Material.WOLF_SPAWN_EGG;
+                mat = Material.BONE;
                 name = "Invocación";
                 color = "§d";
             }
@@ -263,6 +302,11 @@ public class SkillTreeGUI implements Listener {
                 mat = Material.NETHER_STAR;
                 name = "Sinergias";
                 color = "§5";
+            }
+            default -> {
+                mat = Material.BOOK;
+                name = "Desconocido";
+                color = "§7";
             }
         }
         
@@ -810,6 +854,121 @@ public class SkillTreeGUI implements Listener {
         inv.setItem(15, cancelBtn);
     }
     
+    // ==================== RENDERIZADO DE MEJORA ====================
+    
+    private void renderUpgradeMenu(Inventory inv, Player player, Skill skill) {
+        // Fondo
+        ItemStack grayBg = createItem(Material.GRAY_STAINED_GLASS_PANE, " ");
+        for (int i = 0; i < 27; i++) {
+            inv.setItem(i, grayBg);
+        }
+        
+        // Obtener preview de mejora
+        UpgradePreview preview = skillService.getUpgradePreview(player, skill);
+        SkillLevel currentLevel = skillService.getSkillLevel(player, skill);
+        
+        // Info de la habilidad en el centro con nivel actual
+        ItemStack skillItem = createSkillItemWithLevel(player, skill);
+        inv.setItem(13, skillItem);
+        
+        // Si ya está en nivel máximo
+        if (currentLevel.isMax()) {
+            ItemStack maxItem = createItem(Material.NETHER_STAR, "§6§l✦ NIVEL MÁXIMO", 
+                Arrays.asList("", "§7Esta habilidad ya está al", "§7máximo nivel posible.", "", 
+                "§5Bonus: §d" + (SkillConfig.getLevel3Bonus(skill) != null ? SkillConfig.getLevel3Bonus(skill) : "Efecto potenciado")));
+            inv.setItem(11, maxItem);
+            
+            ItemStack backBtn = createItem(Material.ARROW, "§e§lVolver", "§7Al árbol de habilidades");
+            inv.setItem(15, backBtn);
+            return;
+        }
+        
+        // Botón de mejorar (izquierda)
+        List<String> upgradeLore = new ArrayList<>();
+        upgradeLore.add("");
+        upgradeLore.add("§7Nivel actual: " + currentLevel.getColor() + currentLevel.getRoman() + 
+                        " §7→ " + preview.getNextLevel().getColor() + preview.getNextLevel().getRoman());
+        upgradeLore.add("");
+        upgradeLore.add("§7Efecto actual: §f" + formatEffect(preview.getCurrentEffect()));
+        upgradeLore.add("§7Nuevo efecto: §a" + formatEffect(preview.getNextEffect()) + 
+                        " §7(+" + formatEffect(preview.getEffectIncrease()) + ")");
+        
+        if (preview.isNextLevelMax() && preview.hasLevel3Bonus()) {
+            upgradeLore.add("");
+            upgradeLore.add("§5§l✦ BONUS NIVEL 3:");
+            upgradeLore.add("§d  " + preview.getLevel3Bonus());
+        }
+        
+        upgradeLore.add("");
+        upgradeLore.add("§7Costo: §e" + preview.getCost() + " XP");
+        upgradeLore.add("§7Tu XP: §" + (preview.canAfford() ? "a" : "c") + preview.getPlayerXP());
+        
+        if (preview.canAfford()) {
+            upgradeLore.add("");
+            upgradeLore.add("§a▶ Click para mejorar");
+            inv.setItem(11, createItem(Material.LIME_CONCRETE, "§a§l⬆ Mejorar", upgradeLore));
+        } else {
+            upgradeLore.add("");
+            upgradeLore.add("§c✗ Necesitas " + preview.getXPNeeded() + " XP más");
+            inv.setItem(11, createItem(Material.GRAY_CONCRETE, "§7§l⬆ Mejorar", upgradeLore));
+        }
+        
+        // Cancelar (derecha)
+        ItemStack cancelBtn = createItem(Material.RED_CONCRETE, "§c§l✗ Cancelar", "§7Volver al árbol");
+        inv.setItem(15, cancelBtn);
+    }
+    
+    private String formatEffect(double value) {
+        if (value == (int) value) {
+            return String.valueOf((int) value);
+        }
+        return String.format("%.1f", value);
+    }
+    
+    private ItemStack createSkillItemWithLevel(Player player, Skill skill) {
+        SkillLevel level = skillService.getSkillLevel(player, skill);
+        double effect = skillService.getLevelEffect(player, skill);
+        
+        List<String> lore = new ArrayList<>();
+        lore.add("");
+        lore.add("§7" + skill.getDescription());
+        lore.add("");
+        lore.add("§7Nivel: " + level.getColor() + "§l" + level.getRoman() + 
+                 " §8[" + getLevelProgressBar(level) + "§8]");
+        lore.add("§7Efecto actual: §a" + formatEffect(effect));
+        lore.add("");
+        lore.add("§8Tier: " + skill.getTier().getDisplayName() + " §8| " + skill.getRarity().getDisplayName());
+        
+        if (level.isMax() && SkillConfig.getLevel3Bonus(skill) != null) {
+            lore.add("");
+            lore.add("§5§l✦ BONUS ACTIVO:");
+            lore.add("§d  " + SkillConfig.getLevel3Bonus(skill));
+        }
+        
+        ItemStack item = new ItemStack(skill.getIcon());
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName(level.getColor() + "§l" + skill.getDisplayName() + " " + level.getRoman());
+            meta.setLore(lore);
+            meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES, ItemFlag.HIDE_ENCHANTS);
+            item.setItemMeta(meta);
+        }
+        
+        return item;
+    }
+    
+    private String getLevelProgressBar(SkillLevel level) {
+        StringBuilder bar = new StringBuilder();
+        for (int i = 1; i <= 3; i++) {
+            if (i <= level.getLevel()) {
+                bar.append("§a█");
+            } else {
+                bar.append("§7░");
+            }
+        }
+        return bar.toString();
+    }
+    
     // ==================== CREAR ITEMS ====================
     
     private ItemStack createBranchTab(SkillBranch branch, boolean selected, Player player) {
@@ -924,12 +1083,30 @@ public class SkillTreeGUI implements Listener {
         
         // Estado y acciones
         if (owned) {
-            lore.add("§a§l✓ DESBLOQUEADA");
+            SkillLevel level = skillService.getSkillLevel(player, skill);
+            String levelStars = "§6" + "★".repeat(level.getLevel()) + "§8" + "☆".repeat(3 - level.getLevel());
+            lore.add("§a§l✓ DESBLOQUEADA " + levelStars);
+            
+            // Mostrar efecto actual si aplica
+            if (SkillConfig.hasLevelEffects(skill.getId())) {
+                double currentEffect = skillService.getLevelEffect(player, skill);
+                lore.add("§7Efecto actual: §e" + String.format("%.1f", currentEffect));
+            }
+            
             if (skill.isToggleable()) {
                 String state = isEnabled ? "§aACTIVA" : "§cDESACTIVA";
                 lore.add("§7Estado: " + state);
                 lore.add("");
                 lore.add("§e▶ Click para alternar");
+            }
+            
+            // Opción de mejorar si no está al máximo
+            if (level.getLevel() < 3) {
+                lore.add("");
+                lore.add("§6▶ Shift+Click para mejorar");
+            } else {
+                lore.add("");
+                lore.add("§6★ Nivel máximo");
             }
         } else if (meetsReqs) {
             lore.add("§7Costo: §e" + skill.getBaseCost() + " XP");
@@ -1033,10 +1210,13 @@ public class SkillTreeGUI implements Listener {
             handleMainMenuClick(player, event.getRawSlot());
         } else if (holder instanceof TreeMenuHolder treeHolder) {
             event.setCancelled(true);
-            handleTreeClick(player, event.getRawSlot(), treeHolder.getBranch());
+            handleTreeClick(player, event.getRawSlot(), treeHolder.getBranch(), event.isShiftClick());
         } else if (holder instanceof ConfirmMenuHolder confirmHolder) {
             event.setCancelled(true);
             handleConfirmClick(player, event.getRawSlot(), confirmHolder);
+        } else if (holder instanceof UpgradeMenuHolder upgradeHolder) {
+            event.setCancelled(true);
+            handleUpgradeClick(player, event.getRawSlot(), upgradeHolder);
         }
     }
     
@@ -1056,7 +1236,7 @@ public class SkillTreeGUI implements Listener {
         }
     }
     
-    private void handleTreeClick(Player player, int slot, SkillBranch currentBranch) {
+    private void handleTreeClick(Player player, int slot, SkillBranch currentBranch, boolean isShiftClick) {
         // === PESTAÑAS (slots 1-7) ===
         if (slot == 1) {
             if (currentBranch != SkillBranch.ALMACENAMIENTO) {
@@ -1116,23 +1296,40 @@ public class SkillTreeGUI implements Listener {
         // === HABILIDAD ===
         Skill skill = getSkillAtSlot(slot, currentBranch);
         if (skill != null) {
-            handleSkillClick(player, skill, currentBranch);
+            handleSkillClick(player, skill, currentBranch, isShiftClick);
         }
     }
     
-    private void handleSkillClick(Player player, Skill skill, SkillBranch branch) {
+    private void handleSkillClick(Player player, Skill skill, SkillBranch branch, boolean isShiftClick) {
         boolean owned = skillService.hasSkill(player, skill);
         boolean meetsReqs = skillService.meetsRequirements(player, skill);
         
         if (owned) {
-            // Toggle si es toggleable
+            SkillLevel currentLevel = skillService.getSkillLevel(player, skill);
+            
+            // Shift+Click siempre abre menú de mejora (si hay niveles disponibles)
+            if (isShiftClick) {
+                if (!currentLevel.isMax()) {
+                    openUpgradeMenu(player, skill, branch);
+                } else {
+                    player.sendMessage("§6§l✦ §e" + skill.getDisplayName() + " §festá al máximo nivel.");
+                    player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME, 0.5f, 1.5f);
+                }
+                return;
+            }
+            
+            // Click normal: toggle para toggleables, upgrade para no-toggleables
             if (skill.isToggleable()) {
                 skillService.toggleSkill(player, skill);
-                // Refrescar menú para mostrar nuevo estado
                 openBranchMenu(player, branch);
             } else {
-                player.sendMessage("§7Ya tienes §e" + skill.getDisplayName() + "§7 (pasiva permanente).");
-                player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 0.5f, 0.5f);
+                // Abrir menú de mejora si no está en nivel máximo
+                if (!currentLevel.isMax()) {
+                    openUpgradeMenu(player, skill, branch);
+                } else {
+                    player.sendMessage("§6§l✦ §e" + skill.getDisplayName() + " §festá al máximo nivel.");
+                    player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME, 0.5f, 1.5f);
+                }
             }
         } else if (meetsReqs) {
             // Abrir menú de confirmación
@@ -1186,6 +1383,57 @@ public class SkillTreeGUI implements Listener {
             }
         } else if (slot == 15) {
             // Cancelar
+            openBranchMenu(player, branch);
+        }
+    }
+    
+    /**
+     * Maneja los clicks en el menú de mejora de habilidad
+     */
+    private void handleUpgradeClick(Player player, int slot, UpgradeMenuHolder holder) {
+        Skill skill = holder.getSkill();
+        SkillBranch branch = holder.getReturnBranch();
+        
+        if (slot == 11) {
+            // Confirmar mejora
+            SkillLevel currentLevel = skillService.getSkillLevel(player, skill);
+            
+            if (currentLevel.getLevel() >= 3) {
+                player.sendMessage("§7Esta habilidad ya está al máximo nivel.");
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_AMBIENT, 0.7f, 1.0f);
+                return;
+            }
+            
+            int cost = skillService.getUpgradeCost(player, skill);
+            int playerXP = plugin.getExperienceService().getXP(player);
+            
+            if (playerXP < cost) {
+                player.sendMessage("§c§l✗ §cNo tienes suficiente XP. Necesitas §e" + cost + " XP§c.");
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 0.7f, 1.0f);
+                return;
+            }
+            
+            // Realizar la mejora
+            if (skillService.upgradeSkill(player, skill)) {
+                SkillLevel newLevel = skillService.getSkillLevel(player, skill);
+                player.sendMessage("§a§l✓ §a¡Has mejorado §e" + skill.getDisplayName() + "§a al nivel §6" + newLevel.getLevel() + "§a!");
+                player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.5f);
+                
+                // Reabrir menú para mostrar nuevo nivel
+                if (newLevel.getLevel() < 3) {
+                    openUpgradeMenu(player, skill, branch);
+                } else {
+                    player.sendMessage("§6§l★ §e¡Nivel máximo alcanzado!");
+                    player.playSound(player.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 0.8f, 1.2f);
+                    openBranchMenu(player, branch);
+                }
+            } else {
+                player.sendMessage("§c§l✗ §cNo se pudo mejorar la habilidad.");
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 0.7f, 1.0f);
+            }
+            
+        } else if (slot == 15) {
+            // Cancelar - volver al árbol
             openBranchMenu(player, branch);
         }
     }

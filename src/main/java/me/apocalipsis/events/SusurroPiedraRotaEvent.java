@@ -172,6 +172,8 @@ public class SusurroPiedraRotaEvent extends EventBase {
     // Ritual de destrucción del núcleo
     private boolean ritualDestruccionIniciado = false;
     private boolean ritualDestruccionCompletado = false;
+    private boolean guardianesFinalSpawneados = false; // NUEVO: evita spawns múltiples
+    private boolean faseRitualActiva = false; // NUEVO: indica si estamos en la fase de cuenta regresiva
     private int ticksRitualDestruccion = 0;
     private Location altarLocation = null; // Ubicación del primer fragmento (altar)
     private ItemFrame pedestalNucleo = null; // Pedestal donde se coloca el núcleo
@@ -8725,15 +8727,27 @@ public class SusurroPiedraRotaEvent extends EventBase {
     }
     
     private void iniciarRitualDestruccion() {
+        // PROTECCIÓN: Si ya se inició, no reiniciar
+        if (ritualDestruccionIniciado || ritualDestruccionCompletado) {
+            plugin.getLogger().info("[SusurroPiedraRota] Ritual ya iniciado o completado, ignorando llamada duplicada");
+            return;
+        }
+        
         ritualDestruccionIniciado = true;
         ticksRitualDestruccion = 0;
         
         plugin.getLogger().info("[SusurroPiedraRota] ═══ INICIANDO RITUAL DE DESTRUCCIÓN ═══");
         
-        // Cancelar spawns de retorno
+        // Cancelar TODOS los spawns activos
         if (retornoSpawnTask != null) {
             retornoSpawnTask.cancel();
             retornoSpawnTask = null;
+        }
+        
+        // Cancelar task de espera de enemigos si existe
+        if (esperaEnemigosTask != null && !esperaEnemigosTask.isCancelled()) {
+            esperaEnemigosTask.cancel();
+            esperaEnemigosTask = null;
         }
         
         // ═══════════════════════════════════════════════════════════════
@@ -8760,13 +8774,15 @@ public class SusurroPiedraRotaEvent extends EventBase {
         playSoundToAll(Sound.BLOCK_END_PORTAL_FRAME_FILL, 0.8f, 0.8f);
         playSoundToAll(Sound.AMBIENT_CAVE, 0.6f, 0.4f);
         
-        // Crear pedestal visual
-        Location pedestalLoc = altarLocation.clone().add(0, 1.5, 0);
-        pedestalNucleo = altarLocation.getWorld().spawn(pedestalLoc, ItemFrame.class);
-        pedestalNucleo.setItem(new ItemStack(Material.HEART_OF_THE_SEA));
-        pedestalNucleo.setVisible(false);
-        pedestalNucleo.setFixed(true);
-        pedestalNucleo.setInvulnerable(true);
+        // Crear pedestal visual (solo si no existe)
+        if (pedestalNucleo == null || pedestalNucleo.isDead()) {
+            Location pedestalLoc = altarLocation.clone().add(0, 1.5, 0);
+            pedestalNucleo = altarLocation.getWorld().spawn(pedestalLoc, ItemFrame.class);
+            pedestalNucleo.setItem(new ItemStack(Material.HEART_OF_THE_SEA));
+            pedestalNucleo.setVisible(false);
+            pedestalNucleo.setFixed(true);
+            pedestalNucleo.setInvulnerable(true);
+        }
         
         // Mensaje narrativo
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
@@ -8786,6 +8802,13 @@ public class SusurroPiedraRotaEvent extends EventBase {
         
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (!isActive()) return;
+            
+            // PROTECCIÓN: Solo spawnear guardianes UNA vez
+            if (guardianesFinalSpawneados) {
+                plugin.getLogger().info("[SusurroPiedraRota] Guardianes ya spawneados, saltando spawn duplicado");
+                return;
+            }
+            guardianesFinalSpawneados = true;
             
             // Contar jugadores para escalar dificultad
             int jugadoresVivos = 0;
@@ -8828,10 +8851,14 @@ public class SusurroPiedraRotaEvent extends EventBase {
             broadcastNarrative("");
             broadcastNarrative("§4§l═══════════════════════════════════════════════════════");
             
-            // Spawnear defensores finales en círculo
+            // Limpiar oleada anterior y spawnear defensores finales
             enemigosOleadaActo3.clear();
-            int cantidadDefensores = 8 + jugadoresVivos * 2; // Más defensores para el final
+            
+            // Cantidad LIMITADA de defensores (máximo 12 para evitar lag)
+            int cantidadDefensores = Math.min(12, 6 + jugadoresVivos * 2);
             Random rand = new Random();
+            
+            plugin.getLogger().info("[SusurroPiedraRota] Spawneando " + cantidadDefensores + " guardianes finales");
             
             for (int i = 0; i < cantidadDefensores; i++) {
                 final int index = i;
@@ -8850,6 +8877,7 @@ public class SusurroPiedraRotaEvent extends EventBase {
                     if (criatura != null) {
                         enemigosOleadaActo3.add(criatura.getUniqueId());
                         criatura.setCustomName("§4§lGuardián Final");
+                        criatura.addScoreboardTag("guardian_final");
                         
                         // Efectos de spawn dramáticos
                         spawnLoc.getWorld().spawnParticle(Particle.SOUL_FIRE_FLAME, spawnLoc, 30, 0.5, 0.5, 0.5, 0.1);
@@ -8860,8 +8888,9 @@ public class SusurroPiedraRotaEvent extends EventBase {
             
             // Esperar a que maten a todos para el ritual
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (!isActive()) return;
                 esperarEliminacionGuardianesFinal();
-            }, cantidadDefensores * 5L + 20L);
+            }, cantidadDefensores * 5L + 40L);
             
         }, 160L); // 8 segundos
     }
@@ -8870,6 +8899,12 @@ public class SusurroPiedraRotaEvent extends EventBase {
      * Espera la eliminación de los guardianes finales y luego inicia el ritual
      */
     private void esperarEliminacionGuardianesFinal() {
+        // PROTECCIÓN: Si ya estamos en fase de ritual, no reiniciar
+        if (faseRitualActiva || ritualDestruccionCompletado) {
+            plugin.getLogger().info("[SusurroPiedraRota] Fase ritual ya activa, ignorando");
+            return;
+        }
+        
         esperarEliminacionEnemigosActo3(() -> {
             if (!isActive()) return;
             
@@ -8877,6 +8912,10 @@ public class SusurroPiedraRotaEvent extends EventBase {
             // FASE 3: RITUAL DE DESTRUCCIÓN (post-combate)
             // Los jugadores han ganado - ahora el momento culminante
             // ═══════════════════════════════════════════════════════════════
+            
+            // MARCAR QUE ESTAMOS EN FASE DE RITUAL (evita reintentos de spawn)
+            faseRitualActiva = true;
+            plugin.getLogger().info("[SusurroPiedraRota] ═══ FASE RITUAL ACTIVA ═══");
             
             // Título de victoria
             for (Player p : Bukkit.getOnlinePlayers()) {
@@ -8892,6 +8931,14 @@ public class SusurroPiedraRotaEvent extends EventBase {
             playSoundToAll(Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
             playSoundToAll(Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.2f);
             
+            // Matar cualquier mob restante con tag de guardián
+            for (Entity ent : altarLocation.getWorld().getEntities()) {
+                if (ent.getScoreboardTags().contains("guardian_final") || 
+                    ent.getScoreboardTags().contains("forma_susurro")) {
+                    ent.remove();
+                }
+            }
+            
             // Pausa dramática
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 if (!isActive()) return;
@@ -8903,7 +8950,7 @@ public class SusurroPiedraRotaEvent extends EventBase {
                 playSoundToAll(Sound.ENTITY_WARDEN_AMBIENT, 0.4f, 0.6f);
             }, 40L); // 2 segundos
             
-            // Título del ritual
+            // Título del ritual - SIMPLIFICADO
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 if (!isActive()) return;
                 
@@ -8918,47 +8965,36 @@ public class SusurroPiedraRotaEvent extends EventBase {
                 }
                 
                 playSoundToAll(Sound.BLOCK_END_PORTAL_SPAWN, 0.8f, 0.7f);
-            }, 100L); // 5 segundos
-            
-            // Panel de instrucciones
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if (!isActive()) return;
                 
+                // Panel de instrucciones
                 broadcastNarrative("");
                 broadcastNarrative("§d§l✦ §8§m════════════════════════════════════════════ §d§l✦");
                 broadcastNarrative("");
                 broadcastNarrative("          §5§l⚗ RITUAL DE DESTRUCCIÓN ⚗");
                 broadcastNarrative("");
-                broadcastNarrative("    §7El núcleo debe ser destruido con §dla unión");
-                broadcastNarrative("    §7de todos los que han llegado hasta aquí.");
-                broadcastNarrative("");
                 broadcastNarrative("    §e◈ §ePermaneced §lJUNTOS §r§ecerca del altar");
                 broadcastNarrative("    §a◈ §aEl ritual durará §l10 SEGUNDOS");
-                broadcastNarrative("    §c◈ §c¡Si alguien se aleja, el ritual §lFALLARÁ!");
                 broadcastNarrative("");
                 broadcastNarrative("§d§l✦ §8§m════════════════════════════════════════════ §d§l✦");
                 
-                playSoundToAll(Sound.BLOCK_BEACON_POWER_SELECT, 0.8f, 1.0f);
-            }, 160L); // 8 segundos
+            }, 80L); // 4 segundos
             
-            // Diálogo del Observador sobre el ritual
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if (!isActive()) return;
-                mostrarDialogoForma("RITUAL_DESTRUCCION");
-            }, 260L); // 13 segundos
-            
-            // Iniciar efectos visuales del ritual
+            // Iniciar efectos visuales y cuenta regresiva del ritual
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 if (!isActive()) return;
                 iniciarEfectosRitual();
-                
-                // El ritual ahora comienza a contar
-                // procesarRitualDestruccion() se encarga del resto
-            }, 320L); // 16 segundos
+                ticksRitualDestruccion = 0; // Reiniciar contador
+                plugin.getLogger().info("[SusurroPiedraRota] Iniciando cuenta regresiva del ritual");
+            }, 160L); // 8 segundos
         });
     }
     
     private void procesarRitualDestruccion() {
+        // Solo procesar si estamos en fase de ritual activa
+        if (!faseRitualActiva || ritualDestruccionCompletado) {
+            return;
+        }
+        
         ticksRitualDestruccion++;
         
         // Buscar jugadores vivos
@@ -8975,10 +9011,10 @@ public class SusurroPiedraRotaEvent extends EventBase {
             return;
         }
         
-        // Verificar que todos los jugadores vivos estén cerca del altar (12 bloques)
+        // Verificar que todos los jugadores vivos estén cerca del altar (15 bloques - más permisivo)
         boolean todosProximos = true;
         for (Player p : jugadoresVivos) {
-            if (p.getLocation().distance(altarLocation) > 12.0) {
+            if (p.getLocation().distance(altarLocation) > 15.0) {
                 todosProximos = false;
                 break;
             }
@@ -9007,33 +9043,34 @@ public class SusurroPiedraRotaEvent extends EventBase {
     }
     
     private void interrumpirRitual() {
-        ritualDestruccionIniciado = false;
+        // NO reiniciar ritualDestruccionIniciado - solo pausar la cuenta
         ticksRitualDestruccion = 0;
         
-        // Remover pedestal
-        if (pedestalNucleo != null && !pedestalNucleo.isDead()) {
-            pedestalNucleo.remove();
-            pedestalNucleo = null;
-        }
+        plugin.getLogger().info("[SusurroPiedraRota] Ritual interrumpido - jugador se alejó");
         
         // Mensaje de fallo
         for (Player p : Bukkit.getOnlinePlayers()) {
             if (participantesOriginales.contains(p.getUniqueId())) {
-                p.sendMessage(ChatColor.RED + "✖ El ritual ha sido interrumpido. ¡Reagrupaos!");
-                p.playSound(p.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 0.8f, 0.5f);
+                p.sendMessage(ChatColor.RED + "✖ " + ChatColor.YELLOW + "¡Reagrupaos cerca del altar para continuar el ritual!");
+                p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 0.8f, 0.5f);
+                
+                // Mostrar flecha hacia el altar
+                if (altarLocation != null) {
+                    p.sendMessage(ChatColor.GOLD + "➤ " + ChatColor.GRAY + "El altar está a " + 
+                        ChatColor.WHITE + (int)p.getLocation().distance(altarLocation) + ChatColor.GRAY + " bloques");
+                }
             }
         }
         
-        // Permitir reintento después de 3 segundos
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (isActive() && nucleoRecogido && !ritualDestruccionCompletado) {
-                iniciarSpawnsRetorno(); // Reiniciar spawns de presión
-            }
-        }, 60L);
+        // NO spawneear más mobs - simplemente esperar que vuelvan
+        // El ritual se reanudará automáticamente cuando todos estén cerca
     }
     
     private void completarRitualDestruccion() {
         ritualDestruccionCompletado = true;
+        faseRitualActiva = false;
+        
+        plugin.getLogger().info("[SusurroPiedraRota] ═══ RITUAL COMPLETADO EXITOSAMENTE ═══");
         
         // Remover pedestal
         if (pedestalNucleo != null && !pedestalNucleo.isDead()) {

@@ -33,6 +33,33 @@ public class SkillService {
     // Cooldown para Vuelo de Emergencia
     private final Map<UUID, Long> glideCooldowns = new HashMap<>();
     
+    // Cooldowns para habilidades de detección (UUID -> timestamp cuando termina el cooldown)
+    private final Map<UUID, Long> rastroOroCooldowns = new HashMap<>();
+    private final Map<UUID, Long> detectorSpawnersCooldowns = new HashMap<>();
+    private final Map<UUID, Long> xrayDiamantesCooldowns = new HashMap<>();
+    
+    // Jugadores con habilidades de detección activas (UUID -> timestamp cuando termina)
+    private final Map<UUID, Long> rastroOroActivo = new HashMap<>();
+    private final Map<UUID, Long> detectorSpawnersActivo = new HashMap<>();
+    private final Map<UUID, Long> xrayDiamantesActivo = new HashMap<>();
+    
+    // Cooldowns para habilidades de invocación (UUID -> timestamp cuando termina el cooldown)
+    private final Map<UUID, Long> loboCompañeroCooldowns = new HashMap<>();
+    private final Map<UUID, Long> gatoGuardianCooldowns = new HashMap<>();
+    private final Map<UUID, Long> manadaLobosCooldowns = new HashMap<>();
+    private final Map<UUID, Long> allayRecolectorCooldowns = new HashMap<>();
+    private final Map<UUID, Long> abejasProtectorasCooldowns = new HashMap<>();
+    private final Map<UUID, Long> golemProtectorCooldowns = new HashMap<>();
+    private final Map<UUID, Long> vexVengadorCooldowns = new HashMap<>();
+    private final Map<UUID, Long> wardenTemporalCooldowns = new HashMap<>();
+    
+    // Entidades invocadas activas (UUID jugador -> List<UUID entidad>)
+    private final Map<UUID, java.util.List<UUID>> entidadesInvocadas = new HashMap<>();
+    
+    // Cooldowns para sinergias avanzadas
+    private final Map<UUID, Long> omnipresenteCooldowns = new HashMap<>();
+    private final Map<UUID, Long> avatarCaosCooldowns = new HashMap<>();
+    
     // Configuración
     private int minXpRestante = 100;
     private boolean confirmarCompras = true;
@@ -97,10 +124,29 @@ public class SkillService {
                     }
                 }
                 
+                // Cargar niveles de skills
+                Map<Skill, SkillLevel> skillLevels = new HashMap<>();
+                ConfigurationSection levelsSection = playerSection.getConfigurationSection("skill_levels");
+                if (levelsSection != null) {
+                    for (String skillId : levelsSection.getKeys(false)) {
+                        Skill skill = Skill.fromId(skillId);
+                        if (skill != null) {
+                            int level = levelsSection.getInt(skillId, 1);
+                            skillLevels.put(skill, SkillLevel.fromNumber(level));
+                        }
+                    }
+                }
+                // Asegurar nivel 1 para skills sin nivel guardado
+                for (Skill skill : skills) {
+                    if (!skillLevels.containsKey(skill)) {
+                        skillLevels.put(skill, SkillLevel.LEVEL_1);
+                    }
+                }
+                
                 // Cargar XP gastada total
                 int xpGastada = playerSection.getInt("xp_gastada", 0);
                 
-                playerData.put(uuid, new PlayerSkillData(skills, disabled, xpGastada));
+                playerData.put(uuid, new PlayerSkillData(skills, disabled, skillLevels, xpGastada));
                 
             } catch (IllegalArgumentException e) {
                 plugin.getLogger().warning("[Skills] UUID inválido en skill_data.yml: " + uuidStr);
@@ -138,6 +184,12 @@ public class SkillService {
                 .map(Skill::getId)
                 .collect(Collectors.toList());
             config.set(path + ".disabled_toggles", disabledIds);
+            
+            // Guardar niveles de skills
+            for (Map.Entry<Skill, SkillLevel> levelEntry : data.getSkillLevels().entrySet()) {
+                config.set(path + ".skill_levels." + levelEntry.getKey().getId(), 
+                          levelEntry.getValue().getLevel());
+            }
             
             // Guardar XP gastada
             config.set(path + ".xp_gastada", data.getXpGastada());
@@ -191,6 +243,131 @@ public class SkillService {
     
     public int getTotalSkillCount() {
         return Skill.values().length;
+    }
+    
+    // ==================== SISTEMA DE NIVELES ====================
+    
+    /**
+     * Obtiene el nivel actual de una habilidad del jugador
+     */
+    public SkillLevel getSkillLevel(Player player, Skill skill) {
+        return getData(player.getUniqueId()).getSkillLevel(skill);
+    }
+    
+    public SkillLevel getSkillLevel(UUID uuid, Skill skill) {
+        return getData(uuid).getSkillLevel(skill);
+    }
+    
+    /**
+     * Obtiene el valor del efecto escalado según el nivel
+     */
+    public double getScaledEffect(Player player, Skill skill) {
+        if (!hasSkill(player, skill)) return 0;
+        SkillLevel level = getSkillLevel(player, skill);
+        double baseEffect = SkillConfig.getLevelEffect(skill.getId(), 1);
+        return baseEffect * level.getEffectMultiplier();
+    }
+    
+    public double getScaledEffect(UUID uuid, Skill skill) {
+        if (!hasSkill(uuid, skill)) return 0;
+        SkillLevel level = getSkillLevel(uuid, skill);
+        double baseEffect = SkillConfig.getLevelEffect(skill.getId(), 1);
+        return baseEffect * level.getEffectMultiplier();
+    }
+    
+    /**
+     * Obtiene el valor exacto del efecto para el nivel actual
+     */
+    public double getLevelEffect(Player player, Skill skill) {
+        if (!hasSkill(player, skill)) return 0;
+        int level = getSkillLevel(player, skill).getLevel();
+        return SkillConfig.getLevelEffect(skill.getId(), level);
+    }
+    
+    public double getLevelEffect(UUID uuid, Skill skill) {
+        if (!hasSkill(uuid, skill)) return 0;
+        int level = getSkillLevel(uuid, skill).getLevel();
+        return SkillConfig.getLevelEffect(skill.getId(), level);
+    }
+    
+    /**
+     * Calcula el costo de mejorar al siguiente nivel
+     */
+    public int getUpgradeCost(Player player, Skill skill) {
+        if (!hasSkill(player, skill)) return 0;
+        SkillLevel currentLevel = getSkillLevel(player, skill);
+        if (currentLevel.isMax()) return 0;
+        
+        SkillLevel nextLevel = currentLevel.getNext();
+        int baseCost = skill.getBaseCost();
+        return (int) (baseCost * nextLevel.getUpgradeCostMultiplier());
+    }
+    
+    /**
+     * Verifica si el jugador puede mejorar una skill
+     */
+    public boolean canUpgradeSkill(Player player, Skill skill) {
+        if (!hasSkill(player, skill)) return false;
+        if (!skill.isUpgradeable()) return false; // Skills no mejorables
+        SkillLevel currentLevel = getSkillLevel(player, skill);
+        if (currentLevel.isMax()) return false;
+        
+        int cost = getUpgradeCost(player, skill);
+        int playerXP = plugin.getExperienceService().getXP(player);
+        return playerXP >= cost;
+    }
+    
+    /**
+     * Mejora una skill al siguiente nivel
+     */
+    public boolean upgradeSkill(Player player, Skill skill) {
+        if (!canUpgradeSkill(player, skill)) return false;
+        
+        UUID uuid = player.getUniqueId();
+        SkillLevel currentLevel = getSkillLevel(player, skill);
+        SkillLevel nextLevel = currentLevel.getNext();
+        int cost = getUpgradeCost(player, skill);
+        
+        // Cobrar XP
+        plugin.getExperienceService().spendXP(player, cost);
+        
+        // Subir nivel
+        getData(uuid).setSkillLevel(skill, nextLevel);
+        getData(uuid).addXpGastada(cost);
+        
+        // Reaplicar bonificaciones
+        applySkillEffects(player);
+        
+        // Mensaje
+        player.sendMessage("§a§l✦ §a¡" + skill.getDisplayName() + " mejorado a " + 
+                          nextLevel.getColor() + "Nivel " + nextLevel.getRoman() + "§a!");
+        player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.5f);
+        
+        // Guardar
+        saveData();
+        
+        return true;
+    }
+    
+    /**
+     * Obtiene información de preview para upgrade
+     */
+    public UpgradePreview getUpgradePreview(Player player, Skill skill) {
+        if (!hasSkill(player, skill)) return null;
+        
+        SkillLevel currentLevel = getSkillLevel(player, skill);
+        if (currentLevel.isMax()) return null;
+        
+        SkillLevel nextLevel = currentLevel.getNext();
+        int cost = getUpgradeCost(player, skill);
+        int playerXP = plugin.getExperienceService().getXP(player);
+        
+        double currentEffect = SkillConfig.getLevelEffect(skill.getId(), currentLevel.getLevel());
+        double nextEffect = SkillConfig.getLevelEffect(skill.getId(), nextLevel.getLevel());
+        String bonus = SkillConfig.getLevel3Bonus(skill);
+        
+        return new UpgradePreview(currentLevel, nextLevel, cost, playerXP, 
+                                  currentEffect, nextEffect, bonus);
     }
     
     // ==================== TOGGLES ====================
@@ -358,9 +535,10 @@ public class SkillService {
         // Resetear atributos primero
         resetPlayerAttributes(player);
         
-        // Calcular bonuses acumulados
-        int extraHearts = 0;
+        // Calcular bonuses acumulados (ahora usando valores por nivel)
+        double extraHearts = 0;
         double speedBonus = 0;
+        double attackSpeedBonus = 0;
         
         for (Skill skill : skills) {
             // Saltar si es toggleable y está desactivado
@@ -369,26 +547,31 @@ public class SkillService {
             }
             
             switch (skill) {
-                // === VIDA EXTRA ===
+                // === VIDA EXTRA (valores de SkillConfig en corazones) ===
                 case PIEL_GRUESA:
-                    extraHearts += 2;
+                    extraHearts += getLevelEffect(uuid, Skill.PIEL_GRUESA); // 2/3/4
                     break;
                 case TANQUE:
-                    extraHearts += 4; // Acumulativo con piel gruesa
+                    extraHearts += getLevelEffect(uuid, Skill.TANQUE); // 4/6/8
                     break;
                 case INMORTAL:
-                    extraHearts += 8; // Acumulativo
+                    extraHearts += getLevelEffect(uuid, Skill.INMORTAL); // 8/10/14
                     break;
                     
-                // === VELOCIDAD ===
+                // === VELOCIDAD (valores de SkillConfig en %) ===
                 case PASO_LIGERO:
-                    speedBonus += 0.10;
+                    speedBonus += getLevelEffect(uuid, Skill.PASO_LIGERO) / 100.0; // 10/15/20%
                     break;
                 case ZANCADAS:
-                    speedBonus += 0.10; // +10% adicional (total 20%)
+                    speedBonus += getLevelEffect(uuid, Skill.ZANCADAS) / 100.0; // 20/30/40%
                     break;
                 case VELOCISTA:
-                    speedBonus += 0.10; // +10% adicional (total 30%)
+                    speedBonus += getLevelEffect(uuid, Skill.VELOCISTA) / 100.0; // 30/40/50%
+                    break;
+                
+                // === VELOCIDAD DE ATAQUE ===
+                case REFLEJOS:
+                    attackSpeedBonus += getLevelEffect(uuid, Skill.REFLEJOS) / 100.0; // 10/15/20%
                     break;
                     
                 // === NADADOR ===
@@ -418,6 +601,15 @@ public class SkillService {
                 movementSpeed.setBaseValue(baseSpeed * (1 + speedBonus));
             }
         }
+        
+        // Aplicar velocidad de ataque (REFLEJOS)
+        if (attackSpeedBonus > 0) {
+            AttributeInstance attackSpeed = player.getAttribute(Attribute.ATTACK_SPEED);
+            if (attackSpeed != null) {
+                double baseAttackSpeed = 4.0; // Velocidad de ataque base
+                attackSpeed.setBaseValue(baseAttackSpeed * (1 + attackSpeedBonus));
+            }
+        }
     }
     
     /**
@@ -432,6 +624,11 @@ public class SkillService {
         AttributeInstance movementSpeed = player.getAttribute(Attribute.MOVEMENT_SPEED);
         if (movementSpeed != null) {
             movementSpeed.setBaseValue(0.1); // Velocidad base
+        }
+        
+        AttributeInstance attackSpeed = player.getAttribute(Attribute.ATTACK_SPEED);
+        if (attackSpeed != null) {
+            attackSpeed.setBaseValue(4.0); // Velocidad de ataque base
         }
     }
     
@@ -462,11 +659,9 @@ public class SkillService {
             switch (skill) {
                 case REGENERACION_PASIVA:
                     // Regenerar 0.5 corazones (1 HP) cada 20s
-                    if (player.getHealth() < player.getAttribute(Attribute.MAX_HEALTH).getValue()) {
-                        player.setHealth(Math.min(
-                            player.getHealth() + 1,
-                            player.getAttribute(Attribute.MAX_HEALTH).getValue()
-                        ));
+                    AttributeInstance maxHpRegen = player.getAttribute(Attribute.MAX_HEALTH);
+                    if (maxHpRegen != null && player.getHealth() < maxHpRegen.getValue()) {
+                        player.setHealth(Math.min(player.getHealth() + 1, maxHpRegen.getValue()));
                     }
                     break;
                     
@@ -502,11 +697,65 @@ public class SkillService {
                 
                 case BERSERKER:
                     // +20% velocidad cuando tiene <25% vida
-                    double healthPercent = player.getHealth() / 
-                        player.getAttribute(Attribute.MAX_HEALTH).getValue();
-                    if (healthPercent < 0.25) {
+                    AttributeInstance maxHpBerserker = player.getAttribute(Attribute.MAX_HEALTH);
+                    if (maxHpBerserker != null) {
+                        double healthPercent = player.getHealth() / maxHpBerserker.getValue();
+                        if (healthPercent < 0.25) {
+                            player.addPotionEffect(new org.bukkit.potion.PotionEffect(
+                                org.bukkit.potion.PotionEffectType.SPEED, 500, 0, true, false));
+                        }
+                    }
+                    break;
+                
+                case NADADOR:
+                    // Velocidad de nado aumentada
+                    if (player.isInWater()) {
                         player.addPotionEffect(new org.bukkit.potion.PotionEffect(
-                            org.bukkit.potion.PotionEffectType.SPEED, 500, 0, true, false));
+                            org.bukkit.potion.PotionEffectType.DOLPHINS_GRACE, 500, 0, true, false));
+                    }
+                    break;
+                
+                case BRANQUIAS:
+                    // Restaurar aire bajo el agua
+                    if (player.isInWater() && player.getRemainingAir() < player.getMaximumAir()) {
+                        int newAir = Math.min(player.getRemainingAir() + 30, player.getMaximumAir());
+                        player.setRemainingAir(newAir);
+                    }
+                    break;
+                
+                case ANFIBIO:
+                    // Respiración infinita bajo agua
+                    if (player.isInWater()) {
+                        player.setRemainingAir(player.getMaximumAir());
+                    }
+                    break;
+                
+                case BRUJULA_INTERNA:
+                    // Mostrar coordenadas en action bar
+                    org.bukkit.Location loc = player.getLocation();
+                    String coords = String.format("§e⬤ §fX: §a%d §f| Y: §a%d §f| Z: §a%d",
+                        loc.getBlockX(), loc.getBlockY(), loc.getBlockZ());
+                    player.sendActionBar(coords);
+                    break;
+                
+                case EXPLORADOR_LIGERO:
+                    // +20% velocidad cuando mochila llena (sinergia)
+                    int backpackSize = plugin.getBackpackService().getBackpackSize(uuid);
+                    if (backpackSize > 0) {
+                        org.bukkit.inventory.ItemStack[] backpackContents = plugin.getBackpackService().getBackpackContents(uuid);
+                        if (backpackContents != null) {
+                            int itemCount = 0;
+                            for (org.bukkit.inventory.ItemStack item : backpackContents) {
+                                if (item != null && item.getType() != org.bukkit.Material.AIR) {
+                                    itemCount++;
+                                }
+                            }
+                            // Si la mochila está 80%+ llena
+                            if (itemCount >= backpackSize * 0.8) {
+                                player.addPotionEffect(new org.bukkit.potion.PotionEffect(
+                                    org.bukkit.potion.PotionEffectType.SPEED, 500, 0, true, false));
+                            }
+                        }
                     }
                     break;
                     
@@ -554,6 +803,262 @@ public class SkillService {
         glideCooldowns.put(player.getUniqueId(), System.currentTimeMillis());
     }
     
+    // ==================== HABILIDADES DE DETECCIÓN ====================
+    
+    /**
+     * Activa Rastro de Oro - Marca minerales cercanos por 10 segundos
+     * Cooldown: 60 segundos
+     */
+    public boolean activateRastroOro(Player player) {
+        UUID uuid = player.getUniqueId();
+        
+        if (!hasSkill(uuid, Skill.RASTRO_ORO)) {
+            player.sendMessage("§c✗ No tienes la habilidad Rastro de Oro");
+            return false;
+        }
+        
+        // Verificar cooldown
+        Long cooldownEnd = rastroOroCooldowns.get(uuid);
+        if (cooldownEnd != null && System.currentTimeMillis() < cooldownEnd) {
+            long remaining = (cooldownEnd - System.currentTimeMillis()) / 1000;
+            player.sendMessage("§c✗ Rastro de Oro en cooldown: §e" + remaining + "s");
+            return false;
+        }
+        
+        // Activar por 10 segundos
+        long duration = 10 * 1000; // 10 segundos
+        rastroOroActivo.put(uuid, System.currentTimeMillis() + duration);
+        
+        // Cooldown de 60 segundos
+        rastroOroCooldowns.put(uuid, System.currentTimeMillis() + 60 * 1000);
+        
+        player.sendMessage("§6§l✦ §eRastro de Oro activado! §7(10s)");
+        player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_BEACON_ACTIVATE, 0.5f, 1.5f);
+        
+        // Escanear minerales cercanos
+        scanAndHighlightOres(player);
+        
+        return true;
+    }
+    
+    /**
+     * Activa Detector de Spawners - Muestra partículas hacia spawners por 15 segundos
+     * Cooldown: 90 segundos
+     */
+    public boolean activateDetectorSpawners(Player player) {
+        UUID uuid = player.getUniqueId();
+        
+        if (!hasSkill(uuid, Skill.DETECTOR_SPAWNERS)) {
+            player.sendMessage("§c✗ No tienes la habilidad Detector de Spawners");
+            return false;
+        }
+        
+        Long cooldownEnd = detectorSpawnersCooldowns.get(uuid);
+        if (cooldownEnd != null && System.currentTimeMillis() < cooldownEnd) {
+            long remaining = (cooldownEnd - System.currentTimeMillis()) / 1000;
+            player.sendMessage("§c✗ Detector de Spawners en cooldown: §e" + remaining + "s");
+            return false;
+        }
+        
+        // Activar por 15 segundos
+        long duration = 15 * 1000;
+        detectorSpawnersActivo.put(uuid, System.currentTimeMillis() + duration);
+        
+        // Cooldown de 90 segundos
+        detectorSpawnersCooldowns.put(uuid, System.currentTimeMillis() + 90 * 1000);
+        
+        player.sendMessage("§5§l✦ §dDetector de Spawners activado! §7(15s)");
+        player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_BEACON_POWER_SELECT, 0.5f, 1.2f);
+        
+        // Escanear spawners cercanos
+        scanAndShowSpawners(player);
+        
+        return true;
+    }
+    
+    /**
+     * Activa X-Ray Diamantes - Resalta diamantes cercanos por 8 segundos
+     * Cooldown: 120 segundos
+     */
+    public boolean activateXrayDiamantes(Player player) {
+        UUID uuid = player.getUniqueId();
+        
+        if (!hasSkill(uuid, Skill.XRAY_DIAMANTES)) {
+            player.sendMessage("§c✗ No tienes la habilidad Sentido del Diamante");
+            return false;
+        }
+        
+        Long cooldownEnd = xrayDiamantesCooldowns.get(uuid);
+        if (cooldownEnd != null && System.currentTimeMillis() < cooldownEnd) {
+            long remaining = (cooldownEnd - System.currentTimeMillis()) / 1000;
+            player.sendMessage("§c✗ Sentido del Diamante en cooldown: §e" + remaining + "s");
+            return false;
+        }
+        
+        // Activar por 8 segundos
+        long duration = 8 * 1000;
+        xrayDiamantesActivo.put(uuid, System.currentTimeMillis() + duration);
+        
+        // Cooldown de 120 segundos (2 minutos)
+        xrayDiamantesCooldowns.put(uuid, System.currentTimeMillis() + 120 * 1000);
+        
+        player.sendMessage("§b§l✦ §bSentido del Diamante activado! §7(8s)");
+        player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 0.5f);
+        
+        // Escanear diamantes cercanos
+        scanAndHighlightDiamonds(player);
+        
+        return true;
+    }
+    
+    // Escanea y marca minerales valiosos (oro, hierro, cobre, etc)
+    private void scanAndHighlightOres(Player player) {
+        org.bukkit.Location center = player.getLocation();
+        int radius = 15;
+        int found = 0;
+        
+        for (int x = -radius; x <= radius; x++) {
+            for (int y = -radius; y <= radius; y++) {
+                for (int z = -radius; z <= radius; z++) {
+                    org.bukkit.block.Block block = center.clone().add(x, y, z).getBlock();
+                    if (isValuableOre(block.getType())) {
+                        // Mostrar partículas brillantes en el mineral
+                        player.spawnParticle(org.bukkit.Particle.HAPPY_VILLAGER, 
+                            block.getLocation().add(0.5, 0.5, 0.5), 5, 0.3, 0.3, 0.3, 0);
+                        found++;
+                    }
+                }
+            }
+        }
+        
+        if (found > 0) {
+            player.sendMessage("§6✦ §eEncontrados §a" + found + " §eminerales valiosos cerca!");
+        } else {
+            player.sendMessage("§7No hay minerales valiosos en un radio de " + radius + " bloques.");
+        }
+    }
+    
+    // Escanea y muestra dirección hacia spawners
+    private void scanAndShowSpawners(Player player) {
+        org.bukkit.Location center = player.getLocation();
+        int radius = 30;
+        java.util.List<org.bukkit.block.Block> spawners = new java.util.ArrayList<>();
+        
+        for (int x = -radius; x <= radius; x++) {
+            for (int y = -radius; y <= radius; y++) {
+                for (int z = -radius; z <= radius; z++) {
+                    org.bukkit.block.Block block = center.clone().add(x, y, z).getBlock();
+                    if (block.getType() == org.bukkit.Material.SPAWNER) {
+                        spawners.add(block);
+                    }
+                }
+            }
+        }
+        
+        if (spawners.isEmpty()) {
+            player.sendMessage("§7No hay spawners en un radio de " + radius + " bloques.");
+            return;
+        }
+        
+        player.sendMessage("§5✦ §d¡Detectados §a" + spawners.size() + " §dspawners!");
+        
+        // Mostrar partículas hacia cada spawner
+        for (org.bukkit.block.Block spawner : spawners) {
+            org.bukkit.Location spawnerLoc = spawner.getLocation().add(0.5, 0.5, 0.5);
+            double distance = center.distance(spawnerLoc);
+            
+            // Crear línea de partículas hacia el spawner
+            org.bukkit.util.Vector direction = spawnerLoc.toVector().subtract(center.toVector()).normalize();
+            for (double d = 1; d < Math.min(distance, 10); d += 0.5) {
+                org.bukkit.Location particleLoc = center.clone().add(direction.clone().multiply(d));
+                player.spawnParticle(org.bukkit.Particle.WITCH, particleLoc, 1, 0, 0, 0, 0);
+            }
+            
+            // Mostrar partículas en el spawner
+            player.spawnParticle(org.bukkit.Particle.FLAME, spawnerLoc, 20, 0.3, 0.3, 0.3, 0.02);
+            
+            // Mensaje con distancia
+            player.sendMessage("§8  → §7Spawner a §e" + (int)distance + " §7bloques");
+        }
+    }
+    
+    // Escanea y resalta diamantes/netherite
+    private void scanAndHighlightDiamonds(Player player) {
+        org.bukkit.Location center = player.getLocation();
+        int radius = 12;
+        int diamonds = 0;
+        int netherite = 0;
+        
+        for (int x = -radius; x <= radius; x++) {
+            for (int y = -radius; y <= radius; y++) {
+                for (int z = -radius; z <= radius; z++) {
+                    org.bukkit.block.Block block = center.clone().add(x, y, z).getBlock();
+                    org.bukkit.Material type = block.getType();
+                    
+                    if (type == org.bukkit.Material.DIAMOND_ORE || type == org.bukkit.Material.DEEPSLATE_DIAMOND_ORE) {
+                        // Partículas azules brillantes
+                        player.spawnParticle(org.bukkit.Particle.SOUL_FIRE_FLAME, 
+                            block.getLocation().add(0.5, 0.5, 0.5), 10, 0.3, 0.3, 0.3, 0.02);
+                        diamonds++;
+                    } else if (type == org.bukkit.Material.ANCIENT_DEBRIS) {
+                        // Partículas doradas
+                        player.spawnParticle(org.bukkit.Particle.LAVA, 
+                            block.getLocation().add(0.5, 0.5, 0.5), 5, 0.2, 0.2, 0.2, 0);
+                        netherite++;
+                    }
+                }
+            }
+        }
+        
+        StringBuilder msg = new StringBuilder("§b✦ ");
+        if (diamonds > 0) {
+            msg.append("§bDiamantes: §a").append(diamonds).append(" ");
+        }
+        if (netherite > 0) {
+            msg.append("§6Ancient Debris: §a").append(netherite);
+        }
+        if (diamonds == 0 && netherite == 0) {
+            msg.append("§7No hay diamantes/netherite en ").append(radius).append(" bloques.");
+        }
+        player.sendMessage(msg.toString());
+    }
+    
+    private boolean isValuableOre(org.bukkit.Material type) {
+        return type == org.bukkit.Material.IRON_ORE || 
+               type == org.bukkit.Material.DEEPSLATE_IRON_ORE ||
+               type == org.bukkit.Material.GOLD_ORE || 
+               type == org.bukkit.Material.DEEPSLATE_GOLD_ORE ||
+               type == org.bukkit.Material.COPPER_ORE || 
+               type == org.bukkit.Material.DEEPSLATE_COPPER_ORE ||
+               type == org.bukkit.Material.LAPIS_ORE || 
+               type == org.bukkit.Material.DEEPSLATE_LAPIS_ORE ||
+               type == org.bukkit.Material.REDSTONE_ORE || 
+               type == org.bukkit.Material.DEEPSLATE_REDSTONE_ORE ||
+               type == org.bukkit.Material.EMERALD_ORE || 
+               type == org.bukkit.Material.DEEPSLATE_EMERALD_ORE ||
+               type == org.bukkit.Material.NETHER_GOLD_ORE ||
+               type == org.bukkit.Material.NETHER_QUARTZ_ORE;
+    }
+    
+    // Obtener cooldown restante para mostrar en GUI
+    public long getRastroOroCooldown(UUID uuid) {
+        Long end = rastroOroCooldowns.get(uuid);
+        if (end == null) return 0;
+        return Math.max(0, end - System.currentTimeMillis());
+    }
+    
+    public long getDetectorSpawnersCooldown(UUID uuid) {
+        Long end = detectorSpawnersCooldowns.get(uuid);
+        if (end == null) return 0;
+        return Math.max(0, end - System.currentTimeMillis());
+    }
+    
+    public long getXrayDiamantesCooldown(UUID uuid) {
+        Long end = xrayDiamantesCooldowns.get(uuid);
+        if (end == null) return 0;
+        return Math.max(0, end - System.currentTimeMillis());
+    }
+    
     // ==================== ADMIN ====================
     
     public void giveSkill(Player player, Skill skill) {
@@ -578,6 +1083,664 @@ public class SkillService {
         saveData();
     }
     
+    // ==================== INVOCACIONES ====================
+    
+    /**
+     * Invoca un lobo compañero que sigue y protege al jugador
+     * Duración: 15 minutos, Cooldown: 20 minutos
+     */
+    public boolean invocarLobo(Player player) {
+        UUID uuid = player.getUniqueId();
+        
+        if (!hasSkill(uuid, Skill.LOBO_COMPANERO) && !hasSkill(uuid, Skill.MANADA_LOBOS)) {
+            player.sendMessage("§c✗ No tienes la habilidad Lobo Compañero");
+            return false;
+        }
+        
+        // Verificar cooldown
+        Long cooldownEnd = loboCompañeroCooldowns.get(uuid);
+        if (cooldownEnd != null && System.currentTimeMillis() < cooldownEnd) {
+            long remaining = (cooldownEnd - System.currentTimeMillis()) / 1000;
+            player.sendMessage("§c✗ Lobo Compañero en cooldown: §e" + formatTime(remaining));
+            return false;
+        }
+        
+        // Limpiar lobos anteriores de este jugador
+        despawnEntidades(uuid);
+        
+        int cantidad = hasSkill(uuid, Skill.MANADA_LOBOS) ? 3 : 1;
+        boolean mejorado = hasSkill(uuid, Skill.DOMADOR_BESTIAS);
+        
+        for (int i = 0; i < cantidad; i++) {
+            org.bukkit.Location loc = player.getLocation().add(
+                (Math.random() - 0.5) * 2, 0, (Math.random() - 0.5) * 2);
+            org.bukkit.entity.Wolf wolf = player.getWorld().spawn(loc, org.bukkit.entity.Wolf.class);
+            wolf.setTamed(true);
+            wolf.setOwner(player);
+            wolf.setCustomName("§b" + player.getName() + "'s Wolf");
+            wolf.setCustomNameVisible(true);
+            
+            if (mejorado) {
+                // 2x más fuerte con DOMADOR_BESTIAS
+                wolf.getAttribute(Attribute.MAX_HEALTH).setBaseValue(40); // 20 hearts
+                wolf.setHealth(40);
+                wolf.getAttribute(Attribute.ATTACK_DAMAGE).setBaseValue(8); // 4 hearts damage
+            }
+            
+            // Registrar entidad
+            entidadesInvocadas.computeIfAbsent(uuid, k -> new java.util.ArrayList<>())
+                .add(wolf.getUniqueId());
+        }
+        
+        // Programar despawn después de 15 minutos
+        Bukkit.getScheduler().runTaskLater(plugin, () -> despawnEntidades(uuid), 15 * 60 * 20L);
+        
+        // Cooldown de 20 minutos
+        loboCompañeroCooldowns.put(uuid, System.currentTimeMillis() + 20 * 60 * 1000);
+        
+        String msg = cantidad > 1 ? "§b§l🐺 ¡Manada de " + cantidad + " lobos invocada! §7(15 min)" 
+                                  : "§b§l🐺 ¡Lobo compañero invocado! §7(15 min)";
+        player.sendMessage(msg);
+        player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_WOLF_AMBIENT, 1.0f, 0.8f);
+        
+        return true;
+    }
+    
+    /**
+     * Invoca un gato guardián que ahuyenta creepers y phantoms
+     * Duración: 20 minutos, Cooldown: 25 minutos
+     */
+    public boolean invocarGato(Player player) {
+        UUID uuid = player.getUniqueId();
+        
+        if (!hasSkill(uuid, Skill.GATO_GUARDIAN)) {
+            player.sendMessage("§c✗ No tienes la habilidad Gato Guardián");
+            return false;
+        }
+        
+        Long cooldownEnd = gatoGuardianCooldowns.get(uuid);
+        if (cooldownEnd != null && System.currentTimeMillis() < cooldownEnd) {
+            long remaining = (cooldownEnd - System.currentTimeMillis()) / 1000;
+            player.sendMessage("§c✗ Gato Guardián en cooldown: §e" + formatTime(remaining));
+            return false;
+        }
+        
+        // Limpiar entidades anteriores
+        despawnEntidades(uuid);
+        
+        boolean mejorado = hasSkill(uuid, Skill.DOMADOR_BESTIAS);
+        
+        org.bukkit.entity.Cat cat = player.getWorld().spawn(player.getLocation(), org.bukkit.entity.Cat.class);
+        cat.setTamed(true);
+        cat.setOwner(player);
+        cat.setCustomName("§e" + player.getName() + "'s Guardian");
+        cat.setCustomNameVisible(true);
+        
+        if (mejorado) {
+            cat.getAttribute(Attribute.MAX_HEALTH).setBaseValue(40);
+            cat.setHealth(40);
+        }
+        
+        entidadesInvocadas.computeIfAbsent(uuid, k -> new java.util.ArrayList<>())
+            .add(cat.getUniqueId());
+        
+        // Despawn después de 20 minutos
+        Bukkit.getScheduler().runTaskLater(plugin, () -> despawnEntidades(uuid), 20 * 60 * 20L);
+        
+        // Cooldown 25 minutos
+        gatoGuardianCooldowns.put(uuid, System.currentTimeMillis() + 25 * 60 * 1000);
+        
+        player.sendMessage("§e§l🐱 ¡Gato guardián invocado! §7(20 min)");
+        player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_CAT_PURREOW, 1.0f, 1.0f);
+        
+        return true;
+    }
+    
+    /**
+     * Invoca un allay recolector que recoge items cercanos
+     * Duración: 10 minutos, Cooldown: 15 minutos
+     */
+    public boolean invocarAllay(Player player) {
+        UUID uuid = player.getUniqueId();
+        
+        if (!hasSkill(uuid, Skill.ALLAY_RECOLECTOR)) {
+            player.sendMessage("§c✗ No tienes la habilidad Allay Recolector");
+            return false;
+        }
+        
+        Long cooldownEnd = allayRecolectorCooldowns.get(uuid);
+        if (cooldownEnd != null && System.currentTimeMillis() < cooldownEnd) {
+            long remaining = (cooldownEnd - System.currentTimeMillis()) / 1000;
+            player.sendMessage("§c✗ Allay Recolector en cooldown: §e" + formatTime(remaining));
+            return false;
+        }
+        
+        despawnEntidades(uuid);
+        
+        org.bukkit.entity.Allay allay = player.getWorld().spawn(player.getLocation().add(0, 1, 0), org.bukkit.entity.Allay.class);
+        allay.setCustomName("§d" + player.getName() + "'s Allay");
+        allay.setCustomNameVisible(true);
+        
+        entidadesInvocadas.computeIfAbsent(uuid, k -> new java.util.ArrayList<>())
+            .add(allay.getUniqueId());
+        
+        // Task para que el allay recoja items y los lleve al jugador
+        final UUID allayId = allay.getUniqueId();
+        Bukkit.getScheduler().runTaskTimer(plugin, task -> {
+            Player p = Bukkit.getPlayer(uuid);
+            if (p == null || !p.isOnline()) {
+                despawnEntidades(uuid);
+                task.cancel();
+                return;
+            }
+            
+            org.bukkit.entity.Entity entity = Bukkit.getEntity(allayId);
+            if (entity == null || entity.isDead()) {
+                task.cancel();
+                return;
+            }
+            
+            // Buscar items cercanos al allay y llevarlos al jugador
+            for (org.bukkit.entity.Entity e : entity.getNearbyEntities(8, 4, 8)) {
+                if (e instanceof org.bukkit.entity.Item item) {
+                    // Teleportar item al jugador
+                    item.teleport(p.getLocation());
+                }
+            }
+        }, 20L, 40L); // Cada 2 segundos
+        
+        // Despawn después de 10 minutos
+        Bukkit.getScheduler().runTaskLater(plugin, () -> despawnEntidades(uuid), 10 * 60 * 20L);
+        
+        // Cooldown 15 minutos
+        allayRecolectorCooldowns.put(uuid, System.currentTimeMillis() + 15 * 60 * 1000);
+        
+        player.sendMessage("§d§l✧ ¡Allay recolector invocado! §7(10 min)");
+        player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_ALLAY_AMBIENT_WITHOUT_ITEM, 1.0f, 1.0f);
+        
+        return true;
+    }
+    
+    /**
+     * Invoca abejas que atacan a quien dañe al jugador
+     * Duración: 5 minutos, Cooldown: 10 minutos
+     */
+    public boolean invocarAbejas(Player player) {
+        UUID uuid = player.getUniqueId();
+        
+        if (!hasSkill(uuid, Skill.ABEJAS_PROTECTORAS)) {
+            player.sendMessage("§c✗ No tienes la habilidad Abejas Protectoras");
+            return false;
+        }
+        
+        if (!isSkillEnabled(uuid, Skill.ABEJAS_PROTECTORAS)) {
+            player.sendMessage("§c✗ Abejas Protectoras está desactivada");
+            return false;
+        }
+        
+        Long cooldownEnd = abejasProtectorasCooldowns.get(uuid);
+        if (cooldownEnd != null && System.currentTimeMillis() < cooldownEnd) {
+            long remaining = (cooldownEnd - System.currentTimeMillis()) / 1000;
+            player.sendMessage("§c✗ Abejas Protectoras en cooldown: §e" + formatTime(remaining));
+            return false;
+        }
+        
+        despawnEntidades(uuid);
+        
+        boolean mejorado = hasSkill(uuid, Skill.DOMADOR_BESTIAS);
+        int cantidad = mejorado ? 6 : 3;
+        
+        for (int i = 0; i < cantidad; i++) {
+            org.bukkit.Location loc = player.getLocation().add(
+                (Math.random() - 0.5) * 3, 1 + Math.random(), (Math.random() - 0.5) * 3);
+            org.bukkit.entity.Bee bee = player.getWorld().spawn(loc, org.bukkit.entity.Bee.class);
+            bee.setCustomName("§6" + player.getName() + "'s Bee");
+            bee.setCustomNameVisible(false);
+            
+            if (mejorado) {
+                bee.getAttribute(Attribute.MAX_HEALTH).setBaseValue(20);
+                bee.setHealth(20);
+            }
+            
+            entidadesInvocadas.computeIfAbsent(uuid, k -> new java.util.ArrayList<>())
+                .add(bee.getUniqueId());
+        }
+        
+        // Despawn después de 5 minutos
+        Bukkit.getScheduler().runTaskLater(plugin, () -> despawnEntidades(uuid), 5 * 60 * 20L);
+        
+        // Cooldown 10 minutos
+        abejasProtectorasCooldowns.put(uuid, System.currentTimeMillis() + 10 * 60 * 1000);
+        
+        player.sendMessage("§6§l🐝 ¡" + cantidad + " abejas protectoras invocadas! §7(5 min)");
+        player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_BEE_LOOP, 1.0f, 1.0f);
+        
+        return true;
+    }
+    
+    /**
+     * Invoca un gólem de hierro temporal
+     * Duración: 5 minutos, Cooldown: 10 minutos
+     */
+    public boolean invocarGolem(Player player) {
+        UUID uuid = player.getUniqueId();
+        
+        if (!hasSkill(uuid, Skill.GOLEM_PROTECTOR)) {
+            player.sendMessage("§c✗ No tienes la habilidad Gólem Protector");
+            return false;
+        }
+        
+        Long cooldownEnd = golemProtectorCooldowns.get(uuid);
+        if (cooldownEnd != null && System.currentTimeMillis() < cooldownEnd) {
+            long remaining = (cooldownEnd - System.currentTimeMillis()) / 1000;
+            player.sendMessage("§c✗ Gólem Protector en cooldown: §e" + formatTime(remaining));
+            return false;
+        }
+        
+        despawnEntidades(uuid);
+        
+        boolean mejorado = hasSkill(uuid, Skill.DOMADOR_BESTIAS);
+        
+        org.bukkit.entity.IronGolem golem = player.getWorld().spawn(player.getLocation(), org.bukkit.entity.IronGolem.class);
+        golem.setPlayerCreated(true);
+        golem.setCustomName("§7" + player.getName() + "'s Golem");
+        golem.setCustomNameVisible(true);
+        
+        if (mejorado) {
+            golem.getAttribute(Attribute.MAX_HEALTH).setBaseValue(200); // 100 hearts
+            golem.setHealth(200);
+            golem.getAttribute(Attribute.ATTACK_DAMAGE).setBaseValue(30);
+        }
+        
+        entidadesInvocadas.computeIfAbsent(uuid, k -> new java.util.ArrayList<>())
+            .add(golem.getUniqueId());
+        
+        // Despawn después de 5 minutos
+        Bukkit.getScheduler().runTaskLater(plugin, () -> despawnEntidades(uuid), 5 * 60 * 20L);
+        
+        // Cooldown 10 minutos
+        golemProtectorCooldowns.put(uuid, System.currentTimeMillis() + 10 * 60 * 1000);
+        
+        player.sendMessage("§7§l🛡 ¡Gólem de hierro invocado! §7(5 min)");
+        player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_IRON_GOLEM_REPAIR, 1.0f, 0.8f);
+        
+        return true;
+    }
+    
+    /**
+     * Invoca Vex vengadores que atacan al objetivo
+     * Duración: 30 segundos, Cooldown: 3 minutos
+     */
+    public boolean invocarVex(Player player, org.bukkit.entity.LivingEntity target) {
+        UUID uuid = player.getUniqueId();
+        
+        if (!hasSkill(uuid, Skill.VEX_VENGADOR)) {
+            player.sendMessage("§c✗ No tienes la habilidad Vex Vengador");
+            return false;
+        }
+        
+        if (target == null) {
+            player.sendMessage("§c✗ Debes mirar a un objetivo");
+            return false;
+        }
+        
+        Long cooldownEnd = vexVengadorCooldowns.get(uuid);
+        if (cooldownEnd != null && System.currentTimeMillis() < cooldownEnd) {
+            long remaining = (cooldownEnd - System.currentTimeMillis()) / 1000;
+            player.sendMessage("§c✗ Vex Vengador en cooldown: §e" + formatTime(remaining));
+            return false;
+        }
+        
+        boolean mejorado = hasSkill(uuid, Skill.DOMADOR_BESTIAS);
+        int cantidad = mejorado ? 4 : 2;
+        
+        for (int i = 0; i < cantidad; i++) {
+            org.bukkit.Location loc = player.getLocation().add(0, 1.5, 0);
+            org.bukkit.entity.Vex vex = player.getWorld().spawn(loc, org.bukkit.entity.Vex.class);
+            vex.setCustomName("§5" + player.getName() + "'s Vex");
+            vex.setCustomNameVisible(false);
+            
+            // Hacer que ataque al objetivo
+            ((org.bukkit.entity.Mob) vex).setTarget(target);
+            
+            if (mejorado) {
+                vex.getAttribute(Attribute.MAX_HEALTH).setBaseValue(30);
+                vex.setHealth(30);
+            }
+            
+            // Auto-despawn después de 30 segundos
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (!vex.isDead()) vex.remove();
+            }, 30 * 20L);
+        }
+        
+        // Cooldown 3 minutos
+        vexVengadorCooldowns.put(uuid, System.currentTimeMillis() + 3 * 60 * 1000);
+        
+        player.sendMessage("§5§l⚔ ¡" + cantidad + " Vex vengadores invocados! §7(30s)");
+        player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_VEX_CHARGE, 1.0f, 1.0f);
+        
+        return true;
+    }
+    
+    /**
+     * Invoca un mini-warden aliado temporal
+     * Duración: 30 segundos, Cooldown: 30 minutos
+     */
+    public boolean invocarWarden(Player player) {
+        UUID uuid = player.getUniqueId();
+        
+        if (!hasSkill(uuid, Skill.WARDEN_TEMPORAL)) {
+            player.sendMessage("§c✗ No tienes la habilidad Warden Temporal");
+            return false;
+        }
+        
+        Long cooldownEnd = wardenTemporalCooldowns.get(uuid);
+        if (cooldownEnd != null && System.currentTimeMillis() < cooldownEnd) {
+            long remaining = (cooldownEnd - System.currentTimeMillis()) / 1000;
+            player.sendMessage("§c✗ Warden Temporal en cooldown: §e" + formatTime(remaining));
+            return false;
+        }
+        
+        // Invocar un Warden real aliado
+        org.bukkit.entity.Warden warden = player.getWorld().spawn(player.getLocation(), org.bukkit.entity.Warden.class);
+        warden.setCustomName("§4§l" + player.getName() + "'s Warden");
+        warden.setCustomNameVisible(true);
+        
+        boolean mejorado = hasSkill(uuid, Skill.DOMADOR_BESTIAS);
+        double health = mejorado ? 1000 : 500; // Warden normal tiene 500
+        double damage = mejorado ? 60 : 30;    // Warden normal hace ~30 daño
+        
+        warden.getAttribute(Attribute.MAX_HEALTH).setBaseValue(health);
+        warden.setHealth(health);
+        warden.getAttribute(Attribute.ATTACK_DAMAGE).setBaseValue(damage);
+        
+        // Evitar que ataque al jugador dueño
+        warden.setAnger(player, 0);
+        
+        entidadesInvocadas.computeIfAbsent(uuid, k -> new java.util.ArrayList<>())
+            .add(warden.getUniqueId());
+        
+        // Task para hacer que ataque mobs hostiles cercanos
+        final UUID wardenId = warden.getUniqueId();
+        Bukkit.getScheduler().runTaskTimer(plugin, task -> {
+            org.bukkit.entity.Entity entity = Bukkit.getEntity(wardenId);
+            if (entity == null || entity.isDead()) {
+                task.cancel();
+                return;
+            }
+            
+            org.bukkit.entity.Mob mob = (org.bukkit.entity.Mob) entity;
+            for (org.bukkit.entity.Entity e : entity.getNearbyEntities(10, 5, 10)) {
+                if (e instanceof org.bukkit.entity.Monster && !(e instanceof org.bukkit.entity.Player)) {
+                    mob.setTarget((org.bukkit.entity.LivingEntity) e);
+                    break;
+                }
+            }
+        }, 20L, 40L);
+        
+        // Despawn después de 30 segundos
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            org.bukkit.entity.Entity entity = Bukkit.getEntity(wardenId);
+            if (entity != null && !entity.isDead()) {
+                entity.remove();
+                Player p = Bukkit.getPlayer(uuid);
+                if (p != null) {
+                    p.sendMessage("§4§l☠ Tu Warden temporal se ha desvanecido...");
+                }
+            }
+        }, 30 * 20L);
+        
+        // Cooldown 30 minutos
+        wardenTemporalCooldowns.put(uuid, System.currentTimeMillis() + 30 * 60 * 1000);
+        
+        player.sendMessage("§4§l☠ ¡WARDEN TEMPORAL INVOCADO! §7(30s)");
+        player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_WARDEN_ROAR, 1.0f, 1.0f);
+        
+        return true;
+    }
+    
+    /**
+     * Elimina todas las entidades invocadas por un jugador
+     */
+    public void despawnEntidades(UUID uuid) {
+        java.util.List<UUID> entidades = entidadesInvocadas.remove(uuid);
+        if (entidades == null) return;
+        
+        for (UUID entityId : entidades) {
+            org.bukkit.entity.Entity entity = Bukkit.getEntity(entityId);
+            if (entity != null && !entity.isDead()) {
+                entity.remove();
+            }
+        }
+    }
+    
+    /**
+     * Obtiene las entidades invocadas por un jugador
+     */
+    public java.util.List<UUID> getEntidadesInvocadas(UUID uuid) {
+        return entidadesInvocadas.get(uuid);
+    }
+    
+    /**
+     * Formatea tiempo en segundos a formato legible
+     */
+    private String formatTime(long seconds) {
+        if (seconds < 60) return seconds + "s";
+        long min = seconds / 60;
+        long sec = seconds % 60;
+        return min + "m " + sec + "s";
+    }
+    
+    // Getters para cooldowns de invocación
+    public long getLoboCooldown(UUID uuid) {
+        Long end = loboCompañeroCooldowns.get(uuid);
+        return end == null ? 0 : Math.max(0, end - System.currentTimeMillis());
+    }
+    
+    public long getGatoCooldown(UUID uuid) {
+        Long end = gatoGuardianCooldowns.get(uuid);
+        return end == null ? 0 : Math.max(0, end - System.currentTimeMillis());
+    }
+    
+    public long getAllayCooldown(UUID uuid) {
+        Long end = allayRecolectorCooldowns.get(uuid);
+        return end == null ? 0 : Math.max(0, end - System.currentTimeMillis());
+    }
+    
+    public long getAbejasCooldown(UUID uuid) {
+        Long end = abejasProtectorasCooldowns.get(uuid);
+        return end == null ? 0 : Math.max(0, end - System.currentTimeMillis());
+    }
+    
+    public long getGolemCooldown(UUID uuid) {
+        Long end = golemProtectorCooldowns.get(uuid);
+        return end == null ? 0 : Math.max(0, end - System.currentTimeMillis());
+    }
+    
+    public long getVexCooldown(UUID uuid) {
+        Long end = vexVengadorCooldowns.get(uuid);
+        return end == null ? 0 : Math.max(0, end - System.currentTimeMillis());
+    }
+    
+    public long getWardenCooldown(UUID uuid) {
+        Long end = wardenTemporalCooldowns.get(uuid);
+        return end == null ? 0 : Math.max(0, end - System.currentTimeMillis());
+    }
+    
+    // ==================== SINERGIAS AVANZADAS ====================
+    
+    /**
+     * OMNIPRESENTE - Ver a través de paredes por 5 segundos
+     * Cooldown: 2 minutos
+     */
+    public boolean activateOmnipresente(Player player) {
+        UUID uuid = player.getUniqueId();
+        
+        if (!hasSkill(uuid, Skill.OMNIPRESENTE)) {
+            player.sendMessage("§c✗ No tienes la habilidad Omnipresente");
+            return false;
+        }
+        
+        Long cooldownEnd = omnipresenteCooldowns.get(uuid);
+        if (cooldownEnd != null && System.currentTimeMillis() < cooldownEnd) {
+            long remaining = (cooldownEnd - System.currentTimeMillis()) / 1000;
+            player.sendMessage("§c✗ Omnipresente en cooldown: §e" + formatTime(remaining));
+            return false;
+        }
+        
+        // Efecto de visión espectral (ver mobs a través de paredes)
+        player.addPotionEffect(new org.bukkit.potion.PotionEffect(
+            org.bukkit.potion.PotionEffectType.GLOWING, 100, 0, true, false)); // 5s
+        
+        // También dar visión nocturna
+        player.addPotionEffect(new org.bukkit.potion.PotionEffect(
+            org.bukkit.potion.PotionEffectType.NIGHT_VISION, 100, 0, true, false));
+        
+        // Resaltar TODOS los bloques importantes cercanos (minerales, cofres, spawners)
+        scanEverything(player);
+        
+        // Cooldown 2 minutos
+        omnipresenteCooldowns.put(uuid, System.currentTimeMillis() + 2 * 60 * 1000);
+        
+        player.sendMessage("§5§l✦ §dOmnipresente activado! §7(5s)");
+        player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_ELDER_GUARDIAN_CURSE, 0.5f, 1.5f);
+        
+        return true;
+    }
+    
+    private void scanEverything(Player player) {
+        org.bukkit.Location center = player.getLocation();
+        int radius = 20;
+        int foundOres = 0;
+        int foundChests = 0;
+        int foundSpawners = 0;
+        
+        for (int x = -radius; x <= radius; x++) {
+            for (int y = -radius; y <= radius; y++) {
+                for (int z = -radius; z <= radius; z++) {
+                    org.bukkit.block.Block block = center.clone().add(x, y, z).getBlock();
+                    org.bukkit.Material type = block.getType();
+                    
+                    // Minerales
+                    if (isValuableOre(type) || type == org.bukkit.Material.DIAMOND_ORE || 
+                        type == org.bukkit.Material.DEEPSLATE_DIAMOND_ORE ||
+                        type == org.bukkit.Material.ANCIENT_DEBRIS) {
+                        player.spawnParticle(org.bukkit.Particle.HAPPY_VILLAGER, 
+                            block.getLocation().add(0.5, 0.5, 0.5), 3, 0.2, 0.2, 0.2, 0);
+                        foundOres++;
+                    }
+                    // Cofres
+                    else if (type == org.bukkit.Material.CHEST || 
+                             type == org.bukkit.Material.TRAPPED_CHEST ||
+                             type == org.bukkit.Material.BARREL) {
+                        player.spawnParticle(org.bukkit.Particle.CRIT, 
+                            block.getLocation().add(0.5, 0.5, 0.5), 5, 0.2, 0.2, 0.2, 0);
+                        foundChests++;
+                    }
+                    // Spawners
+                    else if (type == org.bukkit.Material.SPAWNER) {
+                        player.spawnParticle(org.bukkit.Particle.FLAME, 
+                            block.getLocation().add(0.5, 0.5, 0.5), 10, 0.3, 0.3, 0.3, 0.02);
+                        foundSpawners++;
+                    }
+                }
+            }
+        }
+        
+        if (foundOres > 0 || foundChests > 0 || foundSpawners > 0) {
+            player.sendMessage("§5✦ §dDetectado: §e" + foundOres + " §7minerales, §e" + 
+                foundChests + " §7cofres, §e" + foundSpawners + " §7spawners");
+        }
+    }
+    
+    /**
+     * AVATAR DEL CAOS - Activa TODAS las habilidades toggleables por 30 segundos
+     * Cooldown: 1 hora
+     */
+    public boolean activateAvatarCaos(Player player) {
+        UUID uuid = player.getUniqueId();
+        
+        if (!hasSkill(uuid, Skill.AVATAR_CAOS)) {
+            player.sendMessage("§c✗ No tienes la habilidad Avatar del Caos");
+            return false;
+        }
+        
+        Long cooldownEnd = avatarCaosCooldowns.get(uuid);
+        if (cooldownEnd != null && System.currentTimeMillis() < cooldownEnd) {
+            long remaining = (cooldownEnd - System.currentTimeMillis()) / 1000;
+            player.sendMessage("§c✗ Avatar del Caos en cooldown: §e" + formatTime(remaining));
+            return false;
+        }
+        
+        // Aplicar TODOS los efectos posibles
+        player.sendMessage("§4§l⚡ §c§lAVATAR DEL CAOS ACTIVADO!");
+        player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_WITHER_SPAWN, 0.5f, 1.2f);
+        
+        // Vida extra temporal (absorción)
+        player.addPotionEffect(new org.bukkit.potion.PotionEffect(
+            org.bukkit.potion.PotionEffectType.ABSORPTION, 600, 4, true, true)); // 10 hearts extra
+        
+        // Velocidad máxima
+        player.addPotionEffect(new org.bukkit.potion.PotionEffect(
+            org.bukkit.potion.PotionEffectType.SPEED, 600, 2, true, true));
+        
+        // Fuerza
+        player.addPotionEffect(new org.bukkit.potion.PotionEffect(
+            org.bukkit.potion.PotionEffectType.STRENGTH, 600, 1, true, true));
+        
+        // Haste
+        player.addPotionEffect(new org.bukkit.potion.PotionEffect(
+            org.bukkit.potion.PotionEffectType.HASTE, 600, 2, true, true));
+        
+        // Resistencia
+        player.addPotionEffect(new org.bukkit.potion.PotionEffect(
+            org.bukkit.potion.PotionEffectType.RESISTANCE, 600, 1, true, true));
+        
+        // Regeneración
+        player.addPotionEffect(new org.bukkit.potion.PotionEffect(
+            org.bukkit.potion.PotionEffectType.REGENERATION, 600, 1, true, true));
+        
+        // Visión nocturna
+        player.addPotionEffect(new org.bukkit.potion.PotionEffect(
+            org.bukkit.potion.PotionEffectType.NIGHT_VISION, 600, 0, true, true));
+        
+        // Fire resistance
+        player.addPotionEffect(new org.bukkit.potion.PotionEffect(
+            org.bukkit.potion.PotionEffectType.FIRE_RESISTANCE, 600, 0, true, true));
+        
+        // Water breathing
+        player.addPotionEffect(new org.bukkit.potion.PotionEffect(
+            org.bukkit.potion.PotionEffectType.WATER_BREATHING, 600, 0, true, true));
+        
+        // Dolphins grace
+        player.addPotionEffect(new org.bukkit.potion.PotionEffect(
+            org.bukkit.potion.PotionEffectType.DOLPHINS_GRACE, 600, 0, true, true));
+        
+        // Jump boost
+        player.addPotionEffect(new org.bukkit.potion.PotionEffect(
+            org.bukkit.potion.PotionEffectType.JUMP_BOOST, 600, 1, true, true));
+        
+        // Efectos visuales épicos
+        player.getWorld().spawnParticle(org.bukkit.Particle.EXPLOSION_EMITTER, player.getLocation(), 1);
+        
+        // Mensaje a todos los jugadores
+        Bukkit.broadcastMessage("§4§l⚡ §c" + player.getName() + " §fha desatado el §4§lAVATAR DEL CAOS§f!");
+        
+        // Cooldown 1 hora
+        avatarCaosCooldowns.put(uuid, System.currentTimeMillis() + 60 * 60 * 1000);
+        
+        // Mensaje de fin después de 30 segundos
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            Player p = Bukkit.getPlayer(uuid);
+            if (p != null && p.isOnline()) {
+                p.sendMessage("§7El poder del Avatar del Caos se desvanece...");
+            }
+        }, 600L);
+        
+        return true;
+    }
+    
     // ==================== SHUTDOWN ====================
     
     public void shutdown() {
@@ -593,29 +1756,50 @@ public class SkillService {
     private static class PlayerSkillData {
         private final Set<Skill> skills;
         private final Set<Skill> disabledToggles;
+        private final Map<Skill, SkillLevel> skillLevels; // NUEVO: niveles por skill
         private int xpGastada;
         
         public PlayerSkillData() {
             this.skills = new HashSet<>();
             this.disabledToggles = new HashSet<>();
+            this.skillLevels = new HashMap<>();
             this.xpGastada = 0;
         }
         
-        public PlayerSkillData(Set<Skill> skills, Set<Skill> disabledToggles, int xpGastada) {
+        public PlayerSkillData(Set<Skill> skills, Set<Skill> disabledToggles, 
+                               Map<Skill, SkillLevel> skillLevels, int xpGastada) {
             this.skills = new HashSet<>(skills);
             this.disabledToggles = new HashSet<>(disabledToggles);
+            this.skillLevels = new HashMap<>(skillLevels);
             this.xpGastada = xpGastada;
         }
         
         public Set<Skill> getSkills() { return skills; }
         public Set<Skill> getDisabledToggles() { return disabledToggles; }
+        public Map<Skill, SkillLevel> getSkillLevels() { return skillLevels; }
         public int getXpGastada() { return xpGastada; }
         
         public boolean hasSkill(Skill skill) { return skills.contains(skill); }
-        public void addSkill(Skill skill) { skills.add(skill); }
+        public void addSkill(Skill skill) { 
+            skills.add(skill);
+            if (!skillLevels.containsKey(skill)) {
+                skillLevels.put(skill, SkillLevel.LEVEL_1); // Nivel inicial
+            }
+        }
         public void removeSkill(Skill skill) { 
             skills.remove(skill); 
             disabledToggles.remove(skill);
+            skillLevels.remove(skill);
+        }
+        
+        public SkillLevel getSkillLevel(Skill skill) {
+            return skillLevels.getOrDefault(skill, SkillLevel.LEVEL_1);
+        }
+        
+        public void setSkillLevel(Skill skill, SkillLevel level) {
+            if (skills.contains(skill)) {
+                skillLevels.put(skill, level);
+            }
         }
         
         public boolean isToggleDisabled(Skill skill) { return disabledToggles.contains(skill); }
