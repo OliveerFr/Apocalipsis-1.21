@@ -2706,56 +2706,99 @@ public class SusurroPiedraRotaEvent extends EventBase {
                 Integer altarRegistrado = altarActualJugador.get(player.getUniqueId());
                 if (altarRegistrado == null || altarRegistrado != altarActualGlobal) {
                     String nombreAltar = obtenerNombreAltar(altarActualGlobal);
-                    player.sendMessage("");
-                    player.sendMessage("§5§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-                    player.sendMessage("");
-                    player.sendMessage("§8⧖ " + nombreAltar);
-                    player.sendMessage("§7Un fragmento de memoria corrupta");
-                    player.sendMessage("");
                     
-                    // Mostrar propósito del altar según número
+                    // 🎭 TÍTULO CINEMATOGRÁFICO según altar
                     switch (altarActualGlobal) {
-                        case 1:
-                            player.sendMessage("§8El Observador§7: §o\"...siente el susurro de la piedra...\"");
-                            player.sendMessage("§8El Observador§7: §o\"...el mundo recuerda... mal...\"");
-                            player.sendMessage("§7");
-                            player.sendMessage("§7Este altar guarda la primera memoria fragmentada.");
-                            player.sendMessage("§7Debes sincronizarte con su resonancia.");
-                            break;
-                        case 2:
-                            player.sendMessage("§8El Observador§7: §o\"...objetos del vacío...\"");
-                            player.sendMessage("§8El Observador§7: §o\"...que atravesaron dimensiones...\"");
-                            player.sendMessage("§7");
-                            player.sendMessage("§7Este altar ansía energía dimensional.");
-                            player.sendMessage("§7Necesita ser alimentado con poder del End.");
-                            break;
-                        case 3:
-                            player.sendMessage("§8El Observador§7: §o\"...esencia vital...\"");
-                            player.sendMessage("§8El Observador§7: §o\"...el precio del recuerdo...\"");
-                            player.sendMessage("§7");
-                            player.sendMessage("§7Este altar requiere un sacrificio.");
-                            player.sendMessage("§7La vida alimenta la memoria rota.");
-                            break;
-                        case 4:
-                            player.sendMessage("§8El Observador§7: §o\"...copias erróneas emergen...\"");
-                            player.sendMessage("§8El Observador§7: §o\"...el mundo se multiplica mal...\"");
-                            player.sendMessage("§7");
-                            player.sendMessage("§7Este altar está corrompido.");
-                            player.sendMessage("§7Elimina los errores para purificarlo.");
-                            break;
-                        case 5:
-                            player.sendMessage("§8El Observador§7: §o\"...los fragmentos resuenan juntos...\"");
-                            player.sendMessage("§8El Observador§7: §o\"...pero algo más despierta...\"");
-                            player.sendMessage("§7");
-                            player.sendMessage("§7Este es el altar final.");
-                            player.sendMessage("§7La unión revelará la verdad.");
-                            break;
+                        case 1 -> {
+                            player.sendTitle("§5§l✦", "§d§oEl altar del despertar aguarda...", 10, 60, 20);
+                            soundUtil.playSound(player, Sound.ENTITY_WARDEN_HEARTBEAT, 0.5f, 0.6f);
+                        }
+                        case 2 -> {
+                            player.sendTitle("§5§l✦", "§d§oLa resonancia del vacío te llama...", 10, 60, 20);
+                            soundUtil.playSound(player, Sound.ENTITY_ENDERMAN_AMBIENT, 0.5f, 0.5f);
+                        }
+                        case 3 -> {
+                            player.sendTitle("§c§l✦", "§4§oEl altar exige un precio...", 10, 60, 20);
+                            soundUtil.playSound(player, Sound.ENTITY_WARDEN_AMBIENT, 0.5f, 0.5f);
+                        }
+                        case 4 -> {
+                            player.sendTitle("§6§l✦", "§e§oRecuerdos corruptos emergen...", 10, 60, 20);
+                            soundUtil.playSound(player, Sound.ENTITY_WITHER_AMBIENT, 0.4f, 0.7f);
+                        }
+                        case 5 -> {
+                            player.sendTitle("§d§l✦", "§5§oEl altar final espera...", 10, 60, 20);
+                            soundUtil.playSound(player, Sound.BLOCK_END_PORTAL_SPAWN, 0.4f, 0.8f);
+                        }
                     }
                     
-                    player.sendMessage("");
-                    player.sendMessage("§e⚠ Espera a que todos lleguen para comenzar");
-                    player.sendMessage("§5§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-                    player.sendMessage("");
+                    // Pausa dramática antes del panel
+                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                        if (!player.isOnline()) return;
+                        
+                        player.sendMessage("");
+                        player.sendMessage("§5§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                        player.sendMessage("");
+                        player.sendMessage("§8⧖ " + nombreAltar);
+                        player.sendMessage("§7Un fragmento de memoria corrupta late en la oscuridad...");
+                        player.sendMessage("");
+                        
+                        // Mostrar propósito del altar según número - MÁS ÉPICO Y EMOTIVO
+                        switch (altarActualGlobal) {
+                            case 1 -> {
+                                player.sendMessage("§5§oEl Observador susurra:");
+                                player.sendMessage("§8  \"...sienten eso? La piedra los reconoce...\"");
+                                player.sendMessage("§8  \"...después de tanto tiempo... alguien escucha...\"");
+                                player.sendMessage("");
+                                player.sendMessage("§7✦ Este altar guarda la primera memoria fragmentada.");
+                                player.sendMessage("§7✦ Permanezcan §einmóviles§7... y dejen que los recuerdos fluyan.");
+                                player.sendMessage("§8  La sincronización requiere silencio absoluto.");
+                            }
+                            case 2 -> {
+                                player.sendMessage("§5§oEl Observador susurra:");
+                                player.sendMessage("§8  \"...objetos del vacío... que atravesaron dimensiones...\"");
+                                player.sendMessage("§8  \"...el altar los anhela... como un niño perdido...\"");
+                                player.sendMessage("");
+                                player.sendMessage("§7✦ Este altar ansía energía dimensional.");
+                                player.sendMessage("§7✦ Lancen §eEnder Pearls§7 hacia su centro.");
+                                player.sendMessage("§8  La esencia del End sanará sus heridas.");
+                            }
+                            case 3 -> {
+                                player.sendMessage("§c§oEl Observador advierte:");
+                                player.sendMessage("§8  \"...la memoria tiene un precio... siempre lo tuvo...\"");
+                                player.sendMessage("§8  \"...¿están dispuestos a pagar?...\"");
+                                player.sendMessage("");
+                                player.sendMessage("§7✦ Este altar requiere un §csacrificio de sangre§7.");
+                                player.sendMessage("§7✦ Pierdan §e10 corazones§7 de vida cerca de él.");
+                                player.sendMessage("§8  Solo el dolor puede despertar lo dormido.");
+                            }
+                            case 4 -> {
+                                player.sendMessage("§6§oEl Observador clama:");
+                                player.sendMessage("§8  \"...copias erróneas emergen de la grieta...\"");
+                                player.sendMessage("§8  \"...el mundo se multiplica mal... muy mal...\"");
+                                player.sendMessage("");
+                                player.sendMessage("§7✦ Este altar está corrompido por §crecuerdos hostiles§7.");
+                                player.sendMessage("§7✦ Eliminen §e5 aberraciones§7 para purificarlo.");
+                                player.sendMessage("§8  Cada uno fue alguien... alguna vez.");
+                            }
+                            case 5 -> {
+                                player.sendMessage("§d§oEl Observador susurra con esperanza:");
+                                player.sendMessage("§8  \"...los fragmentos resuenan juntos... finalmente...\"");
+                                player.sendMessage("§8  \"...pero algo más despierta en las sombras...\"");
+                                player.sendMessage("");
+                                player.sendMessage("§7✦ Este es el §daltar final§7. El altar de la Unión.");
+                                player.sendMessage("§7✦ Cuando §etodos estén presentes§7... la verdad se revelará.");
+                                player.sendMessage("§8  Prepárense para lo que viene.");
+                            }
+                        }
+                        
+                        player.sendMessage("");
+                        player.sendMessage("§e§l⚠ §7Esperen a que todos lleguen al altar");
+                        player.sendMessage("§5§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                        player.sendMessage("");
+                        
+                    }, 80L); // 4 segundos después del título
+                    
+                    // Sonido inicial de aproximación
                     soundUtil.playSound(player, Sound.BLOCK_SCULK_SENSOR_CLICKING, 0.3f, 0.8f);
                     
                     // ✨ NUEVO: Registrar que este jugador ya vio el mensaje de este altar
@@ -2790,7 +2833,7 @@ public class SusurroPiedraRotaEvent extends EventBase {
         
         if (todosPresentes && !altarEnProgreso) {
             if (!esperandoJugadores) {
-                // Primer tick con todos presentes - iniciar cuenta regresiva
+                // Primer tick con todos presentes - iniciar cuenta regresiva épica
                 esperandoJugadores = true;
                 tiempoInicioEspera = System.currentTimeMillis();
                 
@@ -2798,8 +2841,23 @@ public class SusurroPiedraRotaEvent extends EventBase {
                 
                 for (Player p : Bukkit.getOnlinePlayers()) {
                     if (jugadoresPresentesEnAltar.contains(p.getUniqueId())) {
-                        p.sendTitle("§5⧖", "§7Todos reunidos... preparando ritual", 10, 40, 10);
-                        soundUtil.playSound(p, Sound.BLOCK_BEACON_POWER_SELECT, 0.6f, 1.2f);
+                        // 🎭 Título épico con mensaje según altar
+                        String mensajeAltar = switch (altarActualGlobal) {
+                            case 1 -> "§8§oLa piedra comienza a recordar...";
+                            case 2 -> "§8§oEl vacío responde a su llamado...";
+                            case 3 -> "§4§oEl precio debe ser pagado...";
+                            case 4 -> "§6§oLos errores se manifestarán...";
+                            case 5 -> "§d§oEl momento de la verdad llega...";
+                            default -> "§7Preparando ritual...";
+                        };
+                        
+                        p.sendTitle("§5§l⧖", mensajeAltar, 10, 60, 10);
+                        soundUtil.playSound(p, Sound.BLOCK_BEACON_POWER_SELECT, 0.7f, 1.0f);
+                        soundUtil.playSound(p, Sound.ENTITY_WARDEN_HEARTBEAT, 0.4f, 0.6f);
+                        
+                        // Partículas de congregación
+                        Location loc = p.getLocation();
+                        loc.getWorld().spawnParticle(Particle.ENCHANT, loc.add(0, 1.5, 0), 30, 1, 1, 1, 0.5);
                     }
                 }
             } else {
@@ -8175,132 +8233,197 @@ public class SusurroPiedraRotaEvent extends EventBase {
     
     /**
      * Muestra la presentación del Acto 1 con animación ÉPICA extendida.
+     * MEJORADO: Más suspenso, nostalgia y épica
      */
     private void mostrarPresentacionActo1(Player player) {
         // ═══════════════════════════════════════════════════════════════
-        // FASE 1: Título épico con efectos (0-4 segundos)
+        // FASE 1: Silencio ominoso y parpadeo dimensional (0-3 segundos)
         // ═══════════════════════════════════════════════════════════════
         
-        // Efecto de parpadeo dimensional
+        // Efecto de despertar de un sueño
         player.addPotionEffect(new org.bukkit.potion.PotionEffect(
-            org.bukkit.potion.PotionEffectType.BLINDNESS, 20, 0, true, false));
+            org.bukkit.potion.PotionEffectType.BLINDNESS, 60, 0, true, false));
+        player.addPotionEffect(new org.bukkit.potion.PotionEffect(
+            org.bukkit.potion.PotionEffectType.SLOWNESS, 60, 3, true, false));
+        
+        // Susurro inicial
+        soundUtil.playSound(player, Sound.AMBIENT_CAVE, 0.8f, 0.5f);
         
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (!player.isOnline()) return;
-            
-            // Destello épico con sonidos múltiples
-            player.sendTitle("§5§l✦", "", 5, 30, 10);
-            soundUtil.playSound(player, Sound.BLOCK_BEACON_ACTIVATE, 1.0f, 1.2f);
-            soundUtil.playSound(player, Sound.BLOCK_AMETHYST_BLOCK_RESONATE, 1.0f, 0.8f);
-            
-            // Partículas épicas
-            Location pLoc = player.getLocation();
-            pLoc.getWorld().spawnParticle(Particle.END_ROD, pLoc.add(0, 2, 0), 50, 2, 1, 2, 0.05);
-            pLoc.getWorld().spawnParticle(Particle.PORTAL, pLoc, 100, 3, 2, 3, 0.5);
+            soundUtil.playSound(player, Sound.ENTITY_WARDEN_HEARTBEAT, 0.6f, 0.5f);
         }, 20L);
         
-        // ═══════════════════════════════════════════════════════════════
-        // FASE 2: Título del Acto (4-8 segundos)
-        // ═══════════════════════════════════════════════════════════════
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (!player.isOnline()) return;
-            
-            player.sendTitle("§d§lACTO I", "§5Los Susurros Aparecen", 20, 80, 20);
-            soundUtil.playSound(player, Sound.BLOCK_END_PORTAL_FRAME_FILL, 0.8f, 0.8f);
-            soundUtil.playSound(player, Sound.ENTITY_WARDEN_HEARTBEAT, 0.4f, 0.7f);
-            
-            // Relámpago distante
-            player.getWorld().strikeLightningEffect(player.getLocation().clone().add(
-                (Math.random() - 0.5) * 60, 0, (Math.random() - 0.5) * 60));
-        }, 80L);
+            soundUtil.playSound(player, Sound.ENTITY_WARDEN_HEARTBEAT, 0.7f, 0.6f);
+        }, 40L);
         
         // ═══════════════════════════════════════════════════════════════
-        // FASE 3: Panel de objetivos con aparición gradual (8-18 segundos)
+        // FASE 2: Destello y símbolo misterioso (3-6 segundos)
         // ═══════════════════════════════════════════════════════════════
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (!player.isOnline()) return;
             
-            player.sendMessage("");
-            player.sendMessage("§5§l⚜ §8§m════════════════════════════════════════════ §5§l⚜");
-            player.sendMessage("");
-            soundUtil.playSound(player, Sound.BLOCK_AMETHYST_BLOCK_CHIME, 0.6f, 1.2f);
-        }, 160L); // 8 segundos
+            // Destello épico
+            player.sendTitle("§5§l✦", "§8§o...despierta...", 5, 40, 10);
+            soundUtil.playSound(player, Sound.BLOCK_BEACON_ACTIVATE, 1.0f, 0.8f);
+            soundUtil.playSound(player, Sound.BLOCK_AMETHYST_BLOCK_RESONATE, 1.0f, 0.6f);
+            soundUtil.playSound(player, Sound.ENTITY_ALLAY_AMBIENT_WITHOUT_ITEM, 0.5f, 0.4f);
+            
+            // Partículas de despertar
+            Location pLoc = player.getLocation();
+            pLoc.getWorld().spawnParticle(Particle.END_ROD, pLoc.add(0, 2, 0), 80, 3, 2, 3, 0.02);
+            pLoc.getWorld().spawnParticle(Particle.REVERSE_PORTAL, pLoc, 60, 2, 1, 2, 0.3);
+        }, 60L);
         
-        // Título principal
+        // ═══════════════════════════════════════════════════════════════
+        // FASE 3: Título épico del Acto (6-11 segundos)
+        // ═══════════════════════════════════════════════════════════════
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (!player.isOnline()) return;
+            
+            // Título con más duración para leer
+            player.sendTitle("§d§lACTO I", "§5§oLos Susurros Aparecen", 20, 100, 30);
+            soundUtil.playSound(player, Sound.BLOCK_END_PORTAL_FRAME_FILL, 0.9f, 0.7f);
+            soundUtil.playSound(player, Sound.ENTITY_WARDEN_HEARTBEAT, 0.5f, 0.6f);
+            soundUtil.playSound(player, Sound.BLOCK_BELL_RESONATE, 0.4f, 0.5f);
+            
+            // Relámpago distante atmosférico
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                player.getWorld().strikeLightningEffect(player.getLocation().clone().add(
+                    (Math.random() - 0.5) * 80, 0, (Math.random() - 0.5) * 80));
+                soundUtil.playSound(player, Sound.AMBIENT_CAVE, 0.6f, 0.4f);
+            }, 30L);
+        }, 120L);
+        
+        // ═══════════════════════════════════════════════════════════════
+        // FASE 4: Panel narrativo con aparición gradual (11-28 segundos)
+        // ═══════════════════════════════════════════════════════════════
+        
+        // Línea de apertura
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (!player.isOnline()) return;
+            player.sendMessage("");
+            player.sendMessage("§5§l⚜ §8§m══════════════════════════════════════════════ §5§l⚜");
+            soundUtil.playSound(player, Sound.BLOCK_AMETHYST_BLOCK_CHIME, 0.7f, 1.0f);
+        }, 220L); // 11 segundos
+        
+        // Subtítulo narrativo (aparece como subtítulo para más inmersión)
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (!player.isOnline()) return;
+            player.sendTitle("", "§7§oHace mucho tiempo, este lugar tenía otro nombre...", 10, 80, 10);
+            soundUtil.playSound(player, Sound.ENTITY_ENDERMAN_STARE, 0.3f, 0.4f);
+        }, 260L); // 13 segundos
+        
+        // Título principal del acto
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (!player.isOnline()) return;
+            player.sendMessage("");
             player.sendMessage(formatearCentrado("§d§l⧖ ACTO I: §5§lLOS SUSURROS APARECEN §d§l⧖"));
-            soundUtil.playSound(player, Sound.BLOCK_NOTE_BLOCK_CHIME, 0.7f, 1.0f);
+            soundUtil.playSound(player, Sound.BLOCK_NOTE_BLOCK_CHIME, 0.8f, 0.9f);
             
-            // Partículas de énfasis
             Location loc = player.getLocation();
-            loc.getWorld().spawnParticle(Particle.ENCHANT, loc.add(0, 1, 0), 30, 1, 0.5, 1, 0.5);
-        }, 200L); // 10 segundos
+            loc.getWorld().spawnParticle(Particle.ENCHANT, loc.add(0, 1.5, 0), 40, 1.5, 1, 1.5, 0.3);
+        }, 340L); // 17 segundos
         
-        // Objetivos con aparición lenta (5 segundos entre cada uno)
-        String[] objetivos = {
-            "§8◆ §7Fragmentos antiguos de piedra yacen dispersos por el mundo",
-            "§8◆ §7Cada fragmento guarda secretos y revelaciones olvidadas",
-            "§8◆ §7Reúne todos los fragmentos para descubrir la verdad oculta"
+        // Narrativa con pausas para leer (4 segundos entre cada línea)
+        String[] narrativa = {
+            "§8◇ §7Cuentan que estas tierras guardan secretos más antiguos que las montañas...",
+            "§8◇ §7Piedras que susurran historias de quienes ya no están...",
+            "§8◇ §7Fragmentos de una era olvidada, esperando ser encontrados...",
+            "§8◇ §7Y ahora... los susurros los han guiado hasta aquí."
         };
         
-        for (int i = 0; i < objetivos.length; i++) {
+        for (int i = 0; i < narrativa.length; i++) {
             final int indice = i;
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 if (!player.isOnline()) return;
                 
                 player.sendMessage("");
-                player.sendMessage("    " + objetivos[indice]);
-                soundUtil.playSound(player, Sound.BLOCK_NOTE_BLOCK_BELL, 0.4f, 1.2f + (indice * 0.15f));
+                player.sendMessage("    " + narrativa[indice]);
                 
-                // Partículas sutiles
-                Location loc = player.getLocation();
-                loc.getWorld().spawnParticle(Particle.SOUL_FIRE_FLAME, loc.add(0, 1.5, 0), 8, 0.5, 0.3, 0.5, 0.02);
-            }, 260L + (i * 80L)); // 13s, 17s, 21s (4 segundos entre cada objetivo)
+                // Sonidos que aumentan en intensidad
+                float pitch = 0.8f + (indice * 0.15f);
+                soundUtil.playSound(player, Sound.BLOCK_NOTE_BLOCK_BELL, 0.4f, pitch);
+                
+                // Partículas sutiles en las últimas líneas
+                if (indice >= 2) {
+                    Location loc = player.getLocation();
+                    loc.getWorld().spawnParticle(Particle.SOUL_FIRE_FLAME, loc.add(0, 1.5, 0), 
+                        5 + (indice * 3), 0.5, 0.4, 0.5, 0.02);
+                }
+            }, 420L + (i * 80L)); // 21s, 25s, 29s, 33s (4 segundos entre cada)
         }
         
         // ═══════════════════════════════════════════════════════════════
-        // FASE 4: Mensaje del Observador (21-28 segundos)
+        // FASE 5: Mensaje del Observador épico (35-42 segundos)
         // ═══════════════════════════════════════════════════════════════
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (!player.isOnline()) return;
             
+            // Oscurecimiento momentáneo para dar énfasis
+            player.addPotionEffect(new org.bukkit.potion.PotionEffect(
+                org.bukkit.potion.PotionEffectType.DARKNESS, 60, 0, true, false));
+            
+            soundUtil.playSound(player, Sound.ENTITY_WARDEN_AMBIENT, 0.4f, 0.5f);
+            soundUtil.playSound(player, Sound.BLOCK_SCULK_SENSOR_CLICKING, 0.3f, 0.6f);
+        }, 700L); // 35 segundos
+        
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (!player.isOnline()) return;
+            
             player.sendMessage("");
-            player.sendMessage("    §5§o\"La piedra recuerda... ¿recordarás tú?\"");
+            player.sendMessage("    §5§o\"La piedra recuerda lo que los mortales olvidan...\"");
+            soundUtil.playSound(player, Sound.ENTITY_ENDERMAN_AMBIENT, 0.5f, 0.5f);
+        }, 740L); // 37 segundos
+        
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (!player.isOnline()) return;
+            
+            player.sendMessage("    §5§o\"¿Recordarán ustedes... cuando llegue el momento?\"");
+            player.sendMessage("");
             player.sendMessage("    §8§o— El Observador");
-            soundUtil.playSound(player, Sound.ENTITY_WARDEN_AMBIENT, 0.3f, 0.5f);
+            soundUtil.playSound(player, Sound.ENTITY_WARDEN_HEARTBEAT, 0.5f, 0.5f);
             
-            // Efecto de susurro
+            // Partículas de misterio
             Location loc = player.getLocation();
-            loc.getWorld().spawnParticle(Particle.SQUID_INK, loc.add(0, 1, 0), 15, 1, 0.5, 1, 0.01);
-        }, 520L); // 26 segundos
+            loc.getWorld().spawnParticle(Particle.SQUID_INK, loc.add(0, 1.5, 0), 20, 1.5, 0.8, 1.5, 0.01);
+        }, 820L); // 41 segundos
         
         // ═══════════════════════════════════════════════════════════════
-        // FASE 5: Cierre épico (28-32 segundos)
+        // FASE 6: Cierre cinematográfico (44-50 segundos)
         // ═══════════════════════════════════════════════════════════════
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (!player.isOnline()) return;
             
             player.sendMessage("");
-            player.sendMessage("§5§l⚜ §8§m════════════════════════════════════════════ §5§l⚜");
+            player.sendMessage("§5§l⚜ §8§m══════════════════════════════════════════════ §5§l⚜");
             player.sendMessage("");
             
-            soundUtil.playSound(player, Sound.BLOCK_BEACON_POWER_SELECT, 0.8f, 1.5f);
-            soundUtil.playSound(player, Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.6f, 0.8f);
+            soundUtil.playSound(player, Sound.BLOCK_BEACON_POWER_SELECT, 0.9f, 1.2f);
+            soundUtil.playSound(player, Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.5f, 0.7f);
             
-            // Partículas de cierre
+            // Explosión de partículas de cierre
             Location loc = player.getLocation();
-            loc.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING, loc.add(0, 1.5, 0), 20, 1, 1, 1, 0.3);
-        }, 600L); // 30 segundos
+            loc.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING, loc.add(0, 1.5, 0), 30, 1.2, 1.2, 1.2, 0.2);
+        }, 880L); // 44 segundos
         
-        // Mensaje de ayuda
+        // Mensaje de ayuda con estilo
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (!player.isOnline()) return;
             
-            player.sendMessage("§e§l[!] §7Sigue el §daction bar §7para encontrar los fragmentos");
+            // Título de acción
+            player.sendTitle("", "§e⚡ §7Sigue los susurros... §e⚡", 10, 60, 20);
+            
             player.sendMessage("");
-            soundUtil.playSound(player, Sound.BLOCK_NOTE_BLOCK_PLING, 0.5f, 1.5f);
-        }, 680L); // 34 segundos
+            player.sendMessage("§e§l[!] §7Sigue el §daction bar §7para encontrar los fragmentos olvidados");
+            player.sendMessage("§8    Los altares te esperan... escucha atentamente.");
+            player.sendMessage("");
+            
+            soundUtil.playSound(player, Sound.BLOCK_NOTE_BLOCK_PLING, 0.6f, 1.2f);
+            soundUtil.playSound(player, Sound.BLOCK_AMETHYST_BLOCK_CHIME, 0.4f, 1.4f);
+        }, 1000L); // 50 segundos
     }
     
     private void mostrarCliffhanger() {
@@ -8361,162 +8484,201 @@ public class SusurroPiedraRotaEvent extends EventBase {
         tiempoCompletadoEvento = System.currentTimeMillis();
         
         // ═══════════════════════════════════════════════════════════════
-        // FASE 1: DIÁLOGO DEL OBSERVADOR (0-8 segundos)
+        // FASE 1: SILENCIO Y REFLEXIÓN (0-6 segundos)
         // ═══════════════════════════════════════════════════════════════
         
-        // Efecto de cámara inicial
+        // Efecto de cámara lenta - momento para asimilar
         for (Player p : Bukkit.getOnlinePlayers()) {
             if (participantesOriginales.contains(p.getUniqueId())) {
-                p.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 400, 2, true, false));
-                p.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 40, 0, true, false));
+                p.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 500, 2, true, false));
+                p.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 60, 0, true, false));
+                
+                // Partículas de polvo cayendo suavemente
+                Location loc = p.getLocation();
+                loc.getWorld().spawnParticle(Particle.ASH, loc.add(0, 3, 0), 50, 3, 2, 3, 0.01);
             }
         }
         
-        // Sonido atmosférico
-        playSoundToAll(Sound.AMBIENT_SOUL_SAND_VALLEY_MOOD, 0.8f, 0.6f);
+        // Sonido de silencio... luego eco lejano
+        playSoundToAll(Sound.AMBIENT_CAVE, 0.5f, 0.3f);
         
-        // --- Mensaje 1: Observador habla (0s) ---
-        broadcastNarrative("");
-        broadcastNarrative("§8§m                                                    ");
-        broadcastNarrative("");
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            broadcastNarrative("    §5§lEl Observador§7: §o\"...¡lo lograron!...\"");
-            playSoundToAll(Sound.ENTITY_WARDEN_AMBIENT, 0.5f, 0.5f);
-        }, 20L);
-        
-        // --- Mensaje 2: (2s) ---
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            broadcastNarrative("    §5§lEl Observador§7: §o\"...el núcleo ha sido contenido...\"");
-            playSoundToAll(Sound.ENTITY_WARDEN_AMBIENT, 0.4f, 0.6f);
-        }, 60L);
-        
-        // --- Mensaje 3: (4s) El mensaje original en chat ---
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            broadcastNarrative("    §5§lEl Observador§7: §o\"...pero la Forma... la Forma recuerda...\"");
-            playSoundToAll(Sound.ENTITY_WARDEN_HEARTBEAT, 0.6f, 0.8f);
-        }, 100L);
-        
-        // --- Pausa de suspenso (6s) - silencio inquietante ---
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             playSoundToAll(Sound.ENTITY_WARDEN_HEARTBEAT, 0.4f, 0.5f);
-        }, 140L);
+        }, 30L);
         
-        // --- Más suspenso (7s) ---
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            playSoundToAll(Sound.ENTITY_WARDEN_HEARTBEAT, 0.6f, 0.4f);
-        }, 160L);
+        // ═══════════════════════════════════════════════════════════════
+        // FASE 2: DIÁLOGO EMOTIVO DEL OBSERVADOR (6-20 segundos)
+        // ═══════════════════════════════════════════════════════════════
         
-        // --- MOMENTO CLIMÁTICO (8s) - ¡TE RECUERDA! ---
+        // --- Mensaje 1: El Observador procesa lo ocurrido ---
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            // ¡EL TÍTULO DRAMÁTICO!
-            enviarTituloCinematicoTodos(
-                "§4§k..§r §5§lTE RECUERDA... §4§k..",
-                "",
-                80
-            );
-            playSoundToAll(Sound.ENTITY_WARDEN_ROAR, 0.8f, 0.4f);
-            playSoundToAll(Sound.ENTITY_ENDER_DRAGON_GROWL, 0.4f, 0.5f);
-            crearDestelloTodos(20);
+            broadcastNarrative("");
+            broadcastNarrative("§5§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            broadcastNarrative("");
+            playSoundToAll(Sound.BLOCK_AMETHYST_BLOCK_RESONATE, 0.6f, 0.5f);
+        }, 120L);
+        
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            broadcastNarrative("    §5§oEl Observador susurra, su voz tiembla:");
+            broadcastNarrative("");
+            broadcastNarrative("    §8\"...¿lo sienten? El silencio...\"");
+            playSoundToAll(Sound.ENTITY_WARDEN_AMBIENT, 0.4f, 0.4f);
         }, 180L);
         
-        // --- Mensaje 4: (11s) Después del impacto ---
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            broadcastNarrative("    §8\"...hace tanto que no había silencio aquí...\"");
+            playSoundToAll(Sound.ENTITY_ENDERMAN_STARE, 0.3f, 0.4f);
+        }, 280L);
+        
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             broadcastNarrative("");
-            broadcastNarrative("    §5§lEl Observador§7: §o\"...esto no es el final...\"");
-            playSoundToAll(Sound.ENTITY_WARDEN_HEARTBEAT, 0.5f, 0.7f);
-        }, 220L);
-        
-        // --- Mensaje 5: Advertencia (12.5s) ---
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            broadcastNarrative("    §5§lEl Observador§7: §o\"...solo el comienzo del susurro...\"");
-            playSoundToAll(Sound.ENTITY_WARDEN_AMBIENT, 0.4f, 0.5f);
-        }, 250L);
-        
-        // --- Mensaje 6: Despedida críptica (15s) ---
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            broadcastNarrative("");
-            broadcastNarrative("    §8§o\"...nos volveremos a ver...\"");
-            playSoundToAll(Sound.ENTITY_ENDERMAN_STARE, 0.4f, 0.5f);
-        }, 300L);
-        
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            broadcastNarrative("    §8§o\"...en el lugar donde las formas se rompen...\"");
-            broadcastNarrative("");
-            broadcastNarrative("§8§m                                                    ");
-            playSoundToAll(Sound.BLOCK_BEACON_DEACTIVATE, 0.7f, 0.5f);
-        }, 340L);
-        
-        // ═══════════════════════════════════════════════════════════════
-        // FASE 2: NARRATIVA DEL EVENTO (19-25 segundos)
-        // ═══════════════════════════════════════════════════════════════
-        
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            // Efecto visual de transición
-            crearDestelloTodos(15);
-            playSoundToAll(Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 0.5f, 0.8f);
-            
-            enviarTituloCinematicoTodos(
-                "§5§l✦ EL SUSURRO HA CESADO ✦",
-                "§8...por ahora...",
-                100
-            );
+            broadcastNarrative("    §8\"...el núcleo... ha sido contenido...\"");
+            broadcastNarrative("    §8\"...pero la Forma... la Forma no olvida...\"");
+            playSoundToAll(Sound.ENTITY_WARDEN_HEARTBEAT, 0.5f, 0.6f);
         }, 380L);
         
-        // Narrativa del evento (21s)
+        // --- PAUSA DRAMÁTICA - Tensión creciente ---
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            broadcastNarrative("");
-            broadcastNarrative("§8§m══════════════════════════════════════════════════");
-            broadcastNarrative("");
-            broadcastNarrative("          §5§lEL SUSURRO EN LA PIEDRA ROTA");
-            broadcastNarrative("               §7ha sido completado");
-            broadcastNarrative("");
-            broadcastNarrative("    §7Juntaron todos los fragmentos de memoria.");
-            broadcastNarrative("    §7El núcleo de la Forma ha sido capturado.");
-            broadcastNarrative("    §7Pero algo cambió en el proceso...");
-            broadcastNarrative("");
-            playSoundToAll(Sound.BLOCK_AMETHYST_BLOCK_CHIME, 0.8f, 0.8f);
-        }, 420L);
+            playSoundToAll(Sound.ENTITY_WARDEN_HEARTBEAT, 0.5f, 0.5f);
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                if (participantesOriginales.contains(p.getUniqueId())) {
+                    p.sendTitle("", "§8§o...algo observa desde las sombras...", 10, 40, 10);
+                }
+            }
+        }, 480L);
         
-        // Teaser futuro (23s)
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            broadcastNarrative("    §5\"El Observador ahora sabe que están aquí.\"");
-            broadcastNarrative("    §5\"Y lo que observa... nunca olvida.\"");
+            playSoundToAll(Sound.ENTITY_WARDEN_HEARTBEAT, 0.7f, 0.4f);
+        }, 540L);
+        
+        // --- MOMENTO CLIMÁTICO: ¡TE RECUERDA! ---
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            // Oscuridad total antes del impacto
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                if (participantesOriginales.contains(p.getUniqueId())) {
+                    p.addPotionEffect(new PotionEffect(PotionEffectType.DARKNESS, 60, 0, true, false));
+                }
+            }
+            playSoundToAll(Sound.AMBIENT_SOUL_SAND_VALLEY_MOOD, 0.8f, 0.3f);
+        }, 580L);
+        
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            // ¡EL TÍTULO IMPACTANTE!
+            enviarTituloCinematicoTodos(
+                "§4§k..§r §c§lTE RECUERDA §4§k..",
+                "§8§o...y nunca olvida...",
+                100
+            );
+            playSoundToAll(Sound.ENTITY_WARDEN_ROAR, 1.0f, 0.4f);
+            playSoundToAll(Sound.ENTITY_ENDER_DRAGON_GROWL, 0.6f, 0.4f);
+            playSoundToAll(Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 0.7f, 0.5f);
+            crearDestelloTodos(25);
+            sacudirPantallaTodos(3);
+        }, 640L);
+        
+        // --- Después del impacto: Reflexión nostálgica ---
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
             broadcastNarrative("");
-            broadcastNarrative("§8§m══════════════════════════════════════════════════");
+            broadcastNarrative("    §5§oUn silencio profundo cae sobre el mundo...");
+            playSoundToAll(Sound.AMBIENT_CAVE, 0.4f, 0.5f);
+        }, 760L);
+        
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
             broadcastNarrative("");
-            playSoundToAll(Sound.ENTITY_WARDEN_HEARTBEAT, 0.4f, 1.0f);
-        }, 460L);
+            broadcastNarrative("    §8\"...esto no es un final...\"");
+            broadcastNarrative("    §8\"...es solo el primer capítulo de algo más grande...\"");
+            playSoundToAll(Sound.ENTITY_WARDEN_HEARTBEAT, 0.4f, 0.7f);
+        }, 860L);
+        
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            broadcastNarrative("");
+            broadcastNarrative("    §8\"...nos volveremos a encontrar, viajeros...\"");
+            broadcastNarrative("    §8\"...en el lugar donde las formas se rompen...\"");
+            broadcastNarrative("    §8\"...y los recuerdos vuelven a llorar...\"");
+            playSoundToAll(Sound.ENTITY_ENDERMAN_AMBIENT, 0.5f, 0.4f);
+        }, 980L);
+        
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            broadcastNarrative("");
+            broadcastNarrative("§5§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            broadcastNarrative("");
+            playSoundToAll(Sound.BLOCK_BEACON_DEACTIVATE, 0.8f, 0.6f);
+        }, 1100L);
         
         // ═══════════════════════════════════════════════════════════════
-        // FASE 3: CÁLCULO Y ENTREGA DE RECOMPENSAS (26-32 segundos)
+        // FASE 3: TÍTULO DE VICTORIA ÉPICO (30-38 segundos)
+        // ═══════════════════════════════════════════════════════════════
+        
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            crearDestelloTodos(15);
+            playSoundToAll(Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
+            
+            enviarTituloCinematicoTodos(
+                "§d§l✦ EVENTO COMPLETADO ✦",
+                "§5§oEl Susurro en la Piedra Rota",
+                120
+            );
+        }, 1200L);
+        
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            broadcastNarrative("");
+            broadcastNarrative("§d§l⚜ §8§m════════════════════════════════════════════════ §d§l⚜");
+            broadcastNarrative("");
+            broadcastNarrative("          §d§lEL SUSURRO EN LA PIEDRA ROTA");
+            broadcastNarrative("               §5§oha sido completado");
+            broadcastNarrative("");
+            playSoundToAll(Sound.BLOCK_AMETHYST_BLOCK_CHIME, 0.9f, 1.0f);
+        }, 1300L);
+        
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            broadcastNarrative("    §7Enfrentaron el pasado olvidado de este mundo.");
+            broadcastNarrative("    §7Reunieron los fragmentos de una tragedia antigua.");
+            broadcastNarrative("    §7Contuvieron al núcleo de la Forma...");
+            broadcastNarrative("    §7Y sobrevivieron para contarlo.");
+            broadcastNarrative("");
+            playSoundToAll(Sound.BLOCK_NOTE_BLOCK_CHIME, 0.6f, 1.2f);
+        }, 1400L);
+        
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            broadcastNarrative("    §5\"Pero recuerden... §o§8ahora ustedes también");
+            broadcastNarrative("    §5§o son parte de esta historia.§r\"");
+            broadcastNarrative("");
+            broadcastNarrative("§d§l⚜ §8§m════════════════════════════════════════════════ §d§l⚜");
+            broadcastNarrative("");
+            playSoundToAll(Sound.ENTITY_WARDEN_HEARTBEAT, 0.3f, 0.8f);
+        }, 1520L);
+        
+        // ═══════════════════════════════════════════════════════════════
+        // FASE 4: CÁLCULO Y ENTREGA DE RECOMPENSAS (40-48 segundos)
         // ═══════════════════════════════════════════════════════════════
         
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             // Calcular rangos
             calcularRangosRecompensaDinamicos();
             
-            // Título de recompensas
+            // Título de recompensas con estilo
             enviarTituloCinematicoTodos(
                 "§6§l★ RECOMPENSAS ★",
-                "§7Tu rango ha sido calculado...",
-                60
+                "§e§oTu contribución ha sido evaluada...",
+                80
             );
             
-            playSoundToAll(Sound.ENTITY_PLAYER_LEVELUP, 0.8f, 1.0f);
-        }, 520L);
+            playSoundToAll(Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
+            playSoundToAll(Sound.BLOCK_BEACON_ACTIVATE, 0.7f, 1.2f);
+        }, 1640L);
         
-        // Entregar recompensas con delay dramático (28s)
+        // Entregar recompensas con pausa para leer
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             entregarRecompensasDinamicas();
-        }, 560L);
+        }, 1760L);
         
         // ═══════════════════════════════════════════════════════════════
-        // FASE 4: AGRADECIMIENTO FINAL (34-38 segundos)
+        // FASE 5: AGRADECIMIENTO FINAL Y CIERRE (52-58 segundos)
         // ═══════════════════════════════════════════════════════════════
         
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            // Efecto final
-            crearDestelloTodos(8);
+            // Efecto final de celebración
+            crearDestelloTodos(10);
             sacudirPantallaTodos(1);
             
             for (UUID uuid : participantesOriginales) {
@@ -10829,106 +10991,118 @@ public class SusurroPiedraRotaEvent extends EventBase {
     
     /**
      * Obtiene un diálogo apropiado según el contexto.
+     * SISTEMA MEJORADO: Diálogos más épicos, emotivos y con suspenso
      */
     private String obtenerDialogoForma(String contexto) {
         List<String> dialogos = new ArrayList<>();
         
         switch (contexto) {
             case "INICIO":
-                dialogos.add("§5§l◈ §8§o\"...algo se mueve en la piedra...\"");
-                dialogos.add("§5§l◈ §8§o\"...no debería estar aquí...\"");
-                dialogos.add("§5§l◈ §8§o\"...recuerdos rotos...\"");
+                dialogos.add("§5§l◈ §8§o\"...¿escuchan eso? No... no deberían poder oírlo...\"");
+                dialogos.add("§5§l◈ §8§o\"...hace tanto tiempo que nadie viene aquí...\"");
+                dialogos.add("§5§l◈ §8§o\"...este lugar... alguna vez fue hermoso...\"");
+                dialogos.add("§5§l◈ §8§o\"...memorias rotas de un mundo que ya no existe...\"");
                 break;
                 
             case "FRAGMENTO_ENCONTRADO":
-                dialogos.add("§5§l◈ §8§o\"...esto no pertenece aquí...\"");
-                dialogos.add("§5§l◈ §8§o\"...una pieza del puzzle roto...\"");
-                dialogos.add("§5§l◈ §8§o\"...el mundo glitchea...\"");
+                dialogos.add("§5§l◈ §8§o\"...cada fragmento cuenta una historia... una tragedia olvidada...\"");
+                dialogos.add("§5§l◈ §8§o\"...¿pueden sentirlo? El peso de lo que fue...\"");
+                dialogos.add("§5§l◈ §8§o\"...alguien dejó esto aquí... sabiendo que jamás volvería...\"");
+                dialogos.add("§5§l◈ §8§o\"...la piedra llora... ¿lo sienten ustedes también?...\"");
                 break;
                 
             case "ACTO2_INICIO":
-                dialogos.add("§5§l◈ §8§o\"...veis aquella grieta? No es una herida... es una cicatriz...\"");
-                dialogos.add("§5§l◈ §8§o\"...hace eones, sus antepasados sellaron algo aquí...\"");
-                dialogos.add("§5§l◈ §8§o\"...los fragmentos que activasteis eran las llaves del sello...\"");
-                dialogos.add("§5§l◈ §8§o\"...y ahora... lo que ellos encerraron... busca venganza...\"");
-                dialogos.add("§5§l◈ §8§o\"...defended el altar. Si la Forma os alcanza... todo terminará...\"");
+                dialogos.add("§5§l◈ §8§o\"...miren esa grieta... no es una herida... es una cicatriz que nunca sanó...\"");
+                dialogos.add("§5§l◈ §8§o\"...hace eones, los que vinieron antes que ustedes... sellaron algo terrible aquí...\"");
+                dialogos.add("§5§l◈ §8§o\"...los fragmentos que activaron... eran las llaves de ese sello...\"");
+                dialogos.add("§5§l◈ §8§o\"...y ahora... lo que ellos encerraron... ha esperado tanto tiempo para liberarse...\"");
+                dialogos.add("§5§l◈ §8§o\"...¿pueden imaginar su dolor? ¿Su rabia? Encerrado... abandonado... olvidado...\"");
                 break;
                 
             case "CRIATURAS_SPAWN":
-                dialogos.add("§5§l◈ §8§o\"...copias defectuosas... recuerdos fragmentados de lo que fue...\"");
-                dialogos.add("§5§l◈ §8§o\"...no son reales... pero su odio sí lo es...\"");
+                dialogos.add("§5§l◈ §8§o\"...no son monstruos... son ecos de quienes murieron aquí...\"");
+                dialogos.add("§5§l◈ §8§o\"...copias imperfectas... atrapadas entre el olvido y la existencia...\"");
+                dialogos.add("§5§l◈ §8§o\"...quizás... antes de ser esto... tuvieron nombres... familias... sueños...\"");
                 break;
                 
             case "JUGADOR_MUERTE":
-                dialogos.add("§5§l◈ §8§o\"...la vida se desconecta...\"");
-                dialogos.add("§5§l◈ §8§o\"...otro bug en el sistema...\"");
-                dialogos.add("§5§l◈ §8§o\"...demasiado frágil...\"");
+                dialogos.add("§5§l◈ §8§o\"...otra vida que se apaga... como tantas antes...\"");
+                dialogos.add("§5§l◈ §8§o\"...el destino es cruel con quienes buscan la verdad...\"");
+                dialogos.add("§5§l◈ §8§o\"...pero la muerte aquí... no es el final...\"");
                 break;
                 
             case "OLEADA_COMPLETADA":
-                dialogos.add("§5§l◈ §8§o\"...pausa momentánea... pero la Forma no descansa...\"");
-                dialogos.add("§5§l◈ §8§o\"...preparaos. La memoria se intensifica...\"");
+                dialogos.add("§5§l◈ §8§o\"...un momento de paz... pero la tormenta apenas comienza...\"");
+                dialogos.add("§5§l◈ §8§o\"...respiren... porque lo que viene será peor...\"");
                 break;
                 
             case "OLEADA_2_INICIO":
-                dialogos.add("§5§l◈ §8§o\"...la memoria se intensifica... busca restaurarse...\"");
-                dialogos.add("§5§l◈ §8§o\"...no dejéis que os toquen. Un roce... y os verán como enemigos eternos...\"");
+                dialogos.add("§5§l◈ §8§o\"...la memoria se intensifica... el dolor busca liberarse...\"");
+                dialogos.add("§5§l◈ §8§o\"...no dejen que los toquen... un roce... y verán sus peores miedos...\"");
+                dialogos.add("§5§l◈ §8§o\"...¿sienten eso? Es el odio de siglos de abandono...\"");
                 break;
                 
             case "OLEADA_3_INICIO":
-                dialogos.add("§5§l◈ §8§o\"...¡el núcleo de la Forma despierta!...\"");
-                dialogos.add("§5§l◈ §8§o\"...esta es la última barrera... defended el altar o caerá todo el sello!...\"");
+                dialogos.add("§5§l◈ §8§o\"...¡EL NÚCLEO DESPIERTA! La entidad primordial ruge...\"");
+                dialogos.add("§5§l◈ §8§o\"...esta es la última prueba... fallen aquí... y todo habrá sido en vano...\"");
+                dialogos.add("§5§l◈ §8§o\"...puedo sentir su desesperación... quiere vivir... tanto como ustedes...\"");
                 break;
                 
             case "VICTORIA_ACTO2":
-                dialogos.add("§5§l◈ §8§o\"...¡lo lograron!... la Forma vuelve a dormir... por ahora...\"");
-                dialogos.add("§5§l◈ §8§o\"...pero su núcleo aún late... dentro de la grieta...\"");
-                dialogos.add("§5§l◈ §8§o\"...si queréis terminar esto... debéis entrar...\"");
+                dialogos.add("§5§l◈ §8§o\"...lo lograron... contra todo pronóstico... lo lograron...\"");
+                dialogos.add("§5§l◈ §8§o\"...pero esto no ha terminado... su núcleo aún late en la oscuridad...\"");
+                dialogos.add("§5§l◈ §8§o\"...si quieren terminar esto... deberán entrar donde nadie ha regresado...\"");
+                dialogos.add("§5§l◈ §8§o\"...¿están listos para ver lo que hay al otro lado?...\"");
                 break;
                 
             case "ACTO3_INICIO":
-                dialogos.add("§5§l◈ §8§o\"...la grieta os llama... podéis sentirlo, ¿verdad?...\"");
-                dialogos.add("§5§l◈ §8§o\"...dentro late el corazón de la Forma... su memoria primordial...\"");
-                dialogos.add("§5§l◈ §8§o\"...descended al vacío. Buscad la luz violeta en la oscuridad...\"");
-                dialogos.add("§5§l◈ §8§o\"...y cuando lo encontréis... destruídlo. O consumirá todo lo que queda...\"");
+                dialogos.add("§5§l◈ §8§o\"...la grieta los llama... ¿pueden sentir esa voz en sus mentes?...\"");
+                dialogos.add("§5§l◈ §8§o\"...dentro late el corazón de algo que alguna vez fue como ustedes...\"");
+                dialogos.add("§5§l◈ §8§o\"...desciendan al vacío... busquen la luz violeta que parpadea en la eternidad...\"");
+                dialogos.add("§5§l◈ §8§o\"...y cuando lo encuentren... recuerden... alguna vez... también fue inocente...\"");
                 break;
                 
             case "CERCA_NUCLEO":
-                dialogos.add("§5§l◈ §8§o\"...sentís su odio... su miedo... su desesperación...\"");
-                dialogos.add("§5§l◈ §8§o\"...fue traicionado una vez... no permitirá que pase de nuevo...\"");
+                dialogos.add("§5§l◈ §8§o\"...¿sienten su miedo? Está tan asustado como ustedes...\"");
+                dialogos.add("§5§l◈ §8§o\"...fue traicionado por aquellos que amaba... no dejará que pase de nuevo...\"");
+                dialogos.add("§5§l◈ §8§o\"...en sus ojos... hay reflejos de quienes vinieron antes... y fracasaron...\"");
                 break;
                 
             case "NUCLEO_APARECE":
-                dialogos.add("§5§l◈ §8§o\"...ahí está... la memoria primordial palpita...\"");
-                dialogos.add("§5§l◈ §8§o\"...cuidado... no os dejará acercaros sin luchar...\"");
+                dialogos.add("§5§l◈ §8§o\"...ahí está... tan frágil... tan poderoso... tan solo...\"");
+                dialogos.add("§5§l◈ §8§o\"...ha esperado eones por este momento... el encuentro final...\"");
+                dialogos.add("§5§l◈ §8§o\"...miren bien... esa luz que brilla... alguna vez iluminó un mundo entero...\"");
                 break;
                 
             case "NUCLEO_RECOGIDO":
-                dialogos.add("§5§l◈ §8§o\"...lo tenéis... pero aún late. Aún vive...\"");
-                dialogos.add("§5§l◈ §8§o\"...llevadlo al altar. Allí lo sellaremos... para siempre...\"");
+                dialogos.add("§5§l◈ §8§o\"...lo tienen en sus manos... pueden sentir su latido... su desesperación...\"");
+                dialogos.add("§5§l◈ §8§o\"...lleven su dolor al altar... allí descansará... finalmente...\"");
+                dialogos.add("§5§l◈ §8§o\"...quizás... en otra vida... las cosas habrían sido diferentes...\"");
                 break;
                 
             case "RITUAL_DESTRUCCION":
-                dialogos.add("§5§l◈ §8§o\"...¡Todos juntos! ¡El núcleo intenta resistir!...\"");
-                dialogos.add("§5§l◈ §8§o\"...no os apartéis del altar... o fallaremos...\"");
+                dialogos.add("§5§l◈ §8§o\"...¡TODOS JUNTOS! ¡El núcleo intenta aferrarse a la existencia!...\"");
+                dialogos.add("§5§l◈ §8§o\"...no se aparten... su unión es lo único que puede sellarlo...\"");
+                dialogos.add("§5§l◈ §8§o\"...puedo escucharlo... grita... suplica... pero no hay otra opción...\"");
                 break;
                 
             case "NUCLEO_DESTRUIDO":
-                dialogos.add("§5§l◈ §8§o\"...se terminó... la Forma ha sido destruida...\"");
-                dialogos.add("§5§l◈ §8§o\"...pero su eco permanece... en algún lugar del vacío...\"");
-                dialogos.add("§5§l◈ §8§o\"...salvaron este mundo... pero otros aún esperan...\"");
+                dialogos.add("§5§l◈ §8§o\"...se terminó... después de tanto tiempo... finalmente descansa...\"");
+                dialogos.add("§5§l◈ §8§o\"...pero su eco permanece... en algún rincón del vacío... esperando...\"");
+                dialogos.add("§5§l◈ §8§o\"...salvaron este mundo... pero hay otros que aún aguardan... en silencio...\"");
+                dialogos.add("§5§l◈ §8§o\"...y yo... seguiré observando... hasta que llegue mi turno de descansar...\"");
                 break;
                 
             case "FINAL_EXITO":
-                dialogos.add("§5§l◈ §8§o\"...fragmentos recolectados...\"");
-                dialogos.add("§5§l◈ §8§o\"...pero el eco permanece...\"");
-                dialogos.add("§5§l◈ §8§o\"...algo más grande despierta... en el vacío...\"");
+                dialogos.add("§5§l◈ §8§o\"...héroes... eso es lo que son ahora... aunque el mundo jamás lo sepa...\"");
+                dialogos.add("§5§l◈ §8§o\"...la piedra guardará su memoria... por siempre...\"");
+                dialogos.add("§5§l◈ §8§o\"...pero recuerden... esto no es un final... es solo el comienzo...\"");
                 break;
                 
             case "FINAL_FRACASO":
-                dialogos.add("§5§l◈ §8§o\"...proceso interrumpido...\"");
-                dialogos.add("§5§l◈ §8§o\"...los fragmentos aún esperan...\"");
-                dialogos.add("§5§l◈ §8§o\"...el susurro persiste en la piedra...\"");
+                dialogos.add("§5§l◈ §8§o\"...no... no puede terminar así...\"");
+                dialogos.add("§5§l◈ §8§o\"...los fragmentos aún esperan... la piedra sigue susurrando...\"");
+                dialogos.add("§5§l◈ §8§o\"...volverán... siempre vuelven... el susurro no descansa...\"");
                 break;
         }
         
@@ -10938,89 +11112,88 @@ public class SusurroPiedraRotaEvent extends EventBase {
     
     /**
      * Animación visual para diálogos de La Forma.
+     * MEJORADO: Más inmersivo con subtítulos, tiempos de lectura y efectos
      */
     private void mostrarDialogoFormaAnimado(Player player, String dialogo) {
-        // 🎬 PAUSA DRAMÁTICA: Slow motion para enfocar en el diálogo
+        // 🎬 PAUSA DRAMÁTICA: Slow motion suave para enfocar
         player.addPotionEffect(new org.bukkit.potion.PotionEffect(
             org.bukkit.potion.PotionEffectType.SLOWNESS,
-            100, // 5 segundos
-            2,
-            true,
-            false
-        ));
-        player.addPotionEffect(new org.bukkit.potion.PotionEffect(
-            org.bukkit.potion.PotionEffectType.SLOW_FALLING,
-            100,
-            0,
+            120, // 6 segundos
+            1, // Menos intenso para no molestar
             true,
             false
         ));
         
-        // 🎬 Efecto de distorsión visual MÁS LARGO
-        player.sendTitle("§5§l◈", "§8§o...escucha...", 10, 80, 15);
+        // 🎬 Efecto de distorsión visual con subtítulo primero
+        player.sendTitle("", "§8§o...una voz susurra en tu mente...", 10, 50, 10);
         
-        // 🔊 CAPA 1: Sonidos dimensionales base
-        soundUtil.playSound(player, Sound.ENTITY_WARDEN_HEARTBEAT, 0.5f, 0.6f);
-        soundUtil.playSound(player, Sound.ENTITY_WARDEN_AMBIENT, 0.4f, 0.8f);
+        // 🔊 CAPA 1: Heartbeat inicial
+        soundUtil.playSound(player, Sound.ENTITY_WARDEN_HEARTBEAT, 0.6f, 0.5f);
         
-        // 🔊 CAPA 2: Susurros y ecos después de 0.3s
+        // 🔊 CAPA 2: Ambiente tenebroso
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            soundUtil.playSound(player, Sound.ENTITY_ENDERMAN_AMBIENT, 0.6f, 0.5f);
-            soundUtil.playSound(player, Sound.BLOCK_SCULK_SENSOR_CLICKING, 0.4f, 0.7f);
-        }, 6L);
-        
-        // 🔊 CAPA 3: Portal dimensiónal después de 0.5s
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            soundUtil.playSound(player, Sound.BLOCK_PORTAL_TRAVEL, 0.3f, 0.4f);
+            soundUtil.playSound(player, Sound.AMBIENT_SOUL_SAND_VALLEY_MOOD, 0.5f, 0.7f);
+            soundUtil.playSound(player, Sound.BLOCK_SCULK_SENSOR_CLICKING, 0.3f, 0.6f);
         }, 10L);
         
-        // 📖 Mostrar el diálogo más lento y con más énfasis
+        // 🔊 CAPA 3: Portal dimensional
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            soundUtil.playSound(player, Sound.BLOCK_PORTAL_TRAVEL, 0.2f, 0.3f);
+            soundUtil.playSound(player, Sound.ENTITY_ENDERMAN_STARE, 0.3f, 0.4f);
+        }, 20L);
+        
+        // 📖 Mostrar el diálogo con pausa dramática
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            // Oscurecer brevemente para dar énfasis
+            player.addPotionEffect(new org.bukkit.potion.PotionEffect(
+                org.bukkit.potion.PotionEffectType.DARKNESS,
+                40, // 2 segundos
+                0,
+                true,
+                false
+            ));
+            
             player.sendMessage("");
             player.sendMessage("");
-            player.sendMessage(formatearCentrado("§5§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
+            player.sendMessage(formatearCentrado("§5§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
             player.sendMessage("");
             player.sendMessage(formatearCentrado(dialogo));
             player.sendMessage("");
-            player.sendMessage(formatearCentrado("§5§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
+            player.sendMessage(formatearCentrado("§8§o— El Observador"));
+            player.sendMessage("");
+            player.sendMessage(formatearCentrado("§5§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
             player.sendMessage("");
             player.sendMessage("");
             
-            // ✨ Partículas de susurro más intensas
-            Location loc = player.getLocation().add(0, 2, 0);
+            // ✨ Partículas de susurro envolventes
+            Location loc = player.getLocation().add(0, 1.5, 0);
             
-            // Círculo de partículas místicas
-            for (int i = 0; i < 20; i++) {
-                double angle = Math.toRadians(i * 18);
-                double x = Math.cos(angle) * 2;
-                double z = Math.sin(angle) * 2;
+            // Círculo de partículas místicas que envuelven al jugador
+            for (int i = 0; i < 24; i++) {
+                double angle = Math.toRadians(i * 15);
+                double x = Math.cos(angle) * 2.5;
+                double z = Math.sin(angle) * 2.5;
                 loc.getWorld().spawnParticle(
                     Particle.SOUL_FIRE_FLAME,
-                    loc.clone().add(x, 0, z),
+                    loc.clone().add(x, Math.sin(angle * 2) * 0.3, z),
                     2,
-                    0.1, 0.1, 0.1,
-                    0.02
+                    0.05, 0.05, 0.05,
+                    0.01
                 );
             }
             
-            loc.getWorld().spawnParticle(Particle.REVERSE_PORTAL, loc, 30, 1.0, 0.5, 1.0, 0.1);
-            loc.getWorld().spawnParticle(Particle.SMOKE, loc, 15, 0.5, 0.3, 0.5, 0.03);
+            // Partículas adicionales de misterio
+            loc.getWorld().spawnParticle(Particle.REVERSE_PORTAL, loc, 40, 1.2, 0.6, 1.2, 0.08);
+            loc.getWorld().spawnParticle(Particle.ASH, loc, 25, 1.5, 1.0, 1.5, 0.02);
             
-            // 🔊 Eco final más fuerte
+            // 🔊 Eco final resonante
+            soundUtil.playSound(player, Sound.ENTITY_WARDEN_HEARTBEAT, 0.4f, 0.4f);
+            
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                soundUtil.playSound(player, Sound.ENTITY_ENDERMAN_AMBIENT, 0.5f, 0.6f);
-                soundUtil.playSound(player, Sound.ENTITY_WARDEN_HEARTBEAT, 0.3f, 0.5f);
-            }, 15L);
-        }, 20L);
-        
-        // 🎬 Oscurecer pantalla durante el diálogo
-        player.addPotionEffect(new org.bukkit.potion.PotionEffect(
-            org.bukkit.potion.PotionEffectType.BLINDNESS,
-            60, // 3 segundos
-            0,
-            true,
-            false
-        ));
+                soundUtil.playSound(player, Sound.ENTITY_ENDERMAN_AMBIENT, 0.4f, 0.5f);
+                soundUtil.playSound(player, Sound.BLOCK_AMETHYST_BLOCK_RESONATE, 0.3f, 0.6f);
+            }, 20L);
+        }, 40L);
     }
     
     // ═══════════════════════════════════════════════════════════════════
