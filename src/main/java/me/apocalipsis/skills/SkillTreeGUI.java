@@ -912,7 +912,7 @@ public class SkillTreeGUI implements Listener {
                     player.sendMessage("§7Ya tienes esta habilidad.");
                     openBranchMenu(player, branch);
                 }
-                case REQUIREMENTS_NOT_MET -> {
+                case MISSING_REQUIREMENTS -> {
                     player.sendMessage("§c§l✗ §cNo cumples los requisitos.");
                     player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 0.7f, 1.0f);
                 }
