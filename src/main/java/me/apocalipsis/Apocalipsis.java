@@ -72,6 +72,7 @@ public final class Apocalipsis extends JavaPlugin {
     private SkillService skillService;
     private SkillTreeGUI skillTreeGUI;
     private BackpackService backpackService;
+    private SkillEffectListener skillEffectListener;
 
     // UI
     private MessageBus messageBus;
@@ -131,8 +132,9 @@ public final class Apocalipsis extends JavaPlugin {
         skillService = new SkillService(this);
         skillTreeGUI = new SkillTreeGUI(this, skillService);
         backpackService = new BackpackService(this, skillService);
+        skillEffectListener = new SkillEffectListener(this, skillService);
         getServer().getPluginManager().registerEvents(skillTreeGUI, this);
-        getServer().getPluginManager().registerEvents(new SkillEffectListener(this, skillService), this);
+        getServer().getPluginManager().registerEvents(skillEffectListener, this);
         getServer().getPluginManager().registerEvents(backpackService, this);
         getLogger().info("[SkillService] ✓ Sistema de árbol de habilidades iniciado");
         
@@ -214,6 +216,32 @@ public final class Apocalipsis extends JavaPlugin {
             } else {
                 sender.sendMessage("§cEste comando solo puede ser usado por jugadores.");
             }
+            return true;
+        });
+        
+        // Comando de waypoint (habilidad de exploración)
+        getCommand("waypoint").setExecutor((sender, cmd, label, args) -> {
+            if (!(sender instanceof org.bukkit.entity.Player player)) {
+                sender.sendMessage("§cEste comando solo puede ser usado por jugadores.");
+                return true;
+            }
+            if (args.length > 0 && args[0].equalsIgnoreCase("set")) {
+                this.skillEffectListener.setWaypoint(player);
+            } else {
+                this.skillEffectListener.teleportToWaypoint(player);
+            }
+            return true;
+        });
+        
+        // Comando de coordenadas
+        getCommand("coords").setExecutor((sender, cmd, label, args) -> {
+            if (!(sender instanceof org.bukkit.entity.Player player)) {
+                sender.sendMessage("§cEste comando solo puede ser usado por jugadores.");
+                return true;
+            }
+            org.bukkit.Location loc = player.getLocation();
+            player.sendMessage("§e⬤ Coordenadas: §fX: §a" + loc.getBlockX() + 
+                " §f| Y: §a" + loc.getBlockY() + " §f| Z: §a" + loc.getBlockZ());
             return true;
         });
 

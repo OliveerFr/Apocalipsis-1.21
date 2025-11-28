@@ -32,6 +32,14 @@ commands:
     description: Abre tu ender chest portátil
     usage: /echest
     aliases: [enderchest, ec]
+  waypoint:
+    description: Guarda o teletransporta a tu waypoint
+    usage: /waypoint [set]
+    aliases: [wp]
+  coords:
+    description: Muestra tus coordenadas actuales
+    usage: /coords
+    aliases: [coordenadas, ubicacion, pos]
 
 permissions:
   avo.admin:

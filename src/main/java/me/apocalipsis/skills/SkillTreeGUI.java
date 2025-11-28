@@ -154,16 +154,16 @@ public class SkillTreeGUI implements Listener {
         ItemStack playerHead = createPlayerHead(player);
         inv.setItem(4, playerHead);
         
-        // === TRES RAMAS ===
+        // === CINCO RAMAS EN DOS FILAS ===
         
-        // Almacenamiento (izquierda)
+        // Fila superior: Almacenamiento, Utilidad, Supervivencia
         inv.setItem(20, createBranchButton(SkillBranch.ALMACENAMIENTO, player));
-        
-        // Utilidad (centro)
         inv.setItem(22, createBranchButton(SkillBranch.UTILIDAD, player));
-        
-        // Supervivencia (derecha)
         inv.setItem(24, createBranchButton(SkillBranch.SUPERVIVENCIA, player));
+        
+        // Fila inferior: Combate, Exploración
+        inv.setItem(30, createBranchButton(SkillBranch.COMBATE, player));
+        inv.setItem(32, createBranchButton(SkillBranch.EXPLORACION, player));
         
         // === INFO EXTRA ===
         
@@ -306,22 +306,30 @@ public class SkillTreeGUI implements Listener {
             inv.setItem(i, darkBg);
         }
         
-        // === FILA 0: PESTAÑAS ===
+        // === FILA 0: PESTAÑAS DE 5 RAMAS ===
         ItemStack grayBg = createItem(Material.GRAY_STAINED_GLASS_PANE, " ");
         inv.setItem(0, grayBg);
         inv.setItem(8, grayBg);
         
-        // Tab Almacenamiento (slot 2)
+        // Tab Almacenamiento (slot 1)
         boolean isAlmac = branch == SkillBranch.ALMACENAMIENTO;
-        inv.setItem(2, createBranchTab(SkillBranch.ALMACENAMIENTO, isAlmac, player));
+        inv.setItem(1, createBranchTab(SkillBranch.ALMACENAMIENTO, isAlmac, player));
         
-        // Tab Utilidad (slot 4)
+        // Tab Utilidad (slot 2)
         boolean isUtil = branch == SkillBranch.UTILIDAD;
-        inv.setItem(4, createBranchTab(SkillBranch.UTILIDAD, isUtil, player));
+        inv.setItem(3, createBranchTab(SkillBranch.UTILIDAD, isUtil, player));
         
-        // Tab Supervivencia (slot 6)
+        // Tab Supervivencia (slot 4)
         boolean isSurv = branch == SkillBranch.SUPERVIVENCIA;
-        inv.setItem(6, createBranchTab(SkillBranch.SUPERVIVENCIA, isSurv, player));
+        inv.setItem(4, createBranchTab(SkillBranch.SUPERVIVENCIA, isSurv, player));
+        
+        // Tab Combate (slot 5)
+        boolean isCombat = branch == SkillBranch.COMBATE;
+        inv.setItem(5, createBranchTab(SkillBranch.COMBATE, isCombat, player));
+        
+        // Tab Exploración (slot 7)
+        boolean isExplor = branch == SkillBranch.EXPLORACION;
+        inv.setItem(7, createBranchTab(SkillBranch.EXPLORACION, isExplor, player));
         
         // === ÁREA DEL ÁRBOL (filas 1-4) ===
         // Renderizar conexiones primero
@@ -450,18 +458,21 @@ public class SkillTreeGUI implements Listener {
             
             case UTILIDAD -> {
                 /*
-                 * Layout Utilidad:
+                 * Layout Utilidad (añadido LEÑADOR):
                  * 
                  * [PASO_LIG] ─── [ZANCADAS] ─── [VELOCISTA]
                  * 
                  * [MINERO] ───── [FORTUNA] ──── [SEDA_NAT]
                  * 
                  * [ESTOMAGO] ─── [METAB] ────── [AUTOSUF]
+                 * 
+                 * [LEÑADOR]
                  */
                 // Tier 1
                 positions.put(Skill.PASO_LIGERO, 19);
                 positions.put(Skill.MINERO_EFICIENTE, 28);
                 positions.put(Skill.ESTOMAGO_HIERRO, 37);
+                positions.put(Skill.LENADOR_NATO, 10); // Nueva habilidad
                 
                 // Tier 2
                 positions.put(Skill.ZANCADAS, 21);
@@ -476,45 +487,98 @@ public class SkillTreeGUI implements Listener {
             
             case SUPERVIVENCIA -> {
                 /*
-                 * Layout Supervivencia (6 filas):
-                 * Fila 0: Header con título
-                 * Fila 1: Vida (PIEL → TANQUE → INMORTAL) y Regeneración (→ REGEN → FENIX)
-                 * Fila 2: Espacio/conexiones
+                 * Layout Supervivencia:
+                 * Fila 1: Vida (PIEL → TANQUE → INMORTAL) y Regen
+                 * Fila 2: Espacio/conexiones + FENIX
                  * Fila 3: Caída (CAIDA → PLUMA → VUELO)
-                 * Fila 4: Fuego (FUEGO → IGNIFUGO) y Agua (NADADOR → BRANQUIAS → ANFIBIO)
-                 * Fila 5: Footer con botones
+                 * Fila 4: Fuego + Agua
                  */
                 // === RAMA DE VIDA Y REGENERACIÓN ===
-                // Tier 1
-                positions.put(Skill.PIEL_GRUESA, 10);      // Fila 1, izquierda
-                // Tier 2
-                positions.put(Skill.TANQUE, 12);           // Fila 1, centro-izq
-                positions.put(Skill.REGENERACION_PASIVA, 14); // Fila 1, centro-der
-                // Tier 3
-                positions.put(Skill.INMORTAL, 16);         // Fila 1, derecha
-                positions.put(Skill.FENIX, 25);            // Fila 2, abajo de regen
+                positions.put(Skill.PIEL_GRUESA, 10);
+                positions.put(Skill.TANQUE, 12);
+                positions.put(Skill.REGENERACION_PASIVA, 14);
+                positions.put(Skill.INMORTAL, 16);
+                positions.put(Skill.FENIX, 25);
                 
                 // === RAMA DE CAÍDA/VUELO ===
-                // Tier 1
-                positions.put(Skill.CAIDA_SUAVE, 28);      // Fila 3, izquierda
-                // Tier 2
-                positions.put(Skill.PLUMA, 30);            // Fila 3, centro
-                // Tier 3
-                positions.put(Skill.VUELO_EMERGENCIA, 32); // Fila 3, derecha
+                positions.put(Skill.CAIDA_SUAVE, 28);
+                positions.put(Skill.PLUMA, 30);
+                positions.put(Skill.VUELO_EMERGENCIA, 32);
                 
                 // === RAMA DE FUEGO ===
-                // Tier 1
-                positions.put(Skill.RESISTENCIA_FUEGO, 37);// Fila 4, izquierda
-                // Tier 2
-                positions.put(Skill.IGNIFUGO, 39);         // Fila 4, centro-izq
+                positions.put(Skill.RESISTENCIA_FUEGO, 37);
+                positions.put(Skill.IGNIFUGO, 39);
                 
                 // === RAMA DE AGUA ===
-                // Tier 1
-                positions.put(Skill.NADADOR, 41);          // Fila 4, centro-der
+                positions.put(Skill.NADADOR, 41);
+                positions.put(Skill.BRANQUIAS, 43);
+                positions.put(Skill.ANFIBIO, 34);
+            }
+            
+            case COMBATE -> {
+                /*
+                 * Layout Combate:
+                 * 
+                 * [GOLPE] ─────── [GUERRERO] ─── [EJECUTOR]
+                 *      └───────── [FURIA] ─────── [BERSERKER]
+                 *                      └───────── [VAMPIRISMO]
+                 * 
+                 * [ESCAMAS] ──── [BLOQUEO]
+                 * 
+                 * [ARQUERO] ──── [FRANCO] ────── [MULTISHOT]
+                 */
+                // Tier 1 - Rama Ofensiva
+                positions.put(Skill.GOLPE_CERTERO, 10);
+                positions.put(Skill.REFLEJOS, 12);
+                
+                // Tier 1 - Rama Defensiva
+                positions.put(Skill.PIEL_ESCAMAS, 28);
+                
+                // Tier 1 - Rama Arquero
+                positions.put(Skill.ARQUERO, 37);
+                
                 // Tier 2
-                positions.put(Skill.BRANQUIAS, 43);        // Fila 4, derecha-izq
+                positions.put(Skill.GUERRERO, 14);
+                positions.put(Skill.FURIA, 21);
+                positions.put(Skill.BLOQUEO_PERFECTO, 30);
+                positions.put(Skill.FRANCOTIRADOR, 39);
+                
                 // Tier 3
-                positions.put(Skill.ANFIBIO, 34);          // Fila 3, derecha (arriba de branquias)
+                positions.put(Skill.EJECUTOR, 16);
+                positions.put(Skill.BERSERKER, 23);
+                positions.put(Skill.VAMPIRISMO, 25);
+                positions.put(Skill.MULTISHOT, 41);
+            }
+            
+            case EXPLORACION -> {
+                /*
+                 * Layout Exploración:
+                 * 
+                 * [VISION] ───── [TELESCOPIO] ── [OJO_AGUILA]
+                 * 
+                 * [BRUJULA] ──── [MAPA] ──────── [WAYPOINT]
+                 * 
+                 * [RASTRO] ───── [DETECTOR] ──── [XRAY]
+                 * 
+                 * [PISADAS] ──── [SOMBRA] ────── [FANTASMA]
+                 */
+                // Tier 1
+                positions.put(Skill.VISION_NOCTURNA, 10);
+                positions.put(Skill.BRUJULA_INTERNA, 19);
+                positions.put(Skill.RASTRO_ORO, 28);
+                positions.put(Skill.PISADAS_SILENCIOSAS, 37);
+                
+                // Tier 2
+                positions.put(Skill.TELESCOPIO, 12);
+                positions.put(Skill.MAPA_MENTAL, 21);
+                positions.put(Skill.DETECTOR_SPAWNERS, 30);
+                positions.put(Skill.SOMBRA, 39);
+                
+                // Tier 3
+                positions.put(Skill.OJO_AGUILA, 14);
+                positions.put(Skill.WAYPOINT, 23);
+                positions.put(Skill.XRAY_DIAMANTES, 32);
+                positions.put(Skill.FANTASMA, 41);
             }
         }
         
@@ -557,6 +621,32 @@ public class SkillTreeGUI implements Listener {
                 // Rama de agua
                 connections.put(41, List.of(43));           // NADADOR -> BRANQUIAS
                 connections.put(43, List.of(34));           // BRANQUIAS -> ANFIBIO
+            }
+            
+            case COMBATE -> {
+                // Rama ofensiva principal
+                connections.put(10, Arrays.asList(14, 21)); // GOLPE -> GUERRERO, FURIA
+                connections.put(14, List.of(16));           // GUERRERO -> EJECUTOR
+                connections.put(21, Arrays.asList(23, 25)); // FURIA -> BERSERKER, VAMPIRISMO
+                connections.put(16, List.of(25));           // EJECUTOR -> VAMPIRISMO
+                
+                // Rama defensiva
+                connections.put(28, List.of(30));           // ESCAMAS -> BLOQUEO
+                
+                // Rama arquero
+                connections.put(37, List.of(39));           // ARQUERO -> FRANCO
+                connections.put(39, List.of(41));           // FRANCO -> MULTISHOT
+            }
+            
+            case EXPLORACION -> {
+                connections.put(10, List.of(12));  // VISION -> TELESCOPIO
+                connections.put(12, List.of(14));  // TELESCOPIO -> OJO_AGUILA
+                connections.put(19, List.of(21));  // BRUJULA -> MAPA
+                connections.put(21, List.of(23));  // MAPA -> WAYPOINT
+                connections.put(28, List.of(30));  // RASTRO -> DETECTOR
+                connections.put(30, List.of(32));  // DETECTOR -> XRAY
+                connections.put(37, List.of(39));  // PISADAS -> SOMBRA
+                connections.put(39, List.of(41));  // SOMBRA -> FANTASMA
             }
         }
         

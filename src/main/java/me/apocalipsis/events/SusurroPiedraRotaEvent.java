@@ -6492,262 +6492,393 @@ public class SusurroPiedraRotaEvent extends EventBase {
     }
     
     // ═══════════════════════════════════════════════════════════════════
-    // ACTO 3: EL NÚCLEO DE FORMA
+    // ACTO 3: EL NÚCLEO DE FORMA - CLÍMAX ÉPICO DEL EVENTO
     // ═══════════════════════════════════════════════════════════════════
     
     private void iniciarActo3() {
-        plugin.getLogger().info("[SusurroPiedraRota] Iniciando transición ÉPICA FINAL a Acto 3");
+        plugin.getLogger().info("[SusurroPiedraRota] ═══ INICIANDO ACTO FINAL: EL ECO RESUENA ═══");
         
-        // ✨ NUEVO: Limpiar mobs hostiles para la narrativa del Acto 3
+        // ✨ Limpiar mobs hostiles para narrativa inmersiva
         limpiarMobsHostilesCercanos();
         
         // ═══════════════════════════════════════════════════════════════
-        // FASE 1: DESCENSO AL VACÍO (0-8 segundos)
+        // FASE 1: MUERTE DE LA LUZ (0-12 segundos)
+        // El mundo parece perder todo color y vida
         // ═══════════════════════════════════════════════════════════════
         
+        // Oscurecer el mundo completamente
         for (Player p : Bukkit.getOnlinePlayers()) {
             if (participantesOriginales.contains(p.getUniqueId())) {
-                // Fadeout con sensación de caída
-                p.sendTitle("§0▬▬▬▬▬▬▬▬▬▬▬▬", "§5§oDescendiendo al vacío...", 20, 80, 20);
+                // Ceguera progresiva que simula perder la consciencia
+                p.sendTitle("§0", "", 40, 60, 40);
                 
-                // Efectos de vértigo
                 p.addPotionEffect(new org.bukkit.potion.PotionEffect(
-                    org.bukkit.potion.PotionEffectType.NAUSEA, 80, 0, true, false));
+                    org.bukkit.potion.PotionEffectType.BLINDNESS, 140, 1, true, false));
                 p.addPotionEffect(new org.bukkit.potion.PotionEffect(
-                    org.bukkit.potion.PotionEffectType.BLINDNESS, 80, 0, true, false));
+                    org.bukkit.potion.PotionEffectType.SLOWNESS, 240, 5, true, false));
                 p.addPotionEffect(new org.bukkit.potion.PotionEffect(
-                    org.bukkit.potion.PotionEffectType.SLOWNESS, 160, 4, true, false));
+                    org.bukkit.potion.PotionEffectType.NAUSEA, 120, 0, true, false));
                 
-                // Sonidos de caída
-                p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_BREATH, 1.0f, 0.5f);
-                p.playSound(p.getLocation(), Sound.BLOCK_PORTAL_TRAVEL, 0.8f, 0.4f);
+                // Sonido de la consciencia desvaneciéndose
+                p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_BREATH, 1.0f, 0.3f);
             }
         }
         
-        // Sonidos ambientales de descenso
-        playSoundToAll(Sound.ENTITY_WITHER_DEATH, 0.7f, 0.3f);
-        playSoundToAll(Sound.ENTITY_ENDER_DRAGON_DEATH, 0.6f, 0.4f);
-        playSoundToAll(Sound.AMBIENT_CAVE, 1.0f, 0.6f);
+        // Sonidos de colapso dimensional
+        playSoundToAll(Sound.BLOCK_RESPAWN_ANCHOR_DEPLETE, 1.0f, 0.3f);
+        playSoundToAll(Sound.AMBIENT_CAVE, 1.0f, 0.4f);
         
-        // Partículas de distorsión
-        for (Player p : Bukkit.getOnlinePlayers()) {
-            Location pLoc = p.getLocation();
-            for (int i = 0; i < 150; i++) {
-                double ox = (Math.random() - 0.5) * 20;
-                double oy = Math.random() * 10;
-                double oz = (Math.random() - 0.5) * 20;
-                pLoc.getWorld().spawnParticle(Particle.REVERSE_PORTAL, pLoc.clone().add(ox, oy, oz), 3, 0.2, 0.2, 0.2, 0.1);
-                pLoc.getWorld().spawnParticle(Particle.SQUID_INK, pLoc.clone().add(ox, oy, oz), 1, 0, 0, 0, 0);
-            }
-        }
-        
-        // ═══════════════════════════════════════════════════════════════
-        // FASE 2: HEARTBEAT DIMENSIONAL (8-14 segundos)
-        // ═══════════════════════════════════════════════════════════════
+        // Primer mensaje en la oscuridad
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (!isActive()) return;
-            
-            // Pulso 1 - débil
-            playSoundToAll(Sound.ENTITY_WARDEN_HEARTBEAT, 0.8f, 0.5f);
             for (Player p : Bukkit.getOnlinePlayers()) {
-                p.sendTitle("§5✦", "§8§o...el vacío respira...", 5, 25, 5);
-                Location loc = p.getLocation();
-                loc.getWorld().spawnParticle(Particle.SOUL, loc.add(0, 1, 0), 20, 2, 1, 2, 0.05);
+                if (participantesOriginales.contains(p.getUniqueId())) {
+                    p.sendTitle("§8§o...", "§0", 20, 60, 20);
+                }
             }
-        }, 160L);
+            playSoundToAll(Sound.ENTITY_WARDEN_AMBIENT, 0.3f, 0.3f);
+        }, 60L); // 3 segundos
         
+        // "¿Dónde estoy?" - momento de desorientación
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (!isActive()) return;
-            
-            // Pulso 2 - medio
-            playSoundToAll(Sound.ENTITY_WARDEN_HEARTBEAT, 1.0f, 0.6f);
             for (Player p : Bukkit.getOnlinePlayers()) {
-                p.sendTitle("§d§l✦", "§5§o...algo toma forma...", 5, 25, 5);
-                Location loc = p.getLocation();
-                loc.getWorld().spawnParticle(Particle.END_ROD, loc.add(0, 2, 0), 40, 3, 2, 3, 0.08);
+                if (participantesOriginales.contains(p.getUniqueId())) {
+                    p.sendTitle("§5§o¿...dónde...?", "§0", 20, 80, 20);
+                }
             }
-        }, 220L);
-        
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (!isActive()) return;
-            
-            // Pulso 3 - fuerte
-            playSoundToAll(Sound.ENTITY_WARDEN_HEARTBEAT, 1.3f, 0.7f);
-            playSoundToAll(Sound.ENTITY_WARDEN_ROAR, 0.6f, 0.5f);
-            for (Player p : Bukkit.getOnlinePlayers()) {
-                p.sendTitle("§b§l❖", "§d§oEL NÚCLEO SE MATERIALIZA", 10, 40, 10);
-                Location loc = p.getLocation();
-                loc.getWorld().spawnParticle(Particle.DRAGON_BREATH, loc.add(0, 1.5, 0), 60, 4, 2, 4, 0.1);
-            }
-        }, 280L);
+            playSoundToAll(Sound.BLOCK_SCULK_SENSOR_CLICKING, 0.5f, 0.4f);
+        }, 140L); // 7 segundos
         
         // ═══════════════════════════════════════════════════════════════
-        // FASE 3: REVELACIÓN DEL ACTO FINAL (14-20 segundos)
+        // FASE 2: EL PRIMER LATIDO (12-22 segundos)
+        // El corazón de la piedra comienza a pulsar
         // ═══════════════════════════════════════════════════════════════
+        
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (!isActive()) return;
             
+            // Primer latido - lejano y débil
+            playSoundToAll(Sound.ENTITY_WARDEN_HEARTBEAT, 0.6f, 0.4f);
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                if (participantesOriginales.contains(p.getUniqueId())) {
+                    p.sendTitle("§5✦", "§8§o...thump...", 10, 40, 10);
+                    Location loc = p.getLocation();
+                    loc.getWorld().spawnParticle(Particle.SOUL, loc.add(0, 1, 0), 15, 3, 2, 3, 0.02);
+                }
+            }
+        }, 240L); // 12 segundos
+        
+        // Segundo latido - más cercano
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (!isActive()) return;
+            
+            playSoundToAll(Sound.ENTITY_WARDEN_HEARTBEAT, 0.9f, 0.5f);
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                if (participantesOriginales.contains(p.getUniqueId())) {
+                    p.sendTitle("§d§l✦", "§5§o...thump... thump...", 10, 50, 10);
+                    Location loc = p.getLocation();
+                    loc.getWorld().spawnParticle(Particle.END_ROD, loc.add(0, 1.5, 0), 30, 2, 1.5, 2, 0.05);
+                }
+            }
+        }, 320L); // 16 segundos
+        
+        // Tercer latido - el corazón late justo al lado del jugador
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (!isActive()) return;
+            
+            playSoundToAll(Sound.ENTITY_WARDEN_HEARTBEAT, 1.3f, 0.6f);
+            playSoundToAll(Sound.ENTITY_WARDEN_HEARTBEAT, 1.3f, 0.8f); // Eco
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                if (participantesOriginales.contains(p.getUniqueId())) {
+                    p.sendTitle("§b§l❖", "§d§o¡THUMP! ¡THUMP!", 10, 60, 10);
+                    Location loc = p.getLocation();
+                    loc.getWorld().spawnParticle(Particle.DRAGON_BREATH, loc.add(0, 1.5, 0), 50, 3, 2, 3, 0.08);
+                    loc.getWorld().spawnParticle(Particle.REVERSE_PORTAL, loc, 30, 2, 1, 2, 0.1);
+                }
+            }
+        }, 400L); // 20 segundos
+        
+        // ═══════════════════════════════════════════════════════════════
+        // FASE 3: DESPERTAR EN EL VACÍO (22-35 segundos)
+        // La ceguera se disipa, revelando una realidad distorsionada
+        // ═══════════════════════════════════════════════════════════════
+        
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (!isActive()) return;
+            
+            // Remover ceguera y cambiar a Acto 3
             actoActual = Acto.NUCLEO_FORMA;
             ticksEnActo = 0;
             
-            // Intensificar ambiente al máximo
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                if (participantesOriginales.contains(p.getUniqueId())) {
+                    p.removePotionEffect(org.bukkit.potion.PotionEffectType.BLINDNESS);
+                    p.removePotionEffect(org.bukkit.potion.PotionEffectType.NAUSEA);
+                    // Mantener slow para sensación de pesadilla
+                    p.addPotionEffect(new org.bukkit.potion.PotionEffect(
+                        org.bukkit.potion.PotionEffectType.SLOWNESS, 400, 2, true, false));
+                }
+            }
+            
+            // Intensificar ambiente - colores sobrenaturales
             intensificarAmbienteActo3();
             iniciarBreadcrumbs();
             
-            // TÍTULO ÉPICO FINAL - más largo
-            enviarTituloCinematicoTodos(
-                "§d§l✦ ACTO FINAL ✦",
-                "§8✦ §5§lEL ECO RESUENA §8✦",
-                140
-            );
+            // Primera vista del nuevo mundo
+            playSoundToAll(Sound.ENTITY_ELDER_GUARDIAN_CURSE, 0.8f, 0.5f);
+            playSoundToAll(Sound.BLOCK_BEACON_ACTIVATE, 0.7f, 0.6f);
+        }, 440L); // 22 segundos
+        
+        // Título épico con revelación dramática
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (!isActive()) return;
             
-            // Todos los sonidos épicos
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                if (participantesOriginales.contains(p.getUniqueId())) {
+                    // Tres líneas de título con fade
+                    p.sendTitle("§0", "§8§o...no estás solo...", 20, 60, 20);
+                }
+            }
+            playSoundToAll(Sound.ENTITY_WARDEN_NEARBY_CLOSEST, 0.5f, 0.4f);
+        }, 500L); // 25 segundos
+        
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (!isActive()) return;
+            
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                if (participantesOriginales.contains(p.getUniqueId())) {
+                    p.sendTitle("§5§l...", "§d§oALGO TE OBSERVA DESDE EL VACÍO", 20, 80, 20);
+                }
+            }
+            playSoundToAll(Sound.ENTITY_WARDEN_ROAR, 0.5f, 0.4f);
+        }, 580L); // 29 segundos
+        
+        // ═══════════════════════════════════════════════════════════════
+        // FASE 4: REVELACIÓN DEL ACTO FINAL (35-50 segundos)
+        // El título épico aparece con toda su gloria
+        // ═══════════════════════════════════════════════════════════════
+        
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (!isActive()) return;
+            
+            // TÍTULO ÉPICO CON EFECTOS MÁXIMOS
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                if (participantesOriginales.contains(p.getUniqueId())) {
+                    p.sendTitle(
+                        "§d§l✦ ACTO FINAL ✦",
+                        "§8═══════ §5§lEL ECO RESUENA §8═══════",
+                        20, 160, 20
+                    );
+                    
+                    // Partículas épicas alrededor del jugador
+                    Location loc = p.getLocation();
+                    loc.getWorld().spawnParticle(Particle.SOUL_FIRE_FLAME, loc.add(0, 2, 0), 100, 5, 3, 5, 0.15);
+                    loc.getWorld().spawnParticle(Particle.END_ROD, loc, 80, 4, 2, 4, 0.1);
+                    loc.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING, loc, 50, 3, 2, 3, 0.5);
+                }
+            }
+            
+            // Orquesta de sonidos épicos
             playSoundToAll(Sound.ENTITY_WITHER_SPAWN, 1.0f, 0.4f);
-            playSoundToAll(Sound.BLOCK_BEACON_ACTIVATE, 1.0f, 0.5f);
             playSoundToAll(Sound.BLOCK_END_PORTAL_SPAWN, 1.0f, 0.7f);
-            playSoundToAll(Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 0.7f, 0.5f);
             playSoundToAll(Sound.UI_TOAST_CHALLENGE_COMPLETE, 0.8f, 0.8f);
             
-            // Explosión de partículas épicas
+            // Múltiples relámpagos en círculo
             for (Player p : Bukkit.getOnlinePlayers()) {
                 Location loc = p.getLocation();
-                loc.getWorld().spawnParticle(Particle.SOUL_FIRE_FLAME, loc.add(0, 2, 0), 100, 5, 3, 5, 0.15);
-                loc.getWorld().spawnParticle(Particle.END_ROD, loc, 80, 4, 2, 4, 0.1);
-                loc.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING, loc, 50, 3, 2, 3, 0.5);
-                
-                // Múltiples relámpagos
-                for (int i = 0; i < 5; i++) {
-                    final int delay = i * 8;
+                for (int i = 0; i < 8; i++) {
+                    final int delay = i * 6;
+                    final double angulo = (2 * Math.PI * i) / 8;
                     Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                        loc.getWorld().strikeLightningEffect(loc.clone().add(
-                            (Math.random() - 0.5) * 60, 0, (Math.random() - 0.5) * 60));
+                        if (isActive()) {
+                            loc.getWorld().strikeLightningEffect(loc.clone().add(
+                                Math.cos(angulo) * 40, 0, Math.sin(angulo) * 40));
+                        }
                     }, delay);
                 }
             }
-        }, 340L); // 17 segundos
+        }, 700L); // 35 segundos
         
         // ═══════════════════════════════════════════════════════════════
-        // FASE 4: PANEL DE OBJETIVOS DRAMÁTICO (20-40 segundos)
+        // FASE 5: PANEL DE MISIÓN NARRATIVO (50-80 segundos)
+        // Explicación clara con tiempo para leer
         // ═══════════════════════════════════════════════════════════════
+        
+        // Encabezado del panel
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (!isActive()) return;
             
             broadcastNarrative("");
-            broadcastNarrative("§d§l✦ §8§m════════════════════════════════════════════ §d§l✦");
-            playSoundToAll(Sound.BLOCK_AMETHYST_BLOCK_RESONATE, 1.0f, 0.8f);
-        }, 480L); // 24 segundos
+            broadcastNarrative("§5§l✦ §8§m═══════════════════════════════════════════════════════ §5§l✦");
+            broadcastNarrative("");
+            playSoundToAll(Sound.BLOCK_AMETHYST_BLOCK_RESONATE, 1.0f, 0.7f);
+        }, 1000L); // 50 segundos
         
+        // Título de la misión
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (!isActive()) return;
+            
+            broadcastNarrative("               §d§l⧗ MISIÓN FINAL: §5§lEL ECO RESUENA §d§l⧗");
+            broadcastNarrative("");
+            playSoundToAll(Sound.BLOCK_BEACON_POWER_SELECT, 0.8f, 1.2f);
+        }, 1100L); // 55 segundos
+        
+        // Narrativa dramática
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (!isActive()) return;
+            
+            broadcastNarrative("    §7La piedra rota ha despertado algo antiguo...");
+            broadcastNarrative("    §7Algo que nunca debió ser tocado.");
+            playSoundToAll(Sound.AMBIENT_CAVE, 0.6f, 0.5f);
+        }, 1200L); // 60 segundos
+        
+        // Primer objetivo - con pausa dramática
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (!isActive()) return;
             
             broadcastNarrative("");
-            broadcastNarrative("          §d§l⧗ ACTO FINAL: §5§lEL ECO RESUENA §d§l⧗");
-            playSoundToAll(Sound.BLOCK_BEACON_POWER_SELECT, 1.0f, 1.2f);
-        }, 560L); // 28 segundos
+            broadcastNarrative("    §e⚡ §e§lEL NÚCLEO HA EMERGIDO");
+            broadcastNarrative("       §7Un corazón de energía corrupta late cerca del altar");
+            playSoundToAll(Sound.BLOCK_NOTE_BLOCK_BELL, 0.6f, 0.8f);
+        }, 1320L); // 66 segundos
         
-        // Objetivos con MUCHO tiempo de lectura
+        // Instrucción visual
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (!isActive()) return;
             
             broadcastNarrative("");
-            broadcastNarrative("    §8◆ §7El altar pulsa con energía corrupta ancestral");
-            playSoundToAll(Sound.BLOCK_NOTE_BLOCK_BELL, 0.5f, 0.8f);
-        }, 660L); // 33 segundos
+            broadcastNarrative("    §b✦ §b§lBUSCA EL RAYO DE LUZ VIOLETA EN EL CIELO");
+            broadcastNarrative("       §7Es el faro que marca su ubicación");
+            playSoundToAll(Sound.BLOCK_NOTE_BLOCK_BELL, 0.6f, 1.0f);
+        }, 1440L); // 72 segundos
         
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (!isActive()) return;
-            
-            broadcastNarrative("    §e◆ §eUn §lnúcleo de memoria §r§eemerge cerca del altar");
-            playSoundToAll(Sound.BLOCK_NOTE_BLOCK_BELL, 0.5f, 1.0f);
-        }, 760L); // 38 segundos
-        
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (!isActive()) return;
-            
-            broadcastNarrative("    §b◆ §b§lBusca el BEAM DE LUZ §bvioleta en el cielo");
-            playSoundToAll(Sound.BLOCK_NOTE_BLOCK_BELL, 0.5f, 1.2f);
-        }, 860L); // 43 segundos
-        
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (!isActive()) return;
-            
-            broadcastNarrative("    §a◆ §a§lUSA TU BRÚJULA §r§a- apunta hacia el núcleo");
-            playSoundToAll(Sound.BLOCK_NOTE_BLOCK_BELL, 0.5f, 1.4f);
-        }, 960L); // 48 segundos
-        
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (!isActive()) return;
-            
-            broadcastNarrative("    §c◆ §c§lRECOGE el núcleo antes de que sea tarde");
-            playSoundToAll(Sound.BLOCK_NOTE_BLOCK_BELL, 0.5f, 1.6f);
-        }, 1060L); // 53 segundos
-        
-        // Mensaje del Observador
+        // Instrucción de brújula
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (!isActive()) return;
             
             broadcastNarrative("");
-            broadcastNarrative("    §5§o\"Este es el momento que la piedra esperaba...\"");
-            broadcastNarrative("    §5§o\"No falles ahora, peregrino.\"");
-            broadcastNarrative("    §8§o— El Observador");
-            playSoundToAll(Sound.ENTITY_WARDEN_AMBIENT, 0.5f, 0.5f);
-        }, 1160L); // 58 segundos
+            broadcastNarrative("    §a◈ §a§lTU BRÚJULA MÁGICA TE GUIARÁ");
+            broadcastNarrative("       §7Sigue su aguja hacia el núcleo corrupto");
+            playSoundToAll(Sound.BLOCK_NOTE_BLOCK_BELL, 0.6f, 1.2f);
+        }, 1560L); // 78 segundos
         
-        // Cierre
+        // Objetivo crítico
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (!isActive()) return;
             
             broadcastNarrative("");
-            broadcastNarrative("§d§l✦ §8§m════════════════════════════════════════════ §d§l✦");
+            broadcastNarrative("    §c⚠ §c§lRECOGE EL NÚCLEO ANTES DE QUE SEA TARDE");
+            broadcastNarrative("       §7La Forma lo protegerá con cada fibra de su ser");
+            playSoundToAll(Sound.BLOCK_NOTE_BLOCK_BELL, 0.6f, 1.5f);
+        }, 1680L); // 84 segundos
+        
+        // Mensaje del Observador - momento emotivo
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (!isActive()) return;
+            
+            broadcastNarrative("");
+            broadcastNarrative("    §5§o\"Peregrino... este es el momento que la piedra esperaba.");
+            playSoundToAll(Sound.ENTITY_WARDEN_AMBIENT, 0.4f, 0.4f);
+        }, 1820L); // 91 segundos
+        
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (!isActive()) return;
+            
+            broadcastNarrative("    §5§o Tantas eras de silencio... tantos que fallaron antes.");
+            playSoundToAll(Sound.ENTITY_WARDEN_AMBIENT, 0.4f, 0.5f);
+        }, 1920L); // 96 segundos
+        
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (!isActive()) return;
+            
+            broadcastNarrative("    §5§o Pero tú... tú eres diferente. Lo siento en tus pasos.");
+            broadcastNarrative("    §5§o No falles ahora. Por todos los que cayeron.\"");
+            broadcastNarrative("    §8§o— El Observador, voz temblorosa");
+            playSoundToAll(Sound.ENTITY_WARDEN_AMBIENT, 0.4f, 0.6f);
+        }, 2020L); // 101 segundos
+        
+        // Cierre del panel
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (!isActive()) return;
+            
+            broadcastNarrative("");
+            broadcastNarrative("§5§l✦ §8§m═══════════════════════════════════════════════════════ §5§l✦");
             broadcastNarrative("");
             playSoundToAll(Sound.BLOCK_END_PORTAL_FRAME_FILL, 0.8f, 1.0f);
-        }, 1260L); // 63 segundos
+        }, 2140L); // 107 segundos
         
         // ═══════════════════════════════════════════════════════════════
-        // FASE 5: DIÁLOGO DE LA FORMA Y SPAWN DEL NÚCLEO (65-80 segundos)
+        // FASE 6: DIÁLOGO DE LA FORMA (110-125 segundos)
+        // La entidad habla antes de mostrar el núcleo
         // ═══════════════════════════════════════════════════════════════
+        
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (!isActive()) return;
             
-            // Diálogo épico
+            // Diálogo dramático con efectos
             mostrarDialogoForma("ACTO3_INICIO");
             
-            // Slow motion épico
+            // Slow motion para la gravedad del momento
             for (Player p : Bukkit.getOnlinePlayers()) {
                 if (participantesOriginales.contains(p.getUniqueId())) {
-                    p.addPotionEffect(new org.bukkit.potion.PotionEffect(
-                        org.bukkit.potion.PotionEffectType.SLOWNESS, 180, 4, true, false));
-                    aplicarSlowMotion(p, 9);
+                    aplicarSlowMotion(p, 12);
                 }
             }
-        }, 1300L); // 65 segundos
+        }, 2200L); // 110 segundos
         
-        // Spawn del núcleo con máximo dramatismo
+        // ═══════════════════════════════════════════════════════════════
+        // FASE 7: SPAWN DEL NÚCLEO (125-140 segundos)
+        // El núcleo emerge con máximo dramatismo
+        // ═══════════════════════════════════════════════════════════════
+        
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (!isActive()) return;
             
+            // Título de advertencia
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                if (participantesOriginales.contains(p.getUniqueId())) {
+                    p.sendTitle(
+                        "§5§l✦ EL NÚCLEO EMERGE ✦",
+                        "§7§oMira hacia el cielo...",
+                        20, 100, 20
+                    );
+                }
+            }
+            
+            playSoundToAll(Sound.ENTITY_ENDER_DRAGON_GROWL, 0.8f, 0.5f);
+            playSoundToAll(Sound.BLOCK_END_PORTAL_SPAWN, 0.7f, 0.6f);
+            
+            // Spawnear núcleo
             spawnearNucleoForma();
+        }, 2500L); // 125 segundos
+        
+        // Mensaje de ayuda visual
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (!isActive()) return;
             
-            // Mensaje de pista
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                for (Player p : Bukkit.getOnlinePlayers()) {
-                    if (participantesOriginales.contains(p.getUniqueId())) {
-                        p.sendMessage("");
-                        p.sendMessage("§d§l[✦] §e§lPISTA: §7Mira hacia §darriba §7y busca el §brayo de luz violeta");
-                        p.sendMessage("§d§l[✦] §7Tu §abrújula mágica §7te guiará hacia el núcleo");
-                        p.sendMessage("");
-                        p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 0.8f, 1.5f);
-                    }
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                if (participantesOriginales.contains(p.getUniqueId())) {
+                    p.sendMessage("");
+                    p.sendMessage("§5§l═══════════════════════════════════════");
+                    p.sendMessage("");
+                    p.sendMessage("§d§l  [✦] §e§lPISTA DE NAVEGACIÓN");
+                    p.sendMessage("§7      Mira hacia §darriba §7y busca el §b§lRAYO DE LUZ VIOLETA");
+                    p.sendMessage("§7      Tu §a§lBRÚJULA MÁGICA §7apunta hacia el núcleo");
+                    p.sendMessage("");
+                    p.sendMessage("§5§l═══════════════════════════════════════");
+                    p.sendMessage("");
+                    p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 0.8f, 1.5f);
+                    p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME, 0.6f, 1.2f);
                 }
-            }, 100L);
-            
-            // Diálogo cuando aparece el núcleo
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if (isActive()) {
-                    mostrarDialogoForma("NUCLEO_APARECE");
-                }
-            }, 80L);
-        }, 1480L); // 74 segundos
+            }
+        }, 2700L); // 135 segundos
+        
+        // Diálogo del núcleo apareciendo
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (!isActive()) return;
+            mostrarDialogoForma("NUCLEO_APARECE");
+        }, 2900L); // 145 segundos
     }
     
     private void spawnearNucleoForma() {
@@ -7175,93 +7306,269 @@ public class SusurroPiedraRotaEvent extends EventBase {
         puzzlesCompletados.put(player.getUniqueId(), puzzlesCompletados.getOrDefault(player.getUniqueId(), 0) + 1);
         
         plugin.getLogger().info(String.format(
-            "[SusurroPiedraRota] %s recogió el Núcleo de Forma",
+            "[SusurroPiedraRota] ═══ %s RECOGIÓ EL NÚCLEO DE FORMA ═══",
             player.getName()
         ));
+        
+        // ═══════════════════════════════════════════════════════════════
+        // FASE 1: MOMENTO DE CONTACTO (0-5 segundos)
+        // El jugador toca el núcleo - tiempo se congela
+        // ═══════════════════════════════════════════════════════════════
+        
+        // Slow motion para todos al tocar el núcleo
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (participantesOriginales.contains(p.getUniqueId())) {
+                p.addPotionEffect(new org.bukkit.potion.PotionEffect(
+                    org.bukkit.potion.PotionEffectType.SLOWNESS, 100, 5, true, false));
+            }
+        }
+        
+        // Título épico para quien lo recogió
+        player.sendTitle(
+            "§d§l✦ CONTACTO ✦",
+            "§7§oEl núcleo resuena con tu alma...",
+            20, 60, 20
+        );
+        
+        // Título para los demás
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (participantesOriginales.contains(p.getUniqueId()) && !p.getUniqueId().equals(player.getUniqueId())) {
+                p.sendTitle(
+                    "§5§l✦ " + player.getName() + " ✦",
+                    "§7§oHa tocado el corazón de la piedra...",
+                    20, 60, 20
+                );
+            }
+        }
+        
+        // Sonidos de contacto místico
+        playSoundToAll(Sound.BLOCK_BEACON_ACTIVATE, 1.0f, 0.5f);
+        playSoundToAll(Sound.ENTITY_WARDEN_SONIC_CHARGE, 0.7f, 0.4f);
+        playSoundToAll(Sound.BLOCK_AMETHYST_BLOCK_RESONATE, 1.0f, 0.6f);
+        
+        // Onda de energía expandiéndose
+        for (int ola = 1; ola <= 5; ola++) {
+            final int olaActual = ola;
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (!isActive()) return;
+                
+                double radio = olaActual * 4.0;
+                for (int i = 0; i < 60; i++) {
+                    double angulo = (2 * Math.PI * i) / 60;
+                    Location particleLoc = nucleoLocation.clone().add(
+                        Math.cos(angulo) * radio,
+                        1.5,
+                        Math.sin(angulo) * radio
+                    );
+                    nucleoLocation.getWorld().spawnParticle(Particle.END_ROD, particleLoc, 2, 0, 0, 0, 0);
+                    nucleoLocation.getWorld().spawnParticle(Particle.SOUL, particleLoc, 1, 0, 0, 0, 0);
+                }
+            }, olaActual * 4L);
+        }
         
         // Dar item al jugador
         player.getInventory().addItem(SusurroPiedraRotaItems.createNucleoForma());
         
-        // Mensaje
-        enviarMensajeCinematico(player, "§5§l✦ NÚCLEO DE FORMA RECUPERADO ✦");
+        // Mensaje especial para quien lo recogió
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (!isActive()) return;
+            
+            player.sendMessage("");
+            player.sendMessage("§5§l════════════════════════════════════════");
+            player.sendMessage("");
+            player.sendMessage("     §d§l✦ §eHAS OBTENIDO EL §d§lNÚCLEO DE FORMA §d§l✦");
+            player.sendMessage("");
+            player.sendMessage("     §7El corazón de la piedra late en tus manos.");
+            player.sendMessage("     §7Puedes sentir su poder... y su maldición.");
+            player.sendMessage("");
+            player.sendMessage("§5§l════════════════════════════════════════");
+            player.sendMessage("");
+            
+            soundUtil.playSound(player, Sound.UI_TOAST_CHALLENGE_COMPLETE, 0.8f, 1.0f);
+        }, 40L); // 2 segundos
         
-        soundUtil.playSound(player, Sound.BLOCK_BEACON_ACTIVATE, 1.0f, 1.2f);
-        
-        // Efectos
-        nucleoLocation.getWorld().spawnParticle(
-            Particle.END_ROD,
-            nucleoLocation,
-            100,
-            1, 1, 1,
-            0.2
-        );
-        
-        // Remover item frame
+        // Remover item frame y efectos
         if (nucleoFrame != null && nucleoFrame.isValid()) {
             nucleoFrame.remove();
         }
-        
-        // Cancelar efectos del núcleo en el vacío
         if (nucleoParticleTask != null) nucleoParticleTask.cancel();
         if (nucleoBeamTask != null) nucleoBeamTask.cancel();
         if (nucleoSpawnTask != null) nucleoSpawnTask.cancel();
         
-        // 🗣️ DIÁLOGO - Núcleo recogido, instrucción de llevarlo al altar
+        // ═══════════════════════════════════════════════════════════════
+        // FASE 2: LA FORMA REACCIONA (5-15 segundos)
+        // La entidad se enfurece por la pérdida de su núcleo
+        // ═══════════════════════════════════════════════════════════════
+        
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (isActive()) {
-                // Establecer ubicación del altar (primer fragmento) con verificación null safety
-                if (!fragmentosLocations.isEmpty()) {
-                    altarLocation = fragmentosLocations.get(0).clone();
-                } else if (grietaLocation != null) {
-                    altarLocation = grietaLocation.clone();
-                } else {
-                    // Fallback: usar spawn del mundo
-                    altarLocation = Bukkit.getWorlds().get(0).getSpawnLocation();
-                    plugin.getLogger().warning("[SusurroPiedraRota] No hay fragmentos para altar, usando spawn");
+            if (!isActive()) return;
+            
+            // Título de alarma
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                if (participantesOriginales.contains(p.getUniqueId())) {
+                    p.sendTitle(
+                        "§4§l⚠ LA FORMA DESPIERTA ⚠",
+                        "§c§o¡Su furia es incontenible!",
+                        20, 80, 20
+                    );
+                }
+            }
+            
+            // Rugido de la entidad
+            playSoundToAll(Sound.ENTITY_WARDEN_ROAR, 1.0f, 0.5f);
+            playSoundToAll(Sound.ENTITY_ENDER_DRAGON_GROWL, 0.8f, 0.4f);
+            playSoundToAll(Sound.ENTITY_RAVAGER_ROAR, 0.7f, 0.6f);
+            
+            // Partículas de ira
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                Location loc = p.getLocation();
+                loc.getWorld().spawnParticle(Particle.ANGRY_VILLAGER, loc.add(0, 2, 0), 30, 3, 1, 3, 0);
+                loc.getWorld().spawnParticle(Particle.CRIMSON_SPORE, loc, 50, 5, 3, 5, 0.1);
+            }
+        }, 100L); // 5 segundos
+        
+        // Mensaje de advertencia del Observador
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (!isActive()) return;
+            
+            broadcastNarrative("");
+            broadcastNarrative("    §5§o\"¡Lo has enfurecido, peregrino!");
+            broadcastNarrative("    §5§o ¡Prepárate para defender lo que has tomado!\"");
+            broadcastNarrative("    §8§o— El Observador, con urgencia");
+            playSoundToAll(Sound.ENTITY_WARDEN_AMBIENT, 0.5f, 0.5f);
+        }, 180L); // 9 segundos
+        
+        // ═══════════════════════════════════════════════════════════════
+        // FASE 3: OLEADA DE DEFENSORES (15-60+ segundos)
+        // Los jugadores deben matar a todos antes de continuar
+        // ═══════════════════════════════════════════════════════════════
+        
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (!isActive()) return;
+            
+            // Establecer ubicación del altar
+            if (!fragmentosLocations.isEmpty()) {
+                altarLocation = fragmentosLocations.get(0).clone();
+            } else if (grietaLocation != null) {
+                altarLocation = grietaLocation.clone();
+            } else {
+                altarLocation = Bukkit.getWorlds().get(0).getSpawnLocation();
+                plugin.getLogger().warning("[SusurroPiedraRota] No hay fragmentos para altar, usando spawn");
+            }
+            
+            // Título de combate
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                if (participantesOriginales.contains(p.getUniqueId())) {
+                    p.sendTitle(
+                        "§c§l⚔ ¡DEFENSORES DEL NÚCLEO! ⚔",
+                        "§7Eliminen a todas las criaturas",
+                        20, 100, 20
+                    );
+                }
+            }
+            
+            // Mensaje de combate
+            broadcastNarrative("");
+            broadcastNarrative("§4§l═══════════════════════════════════════════════════");
+            broadcastNarrative("");
+            broadcastNarrative("     §c§l⚔ ¡OLEADA DE DEFENSORES! ⚔");
+            broadcastNarrative("");
+            broadcastNarrative("     §7La Forma ha invocado a sus guardianes.");
+            broadcastNarrative("     §e¡Eliminen a todos antes de poder continuar!");
+            broadcastNarrative("");
+            broadcastNarrative("§4§l═══════════════════════════════════════════════════");
+            
+            // Spawnear oleada épica
+            spawnearOleadaActo3();
+            
+            playSoundToAll(Sound.ENTITY_WITHER_SPAWN, 0.8f, 0.6f);
+            playSoundToAll(Sound.ENTITY_ENDER_DRAGON_GROWL, 0.7f, 0.6f);
+            
+            // Esperar eliminación de TODOS los enemigos
+            esperarEliminacionEnemigosActo3(() -> {
+                if (!isActive()) return;
+                
+                // ═══════════════════════════════════════════════════════════════
+                // FASE 4: VICTORIA Y NUEVAS INSTRUCCIONES (post-combate)
+                // ═══════════════════════════════════════════════════════════════
+                
+                // Título de victoria
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    if (participantesOriginales.contains(p.getUniqueId())) {
+                        p.sendTitle(
+                            "§a§l✓ ¡VICTORIA! ✓",
+                            "§7§oLos defensores han caído...",
+                            20, 80, 20
+                        );
+                    }
                 }
                 
-                // ⚔️ PRIMERO: Spawnear enemigos para que los jugadores los maten
-                spawnearOleadaActo3();
+                playSoundToAll(Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
+                playSoundToAll(Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.2f);
                 
-                // Mensaje de alerta de combate
-                broadcastNarrative("");
-                broadcastNarrative("    §c§l⚔ ¡DEFENSORES DEL NÚCLEO! ⚔");
-                broadcastNarrative("    §7Eliminen a las criaturas antes de continuar...");
-                playSoundToAll(Sound.ENTITY_ENDER_DRAGON_GROWL, 0.7f, 0.6f);
+                // Pausa dramática antes del diálogo
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    if (!isActive()) return;
+                    mostrarDialogoForma("NUCLEO_RECOGIDO");
+                }, 60L); // 3 segundos
                 
-                // Verificar cuando se eliminen todos los enemigos para continuar narrativa
-                esperarEliminacionEnemigosActo3(() -> {
+                // Instrucciones claras después del diálogo
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
                     if (!isActive()) return;
                     
-                    mostrarDialogoForma("NUCLEO_RECOGIDO");
+                    broadcastNarrative("");
+                    broadcastNarrative("§5§l✦ §8§m═══════════════════════════════════════════════ §5§l✦");
+                    broadcastNarrative("");
+                    broadcastNarrative("          §d§l⚠ ¡LLEVEN EL NÚCLEO AL ALTAR! ⚠");
+                    broadcastNarrative("");
+                    playSoundToAll(Sound.BLOCK_NOTE_BLOCK_CHIME, 0.8f, 1.0f);
+                }, 160L); // 8 segundos
+                
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    if (!isActive()) return;
                     
-                    // Anuncio en chat con instrucciones claras
-                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                        if (!isActive()) return;
-                        broadcastNarrative("§8§m══════════════════════════════════════════════════");
-                        broadcastNarrative("");
-                        broadcastNarrative("          §5§l⚠ ¡LLEVEN EL NÚCLEO AL ALTAR! ⚠");
-                        broadcastNarrative("");
-                        broadcastNarrative("    §e✦ El núcleo aún vive y debe ser destruido");
-                        broadcastNarrative("    §a✦ Regresen al PRIMER FRAGMENTO (donde empezó todo)");
-                        broadcastNarrative("    §c✦ ¡El núcleo invocará defensores mientras huyen!");
-                        broadcastNarrative("");
-                        broadcastNarrative("§8§m══════════════════════════════════════════════════");
-                        
-                        // Actualizar brújulas para que apunten al altar
-                        for (Player p : Bukkit.getOnlinePlayers()) {
-                            if (participantesOriginales.contains(p.getUniqueId())) {
-                                p.setCompassTarget(altarLocation);
-                                objetivosPorJugador.put(p.getUniqueId(), altarLocation);
-                            }
+                    broadcastNarrative("    §7El núcleo aún late con vida corrupta.");
+                    broadcastNarrative("    §7Solo en el altar podrá ser destruido.");
+                    playSoundToAll(Sound.BLOCK_NOTE_BLOCK_BELL, 0.5f, 0.8f);
+                }, 240L); // 12 segundos
+                
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    if (!isActive()) return;
+                    
+                    broadcastNarrative("");
+                    broadcastNarrative("    §e◈ Regresen al §lPRIMER FRAGMENTO §r§e(donde empezó todo)");
+                    broadcastNarrative("    §a◈ La §lBRÚJULA §r§aapunta hacia el altar");
+                    broadcastNarrative("    §c◈ ¡La Forma §linvocará más defensores §r§cmientras huyen!");
+                    playSoundToAll(Sound.BLOCK_NOTE_BLOCK_BELL, 0.5f, 1.0f);
+                }, 320L); // 16 segundos
+                
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    if (!isActive()) return;
+                    
+                    broadcastNarrative("");
+                    broadcastNarrative("    §5§o\"Corran, peregrinos... corran como si");
+                    broadcastNarrative("    §5§o el mismo vacío os persiguiera.\"");
+                    broadcastNarrative("    §8§o— El Observador");
+                    broadcastNarrative("");
+                    broadcastNarrative("§5§l✦ §8§m═══════════════════════════════════════════════ §5§l✦");
+                    broadcastNarrative("");
+                    
+                    playSoundToAll(Sound.ENTITY_WARDEN_AMBIENT, 0.4f, 0.5f);
+                    playSoundToAll(Sound.BLOCK_END_PORTAL_FRAME_FILL, 0.8f, 1.0f);
+                    
+                    // Actualizar brújulas
+                    for (Player p : Bukkit.getOnlinePlayers()) {
+                        if (participantesOriginales.contains(p.getUniqueId())) {
+                            p.setCompassTarget(altarLocation);
+                            objetivosPorJugador.put(p.getUniqueId(), altarLocation);
                         }
-                        
-                        // Spawn agresivo de criaturas durante el retorno (más presión)
-                        iniciarSpawnsRetorno();
-                    }, 100L); // 5 segundos después del diálogo
-                });
-            }
-        }, 60L); // 3 segundos para ver efectos
+                    }
+                    
+                    // Iniciar spawns de presión durante el retorno
+                    iniciarSpawnsRetorno();
+                }, 400L); // 20 segundos
+            });
+        }, 300L); // 15 segundos después de recoger
     }
     
     private void iniciarBreadcrumbs() {
@@ -7407,18 +7714,24 @@ public class SusurroPiedraRotaEvent extends EventBase {
     
     /**
      * Espera a que se eliminen todos los enemigos de la oleada para ejecutar callback
+     * Muestra progreso visual constante a los jugadores
      */
     private void esperarEliminacionEnemigosActo3(Runnable callback) {
         this.callbackOleadaCompletada = callback;
+        final int enemigosInicial = enemigosOleadaActo3.size();
         
         // Verificar cada segundo
         Bukkit.getScheduler().runTaskTimer(plugin, new org.bukkit.scheduler.BukkitRunnable() {
+            int ticksEspera = 0;
+            
             @Override
             public void run() {
                 if (!isActive()) {
                     this.cancel();
                     return;
                 }
+                
+                ticksEspera++;
                 
                 // Limpiar enemigos muertos del set
                 enemigosOleadaActo3.removeIf(uuid -> {
@@ -7430,14 +7743,26 @@ public class SusurroPiedraRotaEvent extends EventBase {
                     return true;
                 });
                 
-                // Mostrar progreso
-                if (!enemigosOleadaActo3.isEmpty() && System.currentTimeMillis() % 5000 < 1000) {
-                    for (Player p : Bukkit.getOnlinePlayers()) {
-                        if (participantesOriginales.contains(p.getUniqueId())) {
-                            p.sendActionBar(net.kyori.adventure.text.Component.text(
-                                "§c⚔ Enemigos restantes: §l" + enemigosOleadaActo3.size() + " §c⚔"
-                            ));
-                        }
+                int restantes = enemigosOleadaActo3.size();
+                int eliminados = enemigosInicial - restantes;
+                
+                // Barra de progreso visual en ActionBar
+                String barraProgreso = crearBarraProgreso(eliminados, enemigosInicial);
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    if (participantesOriginales.contains(p.getUniqueId())) {
+                        p.sendActionBar(net.kyori.adventure.text.Component.text(
+                            "§c⚔ " + barraProgreso + " §c§l" + restantes + " §7restantes ⚔"
+                        ));
+                    }
+                }
+                
+                // Mensajes de progreso cada 5 segundos
+                if (ticksEspera % 100 == 0 && restantes > 0) {
+                    if (restantes <= 3) {
+                        broadcastNarrative("    §e§o¡Solo quedan §l" + restantes + " §r§e§oenemigos!");
+                        playSoundToAll(Sound.BLOCK_NOTE_BLOCK_PLING, 0.6f, 1.5f);
+                    } else if (restantes <= enemigosInicial / 2) {
+                        broadcastNarrative("    §7§oMás de la mitad eliminados... ¡Sigan así!");
                     }
                 }
                 
@@ -7445,22 +7770,42 @@ public class SusurroPiedraRotaEvent extends EventBase {
                 if (enemigosOleadaActo3.isEmpty()) {
                     this.cancel();
                     
-                    // Mensaje de victoria
-                    broadcastNarrative("");
-                    broadcastNarrative("    §a§l✓ ¡DEFENSORES ELIMINADOS! §a✓");
-                    playSoundToAll(Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.2f);
-                    playSoundToAll(Sound.UI_TOAST_CHALLENGE_COMPLETE, 0.8f, 1.0f);
+                    // Limpiar action bar
+                    for (Player p : Bukkit.getOnlinePlayers()) {
+                        if (participantesOriginales.contains(p.getUniqueId())) {
+                            p.sendActionBar(net.kyori.adventure.text.Component.text(""));
+                        }
+                    }
                     
-                    // Ejecutar callback después de pequeña pausa
+                    // Ejecutar callback después de pequeña pausa dramática
                     Bukkit.getScheduler().runTaskLater(plugin, () -> {
                         if (callbackOleadaCompletada != null) {
                             callbackOleadaCompletada.run();
                             callbackOleadaCompletada = null;
                         }
-                    }, 40L); // 2 segundos
+                    }, 60L); // 3 segundos de pausa para que se sienta la victoria
                 }
             }
-        }, 20L, 20L);
+        }, 20L, 10L); // Cada medio segundo para updates más fluidos
+    }
+    
+    /**
+     * Crea una barra de progreso visual con caracteres
+     */
+    private String crearBarraProgreso(int actual, int total) {
+        int barras = 20;
+        int llenas = (int) ((double) actual / total * barras);
+        
+        StringBuilder sb = new StringBuilder("§8[");
+        for (int i = 0; i < barras; i++) {
+            if (i < llenas) {
+                sb.append("§a█");
+            } else {
+                sb.append("§4░");
+            }
+        }
+        sb.append("§8]");
+        return sb.toString();
     }
     
     /**
@@ -7547,13 +7892,39 @@ public class SusurroPiedraRotaEvent extends EventBase {
         ritualDestruccionIniciado = true;
         ticksRitualDestruccion = 0;
         
+        plugin.getLogger().info("[SusurroPiedraRota] ═══ INICIANDO RITUAL DE DESTRUCCIÓN ═══");
+        
         // Cancelar spawns de retorno
         if (retornoSpawnTask != null) {
             retornoSpawnTask.cancel();
             retornoSpawnTask = null;
         }
         
-        // Crear pedestal visual (ItemFrame con el núcleo)
+        // ═══════════════════════════════════════════════════════════════
+        // FASE 1: LLEGADA AL ALTAR (0-8 segundos)
+        // Los jugadores han regresado - momento de respiro
+        // ═══════════════════════════════════════════════════════════════
+        
+        // Título de llegada
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (participantesOriginales.contains(p.getUniqueId())) {
+                p.sendTitle(
+                    "§d§l✦ EL ALTAR ANCESTRAL ✦",
+                    "§7§oHabéis regresado con el corazón corrupto...",
+                    20, 100, 20
+                );
+                
+                // Pequeño respiro - quitar efectos negativos
+                p.removePotionEffect(org.bukkit.potion.PotionEffectType.SLOWNESS);
+            }
+        }
+        
+        // Sonidos de llegada mística
+        playSoundToAll(Sound.BLOCK_BEACON_ACTIVATE, 1.0f, 0.6f);
+        playSoundToAll(Sound.BLOCK_END_PORTAL_FRAME_FILL, 0.8f, 0.8f);
+        playSoundToAll(Sound.AMBIENT_CAVE, 0.6f, 0.4f);
+        
+        // Crear pedestal visual
         Location pedestalLoc = altarLocation.clone().add(0, 1.5, 0);
         pedestalNucleo = altarLocation.getWorld().spawn(pedestalLoc, ItemFrame.class);
         pedestalNucleo.setItem(new ItemStack(Material.HEART_OF_THE_SEA));
@@ -7561,77 +7932,193 @@ public class SusurroPiedraRotaEvent extends EventBase {
         pedestalNucleo.setFixed(true);
         pedestalNucleo.setInvulnerable(true);
         
-        // ⚔️ PRIMERO: Spawnear defensores finales que deben ser eliminados
-        int jugadoresVivos = 0;
-        for (Player p : Bukkit.getOnlinePlayers()) {
-            if (participantesOriginales.contains(p.getUniqueId()) && 
-                p.getGameMode() == org.bukkit.GameMode.SURVIVAL) {
-                jugadoresVivos++;
-            }
-        }
-        if (jugadoresVivos == 0) jugadoresVivos = 1;
-        
-        // Título de alerta de combate
-        for (Player p : Bukkit.getOnlinePlayers()) {
-            if (participantesOriginales.contains(p.getUniqueId())) {
-                p.sendTitle(
-                    ChatColor.DARK_RED + "⚔ ¡ÚLTIMA DEFENSA! ⚔",
-                    ChatColor.GRAY + "Eliminen a los defensores del núcleo",
-                    10, 80, 20
-                );
-            }
-        }
-        
-        // Spawnear defensores finales (Forma intenta impedir el ritual)
-        enemigosOleadaActo3.clear();
-        int cantidadDefensores = 6 + jugadoresVivos * 2;
-        Random rand = new Random();
-        
-        for (int i = 0; i < cantidadDefensores; i++) {
-            double angulo = (2 * Math.PI * i) / cantidadDefensores;
-            Location spawnLoc = altarLocation.clone().add(
-                Math.cos(angulo) * 12,
-                0,
-                Math.sin(angulo) * 12
-            );
-            spawnLoc.setY(altarLocation.getWorld().getHighestBlockYAt(spawnLoc) + 1);
-            
-            LivingEntity criatura = spawnearCriaturaTrackeada(spawnLoc, rand);
-            if (criatura != null) {
-                enemigosOleadaActo3.add(criatura.getUniqueId());
-                criatura.setCustomName("§4Guardián Final");
-            }
-        }
-        
-        playSoundToAll(Sound.ENTITY_WITHER_SPAWN, 0.8f, 0.5f);
-        broadcastNarrative("");
-        broadcastNarrative("    §c§l⚔ ¡GUARDIANES FINALES INVOCADOS! ⚔");
-        broadcastNarrative("    §7Elimínenlos para comenzar el ritual de destrucción...");
-        
-        // Esperar a que maten a todos para continuar con el ritual
-        esperarEliminacionEnemigosActo3(() -> {
+        // Mensaje narrativo
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (!isActive()) return;
             
-            // AHORA sí mostrar título y diálogo del ritual
+            broadcastNarrative("");
+            broadcastNarrative("    §5§o\"Lo lograron... han traído el corazón de vuelta.");
+            broadcastNarrative("    §5§o Pero la Forma no dejará que lo destruyan fácilmente.\"");
+            broadcastNarrative("    §8§o— El Observador");
+            playSoundToAll(Sound.ENTITY_WARDEN_AMBIENT, 0.4f, 0.5f);
+        }, 60L); // 3 segundos
+        
+        // ═══════════════════════════════════════════════════════════════
+        // FASE 2: ÚLTIMA DEFENSA (8-40+ segundos)
+        // La Forma invoca sus guardianes más poderosos
+        // ═══════════════════════════════════════════════════════════════
+        
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (!isActive()) return;
+            
+            // Contar jugadores para escalar dificultad
+            int jugadoresVivos = 0;
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                if (participantesOriginales.contains(p.getUniqueId()) && 
+                    p.getGameMode() == org.bukkit.GameMode.SURVIVAL) {
+                    jugadoresVivos++;
+                }
+            }
+            if (jugadoresVivos == 0) jugadoresVivos = 1;
+            
+            // Título de advertencia
             for (Player p : Bukkit.getOnlinePlayers()) {
                 if (participantesOriginales.contains(p.getUniqueId())) {
                     p.sendTitle(
-                        ChatColor.DARK_PURPLE + "✦ RITUAL DE DESTRUCCIÓN ✦",
-                        ChatColor.GRAY + "Permanezcan unidos 10 segundos",
-                        10, 80, 20
+                        "§4§l⚔ ¡LA ÚLTIMA DEFENSA! ⚔",
+                        "§7§oLa Forma invoca a sus guardianes más poderosos...",
+                        20, 100, 20
+                    );
+                    
+                    // Efecto de temblor
+                    p.addPotionEffect(new org.bukkit.potion.PotionEffect(
+                        org.bukkit.potion.PotionEffectType.SLOWNESS, 60, 2, true, false));
+                }
+            }
+            
+            // Sonidos de invocación masiva
+            playSoundToAll(Sound.ENTITY_WITHER_SPAWN, 1.0f, 0.4f);
+            playSoundToAll(Sound.ENTITY_ENDER_DRAGON_GROWL, 0.8f, 0.5f);
+            playSoundToAll(Sound.ENTITY_RAVAGER_ROAR, 0.7f, 0.6f);
+            
+            // Mensaje de combate
+            broadcastNarrative("");
+            broadcastNarrative("§4§l═══════════════════════════════════════════════════════");
+            broadcastNarrative("");
+            broadcastNarrative("          §c§l⚔ ¡GUARDIANES FINALES INVOCADOS! ⚔");
+            broadcastNarrative("");
+            broadcastNarrative("    §7La Forma ha convocado a sus defensores más letales.");
+            broadcastNarrative("    §e¡Elimínenlos a TODOS para comenzar el ritual!");
+            broadcastNarrative("");
+            broadcastNarrative("§4§l═══════════════════════════════════════════════════════");
+            
+            // Spawnear defensores finales en círculo
+            enemigosOleadaActo3.clear();
+            int cantidadDefensores = 8 + jugadoresVivos * 2; // Más defensores para el final
+            Random rand = new Random();
+            
+            for (int i = 0; i < cantidadDefensores; i++) {
+                final int index = i;
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    if (!isActive()) return;
+                    
+                    double angulo = (2 * Math.PI * index) / cantidadDefensores;
+                    Location spawnLoc = altarLocation.clone().add(
+                        Math.cos(angulo) * 14,
+                        0,
+                        Math.sin(angulo) * 14
+                    );
+                    spawnLoc.setY(altarLocation.getWorld().getHighestBlockYAt(spawnLoc) + 1);
+                    
+                    LivingEntity criatura = spawnearCriaturaTrackeada(spawnLoc, rand);
+                    if (criatura != null) {
+                        enemigosOleadaActo3.add(criatura.getUniqueId());
+                        criatura.setCustomName("§4§lGuardián Final");
+                        
+                        // Efectos de spawn dramáticos
+                        spawnLoc.getWorld().spawnParticle(Particle.SOUL_FIRE_FLAME, spawnLoc, 30, 0.5, 0.5, 0.5, 0.1);
+                        spawnLoc.getWorld().spawnParticle(Particle.CRIMSON_SPORE, spawnLoc, 20, 0.8, 0.8, 0.8, 0.05);
+                    }
+                }, i * 5L); // Spawn escalonado para dramatismo
+            }
+            
+            // Esperar a que maten a todos para el ritual
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                esperarEliminacionGuardianesFinal();
+            }, cantidadDefensores * 5L + 20L);
+            
+        }, 160L); // 8 segundos
+    }
+    
+    /**
+     * Espera la eliminación de los guardianes finales y luego inicia el ritual
+     */
+    private void esperarEliminacionGuardianesFinal() {
+        esperarEliminacionEnemigosActo3(() -> {
+            if (!isActive()) return;
+            
+            // ═══════════════════════════════════════════════════════════════
+            // FASE 3: RITUAL DE DESTRUCCIÓN (post-combate)
+            // Los jugadores han ganado - ahora el momento culminante
+            // ═══════════════════════════════════════════════════════════════
+            
+            // Título de victoria
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                if (participantesOriginales.contains(p.getUniqueId())) {
+                    p.sendTitle(
+                        "§a§l✓ ¡GUARDIANES DESTRUIDOS! ✓",
+                        "§7§oEl camino al ritual está despejado...",
+                        20, 100, 20
                     );
                 }
             }
             
-            // Diálogo del Observador
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if (isActive()) {
-                    mostrarDialogoForma("RITUAL_DESTRUCCION");
-                }
-            }, 20L);
+            playSoundToAll(Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
+            playSoundToAll(Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.2f);
             
-            // Iniciar efectos visuales y el ritual propiamente
-            iniciarEfectosRitual();
+            // Pausa dramática
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (!isActive()) return;
+                
+                broadcastNarrative("");
+                broadcastNarrative("    §5§o\"Lo han logrado... contra todo pronóstico.");
+                broadcastNarrative("    §5§o Ahora, reúnanse alrededor del altar.\"");
+                broadcastNarrative("    §8§o— El Observador, con esperanza");
+                playSoundToAll(Sound.ENTITY_WARDEN_AMBIENT, 0.4f, 0.6f);
+            }, 40L); // 2 segundos
+            
+            // Título del ritual
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (!isActive()) return;
+                
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    if (participantesOriginales.contains(p.getUniqueId())) {
+                        p.sendTitle(
+                            "§d§l✦ RITUAL DE DESTRUCCIÓN ✦",
+                            "§7Permanezcan unidos cerca del altar §e10 segundos",
+                            20, 120, 20
+                        );
+                    }
+                }
+                
+                playSoundToAll(Sound.BLOCK_END_PORTAL_SPAWN, 0.8f, 0.7f);
+            }, 100L); // 5 segundos
+            
+            // Panel de instrucciones
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (!isActive()) return;
+                
+                broadcastNarrative("");
+                broadcastNarrative("§d§l✦ §8§m════════════════════════════════════════════ §d§l✦");
+                broadcastNarrative("");
+                broadcastNarrative("          §5§l⚗ RITUAL DE DESTRUCCIÓN ⚗");
+                broadcastNarrative("");
+                broadcastNarrative("    §7El núcleo debe ser destruido con §dla unión");
+                broadcastNarrative("    §7de todos los que han llegado hasta aquí.");
+                broadcastNarrative("");
+                broadcastNarrative("    §e◈ §ePermaneced §lJUNTOS §r§ecerca del altar");
+                broadcastNarrative("    §a◈ §aEl ritual durará §l10 SEGUNDOS");
+                broadcastNarrative("    §c◈ §c¡Si alguien se aleja, el ritual §lFALLARÁ!");
+                broadcastNarrative("");
+                broadcastNarrative("§d§l✦ §8§m════════════════════════════════════════════ §d§l✦");
+                
+                playSoundToAll(Sound.BLOCK_BEACON_POWER_SELECT, 0.8f, 1.0f);
+            }, 160L); // 8 segundos
+            
+            // Diálogo del Observador sobre el ritual
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (!isActive()) return;
+                mostrarDialogoForma("RITUAL_DESTRUCCION");
+            }, 260L); // 13 segundos
+            
+            // Iniciar efectos visuales del ritual
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (!isActive()) return;
+                iniciarEfectosRitual();
+                
+                // El ritual ahora comienza a contar
+                // procesarRitualDestruccion() se encarga del resto
+            }, 320L); // 16 segundos
         });
     }
     
@@ -11081,9 +11568,11 @@ public class SusurroPiedraRotaEvent extends EventBase {
                 break;
                 
             case "RITUAL_DESTRUCCION":
-                dialogos.add("§5§l◈ §8§o\"...¡TODOS JUNTOS! ¡El núcleo intenta aferrarse a la existencia!...\"");
-                dialogos.add("§5§l◈ §8§o\"...no se aparten... su unión es lo único que puede sellarlo...\"");
-                dialogos.add("§5§l◈ §8§o\"...puedo escucharlo... grita... suplica... pero no hay otra opción...\"");
+                dialogos.add("§5§l◈ §8§o\"...¡TODOS JUNTOS!... El núcleo siente su final acercarse...\"");
+                dialogos.add("§5§l◈ §8§o\"...concentren su voluntad... como un solo corazón latiendo...\"");
+                dialogos.add("§5§l◈ §8§o\"...puedo escuchar su grito en el vacío... tan solo... tan asustado...\"");
+                dialogos.add("§5§l◈ §8§o\"...no se muevan... el ritual requiere la unión de todos...\"");
+                dialogos.add("§5§l◈ §8§o\"...perdónenme... alguna vez también tuve que hacer esto...\"");
                 break;
                 
             case "NUCLEO_DESTRUIDO":

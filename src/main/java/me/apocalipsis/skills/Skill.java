@@ -6,12 +6,13 @@ import java.util.ArrayList;
 
 /**
  * Enum que define todas las habilidades disponibles en el árbol.
+ * 5 ramas × ~10 skills cada una = ~50 habilidades únicas
  */
 public enum Skill {
-    // ================= ALMACENAMIENTO =================
+    // ================= ALMACENAMIENTO (7 skills) =================
     // Tier 1
     BOLSILLOS_PROFUNDOS("bolsillos_profundos", "Bolsillos Profundos", 
-        "Mochila de 9 slots (/mochila)", 
+        "Mochila virtual de 9 slots (/mochila)", 
         SkillBranch.ALMACENAMIENTO, SkillTier.TIER_1, SkillRarity.COMUN, 
         500, Material.CHEST, false, new String[]{}),
     
@@ -24,7 +25,7 @@ public enum Skill {
     BOLSILLOS_SIN_FONDO("bolsillos_sin_fondo", "Bolsillos Sin Fondo", 
         "Mochila de 27 slots", 
         SkillBranch.ALMACENAMIENTO, SkillTier.TIER_2, SkillRarity.RARO, 
-        1500, Material.CHEST, false, new String[]{"bolsillos_profundos"}),
+        1500, Material.BARREL, false, new String[]{"bolsillos_profundos"}),
     
     COFRE_DIMENSIONAL("cofre_dimensional", "Cofre Dimensional", 
         "Ender chest compartido con aliados del clan", 
@@ -40,14 +41,14 @@ public enum Skill {
     INVENTARIO_INFINITO("inventario_infinito", "Inventario Infinito", 
         "Mochila de 54 slots (cofre doble)", 
         SkillBranch.ALMACENAMIENTO, SkillTier.TIER_3, SkillRarity.LEGENDARIO, 
-        4000, Material.CHEST, false, new String[]{"bolsillos_sin_fondo"}),
+        4000, Material.SHULKER_BOX, false, new String[]{"bolsillos_sin_fondo"}),
     
     VOID_STORAGE("void_storage", "Void Storage", 
         "Los items no se pierden al morir", 
         SkillBranch.ALMACENAMIENTO, SkillTier.TIER_3, SkillRarity.LEGENDARIO, 
         3500, Material.ENDER_EYE, false, new String[]{"cofre_dimensional"}),
     
-    // ================= UTILIDAD =================
+    // ================= UTILIDAD (10 skills) =================
     // Tier 1
     PASO_LIGERO("paso_ligero", "Paso Ligero", 
         "+10% velocidad de movimiento permanente", 
@@ -55,14 +56,19 @@ public enum Skill {
         400, Material.LEATHER_BOOTS, true, new String[]{}),
     
     MINERO_EFICIENTE("minero_eficiente", "Minero Eficiente", 
-        "+15% velocidad de minado", 
+        "+15% velocidad de minado (Haste I)", 
         SkillBranch.UTILIDAD, SkillTier.TIER_1, SkillRarity.COMUN, 
-        450, Material.IRON_PICKAXE, false, new String[]{}),
+        450, Material.IRON_PICKAXE, true, new String[]{}),
     
     ESTOMAGO_HIERRO("estomago_hierro", "Estómago de Hierro", 
         "Hambre baja 20% más lento", 
         SkillBranch.UTILIDAD, SkillTier.TIER_1, SkillRarity.COMUN, 
         350, Material.COOKED_BEEF, false, new String[]{}),
+    
+    LENADOR_NATO("lenador_nato", "Leñador Nato",
+        "Rompe árboles completos de un golpe",
+        SkillBranch.UTILIDAD, SkillTier.TIER_1, SkillRarity.RARO,
+        600, Material.DIAMOND_AXE, true, new String[]{}),
     
     // Tier 2
     ZANCADAS("zancadas", "Zancadas", 
@@ -96,7 +102,7 @@ public enum Skill {
         SkillBranch.UTILIDAD, SkillTier.TIER_3, SkillRarity.EPICO, 
         3000, Material.CAKE, false, new String[]{"metabolismo_lento"}),
     
-    // ================= SUPERVIVENCIA =================
+    // ================= SUPERVIVENCIA (11 skills) =================
     // Tier 1
     PIEL_GRUESA("piel_gruesa", "Piel Gruesa", 
         "+2 corazones permanentes", 
@@ -127,7 +133,7 @@ public enum Skill {
     PLUMA("pluma", "Pluma", 
         "-50% daño por caída", 
         SkillBranch.SUPERVIVENCIA, SkillTier.TIER_2, SkillRarity.RARO, 
-        1200, Material.FEATHER, false, new String[]{"caida_suave"}),
+        1200, Material.PHANTOM_MEMBRANE, false, new String[]{"caida_suave"}),
     
     IGNIFUGO("ignifugo", "Ignífugo", 
         "-40% daño fuego + inmune a pisar fuego", 
@@ -163,7 +169,135 @@ public enum Skill {
     ANFIBIO("anfibio", "Anfibio", 
         "Respiración infinita bajo agua", 
         SkillBranch.SUPERVIVENCIA, SkillTier.TIER_3, SkillRarity.EPICO, 
-        3000, Material.HEART_OF_THE_SEA, false, new String[]{"branquias"});
+        3000, Material.HEART_OF_THE_SEA, false, new String[]{"branquias"}),
+    
+    // ================= COMBATE (12 skills) =================
+    // Tier 1
+    GOLPE_CERTERO("golpe_certero", "Golpe Certero",
+        "+5% daño de ataque base",
+        SkillBranch.COMBATE, SkillTier.TIER_1, SkillRarity.COMUN,
+        400, Material.IRON_SWORD, false, new String[]{}),
+    
+    REFLEJOS("reflejos", "Reflejos",
+        "+10% velocidad de ataque",
+        SkillBranch.COMBATE, SkillTier.TIER_1, SkillRarity.COMUN,
+        450, Material.CLOCK, false, new String[]{}),
+    
+    PIEL_ESCAMAS("piel_escamas", "Piel de Escamas",
+        "-5% daño recibido de mobs",
+        SkillBranch.COMBATE, SkillTier.TIER_1, SkillRarity.COMUN,
+        500, Material.TURTLE_HELMET, false, new String[]{}),
+    
+    ARQUERO("arquero", "Arquero",
+        "+10% daño con arcos",
+        SkillBranch.COMBATE, SkillTier.TIER_1, SkillRarity.COMUN,
+        400, Material.BOW, false, new String[]{}),
+    
+    // Tier 2
+    GUERRERO("guerrero", "Guerrero",
+        "+10% daño cuerpo a cuerpo",
+        SkillBranch.COMBATE, SkillTier.TIER_2, SkillRarity.RARO,
+        1500, Material.DIAMOND_SWORD, false, new String[]{"golpe_certero"}),
+    
+    FURIA("furia", "Furia",
+        "Daño aumenta +1% por cada 1% de vida perdida",
+        SkillBranch.COMBATE, SkillTier.TIER_2, SkillRarity.EPICO,
+        2000, Material.NETHER_STAR, true, new String[]{"golpe_certero"}),
+    
+    BLOQUEO_PERFECTO("bloqueo_perfecto", "Bloqueo Perfecto",
+        "Con escudo: -15% daño + knockback al atacante",
+        SkillBranch.COMBATE, SkillTier.TIER_2, SkillRarity.RARO,
+        1400, Material.SHIELD, false, new String[]{"piel_escamas"}),
+    
+    FRANCOTIRADOR("francotirador", "Francotirador",
+        "+20% daño con arcos a distancia >15 bloques",
+        SkillBranch.COMBATE, SkillTier.TIER_2, SkillRarity.RARO,
+        1600, Material.CROSSBOW, false, new String[]{"arquero"}),
+    
+    // Tier 3
+    EJECUTOR("ejecutor", "Ejecutor",
+        "+25% daño a enemigos con <30% vida",
+        SkillBranch.COMBATE, SkillTier.TIER_3, SkillRarity.EPICO,
+        3500, Material.NETHERITE_SWORD, false, new String[]{"guerrero"}),
+    
+    BERSERKER("berserker", "Berserker",
+        "Con <25% vida: +40% daño, +20% velocidad",
+        SkillBranch.COMBATE, SkillTier.TIER_3, SkillRarity.LEGENDARIO,
+        5000, Material.NETHERITE_AXE, true, new String[]{"furia"}),
+    
+    VAMPIRISMO("vampirismo", "Vampirismo",
+        "5% del daño infligido se convierte en vida",
+        SkillBranch.COMBATE, SkillTier.TIER_3, SkillRarity.LEGENDARIO,
+        4500, Material.GHAST_TEAR, false, new String[]{"ejecutor"}),
+    
+    MULTISHOT("multishot", "Multishot",
+        "15% chance de disparar 2 flechas extra",
+        SkillBranch.COMBATE, SkillTier.TIER_3, SkillRarity.EPICO,
+        3800, Material.ARROW, false, new String[]{"francotirador"}),
+    
+    // ================= EXPLORACIÓN (12 skills) =================
+    // Tier 1
+    VISION_NOCTURNA("vision_nocturna", "Visión Nocturna",
+        "Ve en la oscuridad (Night Vision)",
+        SkillBranch.EXPLORACION, SkillTier.TIER_1, SkillRarity.COMUN,
+        400, Material.GOLDEN_CARROT, true, new String[]{}),
+    
+    BRUJULA_INTERNA("brujula_interna", "Brújula Interna",
+        "Muestra coordenadas en el HUD",
+        SkillBranch.EXPLORACION, SkillTier.TIER_1, SkillRarity.COMUN,
+        300, Material.COMPASS, true, new String[]{}),
+    
+    RASTRO_ORO("rastro_oro", "Rastro de Oro",
+        "Brillo amarillo marca minerales cercanos cada 30s",
+        SkillBranch.EXPLORACION, SkillTier.TIER_1, SkillRarity.RARO,
+        700, Material.RAW_GOLD, true, new String[]{}),
+    
+    PISADAS_SILENCIOSAS("pisadas_silenciosas", "Pisadas Silenciosas",
+        "Mobs hostiles te detectan 30% menos",
+        SkillBranch.EXPLORACION, SkillTier.TIER_1, SkillRarity.COMUN,
+        450, Material.LEATHER_BOOTS, false, new String[]{}),
+    
+    // Tier 2
+    TELESCOPIO("telescopio", "Telescopio",
+        "Zoom permanente al usar catalejo",
+        SkillBranch.EXPLORACION, SkillTier.TIER_2, SkillRarity.RARO,
+        1000, Material.SPYGLASS, false, new String[]{"vision_nocturna"}),
+    
+    MAPA_MENTAL("mapa_mental", "Mapa Mental",
+        "Recuerda ubicación de muerte por 10 min",
+        SkillBranch.EXPLORACION, SkillTier.TIER_2, SkillRarity.RARO,
+        1200, Material.FILLED_MAP, false, new String[]{"brujula_interna"}),
+    
+    DETECTOR_SPAWNERS("detector_spawners", "Detector de Spawners",
+        "Partículas indican spawners en 20 bloques",
+        SkillBranch.EXPLORACION, SkillTier.TIER_2, SkillRarity.EPICO,
+        2000, Material.SPAWNER, true, new String[]{"rastro_oro"}),
+    
+    SOMBRA("sombra", "Sombra",
+        "Mobs hostiles te ignoran 50% (sneaking)",
+        SkillBranch.EXPLORACION, SkillTier.TIER_2, SkillRarity.RARO,
+        1500, Material.WITHER_ROSE, false, new String[]{"pisadas_silenciosas"}),
+    
+    // Tier 3
+    OJO_AGUILA("ojo_aguila", "Ojo de Águila",
+        "Marca enemigos a través de paredes (Glowing)",
+        SkillBranch.EXPLORACION, SkillTier.TIER_3, SkillRarity.EPICO,
+        3500, Material.ENDER_EYE, true, new String[]{"telescopio"}),
+    
+    WAYPOINT("waypoint", "Waypoint",
+        "/waypoint - Teletransporte a ubicación guardada (cooldown 5 min)",
+        SkillBranch.EXPLORACION, SkillTier.TIER_3, SkillRarity.LEGENDARIO,
+        5000, Material.LODESTONE, false, new String[]{"mapa_mental"}),
+    
+    XRAY_DIAMANTES("xray_diamantes", "Sentido del Diamante",
+        "Resalta diamantes en 10 bloques cada 60s",
+        SkillBranch.EXPLORACION, SkillTier.TIER_3, SkillRarity.LEGENDARIO,
+        6000, Material.DIAMOND_ORE, true, new String[]{"detector_spawners"}),
+    
+    FANTASMA("fantasma", "Fantasma",
+        "Invisible por 10s al recibir daño crítico (cooldown 2 min)",
+        SkillBranch.EXPLORACION, SkillTier.TIER_3, SkillRarity.EPICO,
+        4000, Material.PHANTOM_MEMBRANE, false, new String[]{"sombra"});
     
     // ================= PROPIEDADES =================
     private final String id;

@@ -476,6 +476,39 @@ public class SkillService {
                         player.setFoodLevel(Math.min(player.getFoodLevel() + 1, 20));
                     }
                     break;
+                
+                case VISION_NOCTURNA:
+                    // Aplicar visión nocturna permanente
+                    player.addPotionEffect(new org.bukkit.potion.PotionEffect(
+                        org.bukkit.potion.PotionEffectType.NIGHT_VISION, 500, 0, true, false));
+                    break;
+                
+                case MINERO_EFICIENTE:
+                    // Haste I permanente para minado
+                    player.addPotionEffect(new org.bukkit.potion.PotionEffect(
+                        org.bukkit.potion.PotionEffectType.HASTE, 500, 0, true, false));
+                    break;
+                
+                case OJO_AGUILA:
+                    // Marcar mobs cercanos con Glowing
+                    for (org.bukkit.entity.Entity entity : player.getNearbyEntities(20, 10, 20)) {
+                        if (entity instanceof org.bukkit.entity.Monster) {
+                            ((org.bukkit.entity.LivingEntity) entity).addPotionEffect(
+                                new org.bukkit.potion.PotionEffect(
+                                    org.bukkit.potion.PotionEffectType.GLOWING, 500, 0, true, false));
+                        }
+                    }
+                    break;
+                
+                case BERSERKER:
+                    // +20% velocidad cuando tiene <25% vida
+                    double healthPercent = player.getHealth() / 
+                        player.getAttribute(Attribute.MAX_HEALTH).getValue();
+                    if (healthPercent < 0.25) {
+                        player.addPotionEffect(new org.bukkit.potion.PotionEffect(
+                            org.bukkit.potion.PotionEffectType.SPEED, 500, 0, true, false));
+                    }
+                    break;
                     
                 default:
                     break;
