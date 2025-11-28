@@ -1017,23 +1017,25 @@ public class SusurroPiedraRotaEvent extends EventBase {
                 for (int i = 0; i < ubicacionesEncontradas.size(); i++) {
                     final int indice = i;
                     final Location fragmentoLoc = ubicacionesEncontradas.get(i);
+                    final int numAltarFinal = i + 1; // 1-5 para altares temáticos
                     
                     Bukkit.getScheduler().runTaskLater(plugin, () -> {
                         if (!isActive()) return;
                         
                         // Efecto de aparición gradual
                         efectoAparicionFragmento(fragmentoLoc, () -> {
-                            construirFragmentoPiedra(fragmentoLoc);
+                            // Construir altar con diseño único según su tipo
+                            construirFragmentoPiedra(fragmentoLoc, numAltarFinal);
                             fragmentosLocations.add(fragmentoLoc);
                             
                             // Asignar número de altar (1-5)
-                            int numAltar = indice + 1;
-                            fragmentoANumeroAltar.put(fragmentoLoc, numAltar);
+                            fragmentoANumeroAltar.put(fragmentoLoc, numAltarFinal);
                             
                             plugin.getLogger().info(String.format(
-                                "[SusurroPiedraRota] Fragmento #%d (Altar %d) generado en: %s",
+                                "[SusurroPiedraRota] Fragmento #%d (Altar %d - %s) generado en: %s",
                                 indice + 1,
-                                numAltar,
+                                numAltarFinal,
+                                obtenerTemaAltar(numAltarFinal),
                                 locationToString(fragmentoLoc)
                             ));
                         });
@@ -1140,12 +1142,15 @@ public class SusurroPiedraRotaEvent extends EventBase {
             );
             
             if (fragmentoLoc != null) {
-                construirFragmentoPiedra(fragmentoLoc);
+                int numAltar = i + 1; // Tipo de altar 1-5
+                construirFragmentoPiedra(fragmentoLoc, numAltar);
                 fragmentosLocations.add(fragmentoLoc);
+                fragmentoANumeroAltar.put(fragmentoLoc, numAltar);
                 
                 plugin.getLogger().info(String.format(
-                    "[SusurroPiedraRota] Fragmento #%d generado en: %s",
+                    "[SusurroPiedraRota] Fragmento #%d (Altar %s) generado en: %s",
                     i + 1,
+                    obtenerTemaAltar(numAltar),
                     locationToString(fragmentoLoc)
                 ));
             }
@@ -1955,153 +1960,653 @@ public class SusurroPiedraRotaEvent extends EventBase {
     }
     
     private void construirFragmentoPiedra(Location loc) {
+        construirFragmentoPiedra(loc, 0); // Por defecto sin tipo específico
+    }
+    
+    /**
+     * Construye un altar adaptado al terreno con diseño único según el tipo de ritual
+     * @param loc Ubicación central del altar
+     * @param tipoAltar 1=Despertar(quietud), 2=Resonancia(perlas), 3=Sacrificio(items), 
+     *                  4=Caza(mobs), 5=Unión Final(defensa), 0=genérico
+     */
+    private void construirFragmentoPiedra(Location loc, int tipoAltar) {
         World world = loc.getWorld();
         Random rand = new Random();
         
-        // 🏛️ ALTAR ÉPICO - BASE 9x9 (antes 5x5)
-        // Capa -2: Base profunda con anillos
+        // ═══════════════════════════════════════════════════════════════════
+        // FASE 1: ADAPTACIÓN NATURAL DEL TERRENO
+        // Suaviza el área sin cortar montañas bruscamente
+        // ═══════════════════════════════════════════════════════════════════
+        
+        int centroY = loc.getBlockY();
+        int radioAdaptacion = 8; // Radio donde adaptamos el terreno
+        
+        // Analizar el terreno circundante para encontrar altura promedio
+        int sumaAlturas = 0;
+        int conteoAlturas = 0;
+        for (int x = -radioAdaptacion; x <= radioAdaptacion; x++) {
+            for (int z = -radioAdaptacion; z <= radioAdaptacion; z++) {
+                double dist = Math.sqrt(x * x + z * z);
+                if (dist <= radioAdaptacion) {
+                    int altura = world.getHighestBlockYAt(loc.getBlockX() + x, loc.getBlockZ() + z);
+                    sumaAlturas += altura;
+                    conteoAlturas++;
+                }
+            }
+        }
+        int alturaPromedio = conteoAlturas > 0 ? sumaAlturas / conteoAlturas : centroY;
+        int alturaBase = Math.max(centroY - 2, alturaPromedio - 1); // Elegir altura razonable
+        
+        // Adaptar terreno con transición suave (más suave en bordes)
+        for (int x = -radioAdaptacion; x <= radioAdaptacion; x++) {
+            for (int z = -radioAdaptacion; z <= radioAdaptacion; z++) {
+                double dist = Math.sqrt(x * x + z * z);
+                if (dist > radioAdaptacion) continue;
+                
+                int worldX = loc.getBlockX() + x;
+                int worldZ = loc.getBlockZ() + z;
+                int alturaActual = world.getHighestBlockYAt(worldX, worldZ);
+                
+                // Factor de suavizado: más fuerte en el centro, más suave en los bordes
+                double factorSuavizado = 1.0 - (dist / radioAdaptacion);
+                factorSuavizado = factorSuavizado * factorSuavizado; // Curva cuadrática
+                
+                // Calcular altura objetivo con transición gradual
+                int alturaObjetivo;
+                if (dist <= 4) {
+                    // Centro del altar: plano
+                    alturaObjetivo = alturaBase;
+                } else {
+                    // Zona de transición: mezcla entre altura actual y altura base
+                    alturaObjetivo = (int) (alturaBase * factorSuavizado + alturaActual * (1 - factorSuavizado));
+                }
+                
+                // Detectar material del bioma para usar en rellenos
+                Material materialBioma = detectarMaterialBioma(world, worldX, worldZ, alturaActual);
+                
+                // Aplicar cambios de terreno
+                if (alturaActual > alturaObjetivo + 1) {
+                    // Terreno muy alto: recortar gradualmente (no de golpe)
+                    int recorte = Math.min(alturaActual - alturaObjetivo, 3); // Max 3 bloques por pasada
+                    for (int y = alturaActual; y > alturaActual - recorte && y > alturaObjetivo; y--) {
+                        Block block = world.getBlockAt(worldX, y, worldZ);
+                        if (!block.getType().name().contains("BEDROCK")) {
+                            // Convertir en aire o dejar vegetación en bordes
+                            if (dist <= 5 || !esVegetacion(block.getType())) {
+                                block.setType(Material.AIR);
+                            }
+                        }
+                    }
+                    // Poner material natural en la nueva superficie
+                    if (dist <= 5) {
+                        world.getBlockAt(worldX, alturaObjetivo, worldZ).setType(materialBioma);
+                    }
+                } else if (alturaActual < alturaObjetivo - 1) {
+                    // Terreno muy bajo: rellenar gradualmente
+                    for (int y = alturaActual + 1; y <= alturaObjetivo; y++) {
+                        Material relleno = (y == alturaObjetivo) ? materialBioma : Material.STONE;
+                        world.getBlockAt(worldX, y, worldZ).setType(relleno);
+                    }
+                }
+                
+                // Limpiar espacio aéreo sobre el altar (vegetación, hojas, etc.)
+                if (dist <= 6) {
+                    for (int y = alturaObjetivo + 1; y <= alturaObjetivo + 12; y++) {
+                        Block block = world.getBlockAt(worldX, y, worldZ);
+                        if (esVegetacion(block.getType()) || block.getType().name().contains("LEAVES")) {
+                            block.setType(Material.AIR);
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Actualizar ubicación del altar a la altura adaptada
+        Location locAdaptada = loc.clone();
+        locAdaptada.setY(alturaBase + 1);
+        
+        // ═══════════════════════════════════════════════════════════════════
+        // FASE 2: CONSTRUCCIÓN DEL ALTAR SEGÚN TIPO
+        // Cada altar tiene diseño único que refleja su actividad
+        // ═══════════════════════════════════════════════════════════════════
+        
+        switch (tipoAltar) {
+            case 1:
+                construirAltarDespertar(locAdaptada, world, rand);
+                break;
+            case 2:
+                construirAltarResonancia(locAdaptada, world, rand);
+                break;
+            case 3:
+                construirAltarSacrificio(locAdaptada, world, rand);
+                break;
+            case 4:
+                construirAltarCaza(locAdaptada, world, rand);
+                break;
+            case 5:
+                construirAltarUnionFinal(locAdaptada, world, rand);
+                break;
+            default:
+                construirAltarGenerico(locAdaptada, world, rand);
+                break;
+        }
+        
+        // Efectos visuales de construcción
+        efectoConstruccionAltar(locAdaptada, world, tipoAltar);
+    }
+    
+    /**
+     * Detecta el material natural del bioma para usar en adaptación de terreno
+     */
+    private Material detectarMaterialBioma(World world, int x, int z, int y) {
+        // Buscar el bloque sólido más alto
+        for (int checkY = y; checkY > y - 5 && checkY > 0; checkY--) {
+            Material mat = world.getBlockAt(x, checkY, z).getType();
+            if (mat == Material.GRASS_BLOCK) return Material.GRASS_BLOCK;
+            if (mat == Material.DIRT) return Material.DIRT;
+            if (mat == Material.SAND) return Material.SAND;
+            if (mat == Material.RED_SAND) return Material.RED_SAND;
+            if (mat == Material.PODZOL) return Material.PODZOL;
+            if (mat == Material.MYCELIUM) return Material.MYCELIUM;
+            if (mat == Material.SNOW_BLOCK) return Material.SNOW_BLOCK;
+            if (mat == Material.STONE) return Material.STONE;
+            if (mat == Material.TERRACOTTA || mat.name().contains("TERRACOTTA")) return mat;
+        }
+        return Material.GRASS_BLOCK; // Default
+    }
+    
+    /**
+     * Verifica si un material es vegetación removible
+     */
+    private boolean esVegetacion(Material mat) {
+        String name = mat.name();
+        return name.contains("GRASS") && !name.equals("GRASS_BLOCK") ||
+               name.contains("FLOWER") || name.contains("TULIP") || 
+               name.contains("DANDELION") || name.contains("POPPY") ||
+               name.contains("FERN") || name.contains("BUSH") ||
+               name.contains("SAPLING") || name.contains("MUSHROOM") ||
+               mat == Material.TALL_GRASS || mat == Material.SHORT_GRASS ||
+               mat == Material.VINE || mat == Material.DEAD_BUSH;
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ALTAR 1: EL DESPERTAR - Temática de meditación y quietud
+    // Diseño: Círculo zen con agua tranquila, piedras de meditación
+    // ═══════════════════════════════════════════════════════════════════════════
+    private void construirAltarDespertar(Location loc, World world, Random rand) {
+        // Base circular con patrón de ondas concéntricas (zen garden style)
+        for (int x = -5; x <= 5; x++) {
+            for (int z = -5; z <= 5; z++) {
+                double dist = Math.sqrt(x * x + z * z);
+                if (dist > 5.5) continue;
+                
+                Location blockLoc = loc.clone().add(x, -1, z);
+                
+                // Limpiar espacio vertical
+                for (int y = 0; y <= 8; y++) {
+                    loc.clone().add(x, y, z).getBlock().setType(Material.AIR);
+                }
+                
+                // Patrón de ondas concéntricas
+                if (dist <= 1.5) {
+                    world.getBlockAt(blockLoc).setType(Material.POLISHED_DEEPSLATE);
+                } else if (dist <= 2.5) {
+                    world.getBlockAt(blockLoc).setType(Material.DEEPSLATE_TILES);
+                } else if (dist <= 3.5) {
+                    world.getBlockAt(blockLoc).setType(Material.POLISHED_DEEPSLATE);
+                } else if (dist <= 4.5) {
+                    world.getBlockAt(blockLoc).setType(Material.DEEPSLATE_TILES);
+                } else {
+                    world.getBlockAt(blockLoc).setType(Material.MOSS_BLOCK);
+                }
+                
+                // Base profunda
+                world.getBlockAt(loc.clone().add(x, -2, z)).setType(Material.DEEPSLATE);
+            }
+        }
+        
+        // Centro: Piedra de meditación (obelisco bajo)
+        loc.clone().add(0, 0, 0).getBlock().setType(Material.CRYING_OBSIDIAN);
+        loc.clone().add(0, 1, 0).getBlock().setType(Material.CHISELED_DEEPSLATE);
+        loc.clone().add(0, 2, 0).getBlock().setType(Material.AMETHYST_BLOCK);
+        
+        // Cojines de meditación (alfombras) en círculo
+        int[][] posicionesCojines = {{2, 0}, {-2, 0}, {0, 2}, {0, -2}, {1, 1}, {-1, -1}, {1, -1}, {-1, 1}};
+        Material[] coloresCojines = {Material.PURPLE_CARPET, Material.BLUE_CARPET, Material.CYAN_CARPET};
+        for (int i = 0; i < posicionesCojines.length; i++) {
+            int[] pos = posicionesCojines[i];
+            world.getBlockAt(loc.clone().add(pos[0], 0, pos[1])).setType(coloresCojines[i % coloresCojines.length]);
+        }
+        
+        // Velas de meditación en puntos cardinales
+        loc.clone().add(3, 0, 0).getBlock().setType(Material.PURPLE_CANDLE);
+        loc.clone().add(-3, 0, 0).getBlock().setType(Material.PURPLE_CANDLE);
+        loc.clone().add(0, 0, 3).getBlock().setType(Material.PURPLE_CANDLE);
+        loc.clone().add(0, 0, -3).getBlock().setType(Material.PURPLE_CANDLE);
+        
+        // Pequeñas rocas decorativas (piedras zen)
+        int[][] piedrasZen = {{4, 2}, {-4, -2}, {2, -4}, {-2, 4}};
+        for (int[] pos : piedrasZen) {
+            world.getBlockAt(loc.clone().add(pos[0], 0, pos[1])).setType(Material.STONE_BUTTON);
+        }
+        
+        // Linternas flotantes con cadenas
+        loc.clone().add(0, 4, 0).getBlock().setType(Material.CHAIN);
+        loc.clone().add(0, 5, 0).getBlock().setType(Material.SOUL_LANTERN);
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ALTAR 2: LA RESONANCIA - Temática de portales y dimensiones
+    // Diseño: Marco de portal End, cristales, partículas dimensionales
+    // ═══════════════════════════════════════════════════════════════════════════
+    private void construirAltarResonancia(Location loc, World world, Random rand) {
+        // Base con patrón de End (obsidiana y purpur)
+        for (int x = -5; x <= 5; x++) {
+            for (int z = -5; z <= 5; z++) {
+                double dist = Math.sqrt(x * x + z * z);
+                if (dist > 5.5) continue;
+                
+                Location blockLoc = loc.clone().add(x, -1, z);
+                
+                // Limpiar espacio
+                for (int y = 0; y <= 10; y++) {
+                    loc.clone().add(x, y, z).getBlock().setType(Material.AIR);
+                }
+                
+                // Patrón dimensional
+                if ((Math.abs(x) + Math.abs(z)) % 2 == 0) {
+                    world.getBlockAt(blockLoc).setType(Material.OBSIDIAN);
+                } else {
+                    world.getBlockAt(blockLoc).setType(Material.PURPUR_BLOCK);
+                }
+                
+                // Base
+                world.getBlockAt(loc.clone().add(x, -2, z)).setType(Material.END_STONE_BRICKS);
+            }
+        }
+        
+        // Centro: plataforma de llegada de perlas
+        loc.clone().add(0, 0, 0).getBlock().setType(Material.END_PORTAL_FRAME);
+        loc.clone().add(1, 0, 0).getBlock().setType(Material.END_STONE_BRICKS);
+        loc.clone().add(-1, 0, 0).getBlock().setType(Material.END_STONE_BRICKS);
+        loc.clone().add(0, 0, 1).getBlock().setType(Material.END_STONE_BRICKS);
+        loc.clone().add(0, 0, -1).getBlock().setType(Material.END_STONE_BRICKS);
+        
+        // Pilar central con cristal del End
+        loc.clone().add(0, 1, 0).getBlock().setType(Material.OBSIDIAN);
+        loc.clone().add(0, 2, 0).getBlock().setType(Material.OBSIDIAN);
+        loc.clone().add(0, 3, 0).getBlock().setType(Material.CRYING_OBSIDIAN);
+        
+        // Torres de End en esquinas (mini pilares)
+        int[][] torrePos = {{-3, -3}, {3, -3}, {-3, 3}, {3, 3}};
+        for (int[] pos : torrePos) {
+            world.getBlockAt(loc.clone().add(pos[0], 0, pos[1])).setType(Material.OBSIDIAN);
+            world.getBlockAt(loc.clone().add(pos[0], 1, pos[1])).setType(Material.OBSIDIAN);
+            world.getBlockAt(loc.clone().add(pos[0], 2, pos[1])).setType(Material.END_ROD);
+        }
+        
+        // Bloques de purpur decorativos
+        int[][] purpurPos = {{2, 0}, {-2, 0}, {0, 2}, {0, -2}};
+        for (int[] pos : purpurPos) {
+            world.getBlockAt(loc.clone().add(pos[0], 0, pos[1])).setType(Material.PURPUR_PILLAR);
+            world.getBlockAt(loc.clone().add(pos[0], 1, pos[1])).setType(Material.PURPUR_SLAB);
+        }
+        
+        // End rods flotantes
+        loc.clone().add(0, 5, 0).getBlock().setType(Material.END_ROD);
+        loc.clone().add(1, 4, 1).getBlock().setType(Material.END_ROD);
+        loc.clone().add(-1, 4, -1).getBlock().setType(Material.END_ROD);
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ALTAR 3: EL SACRIFICIO - Temática de ofrendas y fuego
+    // Diseño: Caldero central, piras de fuego, decoración dorada
+    // ═══════════════════════════════════════════════════════════════════════════
+    private void construirAltarSacrificio(Location loc, World world, Random rand) {
+        // Base con patrón de templo dorado
+        for (int x = -5; x <= 5; x++) {
+            for (int z = -5; z <= 5; z++) {
+                double dist = Math.sqrt(x * x + z * z);
+                if (dist > 5.5) continue;
+                
+                Location blockLoc = loc.clone().add(x, -1, z);
+                
+                // Limpiar espacio
+                for (int y = 0; y <= 8; y++) {
+                    loc.clone().add(x, y, z).getBlock().setType(Material.AIR);
+                }
+                
+                // Patrón de templo
+                if (dist <= 2) {
+                    world.getBlockAt(blockLoc).setType(Material.GILDED_BLACKSTONE);
+                } else if (dist <= 3.5) {
+                    world.getBlockAt(blockLoc).setType(Material.POLISHED_BLACKSTONE_BRICKS);
+                } else {
+                    world.getBlockAt(blockLoc).setType(Material.BLACKSTONE);
+                }
+                
+                // Base
+                world.getBlockAt(loc.clone().add(x, -2, z)).setType(Material.POLISHED_BLACKSTONE);
+            }
+        }
+        
+        // Centro: "caldero" para sacrificios (hopper rodeado de oro)
+        loc.clone().add(0, 0, 0).getBlock().setType(Material.CAULDRON);
+        loc.clone().add(1, 0, 0).getBlock().setType(Material.GOLD_BLOCK);
+        loc.clone().add(-1, 0, 0).getBlock().setType(Material.GOLD_BLOCK);
+        loc.clone().add(0, 0, 1).getBlock().setType(Material.GOLD_BLOCK);
+        loc.clone().add(0, 0, -1).getBlock().setType(Material.GOLD_BLOCK);
+        
+        // Pilar central de ofrenda
+        loc.clone().add(0, 1, 0).getBlock().setType(Material.GILDED_BLACKSTONE);
+        loc.clone().add(0, 2, 0).getBlock().setType(Material.CRYING_OBSIDIAN);
+        
+        // Piras de fuego en las esquinas
+        int[][] piraPos = {{-3, -3}, {3, -3}, {-3, 3}, {3, 3}};
+        for (int[] pos : piraPos) {
+            world.getBlockAt(loc.clone().add(pos[0], 0, pos[1])).setType(Material.POLISHED_BLACKSTONE);
+            world.getBlockAt(loc.clone().add(pos[0], 1, pos[1])).setType(Material.CAMPFIRE);
+        }
+        
+        // Decoración de huesos (como altar de sacrificio antiguo)
+        int[][] huesoPos = {{2, 2}, {-2, -2}, {2, -2}, {-2, 2}};
+        for (int[] pos : huesoPos) {
+            world.getBlockAt(loc.clone().add(pos[0], 0, pos[1])).setType(Material.BONE_BLOCK);
+        }
+        
+        // Estandartes dorados
+        loc.clone().add(4, 0, 0).getBlock().setType(Material.POLISHED_BLACKSTONE);
+        loc.clone().add(4, 1, 0).getBlock().setType(Material.YELLOW_BANNER);
+        loc.clone().add(-4, 0, 0).getBlock().setType(Material.POLISHED_BLACKSTONE);
+        loc.clone().add(-4, 1, 0).getBlock().setType(Material.YELLOW_BANNER);
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ALTAR 4: LA CAZA - Temática de combate y sangre
+    // Diseño: Arena de combate, trofeos, decoración hostil
+    // ═══════════════════════════════════════════════════════════════════════════
+    private void construirAltarCaza(Location loc, World world, Random rand) {
+        // Base de arena de combate
+        for (int x = -6; x <= 6; x++) {
+            for (int z = -6; z <= 6; z++) {
+                double dist = Math.sqrt(x * x + z * z);
+                if (dist > 6.5) continue;
+                
+                Location blockLoc = loc.clone().add(x, -1, z);
+                
+                // Limpiar espacio
+                for (int y = 0; y <= 8; y++) {
+                    loc.clone().add(x, y, z).getBlock().setType(Material.AIR);
+                }
+                
+                // Patrón de arena
+                if (dist <= 3) {
+                    // Centro: arena de combate
+                    if (rand.nextFloat() < 0.3f) {
+                        world.getBlockAt(blockLoc).setType(Material.RED_SAND);
+                    } else {
+                        world.getBlockAt(blockLoc).setType(Material.SAND);
+                    }
+                } else if (dist <= 5) {
+                    world.getBlockAt(blockLoc).setType(Material.CRACKED_STONE_BRICKS);
+                } else {
+                    world.getBlockAt(blockLoc).setType(Material.STONE_BRICKS);
+                }
+                
+                // Base
+                world.getBlockAt(loc.clone().add(x, -2, z)).setType(Material.COBBLESTONE);
+            }
+        }
+        
+        // Centro: pilar de trofeos
+        loc.clone().add(0, 0, 0).getBlock().setType(Material.CHISELED_STONE_BRICKS);
+        loc.clone().add(0, 1, 0).getBlock().setType(Material.SKELETON_SKULL);
+        
+        // Jaulas rotas en esquinas (postes con cadenas)
+        int[][] jaulaPos = {{-4, -4}, {4, -4}, {-4, 4}, {4, 4}};
+        for (int[] pos : jaulaPos) {
+            world.getBlockAt(loc.clone().add(pos[0], 0, pos[1])).setType(Material.IRON_BARS);
+            world.getBlockAt(loc.clone().add(pos[0], 1, pos[1])).setType(Material.IRON_BARS);
+            world.getBlockAt(loc.clone().add(pos[0], 2, pos[1])).setType(Material.CHAIN);
+            world.getBlockAt(loc.clone().add(pos[0], 3, pos[1])).setType(Material.LANTERN);
+        }
+        
+        // Soportes de armas (armor stands simulados con banners)
+        loc.clone().add(3, 0, 0).getBlock().setType(Material.STONE_BRICK_WALL);
+        loc.clone().add(3, 1, 0).getBlock().setType(Material.RED_BANNER);
+        loc.clone().add(-3, 0, 0).getBlock().setType(Material.STONE_BRICK_WALL);
+        loc.clone().add(-3, 1, 0).getBlock().setType(Material.RED_BANNER);
+        loc.clone().add(0, 0, 3).getBlock().setType(Material.STONE_BRICK_WALL);
+        loc.clone().add(0, 1, 3).getBlock().setType(Material.RED_BANNER);
+        loc.clone().add(0, 0, -3).getBlock().setType(Material.STONE_BRICK_WALL);
+        loc.clone().add(0, 1, -3).getBlock().setType(Material.RED_BANNER);
+        
+        // Antorchas de redstone (luz roja tenue)
+        loc.clone().add(5, 0, 0).getBlock().setType(Material.REDSTONE_TORCH);
+        loc.clone().add(-5, 0, 0).getBlock().setType(Material.REDSTONE_TORCH);
+        loc.clone().add(0, 0, 5).getBlock().setType(Material.REDSTONE_TORCH);
+        loc.clone().add(0, 0, -5).getBlock().setType(Material.REDSTONE_TORCH);
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ALTAR 5: LA UNIÓN FINAL - Temática épica de batalla final
+    // Diseño: Fortaleza pequeña, estructura defensiva, muy imponente
+    // ═══════════════════════════════════════════════════════════════════════════
+    private void construirAltarUnionFinal(Location loc, World world, Random rand) {
+        // Base amplia de fortaleza
+        for (int x = -7; x <= 7; x++) {
+            for (int z = -7; z <= 7; z++) {
+                double dist = Math.sqrt(x * x + z * z);
+                if (dist > 7.5) continue;
+                
+                Location blockLoc = loc.clone().add(x, -1, z);
+                
+                // Limpiar espacio amplio
+                for (int y = 0; y <= 12; y++) {
+                    loc.clone().add(x, y, z).getBlock().setType(Material.AIR);
+                }
+                
+                // Patrón de fortaleza
+                if (dist <= 2) {
+                    world.getBlockAt(blockLoc).setType(Material.CRYING_OBSIDIAN);
+                } else if (dist <= 4) {
+                    world.getBlockAt(blockLoc).setType(Material.DEEPSLATE_BRICKS);
+                } else if (dist <= 6) {
+                    world.getBlockAt(blockLoc).setType(Material.DEEPSLATE_TILES);
+                } else {
+                    world.getBlockAt(blockLoc).setType(Material.CRACKED_DEEPSLATE_BRICKS);
+                }
+                
+                // Base profunda sólida
+                world.getBlockAt(loc.clone().add(x, -2, z)).setType(Material.DEEPSLATE);
+                world.getBlockAt(loc.clone().add(x, -3, z)).setType(Material.DEEPSLATE);
+            }
+        }
+        
+        // Centro: Núcleo de poder (pilar alto)
+        for (int y = 0; y <= 5; y++) {
+            if (y == 0) {
+                loc.clone().add(0, y, 0).getBlock().setType(Material.RESPAWN_ANCHOR);
+            } else if (y == 5) {
+                loc.clone().add(0, y, 0).getBlock().setType(Material.BEACON);
+            } else if (y % 2 == 0) {
+                loc.clone().add(0, y, 0).getBlock().setType(Material.CRYING_OBSIDIAN);
+            } else {
+                loc.clone().add(0, y, 0).getBlock().setType(Material.CHISELED_DEEPSLATE);
+            }
+        }
+        
+        // Torres defensivas en las 4 esquinas (altura 6)
+        int[][] torrePos = {{-5, -5}, {5, -5}, {-5, 5}, {5, 5}};
+        for (int[] pos : torrePos) {
+            for (int y = 0; y <= 5; y++) {
+                if (y == 5) {
+                    world.getBlockAt(loc.clone().add(pos[0], y, pos[1])).setType(Material.SOUL_LANTERN);
+                } else if (y == 4) {
+                    world.getBlockAt(loc.clone().add(pos[0], y, pos[1])).setType(Material.CHAIN);
+                } else {
+                    world.getBlockAt(loc.clone().add(pos[0], y, pos[1])).setType(Material.DEEPSLATE_BRICK_WALL);
+                }
+            }
+        }
+        
+        // Murallas bajas conectando torres
+        for (int i = -4; i <= 4; i++) {
+            if (Math.abs(i) > 1) {
+                // Norte
+                world.getBlockAt(loc.clone().add(i, 0, -5)).setType(Material.DEEPSLATE_BRICK_WALL);
+                world.getBlockAt(loc.clone().add(i, 1, -5)).setType(Material.DEEPSLATE_BRICK_SLAB);
+                // Sur
+                world.getBlockAt(loc.clone().add(i, 0, 5)).setType(Material.DEEPSLATE_BRICK_WALL);
+                world.getBlockAt(loc.clone().add(i, 1, 5)).setType(Material.DEEPSLATE_BRICK_SLAB);
+                // Este
+                world.getBlockAt(loc.clone().add(5, 0, i)).setType(Material.DEEPSLATE_BRICK_WALL);
+                world.getBlockAt(loc.clone().add(5, 1, i)).setType(Material.DEEPSLATE_BRICK_SLAB);
+                // Oeste
+                world.getBlockAt(loc.clone().add(-5, 0, i)).setType(Material.DEEPSLATE_BRICK_WALL);
+                world.getBlockAt(loc.clone().add(-5, 1, i)).setType(Material.DEEPSLATE_BRICK_SLAB);
+            }
+        }
+        
+        // Estandartes épicos en puntos cardinales
+        Material[] banners = {Material.BLACK_BANNER, Material.PURPLE_BANNER, Material.GRAY_BANNER};
+        int[][] bannerPos = {{3, 0}, {-3, 0}, {0, 3}, {0, -3}};
+        for (int i = 0; i < bannerPos.length; i++) {
+            int[] pos = bannerPos[i];
+            world.getBlockAt(loc.clone().add(pos[0], 0, pos[1])).setType(Material.POLISHED_DEEPSLATE);
+            world.getBlockAt(loc.clone().add(pos[0], 1, pos[1])).setType(Material.POLISHED_DEEPSLATE);
+            world.getBlockAt(loc.clone().add(pos[0], 2, pos[1])).setType(banners[i % banners.length]);
+        }
+        
+        // Soul campfires en esquinas internas
+        loc.clone().add(2, 0, 2).getBlock().setType(Material.SOUL_CAMPFIRE);
+        loc.clone().add(-2, 0, 2).getBlock().setType(Material.SOUL_CAMPFIRE);
+        loc.clone().add(2, 0, -2).getBlock().setType(Material.SOUL_CAMPFIRE);
+        loc.clone().add(-2, 0, -2).getBlock().setType(Material.SOUL_CAMPFIRE);
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ALTAR GENÉRICO - Para casos donde no se conoce el tipo
+    // ═══════════════════════════════════════════════════════════════════════════
+    private void construirAltarGenerico(Location loc, World world, Random rand) {
+        // Base circular simple
         for (int x = -4; x <= 4; x++) {
             for (int z = -4; z <= 4; z++) {
                 double dist = Math.sqrt(x * x + z * z);
-                Location blockLoc = loc.clone().add(x, -2, z);
+                if (dist > 4.5) continue;
                 
-                if (dist <= 4.5) {
-                    if (dist > 3.5) {
-                        // Anillo exterior - Piedra agrietada
-                        world.getBlockAt(blockLoc).setType(Material.CRACKED_DEEPSLATE_BRICKS);
-                    } else {
-                        // Interior - Deepslate sólido
-                        world.getBlockAt(blockLoc).setType(Material.DEEPSLATE);
-                    }
-                }
-            }
-        }
-        
-        // Capa -1: Plataforma principal 7x7
-        for (int x = -3; x <= 3; x++) {
-            for (int z = -3; z <= 3; z++) {
                 Location blockLoc = loc.clone().add(x, -1, z);
-                double dist = Math.sqrt(x * x + z * z);
                 
-                if (dist <= 3.5) {
-                    if (dist > 2.5) {
-                        // Borde decorativo
-                        world.getBlockAt(blockLoc).setType(Material.DEEPSLATE_BRICKS);
-                    } else {
-                        // Interior
-                        world.getBlockAt(blockLoc).setType(Material.DEEPSLATE_TILES);
-                    }
+                // Limpiar
+                for (int y = 0; y <= 8; y++) {
+                    loc.clone().add(x, y, z).getBlock().setType(Material.AIR);
                 }
-            }
-        }
-        
-        // Capa 0: Piso del altar 5x5 con patrón
-        for (int x = -2; x <= 2; x++) {
-            for (int z = -2; z <= 2; z++) {
-                Location blockLoc = loc.clone().add(x, 0, z);
                 
-                if (x == 0 && z == 0) {
-                    // Centro - Obsidiana llorosa
-                    world.getBlockAt(blockLoc).setType(Material.CRYING_OBSIDIAN);
-                } else if ((Math.abs(x) == 2 && z == 0) || (Math.abs(z) == 2 && x == 0)) {
-                    // Cruz cardinal - Ladrillos cincelados
-                    world.getBlockAt(blockLoc).setType(Material.CHISELED_DEEPSLATE);
-                } else if (Math.abs(x) == Math.abs(z)) {
-                    // Diagonales - Ladrillos de deepslate
+                // Patrón simple
+                if (dist <= 1.5) {
+                    world.getBlockAt(blockLoc).setType(Material.POLISHED_DEEPSLATE);
+                } else if (dist <= 3) {
                     world.getBlockAt(blockLoc).setType(Material.DEEPSLATE_BRICKS);
                 } else {
-                    // Resto - Deepslate pulido
-                    world.getBlockAt(blockLoc).setType(Material.POLISHED_DEEPSLATE);
+                    world.getBlockAt(blockLoc).setType(Material.DEEPSLATE_TILES);
                 }
+                
+                world.getBlockAt(loc.clone().add(x, -2, z)).setType(Material.DEEPSLATE);
             }
         }
         
-        // 🗿 COLUMNA CENTRAL ÉPICA (altura 5 bloques)
+        // Centro
+        loc.clone().add(0, 0, 0).getBlock().setType(Material.CRYING_OBSIDIAN);
         loc.clone().add(0, 1, 0).getBlock().setType(Material.CHISELED_DEEPSLATE);
-        loc.clone().add(0, 2, 0).getBlock().setType(Material.DEEPSLATE_BRICKS);
-        loc.clone().add(0, 3, 0).getBlock().setType(Material.CHISELED_DEEPSLATE);
-        loc.clone().add(0, 4, 0).getBlock().setType(Material.CRYING_OBSIDIAN);
+        loc.clone().add(0, 2, 0).getBlock().setType(Material.CRYING_OBSIDIAN);
         
-        // ⛓️ CADENAS SUSPENDIDAS desde arriba (4 cadenas de 3 bloques)
-        // Norte
-        loc.clone().add(0, 5, -2).getBlock().setType(Material.CHAIN);
-        loc.clone().add(0, 6, -2).getBlock().setType(Material.CHAIN);
-        loc.clone().add(0, 7, -2).getBlock().setType(Material.SOUL_LANTERN);
+        // Columnas simples en esquinas
+        int[][] colPos = {{-3, -3}, {3, -3}, {-3, 3}, {3, 3}};
+        for (int[] pos : colPos) {
+            world.getBlockAt(loc.clone().add(pos[0], 0, pos[1])).setType(Material.DEEPSLATE_BRICK_WALL);
+            world.getBlockAt(loc.clone().add(pos[0], 1, pos[1])).setType(Material.DEEPSLATE_BRICK_WALL);
+            world.getBlockAt(loc.clone().add(pos[0], 2, pos[1])).setType(Material.SOUL_LANTERN);
+        }
         
-        // Sur
-        loc.clone().add(0, 5, 2).getBlock().setType(Material.CHAIN);
-        loc.clone().add(0, 6, 2).getBlock().setType(Material.CHAIN);
-        loc.clone().add(0, 7, 2).getBlock().setType(Material.SOUL_LANTERN);
-        
-        // Este
-        loc.clone().add(2, 5, 0).getBlock().setType(Material.CHAIN);
-        loc.clone().add(2, 6, 0).getBlock().setType(Material.CHAIN);
-        loc.clone().add(2, 7, 0).getBlock().setType(Material.SOUL_LANTERN);
-        
-        // Oeste
-        loc.clone().add(-2, 5, 0).getBlock().setType(Material.CHAIN);
-        loc.clone().add(-2, 6, 0).getBlock().setType(Material.CHAIN);
-        loc.clone().add(-2, 7, 0).getBlock().setType(Material.SOUL_LANTERN);
-        
-        // 🕯️ VELAS MORADAS en esquinas (nivel 1)
-        loc.clone().add(-2, 1, -2).getBlock().setType(Material.PURPLE_CANDLE);
-        loc.clone().add(2, 1, -2).getBlock().setType(Material.PURPLE_CANDLE);
-        loc.clone().add(-2, 1, 2).getBlock().setType(Material.PURPLE_CANDLE);
-        loc.clone().add(2, 1, 2).getBlock().setType(Material.PURPLE_CANDLE);
-        
-        // 🔥 VELAS ADICIONALES en puntos cardinales (nivel 0)
+        // Soul campfires cardinales
         loc.clone().add(0, 0, -3).getBlock().setType(Material.SOUL_CAMPFIRE);
         loc.clone().add(0, 0, 3).getBlock().setType(Material.SOUL_CAMPFIRE);
         loc.clone().add(3, 0, 0).getBlock().setType(Material.SOUL_CAMPFIRE);
         loc.clone().add(-3, 0, 0).getBlock().setType(Material.SOUL_CAMPFIRE);
-        
-        // 🗿 COLUMNAS DECORATIVAS en esquinas externas (altura 3)
-        int[][] columnPositions = {{-3, -3}, {3, -3}, {-3, 3}, {3, 3}};
-        for (int[] pos : columnPositions) {
-            world.getBlockAt(loc.clone().add(pos[0], 0, pos[1])).setType(Material.POLISHED_DEEPSLATE);
-            world.getBlockAt(loc.clone().add(pos[0], 1, pos[1])).setType(Material.DEEPSLATE_BRICKS);
-            world.getBlockAt(loc.clone().add(pos[0], 2, pos[1])).setType(Material.CHISELED_DEEPSLATE);
-            world.getBlockAt(loc.clone().add(pos[0], 3, pos[1])).setType(Material.LANTERN);
-        }
-        
-        // 🎆 EFECTO VISUAL ÉPICO DE CONSTRUCCIÓN
+    }
+    
+    /**
+     * Efectos visuales de construcción según tipo de altar
+     */
+    private void efectoConstruccionAltar(Location loc, World world, int tipoAltar) {
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (!isActive()) return;
             
-            // Variables efectivamente finales para lambdas anidadas
-            final Location finalLoc = loc.clone();
-            final World finalWorld = world;
+            // Partículas según tipo
+            Particle particula1, particula2;
+            Sound sonido1, sonido2;
+            
+            switch (tipoAltar) {
+                case 1: // Despertar - tranquilidad
+                    particula1 = Particle.END_ROD;
+                    particula2 = Particle.ENCHANT;
+                    sonido1 = Sound.BLOCK_AMETHYST_BLOCK_CHIME;
+                    sonido2 = Sound.BLOCK_BEACON_ACTIVATE;
+                    break;
+                case 2: // Resonancia - dimensional
+                    particula1 = Particle.PORTAL;
+                    particula2 = Particle.REVERSE_PORTAL;
+                    sonido1 = Sound.BLOCK_PORTAL_AMBIENT;
+                    sonido2 = Sound.ENTITY_ENDERMAN_TELEPORT;
+                    break;
+                case 3: // Sacrificio - fuego
+                    particula1 = Particle.FLAME;
+                    particula2 = Particle.LAVA;
+                    sonido1 = Sound.BLOCK_FIRE_AMBIENT;
+                    sonido2 = Sound.ITEM_FIRECHARGE_USE;
+                    break;
+                case 4: // Caza - hostil
+                    particula1 = Particle.DAMAGE_INDICATOR;
+                    particula2 = Particle.CRIMSON_SPORE;
+                    sonido1 = Sound.ENTITY_WARDEN_HEARTBEAT;
+                    sonido2 = Sound.ENTITY_RAVAGER_ROAR;
+                    break;
+                case 5: // Unión Final - épico
+                    particula1 = Particle.SOUL_FIRE_FLAME;
+                    particula2 = Particle.SOUL;
+                    sonido1 = Sound.BLOCK_RESPAWN_ANCHOR_CHARGE;
+                    sonido2 = Sound.ENTITY_WITHER_SPAWN;
+                    break;
+                default:
+                    particula1 = Particle.SOUL_FIRE_FLAME;
+                    particula2 = Particle.ENCHANT;
+                    sonido1 = Sound.BLOCK_BEACON_ACTIVATE;
+                    sonido2 = Sound.ENTITY_ILLUSIONER_CAST_SPELL;
+            }
             
             // Anillo de partículas expandiéndose
-            for (int i = 0; i < 360; i += 15) {
+            for (int i = 0; i < 360; i += 20) {
                 final double angle = Math.toRadians(i);
-                for (double r = 1.0; r <= 5.0; r += 0.5) {
+                for (double r = 1.0; r <= 5.0; r += 0.8) {
                     final double finalR = r;
+                    final Particle p1 = particula1;
+                    final Particle p2 = particula2;
                     Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                        double x = finalLoc.getX() + Math.cos(angle) * finalR;
-                        double z = finalLoc.getZ() + Math.sin(angle) * finalR;
-                        finalWorld.spawnParticle(
-                            Particle.SOUL_FIRE_FLAME,
-                            x, finalLoc.getY() + 1, z,
-                            3, 0.1, 0.5, 0.1, 0.02
-                        );
-                        finalWorld.spawnParticle(
-                            Particle.REVERSE_PORTAL,
-                            x, finalLoc.getY() + 2, z,
-                            2, 0.1, 0.3, 0.1, 0.01
-                        );
+                        double x = loc.getX() + Math.cos(angle) * finalR;
+                        double z = loc.getZ() + Math.sin(angle) * finalR;
+                        world.spawnParticle(p1, x, loc.getY() + 1, z, 2, 0.1, 0.3, 0.1, 0.02);
+                        world.spawnParticle(p2, x, loc.getY() + 1.5, z, 1, 0.1, 0.2, 0.1, 0.01);
                     }, (long)(finalR * 2));
                 }
             }
             
             // Explosión central
-            finalWorld.spawnParticle(Particle.SOUL, finalLoc.clone().add(0.5, 1, 0.5), 50, 0.5, 1, 0.5, 0.1);
-            finalWorld.spawnParticle(Particle.ENCHANT, finalLoc.clone().add(0.5, 1, 0.5), 30, 1, 2, 1, 0.5);
+            world.spawnParticle(particula1, loc.clone().add(0.5, 2, 0.5), 40, 0.5, 1, 0.5, 0.1);
+            world.spawnParticle(particula2, loc.clone().add(0.5, 2, 0.5), 25, 1, 1.5, 1, 0.3);
             
-            // Sonidos épicos
-            finalWorld.playSound(finalLoc, Sound.BLOCK_RESPAWN_ANCHOR_CHARGE, 1.0f, 0.8f);
-            finalWorld.playSound(finalLoc, Sound.BLOCK_BEACON_ACTIVATE, 0.8f, 1.2f);
-            finalWorld.playSound(finalLoc, Sound.ENTITY_ILLUSIONER_CAST_SPELL, 0.6f, 0.6f);
+            // Sonidos
+            world.playSound(loc, sonido1, 1.0f, 0.9f);
+            world.playSound(loc, sonido2, 0.7f, 1.1f);
         }, 5L);
     }
     
@@ -2923,6 +3428,20 @@ public class SusurroPiedraRotaEvent extends EventBase {
             case 4: return "§5Altar de la Caza";
             case 5: return "§5Altar de la Unión";
             default: return "§5Altar Antiguo";
+        }
+    }
+    
+    /**
+     * Obtener tema descriptivo del altar para logging
+     */
+    private String obtenerTemaAltar(int numAltar) {
+        switch (numAltar) {
+            case 1: return "Despertar/Quietud";
+            case 2: return "Resonancia/Dimensional";
+            case 3: return "Sacrificio/Ofrendas";
+            case 4: return "Caza/Combate";
+            case 5: return "Unión Final/Épico";
+            default: return "Genérico";
         }
     }
     
@@ -9496,9 +10015,11 @@ public class SusurroPiedraRotaEvent extends EventBase {
         
         Location fragmentoLoc = encontrarLocationValida(world, spawn, 50, 150, 30);
         if (fragmentoLoc != null) {
-            construirFragmentoPiedra(fragmentoLoc);
+            int numAltar = fragmentosLocations.size() + 1; // Siguiente altar
+            construirFragmentoPiedra(fragmentoLoc, numAltar);
             fragmentosLocations.add(fragmentoLoc);
-            plugin.getLogger().info("[SusurroPiedraRota] Fragmento adicional spawneado");
+            fragmentoANumeroAltar.put(fragmentoLoc, numAltar);
+            plugin.getLogger().info("[SusurroPiedraRota] Fragmento adicional spawneado (Altar " + numAltar + ")");
         }
     }
     
