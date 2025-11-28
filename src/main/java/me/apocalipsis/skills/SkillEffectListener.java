@@ -354,7 +354,6 @@ public class SkillEffectListener implements Listener {
                 } else {
                     block.getWorld().dropItemNaturally(block.getLocation(), silkDrop);
                 }
-                }
                 player.sendMessage("§d✦ §fToque de Seda Natural!");
             }
         }
