@@ -204,7 +204,7 @@ public class SkillTreeGUI implements Listener {
             
             // Rango
             MissionRank rank = plugin.getRankService().getRank(player);
-            lore.add("§7Rango: " + rank.getPrefix());
+            lore.add("§7Rango: " + rank.getDisplayName());
             
             // Skills desbloqueadas
             int skills = skillService.getUnlockedSkills(uuid).size();
