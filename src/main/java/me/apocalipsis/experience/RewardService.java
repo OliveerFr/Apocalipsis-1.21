@@ -1,7 +1,6 @@
 package me.apocalipsis.experience;
 
 import me.apocalipsis.Apocalipsis;
-import me.apocalipsis.missions.MissionCatalog;
 import me.apocalipsis.missions.MissionDifficulty;
 import me.apocalipsis.missions.MissionRank;
 import net.kyori.adventure.text.Component;
@@ -14,12 +13,15 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Firework;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.FireworkMeta;
 
 import java.io.File;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Servicio que entrega recompensas cuando un jugador sube de rango
@@ -112,7 +114,8 @@ public class RewardService {
     
     /**
      * Entrega las recompensas de un rango a un jugador
-     * @return true si se entregaron recompensas, false si ya las había recibido
+     * Las recompensas se añaden al sistema de reclamación (/recompensa)
+     * @return true si se añadieron recompensas, false si ya las había recibido
      */
     public boolean deliverRewards(Player player, MissionRank rank) {
         // Verificar si ya recibió esta recompensa
@@ -128,23 +131,56 @@ public class RewardService {
             return false; // No hay recompensas para este rango
         }
         
-        plugin.getLogger().info("[Rewards] Entregando recompensas de " + rank.name() + " a " + player.getName());
-        plugin.getLogger().info("[Rewards] Total comandos: " + reward.getCommands().size());
+        plugin.getLogger().info("[Rewards] Añadiendo recompensas de " + rank.name() + " a " + player.getName());
         
-        // Ejecutar comandos
+        // Convertir comandos give a ItemStacks y separar comandos especiales
+        List<ItemStack> items = new ArrayList<>();
+        List<String> specialCommands = new ArrayList<>();
+        
         for (String command : reward.getCommands()) {
             String processedCommand = command.replace("%player%", player.getName());
+            ItemStack item = parseGiveCommand(processedCommand);
             
-            // 🔧 DEBUG: Log del comando procesado
-            plugin.getLogger().info("[Rewards] Ejecutando: " + processedCommand);
-            
-            // Ejecutar en el siguiente tick para evitar problemas de sincronización
+            if (item != null) {
+                items.add(item);
+            } else {
+                // Comandos que no son "give" se ejecutan inmediatamente (ej: ps give)
+                specialCommands.add(processedCommand);
+            }
+        }
+        
+        // Ejecutar comandos especiales (como ps give) inmediatamente
+        for (String cmd : specialCommands) {
+            plugin.getLogger().info("[Rewards] Ejecutando comando especial: " + cmd);
             Bukkit.getScheduler().runTask(plugin, () -> {
-                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), processedCommand);
+                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
             });
         }
         
-        // Enviar mensaje
+        // Añadir items al sistema de reclamación
+        if (!items.isEmpty() && plugin.getRewardClaimSystem() != null) {
+            String displayName = "§6⬆ Ascenso a " + rank.getDisplayName();
+            plugin.getRewardClaimSystem().addRewards(
+                player.getUniqueId(),
+                "RANGO_" + rank.name(),
+                displayName,
+                items,
+                1440, // 24 horas para reclamar
+                rank.name(),
+                0
+            );
+            
+            // Notificar sobre reclamación
+            player.sendMessage("");
+            player.sendMessage("§6§l════════════════════════════════════════");
+            player.sendMessage("§e§l  🎁 RECOMPENSAS DE RANGO DISPONIBLES");
+            player.sendMessage("§7  Usa §f/recompensa §7para reclamar tus items.");
+            player.sendMessage("§7  Tienes §e24 horas §7para reclamarlas.");
+            player.sendMessage("§6§l════════════════════════════════════════");
+            player.sendMessage("");
+        }
+        
+        // Enviar mensaje del rango
         if (!reward.getMessage().isEmpty()) {
             Component message = LegacyComponentSerializer.legacyAmpersand().deserialize(reward.getMessage());
             player.sendMessage(message);
@@ -158,7 +194,7 @@ public class RewardService {
         player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.5f);
         player.playSound(player.getLocation(), org.bukkit.Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
         
-        plugin.getLogger().info("[Rewards] ✓ Recompensas de " + rank.name() + " entregadas a " + player.getName());
+        plugin.getLogger().info("[Rewards] ✓ Recompensas de " + rank.name() + " añadidas para " + player.getName());
         
         return true;
     }
@@ -226,8 +262,54 @@ public class RewardService {
         saveDeliveredRewards();
     }
     
+    // ═══════════════════════════════════════════════════════════════════
+    // PARSEO DE COMANDOS A ITEMSTACK
+    // ═══════════════════════════════════════════════════════════════════
+    
+    /**
+     * Patrón para comandos "give" de Minecraft
+     * Formato: give <player> minecraft:<item> [cantidad]
+     */
+    private static final Pattern GIVE_PATTERN = Pattern.compile(
+        "^give\\s+\\S+\\s+(?:minecraft:)?(\\w+)(?:\\s+(\\d+))?$",
+        Pattern.CASE_INSENSITIVE
+    );
+    
+    /**
+     * Parsea un comando "give" y lo convierte en ItemStack
+     * @param command El comando a parsear (ej: "give Steve minecraft:diamond 5")
+     * @return ItemStack si es un comando give válido, null si no lo es
+     */
+    private ItemStack parseGiveCommand(String command) {
+        Matcher matcher = GIVE_PATTERN.matcher(command.trim());
+        
+        if (!matcher.matches()) {
+            return null; // No es un comando give
+        }
+        
+        String materialName = matcher.group(1).toUpperCase();
+        String amountStr = matcher.group(2);
+        int amount = (amountStr != null) ? Integer.parseInt(amountStr) : 1;
+        
+        try {
+            Material material = Material.valueOf(materialName);
+            if (material.isItem()) {
+                return new ItemStack(material, amount);
+            }
+        } catch (IllegalArgumentException e) {
+            plugin.getLogger().warning("[Rewards] Material desconocido en comando: " + materialName);
+        }
+        
+        return null;
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // RECOMPENSAS POR MISIONES
+    // ═══════════════════════════════════════════════════════════════════
+    
     /**
      * Entrega recompensas al completar una misión individual (bonus aleatorio)
+     * Las recompensas van al sistema de reclamación (/recompensa)
      */
     public void deliverMissionReward(Player player, MissionDifficulty difficulty) {
         FileConfiguration config = plugin.getConfigManager().getRecompensasConfig();
@@ -246,19 +328,37 @@ public class RewardService {
             return; // No hay recompensa esta vez
         }
         
-        // Ejecutar comandos de recompensa
+        // Convertir comandos give a ItemStacks
         List<String> commands = section.getStringList("items");
+        List<ItemStack> items = new ArrayList<>();
+        
         for (String command : commands) {
             String processedCommand = command.replace("%player%", player.getName());
-            Bukkit.getScheduler().runTask(plugin, () -> {
-                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), processedCommand);
-            });
+            ItemStack item = parseGiveCommand(processedCommand);
+            if (item != null) {
+                items.add(item);
+            }
+        }
+        
+        // Añadir al sistema de reclamación si hay items
+        if (!items.isEmpty() && plugin.getRewardClaimSystem() != null) {
+            String displayName = "§e✦ Bonus Misión " + getDifficultyDisplay(difficulty);
+            plugin.getRewardClaimSystem().addRewards(
+                player.getUniqueId(),
+                "MISSION_BONUS_" + difficulty.name(),
+                displayName,
+                items,
+                60, // 1 hora para reclamar
+                null,
+                0
+            );
         }
         
         // Enviar mensaje
         String message = section.getString("mensaje", "");
-        if (!message.isEmpty()) {
+        if (message != null && !message.isEmpty()) {
             player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(message));
+            player.sendMessage("§7Usa §f/recompensa §7para reclamar.");
         }
         
         // Sonido sutil
@@ -266,7 +366,20 @@ public class RewardService {
     }
     
     /**
+     * Obtiene el nombre de dificultad formateado
+     */
+    private String getDifficultyDisplay(MissionDifficulty difficulty) {
+        switch (difficulty) {
+            case FACIL: return "§aFácil";
+            case MEDIA: return "§eMedia";
+            case DIFICIL: return "§cDifícil";
+            default: return "§7Desconocida";
+        }
+    }
+    
+    /**
      * Entrega recompensas por completar todas las misiones del día
+     * Las recompensas van al sistema de reclamación (/recompensa)
      */
     public void deliverDailyCompletionReward(Player player) {
         FileConfiguration config = plugin.getConfigManager().getRecompensasConfig();
@@ -278,18 +391,17 @@ public class RewardService {
         Location loc = player.getLocation();
         MissionRank rank = plugin.getRankService().getRank(player);
         
+        // Recopilar todos los items
+        List<ItemStack> allItems = new ArrayList<>();
+        
         // 1. Recompensas base
         List<String> baseCommands = config.getStringList("recompensas_diarias_completas.recompensas_base.comandos");
         for (String command : baseCommands) {
             String processedCommand = command.replace("%player%", player.getName());
-            Bukkit.getScheduler().runTask(plugin, () -> {
-                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), processedCommand);
-            });
-        }
-        
-        String baseMessage = config.getString("recompensas_diarias_completas.recompensas_base.mensaje", "");
-        if (!baseMessage.isEmpty()) {
-            player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(baseMessage));
+            ItemStack item = parseGiveCommand(processedCommand);
+            if (item != null) {
+                allItems.add(item);
+            }
         }
         
         // 2. Bonus por rango
@@ -300,20 +412,46 @@ public class RewardService {
             List<String> rankCommands = rankSection.getStringList("comandos");
             for (String command : rankCommands) {
                 String processedCommand = command.replace("%player%", player.getName());
-                Bukkit.getScheduler().runTask(plugin, () -> {
-                    Bukkit.dispatchCommand(Bukkit.getConsoleSender(), processedCommand);
-                });
+                ItemStack item = parseGiveCommand(processedCommand);
+                if (item != null) {
+                    allItems.add(item);
+                }
+            }
+        }
+        
+        // Añadir todos los items al sistema de reclamación
+        if (!allItems.isEmpty() && plugin.getRewardClaimSystem() != null) {
+            String displayName = "§6★ Misiones Diarias Completadas";
+            plugin.getRewardClaimSystem().addRewards(
+                player.getUniqueId(),
+                "DAILY_COMPLETE",
+                displayName,
+                allItems,
+                120, // 2 horas para reclamar
+                rank.name(),
+                0
+            );
+            
+            // Mensaje sobre reclamación
+            String baseMessage = config.getString("recompensas_diarias_completas.recompensas_base.mensaje", "");
+            if (baseMessage != null && !baseMessage.isEmpty()) {
+                player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(baseMessage));
             }
             
-            String rankMessage = rankSection.getString("mensaje", "");
-            if (!rankMessage.isEmpty()) {
+            String rankMessage = rankSection != null ? rankSection.getString("mensaje", "") : "";
+            if (rankMessage != null && !rankMessage.isEmpty()) {
                 player.sendMessage(LegacyComponentSerializer.legacyAmpersand().deserialize(rankMessage));
             }
+            
+            player.sendMessage("§7Usa §f/recompensa §7para reclamar tus items.");
         }
         
         // 3. Título épico
         String titulo = config.getString("recompensas_diarias_completas.titulo", "&6&l¡COMPLETADO!");
         String subtitulo = config.getString("recompensas_diarias_completas.subtitulo", "&eHas terminado todas las misiones");
+        
+        if (titulo == null) titulo = "&6&l¡COMPLETADO!";
+        if (subtitulo == null) subtitulo = "&eHas terminado todas las misiones";
         
         Component titleComponent = LegacyComponentSerializer.legacyAmpersand().deserialize(titulo);
         Component subtitleComponent = LegacyComponentSerializer.legacyAmpersand().deserialize(subtitulo);
@@ -347,7 +485,7 @@ public class RewardService {
             }, i * 10L); // Escalonados cada 0.5s
         }
         
-        plugin.getLogger().info("[Rewards] " + player.getName() + " completó todas las misiones diarias y recibió recompensas");
+        plugin.getLogger().info("[Rewards] " + player.getName() + " completó todas las misiones diarias - recompensas en /recompensa");
     }
     
     /**

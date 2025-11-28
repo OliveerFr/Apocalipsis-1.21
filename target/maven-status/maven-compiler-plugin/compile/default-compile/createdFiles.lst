@@ -34,6 +34,7 @@ me\apocalipsis\commands\ApocalipsisCommand$WaterScanResult.class
 me\apocalipsis\events\gameplay\EnvironmentSystem$AtmosphericEffect.class
 me\apocalipsis\events\gameplay\QTESystem.class
 me\apocalipsis\events\gameplay\ProtectionSystem.class
+me\apocalipsis\experience\RewardService$1.class
 me\apocalipsis\events\SusurroPiedraRotaEvent$8.class
 me\apocalipsis\events\gameplay\CinematicSystem$ShakeIntensity.class
 me\apocalipsis\events\gameplay\GuardianPhaseSystem$6.class
