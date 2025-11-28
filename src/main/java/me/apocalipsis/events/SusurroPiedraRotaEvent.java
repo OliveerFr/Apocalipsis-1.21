@@ -7648,6 +7648,7 @@ public class SusurroPiedraRotaEvent extends EventBase {
     
     private Set<UUID> enemigosOleadaActo3 = new HashSet<>();
     private Runnable callbackOleadaCompletada = null;
+    private BukkitTask esperaEnemigosTask = null; // Task para esperar eliminación de enemigos
     
     /**
      * Spawnea una oleada de enemigos que deben ser eliminados antes de continuar
@@ -7724,17 +7725,38 @@ public class SusurroPiedraRotaEvent extends EventBase {
      * Muestra progreso visual constante a los jugadores
      */
     private void esperarEliminacionEnemigosActo3(Runnable callback) {
-        this.callbackOleadaCompletada = callback;
-        final int enemigosInicial = enemigosOleadaActo3.size();
+        // Cancelar task anterior si existe para evitar múltiples tasks
+        if (esperaEnemigosTask != null && !esperaEnemigosTask.isCancelled()) {
+            esperaEnemigosTask.cancel();
+            esperaEnemigosTask = null;
+        }
         
-        // Verificar cada segundo
-        Bukkit.getScheduler().runTaskTimer(plugin, new org.bukkit.scheduler.BukkitRunnable() {
+        this.callbackOleadaCompletada = callback;
+        final int enemigosInicial = Math.max(1, enemigosOleadaActo3.size()); // Evitar división por 0
+        
+        // Si no hay enemigos, ejecutar callback inmediatamente
+        if (enemigosOleadaActo3.isEmpty()) {
+            plugin.getLogger().info("[SusurroPiedraRota] No hay enemigos en oleada, ejecutando callback directo");
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (callbackOleadaCompletada != null) {
+                    callbackOleadaCompletada.run();
+                    callbackOleadaCompletada = null;
+                }
+            }, 20L);
+            return;
+        }
+        
+        plugin.getLogger().info("[SusurroPiedraRota] Esperando eliminación de " + enemigosOleadaActo3.size() + " enemigos");
+        
+        // Verificar cada medio segundo
+        esperaEnemigosTask = Bukkit.getScheduler().runTaskTimer(plugin, new org.bukkit.scheduler.BukkitRunnable() {
             int ticksEspera = 0;
             
             @Override
             public void run() {
                 if (!isActive()) {
                     this.cancel();
+                    esperaEnemigosTask = null;
                     return;
                 }
                 
@@ -7773,9 +7795,16 @@ public class SusurroPiedraRotaEvent extends EventBase {
                     }
                 }
                 
+                // Timeout de seguridad: 3 minutos máximo
+                if (ticksEspera >= 3600) { // 3 minutos = 3600 ticks a 10 ticks/check
+                    plugin.getLogger().warning("[SusurroPiedraRota] Timeout de oleada alcanzado, forzando continuación");
+                    enemigosOleadaActo3.clear();
+                }
+                
                 // Si no quedan enemigos, ejecutar callback
                 if (enemigosOleadaActo3.isEmpty()) {
                     this.cancel();
+                    esperaEnemigosTask = null;
                     
                     // Limpiar action bar
                     for (Player p : Bukkit.getOnlinePlayers()) {
@@ -7845,6 +7874,9 @@ public class SusurroPiedraRotaEvent extends EventBase {
     
     private void verificarProximidadAltar() {
         if (altarLocation == null) return;
+        
+        // Si ya se inició el ritual, no hacer nada
+        if (ritualDestruccionIniciado) return;
         
         // Contar jugadores vivos y verificar proximidad
         List<Player> jugadoresVivos = new ArrayList<>();
