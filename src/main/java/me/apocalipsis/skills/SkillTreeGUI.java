@@ -576,13 +576,13 @@ public class SkillTreeGUI implements Listener {
         confirmLore.add("");
         confirmLore.add("§7Costo: §e" + skill.getBaseCost() + " XP");
         confirmLore.add("");
-        confirmLore.add("§7XP actual: §a" + String.format("%,d", preview.currentXP()));
-        confirmLore.add("§7XP después: §" + (preview.newXP() < 0 ? "c" : "e") + String.format("%,d", preview.newXP()));
+        confirmLore.add("§7XP actual: §a" + String.format("%,d", preview.currentXP));
+        confirmLore.add("§7XP después: §" + (preview.newXP < 0 ? "c" : "e") + String.format("%,d", preview.newXP));
         
-        if (preview.willDropRank()) {
+        if (preview.willDropRank) {
             confirmLore.add("");
             confirmLore.add("§c§l⚠ Perderás tu rango actual!");
-            confirmLore.add("§c" + preview.currentRank().getDisplayName() + " §7→ " + preview.newRank().getDisplayName());
+            confirmLore.add("§c" + preview.currentRank.getDisplayName() + " §7→ " + preview.newRank.getDisplayName());
         }
         
         confirmLore.add("");
