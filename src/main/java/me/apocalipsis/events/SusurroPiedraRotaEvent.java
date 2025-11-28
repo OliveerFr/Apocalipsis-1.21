@@ -2134,8 +2134,8 @@ public class SusurroPiedraRotaEvent extends EventBase {
     }
     
     /**
-     * Construye un altar COMPLETAMENTE adaptado al terreno con diseño único
-     * SISTEMA MEJORADO: Terrazas naturales, transiciones suaves, sin cortes bruscos
+     * Construye un altar CON CIMENTACIÓN SÓLIDA GARANTIZADA
+     * v2.0: Construye pilares hasta el fondo, elimina hielo/agua, garantiza estabilidad
      */
     private void construirFragmentoPiedra(Location loc, int tipoAltar) {
         World world = loc.getWorld();
@@ -2144,41 +2144,66 @@ public class SusurroPiedraRotaEvent extends EventBase {
         int centroZ = loc.getBlockZ();
         
         // ═══════════════════════════════════════════════════════════════════
-        // FASE 1: ANÁLISIS PROFUNDO DEL TERRENO
+        // FASE 0: ENCONTRAR EL TERRENO SÓLIDO REAL
         // ═══════════════════════════════════════════════════════════════════
         
-        // Mapa de alturas del terreno original
-        int[][] mapaAlturas = new int[25][25]; // -12 a +12
-        int alturaMinima = Integer.MAX_VALUE;
-        int alturaMaxima = Integer.MIN_VALUE;
+        // Buscar la altura del terreno SÓLIDO REAL en el centro
+        int alturaTerrenoReal = obtenerAlturaTerrenoSolidoAbsoluto(world, centroX, centroZ);
         
-        for (int dx = -12; dx <= 12; dx++) {
-            for (int dz = -12; dz <= 12; dz++) {
-                int altura = obtenerAlturaTerrenoReal(world, centroX + dx, centroZ + dz);
-                mapaAlturas[dx + 12][dz + 12] = altura;
-                alturaMinima = Math.min(alturaMinima, altura);
-                alturaMaxima = Math.max(alturaMaxima, altura);
+        // También buscar el punto más bajo de terreno sólido en el área central
+        int alturaMasBaja = alturaTerrenoReal;
+        int alturaMasAlta = alturaTerrenoReal;
+        
+        for (int dx = -8; dx <= 8; dx += 2) {
+            for (int dz = -8; dz <= 8; dz += 2) {
+                int alturaCheck = obtenerAlturaTerrenoSolidoAbsoluto(world, centroX + dx, centroZ + dz);
+                alturaMasBaja = Math.min(alturaMasBaja, alturaCheck);
+                alturaMasAlta = Math.max(alturaMasAlta, alturaCheck);
             }
         }
         
-        // Altura base del altar: ligeramente por encima del promedio del centro
-        int sumaAlturaCentro = 0;
-        int conteo = 0;
-        for (int dx = -3; dx <= 3; dx++) {
-            for (int dz = -3; dz <= 3; dz++) {
-                sumaAlturaCentro += mapaAlturas[dx + 12][dz + 12];
-                conteo++;
+        // La altura base será 1 bloque por encima del promedio, pero nunca por debajo del más alto
+        int alturaBase = Math.max(alturaTerrenoReal, (alturaMasBaja + alturaMasAlta) / 2);
+        
+        // ═══════════════════════════════════════════════════════════════════
+        // FASE 1: LIMPIEZA COMPLETA DEL ÁREA (eliminar TODO lo inestable)
+        // ═══════════════════════════════════════════════════════════════════
+        
+        for (int dx = -14; dx <= 14; dx++) {
+            for (int dz = -14; dz <= 14; dz++) {
+                double dist = Math.sqrt(dx * dx + dz * dz);
+                if (dist > 14) continue;
+                
+                int worldX = centroX + dx;
+                int worldZ = centroZ + dz;
+                
+                // Limpiar desde muy arriba hasta muy abajo
+                for (int y = alturaBase + 20; y >= alturaBase - 25 && y > 0; y--) {
+                    Block block = world.getBlockAt(worldX, y, worldZ);
+                    Material mat = block.getType();
+                    
+                    // En el área central, limpiar todo lo inestable
+                    if (dist <= 10) {
+                        if (esSuperficieInestable(mat) || esVegetacionORemovible(mat)) {
+                            block.setType(Material.AIR);
+                        }
+                    }
+                    // En el área del altar, limpiar espacio aéreo
+                    if (dist <= 8 && y > alturaBase) {
+                        if (mat != Material.AIR && mat != Material.BEDROCK) {
+                            block.setType(Material.AIR);
+                        }
+                    }
+                }
             }
         }
-        int alturaBase = sumaAlturaCentro / conteo;
         
         // ═══════════════════════════════════════════════════════════════════
-        // FASE 2: PREPARACIÓN DEL TERRENO CON TERRAZAS NATURALES
+        // FASE 2: CONSTRUCCIÓN DE CIMIENTOS SÓLIDOS (PILARES HASTA EL FONDO)
         // ═══════════════════════════════════════════════════════════════════
         
-        // Detectar el material predominante del bioma
-        Material materialBiomaPrincipal = detectarBiomaPredominante(world, centroX, centroZ, alturaBase);
-        Material materialTransicion = obtenerMaterialTransicion(materialBiomaPrincipal);
+        // Detectar bioma para materiales naturales
+        Material materialBioma = detectarBiomaPredominante(world, centroX, centroZ, alturaBase);
         
         for (int dx = -12; dx <= 12; dx++) {
             for (int dz = -12; dz <= 12; dz++) {
@@ -2187,82 +2212,111 @@ public class SusurroPiedraRotaEvent extends EventBase {
                 
                 int worldX = centroX + dx;
                 int worldZ = centroZ + dz;
-                int alturaOriginal = mapaAlturas[dx + 12][dz + 12];
                 
-                // Calcular altura objetivo con terrazas suaves
+                // Determinar la altura objetivo para este punto
                 int alturaObjetivo;
-                if (dist <= 4) {
-                    // Centro del altar: completamente plano
+                if (dist <= 5) {
+                    // Centro: completamente plano
                     alturaObjetivo = alturaBase;
-                } else if (dist <= 7) {
-                    // Primera terraza: transición suave
-                    double factor = (dist - 4) / 3.0;
-                    int alturaIntermedia = alturaBase + (int)((alturaOriginal - alturaBase) * factor * 0.3);
-                    alturaObjetivo = alturaIntermedia;
-                } else if (dist <= 10) {
-                    // Segunda terraza: más natural
-                    double factor = (dist - 7) / 3.0;
-                    int alturaIntermedia = alturaBase + (int)((alturaOriginal - alturaBase) * (0.3 + factor * 0.4));
-                    alturaObjetivo = alturaIntermedia;
+                } else if (dist <= 8) {
+                    // Transición gradual
+                    double factor = (dist - 5) / 3.0;
+                    int alturaLocal = obtenerAlturaTerrenoSolidoAbsoluto(world, worldX, worldZ);
+                    alturaObjetivo = alturaBase + (int)((alturaLocal - alturaBase) * factor * 0.4);
                 } else {
-                    // Borde exterior: casi sin modificar, solo suavizado
-                    double factor = (dist - 10) / 2.0;
-                    alturaObjetivo = alturaBase + (int)((alturaOriginal - alturaBase) * (0.7 + factor * 0.3));
+                    // Borde exterior: más natural
+                    double factor = (dist - 8) / 4.0;
+                    int alturaLocal = obtenerAlturaTerrenoSolidoAbsoluto(world, worldX, worldZ);
+                    alturaObjetivo = alturaBase + (int)((alturaLocal - alturaBase) * (0.4 + factor * 0.6));
                 }
                 
-                // Aplicar modificaciones de terreno
-                if (alturaOriginal > alturaObjetivo) {
-                    // Necesitamos bajar el terreno
-                    for (int y = alturaOriginal; y > alturaObjetivo; y--) {
+                // ====== CONSTRUCCIÓN DE PILARES DE SOPORTE ======
+                // Encontrar el fondo sólido real debajo de este punto
+                int fondoSolido = -1;
+                for (int y = alturaObjetivo; y > 0; y--) {
+                    Material mat = world.getBlockAt(worldX, y, worldZ).getType();
+                    if (esTerrenoSolidoReal(mat) && !esSuperficieInestable(mat)) {
+                        fondoSolido = y;
+                        break;
+                    }
+                }
+                
+                // Si no hay fondo sólido cerca, buscar más profundo
+                if (fondoSolido == -1 || alturaObjetivo - fondoSolido > 30) {
+                    for (int y = alturaObjetivo - 30; y > 0; y--) {
+                        Material mat = world.getBlockAt(worldX, y, worldZ).getType();
+                        if (mat.isSolid() && mat != Material.WATER && !mat.name().contains("ICE")) {
+                            fondoSolido = y;
+                            break;
+                        }
+                    }
+                }
+                
+                // Construir pilar sólido desde el fondo hasta la superficie
+                if (fondoSolido > 0 && fondoSolido < alturaObjetivo) {
+                    for (int y = fondoSolido + 1; y <= alturaObjetivo; y++) {
+                        Block block = world.getBlockAt(worldX, y, worldZ);
+                        
+                        // Elegir material según profundidad y distancia del centro
+                        Material material;
+                        if (y == alturaObjetivo) {
+                            // Superficie: material del bioma en los bordes, piedra en el centro
+                            if (dist <= 6) {
+                                material = rand.nextFloat() < 0.4 ? Material.DEEPSLATE : Material.STONE;
+                            } else if (dist <= 9) {
+                                material = rand.nextFloat() < 0.5 ? Material.COBBLESTONE : materialBioma;
+                            } else {
+                                material = materialBioma;
+                            }
+                        } else if (y >= alturaObjetivo - 2) {
+                            // Cerca de la superficie
+                            material = Material.DIRT;
+                        } else if (y >= alturaObjetivo - 5) {
+                            // Capas medias
+                            material = rand.nextFloat() < 0.3 ? Material.COBBLESTONE : Material.STONE;
+                        } else {
+                            // Capas profundas
+                            material = rand.nextFloat() < 0.2 ? Material.DEEPSLATE : Material.STONE;
+                        }
+                        
+                        block.setType(material);
+                    }
+                } else {
+                    // No hay hueco, solo asegurar superficie sólida
+                    Block superficie = world.getBlockAt(worldX, alturaObjetivo, worldZ);
+                    if (!superficie.getType().isSolid() || esSuperficieInestable(superficie.getType())) {
+                        if (dist <= 6) {
+                            superficie.setType(rand.nextFloat() < 0.3 ? Material.DEEPSLATE : Material.STONE);
+                        } else {
+                            superficie.setType(materialBioma);
+                        }
+                    }
+                }
+                
+                // ====== GARANTIZAR BASE SÓLIDA ADICIONAL ======
+                // Siempre colocar al menos 3 bloques sólidos debajo del centro
+                if (dist <= 7) {
+                    for (int y = alturaObjetivo - 1; y >= alturaObjetivo - 4 && y > 0; y--) {
                         Block block = world.getBlockAt(worldX, y, worldZ);
                         Material mat = block.getType();
-                        // No remover bedrock
-                        if (mat != Material.BEDROCK) {
-                            block.setType(Material.AIR);
-                        }
-                    }
-                    // Colocar superficie natural
-                    if (dist <= 10) {
-                        colocarSuperficieNatural(world, worldX, alturaObjetivo, worldZ, materialBiomaPrincipal, dist, rand);
-                    }
-                } else if (alturaOriginal < alturaObjetivo) {
-                    // Necesitamos subir el terreno (rellenar)
-                    for (int y = alturaOriginal + 1; y <= alturaObjetivo; y++) {
-                        Material relleno;
-                        if (y == alturaObjetivo) {
-                            relleno = materialBiomaPrincipal;
-                        } else if (y >= alturaObjetivo - 2) {
-                            relleno = Material.DIRT;
-                        } else {
-                            relleno = Material.STONE;
-                        }
-                        world.getBlockAt(worldX, y, worldZ).setType(relleno);
-                    }
-                }
-                
-                // Asegurar base sólida debajo del altar
-                if (dist <= 6) {
-                    for (int y = alturaObjetivo - 1; y >= alturaObjetivo - 4; y--) {
-                        Block block = world.getBlockAt(worldX, y, worldZ);
-                        if (!block.getType().isSolid() || block.getType() == Material.WATER) {
+                        if (!mat.isSolid() || esSuperficieInestable(mat)) {
                             block.setType(y >= alturaObjetivo - 2 ? Material.DIRT : Material.STONE);
                         }
                     }
                 }
                 
-                // Limpiar espacio aéreo (vegetación, hojas, troncos flotantes)
-                for (int y = alturaObjetivo + 1; y <= alturaObjetivo + 15; y++) {
+                // ====== LIMPIAR ESPACIO AÉREO ======
+                for (int y = alturaObjetivo + 1; y <= alturaObjetivo + 18; y++) {
                     Block block = world.getBlockAt(worldX, y, worldZ);
                     Material mat = block.getType();
                     if (dist <= 8) {
-                        // Centro: limpiar todo
-                        if (esVegetacion(mat) || mat.name().contains("LEAVES") || 
-                            mat.name().contains("LOG") || mat.name().contains("SNOW")) {
+                        // Centro: limpiar todo excepto bedrock
+                        if (mat != Material.BEDROCK && mat != Material.AIR) {
                             block.setType(Material.AIR);
                         }
                     } else if (dist <= 11) {
-                        // Bordes: solo limpiar hojas y nieve
-                        if (mat.name().contains("LEAVES") || mat == Material.SNOW) {
+                        // Bordes: limpiar vegetación y nieve
+                        if (esVegetacionORemovible(mat) || mat.name().contains("SNOW")) {
                             block.setType(Material.AIR);
                         }
                     }
@@ -2271,13 +2325,13 @@ public class SusurroPiedraRotaEvent extends EventBase {
         }
         
         // ═══════════════════════════════════════════════════════════════════
-        // FASE 3: AÑADIR DETALLES NATURALES DE TRANSICIÓN
+        // FASE 3: DETALLES NATURALES DE TRANSICIÓN
         // ═══════════════════════════════════════════════════════════════════
         
-        agregarDetallesTransicion(world, centroX, centroZ, alturaBase, materialBiomaPrincipal, rand);
+        agregarDetallesTransicionMejorados(world, centroX, centroZ, alturaBase, materialBioma, rand);
         
         // ═══════════════════════════════════════════════════════════════════
-        // FASE 4: CONSTRUCCIÓN DEL ALTAR SEGÚN TIPO
+        // FASE 4: CONSTRUCCIÓN DEL ALTAR
         // ═══════════════════════════════════════════════════════════════════
         
         Location locAltar = new Location(world, centroX, alturaBase + 1, centroZ);
@@ -2308,136 +2362,38 @@ public class SusurroPiedraRotaEvent extends EventBase {
     }
     
     /**
-     * Obtiene la altura real del terreno ignorando agua, nieve superficial y vegetación
+     * Añade detalles naturales mejorados para transición suave
      */
-    private int obtenerAlturaTerrenoReal(World world, int x, int z) {
-        int y = world.getHighestBlockYAt(x, z);
-        
-        // Bajar hasta encontrar terreno sólido real
-        for (int checkY = y; checkY > 0; checkY--) {
-            Material mat = world.getBlockAt(x, checkY, z).getType();
-            if (mat == Material.WATER || mat == Material.LAVA) {
-                // Si hay agua, buscar el fondo
-                continue;
-            }
-            if (esVegetacion(mat) || mat.name().contains("SNOW") && mat != Material.SNOW_BLOCK) {
-                continue;
-            }
-            if (mat.name().contains("LEAVES") || mat.name().contains("LOG")) {
-                continue;
-            }
-            if (mat.isSolid() && mat != Material.AIR) {
-                return checkY;
-            }
-        }
-        return y;
-    }
-    
-    /**
-     * Detecta el material predominante del bioma analizando múltiples puntos
-     */
-    private Material detectarBiomaPredominante(World world, int x, int z, int y) {
-        Map<Material, Integer> conteo = new java.util.HashMap<>();
-        
-        int[][] puntos = {{0,0}, {3,0}, {-3,0}, {0,3}, {0,-3}, {2,2}, {-2,-2}};
-        for (int[] punto : puntos) {
-            for (int checkY = y; checkY > y - 5 && checkY > 0; checkY--) {
-                Material mat = world.getBlockAt(x + punto[0], checkY, z + punto[1]).getType();
-                if (mat == Material.GRASS_BLOCK || mat == Material.DIRT || mat == Material.STONE ||
-                    mat == Material.PODZOL || mat == Material.MYCELIUM || mat == Material.SNOW_BLOCK ||
-                    mat.name().contains("TERRACOTTA")) {
-                    conteo.merge(mat, 1, Integer::sum);
-                    break;
-                }
-            }
-        }
-        
-        // Retornar el más común
-        return conteo.entrySet().stream()
-            .max(Map.Entry.comparingByValue())
-            .map(Map.Entry::getKey)
-            .orElse(Material.GRASS_BLOCK);
-    }
-    
-    /**
-     * Obtiene un material de transición apropiado para el bioma
-     */
-    private Material obtenerMaterialTransicion(Material biomaPrincipal) {
-        if (biomaPrincipal == Material.GRASS_BLOCK) return Material.COARSE_DIRT;
-        if (biomaPrincipal == Material.PODZOL) return Material.COARSE_DIRT;
-        if (biomaPrincipal == Material.MYCELIUM) return Material.DIRT;
-        if (biomaPrincipal == Material.SNOW_BLOCK) return Material.POWDER_SNOW;
-        if (biomaPrincipal.name().contains("TERRACOTTA")) return Material.TERRACOTTA;
-        return Material.DIRT;
-    }
-    
-    /**
-     * Coloca superficie natural con variación según distancia del centro
-     */
-    private void colocarSuperficieNatural(World world, int x, int y, int z, Material bioma, double dist, Random rand) {
-        if (dist <= 5) {
-            // Centro: deepslate para transición al altar
-            if (rand.nextFloat() < 0.3) {
-                world.getBlockAt(x, y, z).setType(Material.DEEPSLATE);
-            } else {
-                world.getBlockAt(x, y, z).setType(Material.STONE);
-            }
-        } else if (dist <= 8) {
-            // Transición: mezcla de piedra y bioma
-            if (rand.nextFloat() < 0.5) {
-                world.getBlockAt(x, y, z).setType(Material.COBBLESTONE);
-            } else {
-                world.getBlockAt(x, y, z).setType(bioma);
-            }
-        } else {
-            // Exterior: bioma natural con algo de grava
-            if (rand.nextFloat() < 0.15) {
-                world.getBlockAt(x, y, z).setType(Material.GRAVEL);
-            } else {
-                world.getBlockAt(x, y, z).setType(bioma);
-            }
-        }
-    }
-    
-    /**
-     * Añade detalles naturales de transición alrededor del altar
-     */
-    private void agregarDetallesTransicion(World world, int cx, int cz, int baseY, Material bioma, Random rand) {
-        // Rocas decorativas dispersas en los bordes
-        for (int i = 0; i < 12; i++) {
+    private void agregarDetallesTransicionMejorados(World world, int cx, int cz, int baseY, Material bioma, Random rand) {
+        // Rocas decorativas en los bordes
+        for (int i = 0; i < 15; i++) {
             double angulo = rand.nextDouble() * Math.PI * 2;
-            double radio = 6 + rand.nextDouble() * 4;
+            double radio = 7 + rand.nextDouble() * 4;
             int rx = cx + (int)(Math.cos(angulo) * radio);
             int rz = cz + (int)(Math.sin(angulo) * radio);
-            int ry = obtenerAlturaTerrenoReal(world, rx, rz);
+            int ry = obtenerAlturaTerrenoSolidoAbsoluto(world, rx, rz);
             
-            // Solo colocar si está cerca de la altura base
-            if (Math.abs(ry - baseY) <= 3) {
+            if (Math.abs(ry - baseY) <= 4) {
                 Block superficie = world.getBlockAt(rx, ry, rz);
-                if (superficie.getType().isSolid() && superficie.getType() != Material.WATER) {
+                if (superficie.getType().isSolid() && !esSuperficieInestable(superficie.getType())) {
                     Block encima = world.getBlockAt(rx, ry + 1, rz);
                     if (encima.getType() == Material.AIR) {
-                        // Colocar roca pequeña
                         Material[] rocas = {Material.COBBLESTONE_WALL, Material.MOSSY_COBBLESTONE_WALL, 
-                                           Material.STONE_BUTTON, Material.MOSSY_COBBLESTONE_SLAB};
+                                           Material.STONE_BUTTON, Material.COBBLESTONE_SLAB};
                         encima.setType(rocas[rand.nextInt(rocas.length)]);
                     }
                 }
             }
         }
         
-        // Musgo y vegetación en transiciones
-        if (bioma == Material.GRASS_BLOCK || bioma == Material.PODZOL) {
-            for (int i = 0; i < 8; i++) {
-                double angulo = rand.nextDouble() * Math.PI * 2;
-                double radio = 5 + rand.nextDouble() * 3;
-                int mx = cx + (int)(Math.cos(angulo) * radio);
-                int mz = cz + (int)(Math.sin(angulo) * radio);
-                int my = obtenerAlturaTerrenoReal(world, mx, mz);
-                
-                Block bloque = world.getBlockAt(mx, my, mz);
-                if (bloque.getType() == Material.COBBLESTONE || bloque.getType() == Material.STONE) {
-                    if (rand.nextFloat() < 0.4) {
+        // Musgo en piedras de transición
+        for (int dx = -9; dx <= 9; dx++) {
+            for (int dz = -9; dz <= 9; dz++) {
+                double dist = Math.sqrt(dx * dx + dz * dz);
+                if (dist >= 5 && dist <= 9 && rand.nextFloat() < 0.15) {
+                    int ry = obtenerAlturaTerrenoSolidoAbsoluto(world, cx + dx, cz + dz);
+                    Block bloque = world.getBlockAt(cx + dx, ry, cz + dz);
+                    if (bloque.getType() == Material.COBBLESTONE || bloque.getType() == Material.STONE) {
                         bloque.setType(Material.MOSSY_COBBLESTONE);
                     }
                 }
@@ -2446,17 +2402,28 @@ public class SusurroPiedraRotaEvent extends EventBase {
     }
     
     /**
-     * Verifica si un material es vegetación removible
+     * Detecta el material predominante del bioma analizando múltiples puntos
      */
-    private boolean esVegetacion(Material mat) {
-        String name = mat.name();
-        return name.contains("GRASS") && !name.equals("GRASS_BLOCK") ||
-               name.contains("FLOWER") || name.contains("TULIP") || 
-               name.contains("DANDELION") || name.contains("POPPY") ||
-               name.contains("FERN") || name.contains("BUSH") ||
-               name.contains("SAPLING") || name.contains("MUSHROOM") ||
-               mat == Material.TALL_GRASS || mat == Material.SHORT_GRASS ||
-               mat == Material.VINE || mat == Material.DEAD_BUSH;
+    private Material detectarBiomaPredominante(World world, int x, int z, int y) {
+        Map<Material, Integer> conteo = new java.util.HashMap<>();
+        
+        int[][] puntos = {{0,0}, {3,0}, {-3,0}, {0,3}, {0,-3}, {2,2}, {-2,-2}, {4,0}, {0,4}};
+        for (int[] punto : puntos) {
+            for (int checkY = y; checkY > y - 8 && checkY > 0; checkY--) {
+                Material mat = world.getBlockAt(x + punto[0], checkY, z + punto[1]).getType();
+                // Aceptar solo terrenos sólidos reales
+                if (esTerrenoSolidoReal(mat)) {
+                    conteo.merge(mat, 1, Integer::sum);
+                    break;
+                }
+            }
+        }
+        
+        // Retornar el más común, o GRASS_BLOCK por defecto
+        return conteo.entrySet().stream()
+            .max(Map.Entry.comparingByValue())
+            .map(Map.Entry::getKey)
+            .orElse(Material.GRASS_BLOCK);
     }
     
     // ═══════════════════════════════════════════════════════════════════════════

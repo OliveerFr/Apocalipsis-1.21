@@ -869,6 +869,7 @@ public class SkillTreeGUI implements Listener {
             case SUPERVIVENCIA -> "§c§l✦ Supervivencia";
             case COMBATE -> "§4§l✦ Combate";
             case EXPLORACION -> "§a§l✦ Exploración";
+            default -> "§7§l✦ Desconocido";
         };
     }
     
