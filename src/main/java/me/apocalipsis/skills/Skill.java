@@ -18,7 +18,7 @@ public enum Skill {
         500, Material.CHEST, false, new String[]{}),
     
     COFRE_INTERIOR("cofre_interior", "Cofre Interior", 
-        "/echest - Abre ender chest en cualquier lugar", 
+        "Ender chest portable (3 usos/día sin bloque)", 
         SkillBranch.ALMACENAMIENTO, SkillTier.TIER_1, SkillRarity.COMUN, 
         400, Material.ENDER_CHEST, false, new String[]{}),
     
@@ -28,10 +28,10 @@ public enum Skill {
         SkillBranch.ALMACENAMIENTO, SkillTier.TIER_2, SkillRarity.RARO, 
         1500, Material.BARREL, false, new String[]{"bolsillos_profundos"}),
     
-    COFRE_DIMENSIONAL("cofre_dimensional", "Acceso Remoto", 
-        "Abre tu ender chest desde cualquier lugar (/enderchest)", 
+    COFRE_DIMENSIONAL("cofre_dimensional", "Acceso Ilimitado", 
+        "Abre ender chest sin límite de usos (/ec)", 
         SkillBranch.ALMACENAMIENTO, SkillTier.TIER_2, SkillRarity.RARO, 
-        1200, Material.ENDER_CHEST, false, new String[]{"cofre_interior"}),
+        1200, Material.ENDER_PEARL, false, new String[]{"cofre_interior"}),
     
     AUTO_RECOLECCION("auto_recoleccion", "Auto-Recolección", 
         "Items van directo al inventario al minar", 
@@ -350,12 +350,12 @@ public enum Skill {
     CAZADOR_EXPERTO("cazador_experto", "Cazador Experto",
         "+25% daño a mobs + doble loot de carne",
         SkillBranch.SINERGIAS, SkillTier.TIER_2, SkillRarity.RARO,
-        2000, Material.BOW, false, new String[]{"golpe_critico", "detector_spawners"}),
+        2000, Material.BOW, false, new String[]{"arquero", "detector_spawners"}),
     
     MINERO_GUERRERO("minero_guerrero", "Minero Guerrero",
         "Pico hace +50% daño a mobs de piedra/mineral",
         SkillBranch.SINERGIAS, SkillTier.TIER_2, SkillRarity.RARO,
-        1800, Material.DIAMOND_PICKAXE, false, new String[]{"minero_eficiente", "golpe_critico"}),
+        1800, Material.DIAMOND_PICKAXE, false, new String[]{"minero_eficiente", "golpe_certero"}),
     
     EXPLORADOR_LIGERO("explorador_ligero", "Explorador Ligero",
         "+20% velocidad cuando llevas mochila llena",
@@ -366,12 +366,12 @@ public enum Skill {
     GUERRERO_INMORTAL("guerrero_inmortal", "Guerrero Inmortal",
         "Al morir, revives con 50% HP (cd 30 min)",
         SkillBranch.SINERGIAS, SkillTier.TIER_3, SkillRarity.LEGENDARIO,
-        6000, Material.TOTEM_OF_UNDYING, false, new String[]{"fuerza_interior", "regeneracion_pasiva", "sed_sangre"}),
+        6000, Material.TOTEM_OF_UNDYING, false, new String[]{"tanque", "regeneracion_pasiva", "berserker"}),
     
     MERCADER_SUPREMO("mercader_supremo", "Mercader Supremo",
         "Villagers dan 50% descuento + trades infinitos",
         SkillBranch.SINERGIAS, SkillTier.TIER_3, SkillRarity.EPICO,
-        4500, Material.EMERALD_BLOCK, false, new String[]{"encantador_nato", "reparacion_automatica"}),
+        4500, Material.EMERALD_BLOCK, false, new String[]{"toque_fortuna", "auto_recoleccion"}),
     
     DOMADOR_BESTIAS("domador_bestias", "Domador de Bestias",
         "Todos tus compañeros invocados son 2x más fuertes",
