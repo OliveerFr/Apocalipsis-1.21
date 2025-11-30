@@ -1,0 +1,132 @@
+# ═══════════════════════════════════════════════════════════════════
+# CONFIGURACIÓN DEL SISTEMA DE HABILIDADES
+# ═══════════════════════════════════════════════════════════════════
+
+# ═══════════════════════════════════════════════════════════════════
+# CONFIGURACIÓN GENERAL
+# ═══════════════════════════════════════════════════════════════════
+general:
+  # XP mínima que debe quedar al comprar una habilidad
+  min_xp_restante: 100
+  # Pedir confirmación antes de comprar
+  confirmar_compras: true
+  # Advertir si la compra causaría bajada de rango
+  advertir_bajada_rango: true
+
+# ═══════════════════════════════════════════════════════════════════
+# EFECTOS DE SKILLS - VALORES CONFIGURABLES
+# ═══════════════════════════════════════════════════════════════════
+efectos:
+  # === REDUCCIÓN DE DAÑO ===
+  caida:
+    # Caída Suave - reducción de daño por caída
+    suave_reduccion: 0.25        # 25%
+    # Pluma - reducción de daño por caída (mejor)
+    pluma_reduccion: 0.50        # 50%
+  
+  fuego:
+    # Resistencia al Fuego - reducción de daño
+    resistencia_reduccion: 0.20  # 20%
+    # Ignífugo - reducción de daño (mejor)
+    ignifugo_reduccion: 0.40     # 40%
+  
+  # === VUELO DE EMERGENCIA ===
+  vuelo_emergencia:
+    # Altura mínima de caída para activar (bloques)
+    altura_minima: 15
+    # Duración del vuelo en ticks (20 = 1 segundo)
+    duracion_ticks: 60
+    # Cooldown en segundos
+    cooldown_segundos: 60
+  
+  # === FÉNIX ===
+  fenix:
+    # Corazones al revivir (cada corazón = 2 HP)
+    corazones_revivir: 3
+    # Nivel de comida al revivir (max 20)
+    comida_revivir: 10
+    # Cooldown en horas
+    cooldown_horas: 24
+  
+  # === HAMBRE ===
+  hambre:
+    # Estómago de Hierro - chance de no perder hambre
+    estomago_hierro_reduccion: 0.20  # 20%
+    # Metabolismo Lento - chance de no perder hambre (mejor)
+    metabolismo_lento_reduccion: 0.40 # 40%
+  
+  # === MINERÍA ===
+  mineria:
+    # Toque de Fortuna - chance de drop extra
+    toque_fortuna_chance: 0.10   # 10%
+    # Seda Natural - chance de silk touch
+    seda_natural_chance: 0.05    # 5%
+  
+  # === LEÑADOR NATO (Tree Feller) ===
+  lenador_nato:
+    # Cooldown entre talas masivas (segundos)
+    cooldown_segundos: 5
+    # Máximo de bloques a talar por uso
+    max_bloques: 256
+    # Permitir desactivar temporalmente agachándose
+    desactivar_sneaking: true
+    # Auto-plantar retoño donde estaba la base del árbol
+    auto_replant: true
+    # Verificar que sea un árbol real (debe tener hojas cerca)
+    verificar_arbol_real: true
+    # Radio para buscar hojas (verificación árbol real)
+    radio_buscar_hojas: 4
+    # Mínimo de hojas necesarias para considerar árbol real
+    min_hojas_requeridas: 3
+    # Dar XP de habilidad por cada árbol talado
+    xp_por_arbol: 5
+    # Reproducir sonidos progresivos al talar
+    sonidos_progresivos: true
+    # Daño a herramienta cada N bloques (0 = cada bloque)
+    dano_herramienta_cada: 3
+
+  # === NADADOR ===
+  nadador:
+    # Duración del efecto Dolphin's Grace en ticks
+    duracion_efecto: 40
+
+# ═══════════════════════════════════════════════════════════════════
+# WAYPOINTS
+# ═══════════════════════════════════════════════════════════════════
+waypoints:
+  # Guardar waypoints en disco (persistencia)
+  persistencia: true
+  # Máximo de waypoints por jugador (0 = ilimitado)
+  max_por_jugador: 1
+  # Cooldown entre teleports en segundos
+  cooldown_teleport: 300
+
+# ═══════════════════════════════════════════════════════════════════
+# ANTI-SPAM DE MENSAJES
+# ═══════════════════════════════════════════════════════════════════
+mensajes:
+  # Tiempo mínimo entre mensajes del mismo tipo (ms)
+  cooldown_ms: 2000
+  # Skills que muestran mensajes con cooldown
+  skills_con_cooldown:
+    - toque_fortuna
+    - seda_natural
+    - auto_recoleccion
+
+# ═══════════════════════════════════════════════════════════════════
+# ESTADÍSTICAS
+# ═══════════════════════════════════════════════════════════════════
+estadisticas:
+  # Trackear uso de skills
+  enabled: true
+  # Guardar estadísticas cada X minutos
+  guardar_intervalo_minutos: 5
+
+# ═══════════════════════════════════════════════════════════════════
+# CACHÉ
+# ═══════════════════════════════════════════════════════════════════
+cache:
+  # Usar caché de skills por jugador
+  enabled: true
+  # Tiempo de vida de la caché en segundos
+  ttl_segundos: 30

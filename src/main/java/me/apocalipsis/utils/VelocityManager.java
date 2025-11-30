@@ -6,7 +6,9 @@ import org.bukkit.Bukkit;
 import me.apocalipsis.Apocalipsis;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -20,9 +22,13 @@ public class VelocityManager {
     private final Apocalipsis plugin;
     private final Map<UUID, VelocityTask> activeTasks = new HashMap<>();
     
+    // Set de jugadores con protección anti-kick activa
+    private final Set<UUID> protectedPlayers = new HashSet<>();
+    
     // Configuración anti-cheat friendly
     private static final double MAX_VELOCITY_PER_TICK = 0.15; // Reducido para evitar flags
     private static final int SMOOTH_DURATION_TICKS = 5; // Aplicar en 5 ticks (0.25s)
+    private static final int PROTECTION_TICKS = 40; // 2 segundos de protección anti-kick
     
     public VelocityManager(Apocalipsis plugin) {
         this.plugin = plugin;
@@ -46,10 +52,54 @@ public class VelocityManager {
         // Limitar velocidad máxima
         Vector clampedVelocity = clampVelocity(targetVelocity);
         
+        // [FIX] Aplicar protección anti-kick por "flying"
+        applyAntiKickProtection(player);
+        
         // Crear nueva task de aplicación gradual
         VelocityTask task = new VelocityTask(player, clampedVelocity);
         activeTasks.put(uuid, task);
         task.start();
+    }
+    
+    /**
+     * Aplica protección temporal contra el kick por "floating too long"
+     * Usa allowFlight temporalmente y resetea fall distance
+     */
+    private void applyAntiKickProtection(Player player) {
+        UUID uuid = player.getUniqueId();
+        
+        // Si ya está protegido, no hacer nada extra
+        if (protectedPlayers.contains(uuid)) {
+            player.setFallDistance(0f);
+            return;
+        }
+        
+        // Guardar estado original de allowFlight
+        boolean wasAllowFlight = player.getAllowFlight();
+        
+        // Activar protección
+        protectedPlayers.add(uuid);
+        player.setAllowFlight(true);
+        player.setFallDistance(0f);
+        
+        // Programar restauración del estado
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (player.isOnline()) {
+                // Solo desactivar si no estaba permitido originalmente y no está volando
+                if (!wasAllowFlight && !player.isFlying()) {
+                    player.setAllowFlight(false);
+                }
+                player.setFallDistance(0f);
+            }
+            protectedPlayers.remove(uuid);
+        }, PROTECTION_TICKS);
+    }
+    
+    /**
+     * Verifica si un jugador está protegido contra kick por velocidad de desastre
+     */
+    public boolean isProtected(UUID uuid) {
+        return protectedPlayers.contains(uuid);
     }
     
     /**
@@ -112,5 +162,6 @@ public class VelocityManager {
     public void shutdown() {
         activeTasks.values().forEach(VelocityTask::cancel);
         activeTasks.clear();
+        protectedPlayers.clear();
     }
 }

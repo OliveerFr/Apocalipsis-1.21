@@ -269,3 +269,50 @@ visualizacion:
     radio: 15
     mostrar_score: true        # Muestra puntuación de protección
     particulas_temporales: true
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# BLOCK OWNERSHIP - Sistema anti-griefing inteligente para desastres
+# ═══════════════════════════════════════════════════════════════════════════════
+block_ownership:
+  # Tamaño máximo del cache en memoria
+  max_cache_size: 100000
+  
+  # ════════════════════════════════════════════════════════════════════
+  # SISTEMA DE INACTIVIDAD
+  # ════════════════════════════════════════════════════════════════════
+  # Los bloques están protegidos MIENTRAS el jugador esté activo.
+  # Si un jugador no se conecta en X días, sus bloques pierden protección
+  # y pueden ser destruidos por desastres de otros jugadores.
+  # 
+  # Cuando el jugador vuelve a conectarse, sus NUEVOS bloques quedan protegidos.
+  # ════════════════════════════════════════════════════════════════════
+  
+  # Días de inactividad para que expiren los bloques
+  # Ejemplo: 14 = si no se conecta en 2 semanas, sus bloques ya no están protegidos
+  inactive_days_to_expire: 14
+  
+  # Proteger bloques conectados automáticamente
+  # Si un bloque adyacente tiene dueño, protege también los bloques naturales cercanos
+  protect_connected_blocks: true
+  
+  # Radio de búsqueda para bloques conectados (1 = solo adyacentes, 2 = 2 bloques, etc.)
+  connected_block_radius: 1
+  
+  # Proteger automáticamente el bloque debajo cuando colocas uno encima
+  # Evita que se rompa el piso debajo de tu construcción
+  protect_block_below: true
+  
+  # ════════════════════════════════════════════════════════════════════
+  # BACKUP AUTOMÁTICO
+  # ════════════════════════════════════════════════════════════════════
+  # Crea copias de seguridad periódicas de la base de datos de bloques
+  # Los backups se guardan en plugins/Apocalipsis/backups/
+  # Se mantienen los últimos 7 backups automáticamente
+  # ════════════════════════════════════════════════════════════════════
+  
+  # Habilitar backups automáticos
+  backup_enabled: true
+  
+  # Intervalo entre backups (en horas)
+  # 24 = un backup diario
+  backup_interval_hours: 24

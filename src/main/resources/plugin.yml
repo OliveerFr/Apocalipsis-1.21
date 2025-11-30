@@ -47,7 +47,7 @@ commands:
   invocar:
     description: Invoca una entidad aliada
     usage: /invocar <entidad>
-    aliases: [summon, invoke, invocacion]
+    aliases: [invoke, invocacion]
 
 permissions:
   avo.admin:

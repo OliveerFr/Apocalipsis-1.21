@@ -104,6 +104,8 @@ public final class Apocalipsis extends JavaPlugin {
         saveResource("recompensas.yml", false);
         saveResource("chat.yml", false);
         saveResource("evasiones.yml", false);
+        saveResource("protecciones.yml", false);
+        saveResource("skills.yml", false);
 
         // Inicializar servicios
         configManager = new ConfigManager(this);
@@ -232,6 +234,14 @@ public final class Apocalipsis extends JavaPlugin {
             }
             return true;
         });
+        getCommand("waypoint").setTabCompleter((sender, cmd, label, args) -> {
+            if (args.length == 1) {
+                return java.util.Arrays.asList("set").stream()
+                    .filter(s -> s.startsWith(args[0].toLowerCase()))
+                    .collect(java.util.stream.Collectors.toList());
+            }
+            return java.util.Collections.emptyList();
+        });
         
         // Comando de coordenadas
         getCommand("coords").setExecutor((sender, cmd, label, args) -> {
@@ -301,6 +311,16 @@ public final class Apocalipsis extends JavaPlugin {
             player.sendMessage("§e" + skill.getDisplayName() + " §7ahora está " + newStatus);
             return true;
         });
+        getCommand("toggle").setTabCompleter((sender, cmd, label, args) -> {
+            if (args.length == 1 && sender instanceof org.bukkit.entity.Player player) {
+                return java.util.Arrays.stream(me.apocalipsis.skills.Skill.values())
+                    .filter(s -> s.isToggleable() && skillService.hasSkill(player, s))
+                    .map(s -> s.getId())
+                    .filter(id -> id.toLowerCase().startsWith(args[0].toLowerCase()))
+                    .collect(java.util.stream.Collectors.toList());
+            }
+            return java.util.Collections.emptyList();
+        });
 
         // Comando para invocar entidades
         getCommand("invocar").setExecutor((sender, cmd, label, args) -> {
@@ -352,6 +372,17 @@ public final class Apocalipsis extends JavaPlugin {
                 default -> player.sendMessage("§cEntidad desconocida: §e" + entidad + "§c. Usa §e/invocar §cpara ver las opciones.");
             }
             return true;
+        });
+        getCommand("invocar").setTabCompleter((sender, cmd, label, args) -> {
+            if (args.length == 1) {
+                java.util.List<String> opciones = java.util.Arrays.asList(
+                    "lobo", "gato", "allay", "abejas", "golem", "vex", "warden", "despawn"
+                );
+                return opciones.stream()
+                    .filter(s -> s.startsWith(args[0].toLowerCase()))
+                    .collect(java.util.stream.Collectors.toList());
+            }
+            return java.util.Collections.emptyList();
         });
 
         // Registrar listeners
@@ -416,6 +447,11 @@ public final class Apocalipsis extends JavaPlugin {
         // Guardar árbol de habilidades
         if (skillService != null) {
             skillService.shutdown();
+        }
+        
+        // Guardar datos del skill effect listener (waypoints, stats)
+        if (skillEffectListener != null) {
+            skillEffectListener.shutdown();
         }
         
         // Detener mission height tracker
@@ -588,6 +624,10 @@ public final class Apocalipsis extends JavaPlugin {
     
     public BackpackService getBackpackService() {
         return backpackService;
+    }
+    
+    public SkillEffectListener getSkillEffectListener() {
+        return skillEffectListener;
     }
     
     /**

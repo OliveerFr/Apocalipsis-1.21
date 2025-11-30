@@ -34,6 +34,7 @@ me\apocalipsis\events\SusurroPiedraRotaEvent$1.class
 me\apocalipsis\commands\ApocalipsisCommand$WaterScanResult.class
 me\apocalipsis\events\gameplay\EnvironmentSystem$AtmosphericEffect.class
 me\apocalipsis\events\gameplay\QTESystem.class
+me\apocalipsis\skills\SkillEffectListener$CachedSkillData.class
 me\apocalipsis\events\gameplay\ProtectionSystem.class
 me\apocalipsis\skills\SkillConfig$SkillCondition.class
 me\apocalipsis\experience\RewardService$1.class
@@ -41,6 +42,7 @@ me\apocalipsis\events\SusurroPiedraRotaEvent$8.class
 me\apocalipsis\events\gameplay\CinematicSystem$ShakeIntensity.class
 me\apocalipsis\events\gameplay\GuardianPhaseSystem$6.class
 me\apocalipsis\events\testing\EventAutoTestingSystem.class
+me\apocalipsis\utils\BlockOwnershipTracker$BlockInfo.class
 me\apocalipsis\events\gameplay\TelegraphedAttack$6$1.class
 me\apocalipsis\skills\BackpackService.class
 me\apocalipsis\events\EcoBrasasListener.class
@@ -86,6 +88,7 @@ me\apocalipsis\events\testing\BotBehaviorProfile.class
 me\apocalipsis\ui\FeedbackSystem.class
 me\apocalipsis\events\EcoSombrasEvent$2.class
 me\apocalipsis\events\EventController.class
+me\apocalipsis\utils\BlockOwnershipTracker$2.class
 me\apocalipsis\events\EcoSombrasListener.class
 me\apocalipsis\events\testing\TestResult.class
 me\apocalipsis\events\gameplay\LoreSystem$LoreFragment.class
@@ -124,6 +127,7 @@ me\apocalipsis\skills\SkillTreeGUI$UpgradeMenuHolder.class
 me\apocalipsis\events\gameplay\EventAudioSystem$2.class
 me\apocalipsis\experience\RewardService.class
 me\apocalipsis\utils\EffectUtil.class
+me\apocalipsis\skills\SkillEffectListener$SkillStatEntry.class
 me\apocalipsis\events\gameplay\TelegraphedAttack$5.class
 me\apocalipsis\events\gameplay\EventLootSystem$Rarity.class
 me\apocalipsis\experience\AbilityService$RankAbility.class
@@ -169,6 +173,7 @@ me\apocalipsis\skills\SkillEffectListener.class
 me\apocalipsis\disaster\DisasterStatistics.class
 me\apocalipsis\disaster\adapters\PerformanceAdapter$PerformanceState.class
 me\apocalipsis\missions\MissionService$1.class
+me\apocalipsis\listeners\BlockTrackListener$1.class
 me\apocalipsis\missions\MissionRank.class
 me\apocalipsis\ui\UIManager.class
 me\apocalipsis\utils\ConfigManager.class
@@ -176,6 +181,7 @@ me\apocalipsis\events\gameplay\ChoiceSystem$PendingChoice.class
 me\apocalipsis\events\testing\scenarios\NucleoDefeatScenario.class
 me\apocalipsis\commands\AvoTabCompleter.class
 me\apocalipsis\events\gameplay\GuardianPhaseSystem$PhaseType.class
+me\apocalipsis\utils\BlockOwnershipTracker$3.class
 me\apocalipsis\events\SusurroPiedraRotaEvent$10.class
 me\apocalipsis\ui\FeedbackSystem$ComboTracker.class
 me\apocalipsis\skills\SkillEffectListener$1.class
@@ -194,6 +200,7 @@ me\apocalipsis\events\EcoBrasasEvent$Fase.class
 me\apocalipsis\utils\ParticleUtil$ParticleConfig.class
 me\apocalipsis\events\gameplay\SpectatorSystem$PlayerState.class
 me\apocalipsis\events\SusurroPiedraRotaEvent.class
+me\apocalipsis\utils\BlockOwnershipTracker$PlayerBlockStats.class
 me\apocalipsis\events\SusurroPiedraRotaEvent$Acto.class
 me\apocalipsis\skills\UpgradePreview.class
 me\apocalipsis\events\gameplay\ParticleEffectSystem.class

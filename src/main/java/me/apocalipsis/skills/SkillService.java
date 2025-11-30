@@ -647,6 +647,33 @@ public class SkillService {
         }, 400L, 400L); // 20 segundos
     }
     
+    /**
+     * Aplica un efecto de poción de forma ADITIVA.
+     * Si el jugador ya tiene el efecto (beacon/poción), suma los niveles.
+     * @param player El jugador
+     * @param effectType Tipo de efecto
+     * @param duration Duración en ticks
+     * @param skillAmplifier Amplificador que aporta la habilidad (0 = nivel I, 1 = nivel II, etc)
+     * @param ambient Si es ambiente (sin partículas grandes)
+     * @param showParticles Si mostrar partículas
+     */
+    private void applyAdditiveEffect(Player player, org.bukkit.potion.PotionEffectType effectType, 
+                                      int duration, int skillAmplifier, boolean ambient, boolean showParticles) {
+        org.bukkit.potion.PotionEffect existing = player.getPotionEffect(effectType);
+        int finalAmplifier = skillAmplifier;
+        
+        if (existing != null) {
+            // Sumar el nivel del efecto existente + el de la habilidad + 1
+            // Ejemplo: Beacon Haste I (amp 0) + Skill Haste I (amp 0) = Haste II (amp 1)
+            finalAmplifier = existing.getAmplifier() + skillAmplifier + 1;
+            // Limitar a nivel máximo razonable (nivel 5 = amplifier 4)
+            finalAmplifier = Math.min(finalAmplifier, 4);
+        }
+        
+        player.addPotionEffect(new org.bukkit.potion.PotionEffect(
+            effectType, duration, finalAmplifier, ambient, showParticles));
+    }
+    
     private void processPeriodicEffects(Player player) {
         UUID uuid = player.getUniqueId();
         Set<Skill> skills = getUnlockedSkills(uuid);
@@ -673,15 +700,18 @@ public class SkillService {
                     break;
                 
                 case VISION_NOCTURNA:
-                    // Aplicar visión nocturna permanente
-                    player.addPotionEffect(new org.bukkit.potion.PotionEffect(
-                        org.bukkit.potion.PotionEffectType.NIGHT_VISION, 500, 0, true, false));
+                    // Aplicar visión nocturna permanente (no necesita ser aditiva, solo nivel 1)
+                    applyAdditiveEffect(player, org.bukkit.potion.PotionEffectType.NIGHT_VISION, 500, 0, true, false);
                     break;
                 
                 case MINERO_EFICIENTE:
-                    // Haste I permanente para minado
-                    player.addPotionEffect(new org.bukkit.potion.PotionEffect(
-                        org.bukkit.potion.PotionEffectType.HASTE, 500, 0, true, false));
+                    // Haste basado en nivel: Nivel 1 = Haste I, Nivel 2 = Haste I+, Nivel 3 = Haste II
+                    // Se SUMA con beacon/pociones existentes
+                    if (isSkillEnabled(uuid, Skill.MINERO_EFICIENTE)) {
+                        int level = getSkillLevel(player, Skill.MINERO_EFICIENTE).getLevel();
+                        int hasteLevel = level >= 3 ? 1 : 0; // Nivel 3 = Haste II (amplifier 1)
+                        applyAdditiveEffect(player, org.bukkit.potion.PotionEffectType.HASTE, 500, hasteLevel, true, false);
+                    }
                     break;
                 
                 case OJO_AGUILA:
@@ -695,23 +725,30 @@ public class SkillService {
                     }
                     break;
                 
+                case ZANCADAS:
+                    // Salto mejorado - Se SUMA con beacon/pociones existentes
+                    if (isSkillEnabled(uuid, Skill.ZANCADAS)) {
+                        int level = getSkillLevel(player, Skill.ZANCADAS).getLevel();
+                        int jumpLevel = level >= 3 ? 1 : 0; // Nivel 3 = Jump Boost II
+                        applyAdditiveEffect(player, org.bukkit.potion.PotionEffectType.JUMP_BOOST, 500, jumpLevel, true, false);
+                    }
+                    break;
+                
                 case BERSERKER:
-                    // +20% velocidad cuando tiene <25% vida
+                    // +20% velocidad cuando tiene <25% vida - Se SUMA con Speed existente
                     AttributeInstance maxHpBerserker = player.getAttribute(Attribute.MAX_HEALTH);
                     if (maxHpBerserker != null) {
                         double healthPercent = player.getHealth() / maxHpBerserker.getValue();
                         if (healthPercent < 0.25) {
-                            player.addPotionEffect(new org.bukkit.potion.PotionEffect(
-                                org.bukkit.potion.PotionEffectType.SPEED, 500, 0, true, false));
+                            applyAdditiveEffect(player, org.bukkit.potion.PotionEffectType.SPEED, 500, 0, true, false);
                         }
                     }
                     break;
                 
                 case NADADOR:
-                    // Velocidad de nado aumentada
+                    // Velocidad de nado aumentada - Se SUMA con Dolphin's Grace existente
                     if (player.isInWater()) {
-                        player.addPotionEffect(new org.bukkit.potion.PotionEffect(
-                            org.bukkit.potion.PotionEffectType.DOLPHINS_GRACE, 500, 0, true, false));
+                        applyAdditiveEffect(player, org.bukkit.potion.PotionEffectType.DOLPHINS_GRACE, 500, 0, true, false);
                     }
                     break;
                 
@@ -739,7 +776,7 @@ public class SkillService {
                     break;
                 
                 case EXPLORADOR_LIGERO:
-                    // +20% velocidad cuando mochila llena (sinergia)
+                    // +20% velocidad cuando mochila llena (sinergia) - Se SUMA con Speed existente
                     int backpackSize = plugin.getBackpackService().getBackpackSize(uuid);
                     if (backpackSize > 0) {
                         org.bukkit.inventory.ItemStack[] backpackContents = plugin.getBackpackService().getBackpackContents(uuid);
@@ -752,8 +789,7 @@ public class SkillService {
                             }
                             // Si la mochila está 80%+ llena
                             if (itemCount >= backpackSize * 0.8) {
-                                player.addPotionEffect(new org.bukkit.potion.PotionEffect(
-                                    org.bukkit.potion.PotionEffectType.SPEED, 500, 0, true, false));
+                                applyAdditiveEffect(player, org.bukkit.potion.PotionEffectType.SPEED, 500, 0, true, false);
                             }
                         }
                     }

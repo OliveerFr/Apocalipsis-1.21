@@ -134,6 +134,13 @@ public class ApocalipsisCommand implements CommandExecutor {
             case "escanear":
                 cmdEscanear(sender);
                 break;
+            case "blockinfo":
+            case "bloque":
+                cmdBlockInfo(sender);
+                break;
+            case "blockstats":
+                cmdBlockStats(sender, args);
+                break;
             case "protecciones":
                 cmdProtecciones(sender);
                 break;
@@ -177,6 +184,9 @@ public class ApocalipsisCommand implements CommandExecutor {
             case "enderchest":
             case "ec":
                 cmdEnderChest(sender);
+                break;
+            case "skillstats":
+                cmdSkillStats(sender, args);
                 break;
             default:
                 sender.sendMessage("§cSubcomando desconocido. Usa /avo para ver ayuda.");
@@ -1389,6 +1399,146 @@ public class ApocalipsisCommand implements CommandExecutor {
         // Llamar al método de prueba del DisasterController
         disasterController.testCountdownAlert(target, sender);
     }
+
+    // ==================== BLOCK OWNERSHIP COMMANDS ====================
+    
+    /**
+     * /avo blockinfo - Muestra info del bloque que miras
+     */
+    private void cmdBlockInfo(CommandSender sender) {
+        if (!(sender instanceof Player)) {
+            sender.sendMessage("§cEste comando solo puede ser usado por jugadores.");
+            return;
+        }
+        
+        if (!sender.hasPermission("avo.admin")) {
+            sender.sendMessage("§cNo tienes permisos.");
+            return;
+        }
+
+        Player player = (Player) sender;
+        
+        // Obtener bloque al que mira el jugador
+        Block targetBlock = player.getTargetBlockExact(10);
+        if (targetBlock == null || targetBlock.getType().isAir()) {
+            player.sendMessage("§c¡Mira hacia un bloque para ver su información!");
+            return;
+        }
+        
+        var tracker = plugin.getBlockTracker();
+        var info = tracker.getBlockInfo(targetBlock);
+        
+        player.sendMessage("§8┌─────────────────────────────────────┐");
+        player.sendMessage("§6│ §e§l🔍 INFO DE BLOQUE                   §6│");
+        player.sendMessage("§8├─────────────────────────────────────┤");
+        player.sendMessage("§6│ §7Tipo: §f" + targetBlock.getType().name());
+        player.sendMessage("§6│ §7Ubicación: §f" + 
+            targetBlock.getX() + ", " + targetBlock.getY() + ", " + targetBlock.getZ());
+        player.sendMessage("§8├─────────────────────────────────────┤");
+        
+        if (info == null) {
+            player.sendMessage("§6│ §7Estado: §eSin protección              §6│");
+            player.sendMessage("§6│ §7Este bloque puede ser destruido     §6│");
+            player.sendMessage("§6│ §7por desastres.                      §6│");
+        } else {
+            player.sendMessage("§6│ §7Dueño: §a" + info.ownerName());
+            player.sendMessage("§6│ §7Colocado: §e" + info.getPlacedAgo());
+            player.sendMessage("§6│ §7Última conexión: §e" + info.getLastSeenAgo());
+            player.sendMessage("§6│ §7Estado dueño: " + (info.ownerActive() ? "§a✓ ACTIVO" : "§c✗ INACTIVO"));
+            player.sendMessage("§8├─────────────────────────────────────┤");
+            if (info.ownerActive()) {
+                player.sendMessage("§6│ §a✓ PROTEGIDO §8- §7No se destruirá    §6│");
+            } else {
+                player.sendMessage("§6│ §e⚠ EXPIRADO §8- §7Puede destruirse   §6│");
+                player.sendMessage("§6│ §7(Dueño inactivo >" + tracker.getInactiveDaysToExpire() + " días)    §6│");
+            }
+        }
+        player.sendMessage("§8└─────────────────────────────────────┘");
+        
+        // Partículas en el bloque
+        player.getWorld().spawnParticle(
+            info != null && info.ownerActive() ? org.bukkit.Particle.HAPPY_VILLAGER : org.bukkit.Particle.SMOKE,
+            targetBlock.getLocation().add(0.5, 1.0, 0.5), 
+            10, 0.3, 0.2, 0.3, 0.01
+        );
+        player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 1.5f);
+    }
+    
+    /**
+     * /avo blockstats [jugador] - Estadísticas de bloques
+     */
+    private void cmdBlockStats(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("avo.admin")) {
+            sender.sendMessage("§cNo tienes permisos.");
+            return;
+        }
+        
+        var tracker = plugin.getBlockTracker();
+        
+        // Si hay argumento, mostrar stats de jugador específico
+        if (args.length >= 2) {
+            String playerName = args[1];
+            org.bukkit.OfflinePlayer target = plugin.getServer().getOfflinePlayer(playerName);
+            
+            if (!target.hasPlayedBefore()) {
+                sender.sendMessage("§cJugador no encontrado: " + playerName);
+                return;
+            }
+            
+            var stats = tracker.getPlayerStats(target.getUniqueId());
+            
+            sender.sendMessage("§8┌─────────────────────────────────────┐");
+            sender.sendMessage("§6│ §e§l📊 STATS DE BLOQUES - " + stats.playerName());
+            sender.sendMessage("§8├─────────────────────────────────────┤");
+            sender.sendMessage("§6│ §7Bloques protegidos: §a" + stats.blockCount());
+            sender.sendMessage("§6│ §7Última conexión: §e" + 
+                (stats.daysSinceLastSeen() == 0 ? "hoy" : "hace " + stats.daysSinceLastSeen() + " días"));
+            sender.sendMessage("§6│ §7Estado: " + (stats.isActive() ? "§a✓ ACTIVO" : "§c✗ INACTIVO"));
+            if (!stats.isActive()) {
+                sender.sendMessage("§6│ §7Sus bloques §cPUEDEN§7 ser destruidos §6│");
+            }
+            sender.sendMessage("§8└─────────────────────────────────────┘");
+            return;
+        }
+        
+        // Sin argumento: mostrar stats globales + top
+        var globalStats = tracker.getStats();
+        
+        sender.sendMessage("§8┌─────────────────────────────────────┐");
+        sender.sendMessage("§6│ §e§l📊 ESTADÍSTICAS BLOCK TRACKER       §6│");
+        sender.sendMessage("§8├─────────────────────────────────────┤");
+        sender.sendMessage("§6│ §7Bloques trackeados: §a" + globalStats.get("tracked_blocks"));
+        sender.sendMessage("§6│ §7Jugadores registrados: §e" + globalStats.get("tracked_players"));
+        sender.sendMessage("§6│ §7Jugadores inactivos: §c" + globalStats.get("inactive_players"));
+        sender.sendMessage("§6│ §7Umbral de inactividad: §e" + globalStats.get("inactive_days_threshold") + " días");
+        sender.sendMessage("§6│ §7Backup habilitado: " + 
+            (Boolean.TRUE.equals(globalStats.get("backup_enabled")) ? "§a✓ Sí" : "§c✗ No"));
+        
+        Object lastBackup = globalStats.get("last_backup");
+        if (lastBackup instanceof Long ts && ts > 0) {
+            long hoursAgo = (System.currentTimeMillis() - ts) / (1000L * 60L * 60L);
+            sender.sendMessage("§6│ §7Último backup: §e hace " + hoursAgo + " horas");
+        } else {
+            sender.sendMessage("§6│ §7Último backup: §7Nunca");
+        }
+        
+        sender.sendMessage("§8├─────────────────────────────────────┤");
+        sender.sendMessage("§6│ §e§lTOP 5 JUGADORES:                    §6│");
+        
+        var top = tracker.getTopBlockOwners(5);
+        int rank = 1;
+        for (var entry : top.entrySet()) {
+            String name = plugin.getServer().getOfflinePlayer(entry.getKey()).getName();
+            sender.sendMessage(String.format("§6│ §7%d. §f%-15s §8- §a%d bloques", 
+                rank++, name != null ? name : "???", entry.getValue()));
+        }
+        
+        sender.sendMessage("§8└─────────────────────────────────────┘");
+        sender.sendMessage("§7Usa §e/avo blockstats <jugador>§7 para ver stats específicas");
+        sender.sendMessage("§7Usa §e/avo blockinfo§7 mirando un bloque para ver su dueño");
+    }
+    
+    // ==================== ESCANEO DE PROTECCIONES ====================
 
     /**
      * /avo escanear - Escanea y muestra protecciones cercanas con partículas
@@ -3639,5 +3789,81 @@ public class ApocalipsisCommand implements CommandExecutor {
         
         plugin.getBackpackService().openPortableEnderChest(player);
     }
+    
+    /**
+     * Muestra estadísticas de uso de skills
+     */
+    private void cmdSkillStats(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("apocalipsis.admin")) {
+            sender.sendMessage("§cNo tienes permiso para usar este comando.");
+            return;
+        }
+        
+        var listener = plugin.getSkillEffectListener();
+        if (listener == null) {
+            sender.sendMessage("§cEl sistema de skills no está disponible.");
+            return;
+        }
+        
+        if (args.length >= 2 && args[1].equalsIgnoreCase("player")) {
+            // Stats de un jugador específico
+            if (args.length < 3) {
+                sender.sendMessage("§cUso: /avo skillstats player <nombre>");
+                return;
+            }
+            
+            Player target = Bukkit.getPlayer(args[2]);
+            if (target == null) {
+                sender.sendMessage("§cJugador no encontrado.");
+                return;
+            }
+            
+            var playerStats = listener.getPlayerStats(target.getUniqueId());
+            if (playerStats.isEmpty()) {
+                sender.sendMessage("§7" + target.getName() + " no ha usado ninguna habilidad todavía.");
+                return;
+            }
+            
+            sender.sendMessage("§6§l⚡ §eEstadísticas de " + target.getName() + ":");
+            playerStats.entrySet().stream()
+                .sorted((a, b) -> Integer.compare(b.getValue(), a.getValue()))
+                .limit(10)
+                .forEach(e -> sender.sendMessage("  §7• §f" + e.getKey() + "§7: §a" + e.getValue() + " usos"));
+                
+        } else if (args.length >= 2 && args[1].equalsIgnoreCase("top")) {
+            // Top skills globales
+            int limit = 10;
+            if (args.length >= 3) {
+                try {
+                    limit = Integer.parseInt(args[2]);
+                } catch (NumberFormatException ignored) {}
+            }
+            
+            var topSkills = listener.getTopSkills(limit);
+            if (topSkills.isEmpty()) {
+                sender.sendMessage("§7No hay estadísticas de skills todavía.");
+                return;
+            }
+            
+            sender.sendMessage("§6§l⚡ §eTop " + limit + " Skills más usadas:");
+            int i = 1;
+            for (var entry : topSkills) {
+                sender.sendMessage("  §e#" + i + " §f" + entry.skillId() + "§7: §a" + entry.totalUses() + " usos");
+                i++;
+            }
+            
+        } else {
+            // Resumen general
+            var globalStats = listener.getGlobalStats();
+            long totalUses = globalStats.values().stream().mapToLong(Long::longValue).sum();
+            
+            sender.sendMessage("§6§l⚡ §eEstadísticas de Skills:");
+            sender.sendMessage("  §7Total de skills usadas: §a" + globalStats.size());
+            sender.sendMessage("  §7Total de activaciones: §a" + totalUses);
+            sender.sendMessage("");
+            sender.sendMessage("§7Subcomandos:");
+            sender.sendMessage("  §e/avo skillstats top [n] §7- Top N skills más usadas");
+            sender.sendMessage("  §e/avo skillstats player <nombre> §7- Stats de un jugador");
+        }
+    }
 }
-

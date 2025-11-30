@@ -33,9 +33,12 @@ import me.apocalipsis.disaster.adapters.PerformanceAdapter;
 import me.apocalipsis.state.TimeService;
 import me.apocalipsis.ui.MessageBus;
 import me.apocalipsis.ui.SoundUtil;
+import me.apocalipsis.utils.BlockOwnershipTracker;
 import me.apocalipsis.utils.DisasterDamage;
 
 public class LluviaFuegoNew extends DisasterBase implements Listener {
+
+    private final BlockOwnershipTracker blockTracker;
 
     private double densidad;
     private boolean apagaTodoAlFinalizar;
@@ -97,6 +100,7 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
     public LluviaFuegoNew(Apocalipsis plugin, MessageBus messageBus, SoundUtil soundUtil, 
                          TimeService timeService, PerformanceAdapter performanceAdapter) {
         super(plugin, messageBus, soundUtil, timeService, performanceAdapter, "lluvia_fuego");
+        this.blockTracker = plugin.getBlockTracker();
         loadConfig();
         
         // Registrar listener para explosiones
@@ -608,6 +612,20 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
     private void scheduleTemporalFire(Location loc) {
         // Buscar bloques cercanos para prender fuego
         int radius = 2;
+        World world = loc.getWorld();
+        if (world == null) return;
+        
+        // [FIX] Encontrar jugador más cercano para verificar ownership
+        Player nearestPlayer = null;
+        double nearestDist = Double.MAX_VALUE;
+        for (Player p : world.getPlayers()) {
+            if (isPlayerExempt(p)) continue;
+            double dist = p.getLocation().distanceSquared(loc);
+            if (dist < nearestDist) {
+                nearestDist = dist;
+                nearestPlayer = p;
+            }
+        }
         
         for (int x = -radius; x <= radius; x++) {
             for (int y = -1; y <= 1; y++) {
@@ -619,6 +637,11 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
                     if (block.getType() == Material.AIR) {
                         org.bukkit.block.Block below = block.getRelative(org.bukkit.block.BlockFace.DOWN);
                         if (below.getType().isSolid()) {
+                            // [FIX] No poner fuego encima de bloques de otros jugadores
+                            if (nearestPlayer != null && !blockTracker.canDisasterDestroyBlock(below, nearestPlayer)) {
+                                continue;
+                            }
+                            
                             block.setType(Material.FIRE);
                             fuegosTemporal.add(block);
                             
@@ -823,6 +846,11 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
                     Block block = blockLoc.getBlock();
                     Material type = block.getType();
                     
+                    // [FIX] Verificar que no sea bloque de otro jugador
+                    if (!blockTracker.canDisasterDestroyBlock(block, player)) {
+                        continue;
+                    }
+                    
                     if (transformaciones.containsKey(type)) {
                         Material newType = transformaciones.get(type);
                         block.setType(newType);
@@ -863,6 +891,26 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
             Block below = block.getRelative(org.bukkit.block.BlockFace.DOWN);
             
             if (block.getType() == Material.AIR && below.getType().isSolid()) {
+                // [FIX] Encontrar jugador más cercano para verificar ownership
+                World world = loc.getWorld();
+                if (world == null) continue;
+                
+                Player nearestPlayer = null;
+                double nearestDist = Double.MAX_VALUE;
+                for (Player p : world.getPlayers()) {
+                    if (isPlayerExempt(p)) continue;
+                    double dist = p.getLocation().distanceSquared(loc);
+                    if (dist < nearestDist) {
+                        nearestDist = dist;
+                        nearestPlayer = p;
+                    }
+                }
+                
+                // [FIX] No poner fuego encima de bloques de otros jugadores
+                if (nearestPlayer != null && !blockTracker.canDisasterDestroyBlock(below, nearestPlayer)) {
+                    continue;
+                }
+                
                 block.setType(Material.FIRE);
                 fuegosTemporal.add(block);
             }
@@ -934,6 +982,18 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
         World world = loc.getWorld();
         if (world == null) return;
         
+        // [FIX] Encontrar jugador más cercano para verificar ownership
+        Player nearestPlayer = null;
+        double nearestDist = Double.MAX_VALUE;
+        for (Player p : world.getPlayers()) {
+            if (isPlayerExempt(p)) continue;
+            double dist = p.getLocation().distanceSquared(loc);
+            if (dist < nearestDist) {
+                nearestDist = dist;
+                nearestPlayer = p;
+            }
+        }
+        
         // Evaporar aleatoriamente hasta maxToEvaporate bloques (configurado)
         Collections.shuffle(waterBlocks);
         int evaporated = 0;
@@ -941,6 +1001,11 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
         
         for (Block water : waterBlocks) {
             if (evaporated >= maxAllowed) break;
+            
+            // [FIX] Verificar que no sea bloque de otro jugador
+            if (nearestPlayer != null && !blockTracker.canDisasterDestroyBlock(water, nearestPlayer)) {
+                continue;
+            }
             
             // Guardar ubicación antes de destruir el bloque
             Location vaporLoc = water.getLocation().add(0.5, 0.5, 0.5);

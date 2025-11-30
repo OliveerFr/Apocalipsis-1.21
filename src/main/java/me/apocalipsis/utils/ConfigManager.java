@@ -18,6 +18,7 @@ public class ConfigManager {
     private FileConfiguration recompensasConfig;
     private FileConfiguration chatConfig;
     private FileConfiguration evasionesConfig;
+    private FileConfiguration proteccionesConfig;
 
     public ConfigManager(Apocalipsis plugin) {
         this.plugin = plugin;
@@ -33,6 +34,7 @@ public class ConfigManager {
         this.recompensasConfig = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "recompensas.yml"));
         this.chatConfig = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "chat.yml"));
         this.evasionesConfig = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "evasiones.yml"));
+        this.proteccionesConfig = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "protecciones.yml"));
     }
     
     /**
@@ -72,6 +74,10 @@ public class ConfigManager {
     
     public FileConfiguration getEvasionesConfig() {
         return evasionesConfig;
+    }
+    
+    public FileConfiguration getProteccionesConfig() {
+        return proteccionesConfig;
     }
 
     public boolean isLluviaFuegoExtraLluvia() {

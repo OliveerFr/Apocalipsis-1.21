@@ -1,5 +1,12 @@
 package me.apocalipsis.listeners;
 
+import java.io.File;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
@@ -23,14 +30,6 @@ import me.apocalipsis.missions.MissionRank;
 import me.apocalipsis.state.ServerState;
 import me.apocalipsis.ui.ScoreboardManager;
 import me.apocalipsis.ui.TablistManager;
-
-import java.io.File;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.Set;
-import java.util.UUID;
 
 public class PlayerListener implements Listener {
 
@@ -86,6 +85,9 @@ public class PlayerListener implements Listener {
         if (player == null || !player.isOnline()) {
             return;
         }
+        
+        // [BLOCK TRACKER] Actualizar última conexión para protección de bloques
+        plugin.getBlockTracker().updatePlayerLastSeen(player);
         
         // [TIEMPO JUGADO] Registrar hora de conexión para PS por tiempo
         trackPlayerJoin(player);

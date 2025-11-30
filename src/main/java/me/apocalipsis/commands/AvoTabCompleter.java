@@ -32,7 +32,8 @@ public class AvoTabCompleter implements TabCompleter {
                 "tps", "stats", "backup", "cooldown", "debug", "test", "test-alert",
                 "reload", "admin", "escanear", "protecciones", "eco", "eco_sombras",
                 "evento3", "susurro", "xp", "experience", "nivel", "level", "evasion", "evasiones",
-                "autotest", "habilidad", "habilidades", "skill", "skills"
+                "autotest", "habilidad", "habilidades", "skill", "skills",
+                "blockinfo", "bloque", "blockstats", "skillstats"
             );
             
             return subcommands.stream()
@@ -54,6 +55,7 @@ public class AvoTabCompleter implements TabCompleter {
                 case "setxp":
                 case "setps": // Backward compatibility
                 case "test-alert":
+                case "blockstats": // Stats de bloques de un jugador
                     // Sugerir nombres de jugadores online
                     return plugin.getServer().getOnlinePlayers().stream()
                         .map(Player::getName)
@@ -111,6 +113,12 @@ public class AvoTabCompleter implements TabCompleter {
                 case "experience":
                     // Sugerir subcomandos de xp
                     return Arrays.asList("get", "add", "set", "reset").stream()
+                        .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
+                        .collect(Collectors.toList());
+                
+                case "skillstats":
+                    // Sugerir subcomandos de skillstats
+                    return Arrays.asList("top", "player").stream()
                         .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
                         .collect(Collectors.toList());
                 
@@ -176,6 +184,14 @@ public class AvoTabCompleter implements TabCompleter {
             if (subCmd.equals("time")) {
                 return Arrays.asList("1", "2", "3", "5", "10", "15", "20", "30").stream()
                     .filter(s -> s.startsWith(args[2]))
+                    .collect(Collectors.toList());
+            }
+            
+            // /avo skillstats player <jugador>
+            if (subCmd.equals("skillstats") && args[1].equalsIgnoreCase("player")) {
+                return plugin.getServer().getOnlinePlayers().stream()
+                    .map(Player::getName)
+                    .filter(s -> s.toLowerCase().startsWith(args[2].toLowerCase()))
                     .collect(Collectors.toList());
             }
             

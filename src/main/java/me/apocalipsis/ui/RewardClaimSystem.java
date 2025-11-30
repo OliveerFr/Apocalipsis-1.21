@@ -185,75 +185,83 @@ public class RewardClaimSystem implements Listener {
      * Abre el menú de recompensas para un jugador
      */
     public void openRewardsMenu(Player player) {
-        UUID uuid = player.getUniqueId();
-        List<RewardPackage> rewards = pendingRewards.get(uuid);
-        
-        // Filtrar expirados
-        if (rewards != null) {
-            rewards.removeIf(RewardPackage::isExpired);
-        }
-        
-        if (rewards == null || rewards.isEmpty()) {
-            player.sendMessage("");
-            player.sendMessage("§8§m═══════════════════════════════════════════");
-            player.sendMessage("");
-            player.sendMessage("  §c✘ §7No tienes recompensas pendientes.");
-            player.sendMessage("");
-            player.sendMessage("  §8Completa eventos para obtener recompensas.");
-            player.sendMessage("");
-            player.sendMessage("§8§m═══════════════════════════════════════════");
-            player.sendMessage("");
-            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
-            return;
-        }
-        
-        // Crear menú principal (lista de paquetes de recompensas)
-        Inventory menu = Bukkit.createInventory(null, 54, MENU_TITLE);
-        
-        // Decoración superior
-        ItemStack border = createBorderItem();
-        for (int i = 0; i < 9; i++) {
-            menu.setItem(i, border);
-        }
-        for (int i = 45; i < 54; i++) {
-            menu.setItem(i, border);
-        }
-        
-        // Mostrar cada paquete de recompensas como un item
-        int slot = 10;
-        for (int i = 0; i < rewards.size() && slot < 44; i++) {
-            RewardPackage pkg = rewards.get(i);
-            if (pkg.isExpired()) continue;
+        try {
+            UUID uuid = player.getUniqueId();
+            List<RewardPackage> rewards = pendingRewards.get(uuid);
             
-            ItemStack packageItem = createPackageDisplayItem(pkg, i);
-            menu.setItem(slot, packageItem);
+            // Filtrar expirados
+            if (rewards != null) {
+                rewards.removeIf(RewardPackage::isExpired);
+            }
             
-            slot++;
-            if ((slot + 1) % 9 == 0) slot += 2; // Saltar bordes
+            if (rewards == null || rewards.isEmpty()) {
+                player.sendMessage("");
+                player.sendMessage("§8§m═══════════════════════════════════════════");
+                player.sendMessage("");
+                player.sendMessage("  §c✘ §7No tienes recompensas pendientes.");
+                player.sendMessage("");
+                player.sendMessage("  §8Completa eventos para obtener recompensas.");
+                player.sendMessage("");
+                player.sendMessage("§8§m═══════════════════════════════════════════");
+                player.sendMessage("");
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
+                return;
+            }
+            
+            // Crear menú principal (lista de paquetes de recompensas)
+            Inventory menu = Bukkit.createInventory(null, 54, MENU_TITLE);
+            
+            // Decoración superior
+            ItemStack border = createBorderItem();
+            for (int i = 0; i < 9; i++) {
+                menu.setItem(i, border);
+            }
+            for (int i = 45; i < 54; i++) {
+                menu.setItem(i, border);
+            }
+            
+            // Mostrar cada paquete de recompensas como un item
+            int slot = 10;
+            for (int i = 0; i < rewards.size() && slot < 44; i++) {
+                RewardPackage pkg = rewards.get(i);
+                if (pkg.isExpired()) continue;
+                
+                ItemStack packageItem = createPackageDisplayItem(pkg, i);
+                menu.setItem(slot, packageItem);
+                
+                slot++;
+                if ((slot + 1) % 9 == 0) slot += 2; // Saltar bordes
+            }
+            
+            // Info item
+            ItemStack infoItem = new ItemStack(Material.BOOK);
+            ItemMeta infoMeta = infoItem.getItemMeta();
+            if (infoMeta != null) {
+                infoMeta.setDisplayName("§e§lℹ Información");
+                infoMeta.setLore(Arrays.asList(
+                    "",
+                    "§7Click en una recompensa para",
+                    "§7abrir el cofre y reclamar items.",
+                    "",
+                    "§7Los items se colocan en tu inventario.",
+                    "§7Si está lleno, caerán al suelo.",
+                    "",
+                    "§c⚠ §7Las recompensas expiran después",
+                    "§c⚠ §7del tiempo indicado.",
+                    ""
+                ));
+                infoItem.setItemMeta(infoMeta);
+            }
+            menu.setItem(49, infoItem);
+            
+            playersWithMenuOpen.add(uuid);
+            player.openInventory(menu);
+            player.playSound(player.getLocation(), Sound.BLOCK_ENDER_CHEST_OPEN, 1.0f, 1.2f);
+        } catch (Exception e) {
+            player.sendMessage("§c✘ Error al abrir el menú de recompensas. Contacta a un admin.");
+            plugin.getLogger().severe("[RewardClaimSystem] Error en openRewardsMenu: " + e.getMessage());
+            e.printStackTrace();
         }
-        
-        // Info item
-        ItemStack infoItem = new ItemStack(Material.BOOK);
-        ItemMeta infoMeta = infoItem.getItemMeta();
-        infoMeta.setDisplayName("§e§lℹ Información");
-        infoMeta.setLore(Arrays.asList(
-            "",
-            "§7Click en una recompensa para",
-            "§7abrir el cofre y reclamar items.",
-            "",
-            "§7Los items se colocan en tu inventario.",
-            "§7Si está lleno, caerán al suelo.",
-            "",
-            "§c⚠ §7Las recompensas expiran después",
-            "§c⚠ §7del tiempo indicado.",
-            ""
-        ));
-        infoItem.setItemMeta(infoMeta);
-        menu.setItem(49, infoItem);
-        
-        playersWithMenuOpen.add(uuid);
-        player.openInventory(menu);
-        player.playSound(player.getLocation(), Sound.BLOCK_ENDER_CHEST_OPEN, 1.0f, 1.2f);
     }
     
     /**
@@ -314,14 +322,16 @@ public class RewardClaimSystem implements Listener {
             // Buscar índice del paquete
             if (clicked.hasItemMeta() && clicked.getItemMeta().hasLore()) {
                 List<String> lore = clicked.getItemMeta().getLore();
-                for (String line : lore) {
-                    if (line.contains("§8ID: #")) {
-                        try {
-                            int index = Integer.parseInt(line.replace("§8ID: #", "").trim());
-                            player.closeInventory();
-                            Bukkit.getScheduler().runTaskLater(plugin, () -> openClaimChest(player, index), 2L);
-                            return;
-                        } catch (NumberFormatException ignored) {}
+                if (lore != null) {
+                    for (String line : lore) {
+                        if (line.contains("§8ID: #")) {
+                            try {
+                                int index = Integer.parseInt(line.replace("§8ID: #", "").trim());
+                                player.closeInventory();
+                                Bukkit.getScheduler().runTaskLater(plugin, () -> openClaimChest(player, index), 2L);
+                                return;
+                            } catch (NumberFormatException ignored) {}
+                        }
                     }
                 }
             }
@@ -374,9 +384,12 @@ public class RewardClaimSystem implements Listener {
                     Inventory inv = event.getInventory();
                     List<ItemStack> remainingItems = new ArrayList<>();
                     
-                    for (ItemStack item : inv.getContents()) {
-                        if (item != null && item.getType() != Material.AIR) {
-                            remainingItems.add(item);
+                    ItemStack[] contents = inv.getContents();
+                    if (contents != null) {
+                        for (ItemStack item : contents) {
+                            if (item != null && item.getType() != Material.AIR) {
+                                remainingItems.add(item);
+                            }
                         }
                     }
                     
@@ -410,13 +423,14 @@ public class RewardClaimSystem implements Listener {
     
     private void notifyPlayerRewards(Player player, RewardPackage pkg) {
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            String rank = pkg.getRankAchieved() != null ? pkg.getRankAchieved() : "BRONZE";
             player.sendMessage("");
             player.sendMessage("§8§m═══════════════════════════════════════════");
             player.sendMessage("");
             player.sendMessage("  §a§l✦ §e¡RECOMPENSAS DISPONIBLES! §a§l✦");
             player.sendMessage("");
             player.sendMessage("  §7Evento: §d" + pkg.getEventDisplayName());
-            player.sendMessage("  §7Rango: " + getRankColor(pkg.getRankAchieved()) + pkg.getRankAchieved());
+            player.sendMessage("  §7Rango: " + getRankColor(rank) + rank);
             player.sendMessage("  §7Items: §f" + pkg.getItems().size() + " §7objetos únicos");
             player.sendMessage("  §7Expira en: " + pkg.getTimeRemainingFormatted());
             player.sendMessage("");
@@ -441,8 +455,14 @@ public class RewardClaimSystem implements Listener {
     private ItemStack createPackageDisplayItem(RewardPackage pkg, int index) {
         Material material;
         String rankColor;
+        String rank = pkg.getRankAchieved();
         
-        switch (pkg.getRankAchieved()) {
+        // Null-check para evitar NPE en switch
+        if (rank == null) {
+            rank = "BRONZE";
+        }
+        
+        switch (rank) {
             case "PLATINUM":
                 material = Material.NETHER_STAR;
                 rankColor = "§b";
@@ -468,7 +488,7 @@ public class RewardClaimSystem implements Listener {
         
         List<String> lore = new ArrayList<>();
         lore.add("");
-        lore.add("§7Rango: " + rankColor + pkg.getRankAchieved());
+        lore.add("§7Rango: " + rankColor + rank);
         lore.add("§7Items: §f" + pkg.getItems().size() + " §7objetos");
         if (pkg.getPsAwarded() > 0) {
             lore.add("§7PS: §a+" + pkg.getPsAwarded());
@@ -487,6 +507,9 @@ public class RewardClaimSystem implements Listener {
     }
     
     private String getRankColor(String rank) {
+        if (rank == null) {
+            return "§c"; // Default para BRONZE
+        }
         switch (rank) {
             case "PLATINUM": return "§b";
             case "GOLD": return "§6";

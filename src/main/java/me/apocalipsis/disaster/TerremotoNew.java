@@ -561,6 +561,8 @@ public class TerremotoNew extends DisasterBase {
         // 🔧 FIX: Calcular velocidad final y aplicar con smoothing anti-cheat
         Vector finalVelocity = p.getVelocity().add(v);
         plugin.getVelocityManager().applySmoothedVelocity(p, finalVelocity);
+        
+        // [FIX] Resetear fall distance para evitar kick por "floating too long"
         p.setFallDistance(0f);
         
         // [NUEVO] Shake de cámara (rotación de vista)
