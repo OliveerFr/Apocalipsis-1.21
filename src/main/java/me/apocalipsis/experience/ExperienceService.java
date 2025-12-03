@@ -454,12 +454,13 @@ public class ExperienceService {
     
     /**
      * Añade XP por matar mobs
+     * @return XP otorgado (0 si no se otorgó)
      */
-    public boolean addMobKillXP(Player player, org.bukkit.entity.EntityType entityType) {
+    public int addMobKillXP(Player player, org.bukkit.entity.EntityType entityType) {
         FileConfiguration config = plugin.getConfigManager().getRecompensasConfig();
         
         if (!config.getBoolean("fuentes_xp.matar_mobs.enabled", true)) {
-            return false;
+            return 0;
         }
         
         int xp = 0;
@@ -501,6 +502,10 @@ public class ExperienceService {
             case PILLAGER:
             case RAVAGER:
             case VEX:
+            case GUARDIAN:
+            case ELDER_GUARDIAN:
+            case WARDEN:
+            case BREEZE:
                 xp = config.getInt("fuentes_xp.matar_mobs.hostiles.xp", 2);
                 source = "Mob hostil";
                 break;
@@ -532,44 +537,37 @@ public class ExperienceService {
                 source = "Animal";
                 break;
             default:
-                return false;
+                return 0;
         }
         
         if (xp > 0) {
-            return addXP(player, xp, source, false);
+            addXP(player, xp, source, false);
+            return xp;
         }
         
-        return false;
+        return 0;
     }
     
     /**
      * Añade XP por minar bloques
+     * @return XP otorgado (0 si no se otorgó)
      */
-    public boolean addMiningXP(Player player, org.bukkit.Material material) {
+    public int addMiningXP(Player player, org.bukkit.Material material) {
         FileConfiguration config = plugin.getConfigManager().getRecompensasConfig();
         
         if (!config.getBoolean("fuentes_xp.minar_bloques.enabled", true)) {
-            plugin.getLogger().warning("[XP] minar_bloques está deshabilitado en config");
-            return false;
+            return 0;
         }
         
         double xp = config.getDouble("fuentes_xp.minar_bloques.bloques." + material.name(), 0);
         
         if (xp > 0) {
-            // Los valores pueden ser decimales (0.5), se acumulan
             int xpAmount = (int) Math.ceil(xp);
-            plugin.getLogger().info("[XP] Otorgando " + xpAmount + " XP a " + 
-                player.getName() + " por minar " + material.name());
-            return addXP(player, xpAmount, "Minería", true);
-        } else {
-            // Debug: material no configurado
-            if (material.name().contains("_ORE") || material.name().contains("DEBRIS")) {
-                plugin.getLogger().warning("[XP] Material " + material.name() + 
-                    " no tiene XP configurado en recompensas.yml");
-            }
+            addXP(player, xpAmount, "Minería", true);
+            return xpAmount;
         }
         
-        return false;
+        return 0;
     }
     
     /**

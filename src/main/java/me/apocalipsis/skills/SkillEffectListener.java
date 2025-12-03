@@ -69,15 +69,23 @@ public class SkillEffectListener implements Listener {
     private boolean cacheEnabled = true;
     private int cacheTtlSegundos = 30;
     
-    // === LEÑADOR NATO CONFIG ===
-    private int lenadorCooldownSegundos = 5;
-    private int lenadorMaxBloques = 256;
+    // === LEÑADOR CONFIG (3 niveles) ===
+    // Nivel 1 (Nato): cooldown 5s, max 256 bloques
+    // Nivel 2 (Experto): cooldown 2s, max 384 bloques  
+    // Nivel 3 (Maestro): SIN cooldown, max 512 bloques, auto-replant siempre, bonus XP
+    private int lenadorCooldownNivel1 = 5;    // Leñador Nato
+    private int lenadorCooldownNivel2 = 2;    // Leñador Experto
+    private int lenadorCooldownNivel3 = 0;    // Leñador Maestro (sin cooldown)
+    private int lenadorMaxBloquesNivel1 = 256;
+    private int lenadorMaxBloquesNivel2 = 384;
+    private int lenadorMaxBloquesNivel3 = 512;
     private boolean lenadorDesactivarSneaking = true;
     private boolean lenadorAutoReplant = true;
     private boolean lenadorVerificarArbolReal = true;
     private int lenadorRadioBuscarHojas = 4;
     private int lenadorMinHojasRequeridas = 3;
-    private int lenadorXpPorArbol = 5;
+    private int lenadorXpPorArbolBase = 5;
+    private int lenadorXpBonusMaestro = 10;   // XP extra para nivel 3
     private boolean lenadorSonidosProgresivos = true;
     private int lenadorDanoHerramientaCada = 3;
     
@@ -158,17 +166,22 @@ public class SkillEffectListener implements Listener {
         cacheEnabled = skillsConfig.getBoolean("cache.enabled", true);
         cacheTtlSegundos = skillsConfig.getInt("cache.ttl_segundos", 30);
         
-        // Leñador nato
-        lenadorCooldownSegundos = skillsConfig.getInt("efectos.lenador_nato.cooldown_segundos", 5);
-        lenadorMaxBloques = skillsConfig.getInt("efectos.lenador_nato.max_bloques", 256);
-        lenadorDesactivarSneaking = skillsConfig.getBoolean("efectos.lenador_nato.desactivar_sneaking", true);
-        lenadorAutoReplant = skillsConfig.getBoolean("efectos.lenador_nato.auto_replant", true);
-        lenadorVerificarArbolReal = skillsConfig.getBoolean("efectos.lenador_nato.verificar_arbol_real", true);
-        lenadorRadioBuscarHojas = skillsConfig.getInt("efectos.lenador_nato.radio_buscar_hojas", 4);
-        lenadorMinHojasRequeridas = skillsConfig.getInt("efectos.lenador_nato.min_hojas_requeridas", 3);
-        lenadorXpPorArbol = skillsConfig.getInt("efectos.lenador_nato.xp_por_arbol", 5);
-        lenadorSonidosProgresivos = skillsConfig.getBoolean("efectos.lenador_nato.sonidos_progresivos", true);
-        lenadorDanoHerramientaCada = skillsConfig.getInt("efectos.lenador_nato.dano_herramienta_cada", 3);
+        // Leñador (3 niveles)
+        lenadorCooldownNivel1 = skillsConfig.getInt("efectos.lenador.cooldown_nivel1", 5);
+        lenadorCooldownNivel2 = skillsConfig.getInt("efectos.lenador.cooldown_nivel2", 2);
+        lenadorCooldownNivel3 = skillsConfig.getInt("efectos.lenador.cooldown_nivel3", 0);
+        lenadorMaxBloquesNivel1 = skillsConfig.getInt("efectos.lenador.max_bloques_nivel1", 256);
+        lenadorMaxBloquesNivel2 = skillsConfig.getInt("efectos.lenador.max_bloques_nivel2", 384);
+        lenadorMaxBloquesNivel3 = skillsConfig.getInt("efectos.lenador.max_bloques_nivel3", 512);
+        lenadorDesactivarSneaking = skillsConfig.getBoolean("efectos.lenador.desactivar_sneaking", true);
+        lenadorAutoReplant = skillsConfig.getBoolean("efectos.lenador.auto_replant", true);
+        lenadorVerificarArbolReal = skillsConfig.getBoolean("efectos.lenador.verificar_arbol_real", true);
+        lenadorRadioBuscarHojas = skillsConfig.getInt("efectos.lenador.radio_buscar_hojas", 4);
+        lenadorMinHojasRequeridas = skillsConfig.getInt("efectos.lenador.min_hojas_requeridas", 3);
+        lenadorXpPorArbolBase = skillsConfig.getInt("efectos.lenador.xp_por_arbol_base", 5);
+        lenadorXpBonusMaestro = skillsConfig.getInt("efectos.lenador.xp_bonus_maestro", 10);
+        lenadorSonidosProgresivos = skillsConfig.getBoolean("efectos.lenador.sonidos_progresivos", true);
+        lenadorDanoHerramientaCada = skillsConfig.getInt("efectos.lenador.dano_herramienta_cada", 3);
     }
     
     public void reloadConfig() {
@@ -651,19 +664,46 @@ public class SkillEffectListener implements Listener {
         Block block = event.getBlock();
         ItemStack tool = player.getInventory().getItemInMainHand();
         
-        // === LEÑADOR NATO (Tree Feller) ===
+        // === LEÑADOR (3 NIVELES: Nato, Experto, Maestro) ===
         if (isLog(block.getType()) && !processingTreeFell.contains(uuid)) {
-            if (hasSkillCached(uuid, Skill.LENADOR_NATO) && 
-                isSkillEnabledCached(uuid, Skill.LENADOR_NATO)) {
-                
+            // Determinar el nivel más alto de leñador que tiene
+            int lenadorLevel = 0;
+            Skill lenadorSkill = null;
+            int cooldown = 0;
+            int maxBloques = 0;
+            int xpBonus = 0;
+            
+            if (hasSkillCached(uuid, Skill.LENADOR_MAESTRO) && 
+                isSkillEnabledCached(uuid, Skill.LENADOR_MAESTRO)) {
+                lenadorLevel = 3;
+                lenadorSkill = Skill.LENADOR_MAESTRO;
+                cooldown = lenadorCooldownNivel3; // 0 = sin cooldown
+                maxBloques = lenadorMaxBloquesNivel3;
+                xpBonus = lenadorXpBonusMaestro;
+            } else if (hasSkillCached(uuid, Skill.LENADOR_EXPERTO) && 
+                       isSkillEnabledCached(uuid, Skill.LENADOR_EXPERTO)) {
+                lenadorLevel = 2;
+                lenadorSkill = Skill.LENADOR_EXPERTO;
+                cooldown = lenadorCooldownNivel2; // 2 segundos
+                maxBloques = lenadorMaxBloquesNivel2;
+            } else if (hasSkillCached(uuid, Skill.LENADOR_NATO) && 
+                       isSkillEnabledCached(uuid, Skill.LENADOR_NATO)) {
+                lenadorLevel = 1;
+                lenadorSkill = Skill.LENADOR_NATO;
+                cooldown = lenadorCooldownNivel1; // 5 segundos
+                maxBloques = lenadorMaxBloquesNivel1;
+            }
+            
+            if (lenadorLevel > 0 && lenadorSkill != null) {
                 // Mejora 1: Desactivar si está agachado
                 if (lenadorDesactivarSneaking && player.isSneaking()) {
                     // Talar solo este bloque normalmente
                 } else if (isAxe(tool.getType())) {
-                    // Mejora 2: Verificar cooldown
+                    // Mejora 2: Verificar cooldown (nivel 3 no tiene)
                     long now = System.currentTimeMillis();
                     Long cooldownEnds = lenadorCooldowns.get(uuid);
-                    if (cooldownEnds != null && now < cooldownEnds) {
+                    
+                    if (cooldown > 0 && cooldownEnds != null && now < cooldownEnds) {
                         long remaining = (cooldownEnds - now) / 1000;
                         if (canSendMessage(uuid, "lenador_cooldown")) {
                             player.sendMessage("§c§l🪓 §cEspera §e" + remaining + "s §cpara volver a talar árboles completos");
@@ -682,32 +722,40 @@ public class SkillEffectListener implements Listener {
                                 Location baseLocation = block.getLocation().clone();
                                 Material logType = block.getType();
                                 
-                                // Talar el árbol completo
-                                int blocksFelled = fellTree(player, block, tool);
+                                // Talar el árbol completo (límite según nivel)
+                                final int levelMaxBloques = maxBloques;
+                                int blocksFelled = fellTreeWithLimit(player, block, tool, levelMaxBloques);
                                 
                                 if (blocksFelled > 1) {
-                                    trackSkillUsage(uuid, Skill.LENADOR_NATO);
+                                    trackSkillUsage(uuid, lenadorSkill);
                                     
-                                    // Aplicar cooldown
-                                    lenadorCooldowns.put(uuid, now + (lenadorCooldownSegundos * 1000L));
+                                    // Aplicar cooldown solo si el nivel lo tiene
+                                    if (cooldown > 0) {
+                                        lenadorCooldowns.put(uuid, now + (cooldown * 1000L));
+                                    }
                                     
-                                    // Mejora 5: Auto-replant
-                                    if (lenadorAutoReplant) {
+                                    // Mejora 5: Auto-replant (siempre para nivel 3, configurable para otros)
+                                    boolean shouldReplant = (lenadorLevel == 3) || lenadorAutoReplant;
+                                    if (shouldReplant) {
                                         Bukkit.getScheduler().runTaskLater(plugin, () -> {
                                             plantSapling(baseLocation, logType);
                                         }, 5L); // Pequeño delay para que se vea natural
                                     }
                                     
-                                    // Mejora 6: Dar XP por árbol
-                                    if (lenadorXpPorArbol > 0) {
-                                        giveSkillXp(player, Skill.LENADOR_NATO, lenadorXpPorArbol);
+                                    // Mejora 6: Dar XP por árbol (bonus para nivel 3)
+                                    int totalXp = lenadorXpPorArbolBase + xpBonus;
+                                    if (totalXp > 0) {
+                                        giveSkillXp(player, lenadorSkill, totalXp);
                                     }
                                     
-                                    // Mensaje con anti-spam
-                                    if (canSendMessage(uuid, "lenador_nato")) {
-                                        String replantMsg = lenadorAutoReplant ? " §2(+retoño)" : "";
-                                        String xpMsg = lenadorXpPorArbol > 0 ? " §b(+" + lenadorXpPorArbol + " XP)" : "";
-                                        player.sendMessage("§a§l🪓 §e¡Leñador Nato! §7Talaste §a" + blocksFelled + " §7troncos" + replantMsg + xpMsg);
+                                    // Mensaje con anti-spam según nivel
+                                    if (canSendMessage(uuid, "lenador")) {
+                                        String replantMsg = shouldReplant ? " §2(+retoño)" : "";
+                                        String xpMsg = totalXp > 0 ? " §b(+" + totalXp + " XP)" : "";
+                                        String levelName = lenadorLevel == 3 ? "§6Leñador Maestro" : 
+                                                          (lenadorLevel == 2 ? "§eLeñador Experto" : "§aLeñador Nato");
+                                        String noCooldownMsg = lenadorLevel == 3 ? " §d[∞]" : "";
+                                        player.sendMessage("§a§l🪓 " + levelName + "! §7Talaste §a" + blocksFelled + " §7troncos" + replantMsg + xpMsg + noCooldownMsg);
                                     }
                                     
                                     // Sonido final
@@ -906,11 +954,10 @@ public class SkillEffectListener implements Listener {
     }
     
     /**
-     * Tala un árbol completo empezando desde el tronco dado.
-     * Usa BFS con prioridad hacia arriba para encontrar todos los troncos conectados.
+     * Tala un árbol completo empezando desde el tronco dado (con límite personalizado).
      * @return Número de bloques talados
      */
-    private int fellTree(Player player, Block startBlock, ItemStack tool) {
+    private int fellTreeWithLimit(Player player, Block startBlock, ItemStack tool, int maxBlocks) {
         Set<Block> logsToBreak = new LinkedHashSet<>();
         Set<Block> visited = new HashSet<>();
         
@@ -920,8 +967,8 @@ public class SkillEffectListener implements Listener {
         queue.add(startBlock);
         visited.add(startBlock);
         
-        // Usar límite configurable
-        final int MAX_BLOCKS = lenadorMaxBloques;
+        // Usar límite pasado por parámetro
+        final int MAX_BLOCKS = maxBlocks;
         
         // Buscar todos los troncos conectados (BFS con prioridad arriba)
         while (!queue.isEmpty() && logsToBreak.size() < MAX_BLOCKS) {

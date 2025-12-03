@@ -390,6 +390,7 @@ public final class Apocalipsis extends JavaPlugin {
         missionListener = new MissionListener(missionService);
         getServer().getPluginManager().registerEvents(missionListener, this);
         experienceListener = new ExperienceListener(this);
+        experienceListener.initXPManager(); // Inicializar sistema dinámico de XP
         getServer().getPluginManager().registerEvents(experienceListener, this);
         getServer().getPluginManager().registerEvents(new me.apocalipsis.utils.ExplosionGuard(this), this);
         getServer().getPluginManager().registerEvents(new BlockTrackListener(this), this);
@@ -596,6 +597,10 @@ public final class Apocalipsis extends JavaPlugin {
     
     public ExperienceService getExperienceService() {
         return experienceService;
+    }
+    
+    public ExperienceListener getExperienceListener() {
+        return experienceListener;
     }
     
     public AbilityService getAbilityService() {

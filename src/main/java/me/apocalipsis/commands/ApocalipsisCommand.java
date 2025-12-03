@@ -2540,77 +2540,239 @@ public class ApocalipsisCommand implements CommandExecutor {
      * /avo xp <add|set|get> <jugador> [cantidad]
      */
     private void cmdXP(CommandSender sender, String[] args) {
-        if (!sender.hasPermission("avo.admin")) {
-            sender.sendMessage("§cNo tienes permisos.");
-            return;
-        }
-        
         if (args.length < 2) {
+            // Cualquier jugador puede ver su propio XP
+            if (sender instanceof Player player) {
+                showPlayerXPInfo(player, player);
+                return;
+            }
             sender.sendMessage("§e=== Comandos de XP ===");
-            sender.sendMessage("§7/avo xp get <jugador> §f- Ver XP de un jugador");
-            sender.sendMessage("§7/avo xp add <jugador> <cantidad> §f- Añadir XP");
-            sender.sendMessage("§7/avo xp set <jugador> <cantidad> §f- Establecer XP");
-            sender.sendMessage("§7/avo xp reset <jugador> §f- Resetear XP a 0");
+            sender.sendMessage("§7/avo xp §f- Ver tu XP y progreso");
+            sender.sendMessage("§7/avo xp top [cantidad] §f- Leaderboard del día");
+            sender.sendMessage("§7/avo xp stats §f- Ver estadísticas detalladas");
+            sender.sendMessage("§7§o(Admin) /avo xp get|add|set|reset|horafeliz");
             return;
         }
         
         String action = args[1].toLowerCase();
         
-        if (action.equals("get") && args.length >= 3) {
-            Player target = plugin.getServer().getPlayer(args[2]);
-            if (target == null) {
-                sender.sendMessage("§cJugador no encontrado.");
+        // Comandos públicos
+        switch (action) {
+            case "top" -> {
+                cmdXPTop(sender, args);
                 return;
             }
-            
-            int xp = plugin.getExperienceService().getXP(target);
-            int nivel = plugin.getExperienceService().getLevel(target);
-            int xpForNext = plugin.getExperienceService().getXPForNextLevel(target);
-            
-            sender.sendMessage("§e▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
-            sender.sendMessage("§6XP de §f" + target.getName());
-            sender.sendMessage("§7Nivel: §b" + nivel);
-            sender.sendMessage("§7XP Total: §e" + xp);
-            sender.sendMessage("§7XP para siguiente nivel: §e" + xpForNext);
-            sender.sendMessage("§e▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
-            
-        } else if ((action.equals("add") || action.equals("set")) && args.length >= 4) {
-            Player target = plugin.getServer().getPlayer(args[2]);
-            if (target == null) {
-                sender.sendMessage("§cJugador no encontrado.");
+            case "stats" -> {
+                if (sender instanceof Player player) {
+                    showPlayerXPStats(player);
+                } else {
+                    sender.sendMessage("§cEste comando solo puede usarse como jugador.");
+                }
                 return;
             }
-            
-            int amount;
+        }
+        
+        // Comandos admin
+        if (!sender.hasPermission("avo.admin")) {
+            sender.sendMessage("§cNo tienes permisos para ese subcomando.");
+            return;
+        }
+        
+        switch (action) {
+            case "horafeliz" -> cmdHoraFeliz(sender, args);
+            case "get" -> {
+                if (args.length < 3) {
+                    sender.sendMessage("§cUso: /avo xp get <jugador>");
+                    return;
+                }
+                Player target = plugin.getServer().getPlayer(args[2]);
+                if (target == null) {
+                    sender.sendMessage("§cJugador no encontrado.");
+                    return;
+                }
+                showPlayerXPInfo(sender, target);
+            }
+            case "add", "set" -> {
+                if (args.length < 4) {
+                    sender.sendMessage("§cUso: /avo xp " + action + " <jugador> <cantidad>");
+                    return;
+                }
+                Player target = plugin.getServer().getPlayer(args[2]);
+                if (target == null) {
+                    sender.sendMessage("§cJugador no encontrado.");
+                    return;
+                }
+                int amount;
+                try {
+                    amount = Integer.parseInt(args[3]);
+                } catch (NumberFormatException e) {
+                    sender.sendMessage("§cCantidad inválida.");
+                    return;
+                }
+                if (action.equals("add")) {
+                    int oldXP = plugin.getExperienceService().getXP(target);
+                    plugin.getExperienceService().addXP(target, amount, "Admin");
+                    int newXP = plugin.getExperienceService().getXP(target);
+                    sender.sendMessage("§a✓ XP añadido a " + target.getName() + ": §e" + oldXP + " §7→ §e" + newXP);
+                } else {
+                    plugin.getExperienceService().setXP(target, amount);
+                    sender.sendMessage("§a✓ XP establecido para " + target.getName() + ": §e" + amount);
+                }
+            }
+            case "reset" -> {
+                if (args.length < 3) {
+                    sender.sendMessage("§cUso: /avo xp reset <jugador>");
+                    return;
+                }
+                Player target = plugin.getServer().getPlayer(args[2]);
+                if (target == null) {
+                    sender.sendMessage("§cJugador no encontrado.");
+                    return;
+                }
+                plugin.getExperienceService().setXP(target, 0);
+                sender.sendMessage("§a✓ XP reseteado para " + target.getName());
+            }
+            default -> sender.sendMessage("§cSubcomando desconocido. /avo xp para ver ayuda.");
+        }
+    }
+    
+    /**
+     * Muestra información de XP de un jugador
+     */
+    private void showPlayerXPInfo(CommandSender sender, Player target) {
+        int xp = plugin.getExperienceService().getXP(target);
+        int nivel = plugin.getExperienceService().getLevel(target);
+        int xpForNext = plugin.getExperienceService().getXPForNextLevel(target);
+        
+        sender.sendMessage("§e▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+        sender.sendMessage("§6⭐ XP de §f" + target.getName());
+        sender.sendMessage("§7Nivel: §b" + nivel);
+        sender.sendMessage("§7XP Total: §e" + xp);
+        sender.sendMessage("§7XP para siguiente nivel: §e" + xpForNext);
+        
+        // Mostrar multiplicadores activos
+        if (sender instanceof Player player && player.equals(target)) {
+            var xpManager = plugin.getExperienceListener().getXPManager();
+            if (xpManager != null) {
+                double mult = xpManager.calculateCurrentMultiplier(player);
+                sender.sendMessage("");
+                sender.sendMessage("§7Multiplicador actual: §a" + String.format("%.2f", mult) + "x");
+                if (xpManager.isHoraFelizActiva()) {
+                    sender.sendMessage("§c§l🎉 ¡HORA FELIZ ACTIVA!");
+                }
+            }
+        }
+        sender.sendMessage("§e▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+    }
+    
+    /**
+     * Muestra estadísticas detalladas de XP
+     */
+    private void showPlayerXPStats(Player player) {
+        var xpManager = plugin.getExperienceListener().getXPManager();
+        if (xpManager == null) {
+            player.sendMessage("§cSistema de XP no disponible.");
+            return;
+        }
+        
+        var stats = xpManager.getPlayerStats(player);
+        
+        player.sendMessage("§e▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+        player.sendMessage("§6📊 Tus Estadísticas de XP");
+        player.sendMessage("");
+        player.sendMessage("§7🔥 Racha de login: §e" + stats.get("streak") + " días");
+        player.sendMessage("§7📈 XP ganado hoy: §e" + stats.get("xp_hoy"));
+        player.sendMessage("§7⚡ Acciones hoy: §e" + stats.get("acciones_hoy"));
+        player.sendMessage("§7🏆 Mejor fuente: §e" + stats.get("mejor_fuente"));
+        player.sendMessage("§7✨ Multiplicador actual: §a" + String.format("%.2f", (Double) stats.get("multiplicador_actual")) + "x");
+        player.sendMessage("§e▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+    }
+    
+    /**
+     * Muestra leaderboard de XP del día
+     */
+    private void cmdXPTop(CommandSender sender, String[] args) {
+        var xpManager = plugin.getExperienceListener().getXPManager();
+        if (xpManager == null) {
+            sender.sendMessage("§cSistema de XP no disponible.");
+            return;
+        }
+        
+        int limit = 10;
+        if (args.length >= 3) {
             try {
-                amount = Integer.parseInt(args[3]);
-            } catch (NumberFormatException e) {
-                sender.sendMessage("§cCantidad inválida.");
-                return;
-            }
-            
-            if (action.equals("add")) {
-                int oldXP = plugin.getExperienceService().getXP(target);
-                plugin.getExperienceService().addXP(target, amount, "Admin");
-                int newXP = plugin.getExperienceService().getXP(target);
-                sender.sendMessage("§a✓ XP añadido a " + target.getName() + ": §e" + oldXP + " §7→ §e" + newXP);
-            } else {
-                plugin.getExperienceService().setXP(target, amount);
-                sender.sendMessage("§a✓ XP establecido para " + target.getName() + ": §e" + amount);
-            }
-            
-        } else if (action.equals("reset") && args.length >= 3) {
-            Player target = plugin.getServer().getPlayer(args[2]);
-            if (target == null) {
-                sender.sendMessage("§cJugador no encontrado.");
-                return;
-            }
-            
-            plugin.getExperienceService().setXP(target, 0);
-            sender.sendMessage("§a✓ XP reseteado para " + target.getName());
-            
+                limit = Math.min(Math.max(Integer.parseInt(args[2]), 1), 50);
+            } catch (NumberFormatException ignored) {}
+        }
+        
+        var top = xpManager.getTopPlayers(limit);
+        
+        sender.sendMessage("");
+        sender.sendMessage("§6§l🏆 LEADERBOARD XP DEL DÍA 🏆");
+        sender.sendMessage("§e▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+        
+        if (top.isEmpty()) {
+            sender.sendMessage("§7Nadie ha ganado XP hoy todavía.");
         } else {
-            sender.sendMessage("§cUso incorrecto. /avo xp para ver ayuda.");
+            int rank = 1;
+            for (var entry : top) {
+                String medal = switch (rank) {
+                    case 1 -> "§6🥇";
+                    case 2 -> "§f🥈";
+                    case 3 -> "§c🥉";
+                    default -> "§7#" + rank;
+                };
+                sender.sendMessage(medal + " §f" + entry.getKey() + " §7- §e" + entry.getValue() + " XP");
+                rank++;
+            }
+        }
+        
+        sender.sendMessage("§e▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+        sender.sendMessage("");
+    }
+    
+    /**
+     * Comando para activar/desactivar hora feliz
+     */
+    private void cmdHoraFeliz(CommandSender sender, String[] args) {
+        var xpManager = plugin.getExperienceListener().getXPManager();
+        if (xpManager == null) {
+            sender.sendMessage("§cSistema de XP no disponible.");
+            return;
+        }
+        
+        if (args.length < 3) {
+            sender.sendMessage("§e=== Hora Feliz ===");
+            sender.sendMessage("§7/avo xp horafeliz start [minutos] §f- Iniciar (default 60 min)");
+            sender.sendMessage("§7/avo xp horafeliz stop §f- Detener");
+            sender.sendMessage("§7Estado: " + (xpManager.isHoraFelizActiva() ? "§a¡ACTIVA!" : "§7Inactiva"));
+            return;
+        }
+        
+        String subAction = args[2].toLowerCase();
+        
+        if (subAction.equals("start")) {
+            if (xpManager.isHoraFelizActiva()) {
+                sender.sendMessage("§cLa Hora Feliz ya está activa.");
+                return;
+            }
+            int duracion = 60;
+            if (args.length >= 4) {
+                try {
+                    duracion = Math.min(Math.max(Integer.parseInt(args[3]), 5), 480);
+                } catch (NumberFormatException ignored) {}
+            }
+            xpManager.activarHoraFeliz(duracion, false);
+            sender.sendMessage("§a✓ Hora Feliz activada por " + duracion + " minutos.");
+        } else if (subAction.equals("stop")) {
+            if (!xpManager.isHoraFelizActiva()) {
+                sender.sendMessage("§cLa Hora Feliz no está activa.");
+                return;
+            }
+            xpManager.desactivarHoraFeliz();
+            sender.sendMessage("§a✓ Hora Feliz desactivada.");
+        } else {
+            sender.sendMessage("§cSubcomando inválido. Usa start o stop.");
         }
     }
     

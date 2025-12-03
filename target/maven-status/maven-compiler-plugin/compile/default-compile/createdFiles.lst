@@ -52,6 +52,7 @@ me\apocalipsis\ui\ScoreboardManager.class
 me\apocalipsis\events\gameplay\SpectatorSystem.class
 me\apocalipsis\ui\TablistManager.class
 me\apocalipsis\events\SusurroPiedraRotaEvent$2.class
+me\apocalipsis\experience\DynamicXPManager$PlayerXPTracker.class
 me\apocalipsis\events\gameplay\TelegraphedAttack$2.class
 me\apocalipsis\events\gameplay\QTESystem$ActiveQTE$1.class
 me\apocalipsis\skills\SkillTreeGUI$TreeMenuHolder.class
@@ -78,8 +79,10 @@ me\apocalipsis\missions\MissionType.class
 me\apocalipsis\ui\RewardClaimSystem.class
 me\apocalipsis\events\gameplay\DifficultyScaler.class
 me\apocalipsis\events\testing\scenarios\AnclaCompletionScenario.class
+me\apocalipsis\experience\XPSource.class
 me\apocalipsis\state\StateManager.class
 me\apocalipsis\events\testing\scenarios\GrietaClosingScenario.class
+me\apocalipsis\experience\DynamicXPManager.class
 me\apocalipsis\skills\SkillTreeGUI$ConfirmMenuHolder.class
 me\apocalipsis\events\testing\EventTestBot$BotPersonality.class
 me\apocalipsis\events\gameplay\FeedbackSystem$1.class
@@ -112,10 +115,12 @@ me\apocalipsis\events\SusurroPiedraRotaEvent$5.class
 me\apocalipsis\Apocalipsis.class
 me\apocalipsis\events\gameplay\ChoiceSystem$1.class
 me\apocalipsis\listeners\DisasterEvasionListener.class
+me\apocalipsis\experience\DynamicXPManager$2.class
 me\apocalipsis\events\gameplay\ParticleEffectSystem$DistortionType.class
 me\apocalipsis\events\gameplay\EventLootSystem.class
 me\apocalipsis\events\testing\scenarios\BasicParticipationScenario.class
 me\apocalipsis\events\testing\scenarios\SombrasEvasionScenario.class
+me\apocalipsis\experience\DynamicXPManager$1.class
 me\apocalipsis\events\EcoBrasasEvent$OleadaState.class
 me\apocalipsis\events\gameplay\ParticleEffectSystem$2.class
 me\apocalipsis\events\gameplay\CinematicSystem$4.class
@@ -147,6 +152,7 @@ me\apocalipsis\events\EcoSombrasEvent$3.class
 me\apocalipsis\events\gameplay\FeedbackSystem$IndicatorType.class
 me\apocalipsis\events\testing\EventTestBot$BotState.class
 me\apocalipsis\skills\BackpackService$ModViewHolder.class
+me\apocalipsis\experience\DynamicXPManager$XPResult.class
 me\apocalipsis\events\gameplay\TelegraphedAttack$4.class
 me\apocalipsis\events\gameplay\QTESystem$ActiveQTE$3.class
 me\apocalipsis\disaster\DisasterStatistics$PlayerStats.class
@@ -158,6 +164,7 @@ me\apocalipsis\listeners\ExperienceListener.class
 me\apocalipsis\disaster\adapters\PerformanceAdapter.class
 me\apocalipsis\events\gameplay\ParticleEffectSystem$1.class
 me\apocalipsis\events\SusurroPiedraRotaEvent$4.class
+me\apocalipsis\experience\DynamicXPManager$3.class
 me\apocalipsis\events\SusurroPiedraRotaItems.class
 me\apocalipsis\experience\ExperienceService$PlayerExperienceData.class
 me\apocalipsis\skills\SkillTreeGUI.class
@@ -202,6 +209,7 @@ me\apocalipsis\events\gameplay\SpectatorSystem$PlayerState.class
 me\apocalipsis\events\SusurroPiedraRotaEvent.class
 me\apocalipsis\utils\BlockOwnershipTracker$PlayerBlockStats.class
 me\apocalipsis\events\SusurroPiedraRotaEvent$Acto.class
+me\apocalipsis\experience\DynamicXPManager$HoraFelizSchedule.class
 me\apocalipsis\skills\UpgradePreview.class
 me\apocalipsis\events\gameplay\ParticleEffectSystem.class
 me\apocalipsis\disaster\LluviaFuegoNew$WaterProtection.class

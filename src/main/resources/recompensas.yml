@@ -125,23 +125,98 @@ recompensas_diarias_completas:
 # ═══════════════════════════════════════════════════════════════
 
 # Fórmula para XP necesario por nivel: base + (nivel * multiplicador)
-# ⚠️ AJUSTADO PARA SERIE DE 75 DÍAS (jugadores muy activos alcanzan ABSOLUTO en ~75 días)
 experiencia:
-  nivel_inicial: 200           # XP necesario para nivel 2 (antes 140)
-  multiplicador: 150            # XP adicional por cada nivel (antes 70)
-  # Ejemplo: Nivel 2 = 200, Nivel 3 = 350, Nivel 4 = 500, etc.
-  # Total para nivel 50 (ABSOLUTO): ~110,075 XP
+  nivel_inicial: 200           # XP necesario para nivel 2
+  multiplicador: 150            # XP adicional por cada nivel
 
-# Fuentes de experiencia
+# ═══════════════════════════════════════════════════════════════
+# SISTEMA DINÁMICO DE XP - MULTIPLICADORES Y BONIFICACIONES
+# ═══════════════════════════════════════════════════════════════
+
+xp_dinamico:
+  verbose_logging: true         # Mostrar logs detallados en consola
+  
+  # ActionBar - Notificaciones visuales
+  actionbar:
+    enabled: true               # Mostrar XP ganado en ActionBar
+  
+  # Multiplicadores base
+  multiplicadores:
+    fin_de_semana: 1.5          # x1.5 los sábados y domingos
+    noche: 1.2                  # x1.2 durante la noche in-game
+    racha_por_dia: 0.1          # +10% por cada día de racha
+    max_dias_racha: 7           # Máximo 7 días = +70%
+  
+  # ─────────────────────────────────────────────────────────────
+  # COMBOS RÁPIDOS - Bonus por acciones consecutivas
+  # ─────────────────────────────────────────────────────────────
+  combos:
+    multiplicador: 1.3          # Multiplicador base por combo
+    ventana_ms: 5000            # Tiempo entre acciones para mantener combo (5 seg)
+    acciones_minimas: 3         # Acciones mínimas para activar combo
+    limite_maximo: 10           # Límite máximo de combo (evita farmeo infinito)
+  
+  # ─────────────────────────────────────────────────────────────
+  # MULTIPLICADORES POR DIMENSIÓN
+  # ─────────────────────────────────────────────────────────────
+  dimensiones:
+    overworld: 1.0              # Multiplicador en Overworld
+    nether: 1.3                 # x1.3 en el Nether
+    end: 1.5                    # x1.5 en el End
+  
+  # ─────────────────────────────────────────────────────────────
+  # PROTECCIÓN ANTI-FARM
+  # ─────────────────────────────────────────────────────────────
+  anti_farm:
+    enabled: true               # Activar detección anti-farm
+    umbral_acciones: 50         # Acciones en la ventana para detectar farm
+    ventana_segundos: 60        # Ventana de tiempo en segundos
+    penalizacion: 0.1           # Reducción de XP (10% del normal)
+  
+  # ─────────────────────────────────────────────────────────────
+  # SISTEMA DE MILESTONES - Bonus por hitos
+  # ─────────────────────────────────────────────────────────────
+  milestones:
+    enabled: true               # Activar sistema de milestones
+    # Los milestones se otorgan automáticamente al alcanzar:
+    # 50, 100, 250, 500, 1000, 2500, 5000 acciones por categoría
+  
+  # ─────────────────────────────────────────────────────────────
+  # HORA FELIZ - Eventos de XP doble
+  # ─────────────────────────────────────────────────────────────
+  hora_feliz:
+    multiplicador: 2.0          # Multiplicador durante hora feliz
+    # Horas felices programadas (automáticas)
+    programadas:
+      noche_viernes:
+        hora_inicio: 20         # 8 PM
+        minuto_inicio: 0
+        duracion_minutos: 120   # 2 horas
+        dias: [FRIDAY]          # Solo viernes
+      sabado_tarde:
+        hora_inicio: 16         # 4 PM
+        minuto_inicio: 0
+        duracion_minutos: 60
+        dias: [SATURDAY]
+      domingo_noche:
+        hora_inicio: 19         # 7 PM
+        minuto_inicio: 0
+        duracion_minutos: 90
+        dias: [SUNDAY]
+
+# ═══════════════════════════════════════════════════════════════
+# FUENTES DE EXPERIENCIA (XP por acción)
+# ═══════════════════════════════════════════════════════════════
+
 fuentes_xp:
   # Misiones diarias - PRINCIPAL fuente de XP
   misiones:
     enabled: true
     por_dificultad:
-      FACIL: 80                # ~12 misiones/día para novatos (antes 100)
-      MEDIA: 150               # ~8-10 misiones/día (antes 200)
-      DIFICIL: 300             # ~4-6 misiones/día (antes 400)
-    multiplicador_por_rango:   # Bonus XP por rango alto (reducido para evitar snowball)
+      FACIL: 80
+      MEDIA: 150
+      DIFICIL: 300
+    multiplicador_por_rango:
       NOVATO: 1.0
       EXPLORADOR: 1.0
       SOBREVIVIENTE: 1.02      # Antes 1.05
@@ -149,69 +224,205 @@ fuentes_xp:
       LEYENDA: 1.08            # Antes 1.15
       MAESTRO: 1.10            # Antes 1.20
       TITAN: 1.12              # Antes 1.25
-      ABSOLUTO: 1.15           # Antes 1.30
+      ABSOLUTO: 1.15
 
-  # Matar mobs - SECUNDARIO (para jugadores 24/7)
+  # ─────────────────────────────────────────────────────────────
+  # COMBATE
+  # ─────────────────────────────────────────────────────────────
+  
   matar_mobs:
-    enabled: true
-    hostiles:                  # Mobs hostiles (zombies, skeletons, etc.)
-      xp: 1                    # Antes 2
-      cooldown: 0              # Sin cooldown
-    pasivos:                   # Animales (vacas, cerdos, etc.)
-      xp: 0                    # Antes 1 (eliminado para evitar farming)
-      cooldown: 0
-    jefes:                     # Wither, Dragon, etc.
-      xp: 75                   # Antes 100
-      cooldown: 0
+    hostiles:
+      enabled: true
+      xp: 1
+      cooldown_ms: 10 
+    pasivos:
+      enabled: true
+      xp: 0
+      cooldown_ms: 0
+    jefes:
+      enabled: true
+      xp: 100
+      cooldown_ms: 0
+    jugadores:
+      enabled: true
+      xp: 50
+      cooldown_ms: 300000      # 5 minutos anti-abuse
     
-  # Minar bloques - Todos los minerales configurados (SIN PIEDRA)
-  minar_bloques:
-    enabled: true
-    bloques:
-      # Minerales vanilla (STONE eliminado - solo ores)
-      COAL_ORE: 0.5            # Antes 1
-      DEEPSLATE_COAL_ORE: 0.5
-      IRON_ORE: 1              # Antes 2
-      DEEPSLATE_IRON_ORE: 1
-      COPPER_ORE: 0.5          # Antes 1
-      DEEPSLATE_COPPER_ORE: 0.5
-      GOLD_ORE: 2              # Antes 3
-      DEEPSLATE_GOLD_ORE: 2
-      REDSTONE_ORE: 1          # Antes 2
-      DEEPSLATE_REDSTONE_ORE: 1
-      EMERALD_ORE: 4           # Antes 5
-      DEEPSLATE_EMERALD_ORE: 4
-      LAPIS_ORE: 1             # Antes 2
-      DEEPSLATE_LAPIS_ORE: 1
-      DIAMOND_ORE: 4           # Antes 5
-      DEEPSLATE_DIAMOND_ORE: 4
-      # Minerales del Nether
-      NETHER_GOLD_ORE: 2       # Antes 3
-      NETHER_QUARTZ_ORE: 1     # Antes 2
-      ANCIENT_DEBRIS: 8        # Antes 10
-    cooldown_segundos: 3       # Antes 0 (añadido para evitar spam)
+  # ─────────────────────────────────────────────────────────────
+  # MINERÍA (clasificado por rareza)
+  # ─────────────────────────────────────────────────────────────
+  
+  minar:
+    comun:                     # Carbón, Hierro, Cobre
+      enabled: true
+      xp: 1
+      cooldown_ms: 500
+    raro:                      # Oro, Lapislázuli, Redstone, Cuarzo
+      enabled: true
+      xp: 3
+      cooldown_ms: 500
+    epico:                     # Diamante, Esmeralda, Ancient Debris
+      enabled: true
+      xp: 8
+      cooldown_ms: 500
 
-  # Farming/Cosecha - MUY BAJO
+  # ─────────────────────────────────────────────────────────────
+  # RECOLECCIÓN
+  # ─────────────────────────────────────────────────────────────
+
   cosechar:
     enabled: true
-    xp: 0.3                    # 3 crops = 1 XP (antes 0.5)
-    cooldown_segundos: 10      # Antes 5
+    xp: 1
+    cooldown_ms: 1000
 
-  # Craftear items - MUY BAJO
-  craftear:
-    enabled: true
-    items:
-      STONE_PICKAXE: 0.5       # Antes 1
-      IRON_PICKAXE: 1          # Antes 2
-      DIAMOND_PICKAXE: 4       # Antes 5
-      NETHERITE_PICKAXE: 8     # Antes 10
-    cooldown_segundos: 15      # Antes 10
-
-  # Pescar - MUY BAJO
   pescar:
     enabled: true
-    xp: 1.5                    # Antes 2
-    cooldown_segundos: 20      # Antes 15
+    xp: 3
+    cooldown_ms: 0
+  
+  pescar.tesoro:
+    enabled: true
+    xp: 10
+    cooldown_ms: 0
+
+  esquilar:
+    enabled: true
+    xp: 1
+    cooldown_ms: 2000
+
+  # ─────────────────────────────────────────────────────────────
+  # ANIMALES
+  # ─────────────────────────────────────────────────────────────
+
+  domar:
+    enabled: true
+    xp: 8
+    cooldown_ms: 5000
+
+  criar:
+    enabled: true
+    xp: 3
+    cooldown_ms: 5000
+
+  # ─────────────────────────────────────────────────────────────
+  # CRAFTEO Y MEJORAS (clasificado por valor)
+  # ─────────────────────────────────────────────────────────────
+
+  craftear:
+    comun:
+      enabled: true
+      xp: 1
+      cooldown_ms: 3000
+    raro:
+      enabled: true
+      xp: 5
+      cooldown_ms: 3000
+    epico:
+      enabled: true
+      xp: 15
+      cooldown_ms: 3000
+
+  encantar:
+    enabled: true
+    xp: 5                      # Base, se multiplica por nivel gastado
+    cooldown_ms: 0
+
+  smithing:
+    enabled: true
+    xp: 20
+    cooldown_ms: 0
+
+  pociones:
+    enabled: true
+    xp: 3
+    cooldown_ms: 5000
+
+  # ─────────────────────────────────────────────────────────────
+  # COMERCIO
+  # ─────────────────────────────────────────────────────────────
+
+  comerciar:
+    enabled: true
+    xp: 3
+    cooldown_ms: 2000
+
+  comerciar.raro:
+    enabled: true
+    xp: 8
+    cooldown_ms: 2000
+
+  fundir:
+    enabled: true
+    xp: 1
+    cooldown_ms: 3000
+
+  # ─────────────────────────────────────────────────────────────
+  # EXPLORACIÓN Y LOGROS
+  # ─────────────────────────────────────────────────────────────
+
+  logros:
+    enabled: true
+    xp: 15
+    cooldown_ms: 0
+
+  logros.raro:
+    enabled: true
+    xp: 30
+    cooldown_ms: 0
+
+  logros.epico:
+    enabled: true
+    xp: 75
+    cooldown_ms: 0
+
+  explorar:
+    bioma:
+      enabled: true
+      xp: 5
+      cooldown_ms: 60000
+    estructura:
+      enabled: true
+      xp: 15
+      cooldown_ms: 60000
+
+  # ─────────────────────────────────────────────────────────────
+  # COLOCACIÓN Y CONSUMO
+  # ─────────────────────────────────────────────────────────────
+
+  colocar:
+    enabled: true
+    xp: 10
+    cooldown_ms: 30000
+
+  consumir:
+    enabled: true
+    xp: 3
+    cooldown_ms: 0
+
+  # ─────────────────────────────────────────────────────────────
+  # EVENTOS Y BONUS
+  # ─────────────────────────────────────────────────────────────
+
+  eventos:
+    enabled: true
+    xp: 25
+    cooldown_ms: 0
+
+  eventos.victoria:
+    enabled: true
+    xp: 100
+    cooldown_ms: 0
+
+  bonus:
+    racha:
+      enabled: true
+      xp: 50
+    primer_dia:
+      enabled: true
+      xp: 10
+    finde:
+      enabled: true
+      xp: 20
 
 # ═══════════════════════════════════════════════════════════════
 # RECOMPENSAS POR SUBIDA DE RANGO (ÉPICAS - EVENTOS MEMORABLES)

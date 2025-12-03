@@ -1,12 +1,26 @@
 package me.apocalipsis.experience;
 
-import me.apocalipsis.Apocalipsis;
-import me.apocalipsis.missions.MissionDifficulty;
-import me.apocalipsis.missions.MissionRank;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
-import net.kyori.adventure.title.Title;
-import org.bukkit.*;
+import java.io.File;
+import java.io.IOException;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
+import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import org.bukkit.Bukkit;
+import org.bukkit.Color;
+import org.bukkit.FireworkEffect;
+import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -16,12 +30,12 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.FireworkMeta;
 
-import java.io.File;
-import java.io.IOException;
-import java.time.Duration;
-import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import me.apocalipsis.Apocalipsis;
+import me.apocalipsis.missions.MissionDifficulty;
+import me.apocalipsis.missions.MissionRank;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.title.Title;
 
 /**
  * Servicio que entrega recompensas cuando un jugador sube de rango
@@ -149,12 +163,57 @@ public class RewardService {
             }
         }
         
-        // Ejecutar comandos especiales (como ps give) inmediatamente
+        // Ejecutar comandos especiales (como ps give) INMEDIATAMENTE al subir de rango
+        // Estos NO van al sistema de reclamación porque no son items
+        int protectionBlocksGiven = 0;
         for (String cmd : specialCommands) {
             plugin.getLogger().info("[Rewards] Ejecutando comando especial: " + cmd);
+            
+            // Contar bloques de protección
+            if (cmd.toLowerCase().startsWith("ps give") || cmd.toLowerCase().startsWith("ps admin give")) {
+                // Extraer cantidad del comando (formato: ps give player block [cantidad])
+                String[] parts = cmd.split("\\s+");
+                int amount = 1;
+                if (parts.length >= 4) {
+                    try {
+                        amount = Integer.parseInt(parts[parts.length - 1]);
+                    } catch (NumberFormatException e) {
+                        amount = 1;
+                    }
+                }
+                protectionBlocksGiven += amount;
+            }
+            
+            final String finalCmd = cmd;
+            final Player finalPlayer = player;
             Bukkit.getScheduler().runTask(plugin, () -> {
-                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
+                try {
+                    plugin.getLogger().info("[Rewards] Consola ejecutando: /" + finalCmd);
+                    // Ejecutar como consola del servidor (tiene todos los permisos)
+                    Bukkit.dispatchCommand(Bukkit.getConsoleSender(), finalCmd);
+                    plugin.getLogger().info("[Rewards] ✓ Comando enviado: " + finalCmd);
+                } catch (Exception e) {
+                    plugin.getLogger().severe("[Rewards] ✗ Error ejecutando comando: " + finalCmd);
+                    plugin.getLogger().severe("[Rewards] Error: " + e.getMessage());
+                    e.printStackTrace();
+                    // Notificar al jugador del error
+                    if (finalPlayer != null && finalPlayer.isOnline()) {
+                        finalPlayer.sendMessage("§c[Error] No se pudo entregar bloque de protección. Contacta a un admin.");
+                    }
+                }
             });
+        }
+        
+        // Notificar sobre bloques de protección otorgados
+        if (protectionBlocksGiven > 0) {
+            final int blocks = protectionBlocksGiven;
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                player.sendMessage("");
+                player.sendMessage("§a§l🛡 §a¡Has recibido §e" + blocks + " bloque(s) de protección§a!");
+                player.sendMessage("§7Usa §f/ps get §7para obtenerlos en tu inventario.");
+                player.sendMessage("");
+                player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_BEACON_ACTIVATE, 1.0f, 1.5f);
+            }, 5L);
         }
         
         // Añadir items al sistema de reclamación

@@ -67,7 +67,7 @@ public enum Skill {
         350, Material.COOKED_BEEF, false, new String[]{}),
     
     LENADOR_NATO("lenador_nato", "Leñador Nato",
-        "Rompe árboles completos de un golpe",
+        "Rompe árboles completos (cooldown 5s)",
         SkillBranch.UTILIDAD, SkillTier.TIER_1, SkillRarity.RARO,
         600, Material.DIAMOND_AXE, true, new String[]{}),
     
@@ -87,6 +87,11 @@ public enum Skill {
         SkillBranch.UTILIDAD, SkillTier.TIER_2, SkillRarity.RARO, 
         1000, Material.GOLDEN_CARROT, false, new String[]{"estomago_hierro"}),
     
+    LENADOR_EXPERTO("lenador_experto", "Leñador Experto",
+        "Cooldown reducido a 2s + más bloques",
+        SkillBranch.UTILIDAD, SkillTier.TIER_2, SkillRarity.EPICO,
+        1800, Material.NETHERITE_AXE, true, new String[]{"lenador_nato"}),
+    
     // Tier 3
     VELOCISTA("velocista", "Velocista", 
         "+30% velocidad + sin penalización sneaking", 
@@ -102,6 +107,11 @@ public enum Skill {
         "Regenera 0.5 hambre cada 30s", 
         SkillBranch.UTILIDAD, SkillTier.TIER_3, SkillRarity.EPICO, 
         3000, Material.CAKE, false, new String[]{"metabolismo_lento"}),
+    
+    LENADOR_MAESTRO("lenador_maestro", "Leñador Maestro",
+        "¡SIN COOLDOWN! + Auto-replant + XP bonus",
+        SkillBranch.UTILIDAD, SkillTier.TIER_3, SkillRarity.LEGENDARIO,
+        4000, Material.ENCHANTED_GOLDEN_APPLE, true, new String[]{"lenador_experto"}),
     
     // ================= SUPERVIVENCIA (11 skills) =================
     // Tier 1
