@@ -359,41 +359,40 @@ public class RewardClaimSystem implements Listener {
             if (isProtectionBlockItem(clicked)) {
                 event.setCancelled(true);
                 
-                // Extraer y ejecutar el comando
-                String command = extractProtectionCommand(clicked);
-                if (command != null && !command.isEmpty()) {
-                    // Ejecutar el comando y luego /ps get automáticamente
+                // Extraer el comando original del lore
+                String originalCommand = extractProtectionCommand(clicked);
+                if (originalCommand != null && !originalCommand.isEmpty()) {
                     final String playerName = player.getName();
+                    
                     Bukkit.getScheduler().runTask(plugin, () -> {
                         try {
-                            // Ejecutar ps give
-                            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command);
-                            plugin.getLogger().info("[RewardClaimSystem] ✓ Comando PS ejecutado: " + command);
+                            // [FIX v2.3] Convertir "ps give" a "ps admin give" para entrega directa
+                            // ps admin give <player> <block> [amount] - da directamente al inventario
+                            String adminCommand = originalCommand;
                             
-                            // [FIX] Ejecutar automáticamente /ps get para el jugador después de un pequeño delay
-                            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                                try {
-                                    // Hacer que el jugador ejecute /ps get automáticamente
-                                    player.performCommand("ps get");
-                                    plugin.getLogger().info("[RewardClaimSystem] ✓ /ps get ejecutado automáticamente para " + playerName);
-                                } catch (Exception e) {
-                                    plugin.getLogger().warning("[RewardClaimSystem] No se pudo ejecutar /ps get: " + e.getMessage());
-                                }
-                            }, 5L); // 5 ticks de delay (0.25 segundos)
+                            // Convertir: "ps give Player 15" -> "ps admin give Player 15"
+                            // Convertir: "ps give Player 15 2" -> "ps admin give Player 15 2"
+                            if (adminCommand.toLowerCase().startsWith("ps give ")) {
+                                adminCommand = "ps admin give " + adminCommand.substring(8);
+                            }
+                            
+                            plugin.getLogger().info("[RewardClaimSystem] Ejecutando: " + adminCommand);
+                            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), adminCommand);
+                            plugin.getLogger().info("[RewardClaimSystem] ✓ Bloque de protección entregado a " + playerName);
                             
                             // Notificar al jugador
                             player.sendMessage("");
                             player.sendMessage("§a§l🛡 §a¡Bloque de protección reclamado!");
-                            player.sendMessage("§7El bloque ha sido añadido a tu inventario automáticamente.");
+                            player.sendMessage("§7El bloque ha sido añadido a tu inventario.");
                             player.sendMessage("");
                             player.playSound(player.getLocation(), Sound.BLOCK_BEACON_ACTIVATE, 1.0f, 1.5f);
                         } catch (Exception e) {
                             player.sendMessage("§c✘ Error al reclamar bloque de protección. Contacta a un admin.");
-                            plugin.getLogger().severe("[RewardClaimSystem] Error ejecutando comando PS: " + e.getMessage());
+                            plugin.getLogger().severe("[RewardClaimSystem] Error: " + e.getMessage());
                         }
                     });
                     
-                    // Remover el item del inventario
+                    // Remover el item del inventario del menú
                     event.getClickedInventory().setItem(event.getSlot(), null);
                 } else {
                     player.sendMessage("§c✘ Error: Comando de protección no válido.");
