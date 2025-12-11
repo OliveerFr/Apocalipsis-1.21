@@ -6,7 +6,7 @@
 
     <groupId>me.apocalipsis</groupId>
     <artifactId>Apocalipsis</artifactId>
-    <version>1.21.17</version>
+    <version>1.22.0</version>
     <packaging>jar</packaging>
 
     <name>Apocalipsis</name>
@@ -83,3 +83,5 @@
         </dependency>
     </dependencies>
 </project>
+
+

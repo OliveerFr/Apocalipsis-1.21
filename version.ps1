@@ -85,25 +85,16 @@ foreach ($line in $pomLines) {
 $newPomLines | Set-Content $pomPath -Encoding UTF8
 Write-Success "pom.xml actualizado a version $newVersion"
 
-# Compilar para verificar
-Write-Info "Compilando proyecto..."
-$mvnResult = & mvn compile -q 2>&1
+# Crear JAR (skip tests y compilacion rapida)
+Write-Info "Creando JAR (compilacion rapida)..."
+$mvnResult = & mvn package -q "-DskipTests" "-Dmaven.test.skip=true" "-Dmaven.javadoc.skip=true" 2>&1
 if ($LASTEXITCODE -ne 0) {
-    Write-Error "Error de compilacion. Revirtiendo cambios..."
+    Write-Error "Error al compilar/crear JAR. Revirtiendo cambios..."
     $pomContent | Set-Content $pomPath -Encoding UTF8
     Write-Host $mvnResult
     exit 1
 }
-Write-Success "Compilacion exitosa"
-
-# Crear JAR
-Write-Info "Creando JAR..."
-& mvn package -q -DskipTests 2>&1 | Out-Null
-if ($LASTEXITCODE -ne 0) {
-    Write-Error "Error al crear JAR"
-} else {
-    Write-Success "JAR creado: target/Apocalipsis-$newVersion.jar"
-}
+Write-Success "JAR creado: target/Apocalipsis-$newVersion.jar"
 
 # Git operations
 Write-Info "Ejecutando operaciones de Git..."
@@ -122,6 +113,54 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 Write-Success "Archivos agregados al staging"
+
+# Obtener estadisticas de cambios
+Write-Info "Analizando cambios..."
+$gitDiff = git diff --cached --stat --numstat 2>&1
+$gitDiffSummary = git diff --cached --shortstat 2>&1
+
+# Contar archivos y lineas
+$filesChanged = @()
+$totalInsertions = 0
+$totalDeletions = 0
+
+$numstatLines = git diff --cached --numstat 2>&1
+foreach ($line in $numstatLines) {
+    if ($line -match '^(\d+|-)\s+(\d+|-)\s+(.+)$') {
+        $insertions = if ($Matches[1] -eq '-') { 0 } else { [int]$Matches[1] }
+        $deletions = if ($Matches[2] -eq '-') { 0 } else { [int]$Matches[2] }
+        $fileName = $Matches[3]
+        $totalInsertions += $insertions
+        $totalDeletions += $deletions
+        $filesChanged += [PSCustomObject]@{
+            File = $fileName
+            Insertions = $insertions
+            Deletions = $deletions
+        }
+    }
+}
+
+# Mostrar resumen de cambios
+if ($filesChanged.Count -gt 0) {
+    Write-Host ""
+    Write-Host "  ARCHIVOS MODIFICADOS:" -ForegroundColor Magenta
+    Write-Host "  ---------------------" -ForegroundColor Magenta
+    foreach ($file in $filesChanged) {
+        $ins = if ($file.Insertions -gt 0) { "+$($file.Insertions)" } else { "" }
+        $del = if ($file.Deletions -gt 0) { "-$($file.Deletions)" } else { "" }
+        $stats = "$ins $del".Trim()
+        Write-Host "    $($file.File)" -ForegroundColor White -NoNewline
+        if ($file.Insertions -gt 0) { Write-Host " +$($file.Insertions)" -ForegroundColor Green -NoNewline }
+        if ($file.Deletions -gt 0) { Write-Host " -$($file.Deletions)" -ForegroundColor Red -NoNewline }
+        Write-Host ""
+    }
+    Write-Host ""
+    Write-Host "  TOTAL: $($filesChanged.Count) archivo(s), " -ForegroundColor Cyan -NoNewline
+    Write-Host "+$totalInsertions" -ForegroundColor Green -NoNewline
+    Write-Host " / " -ForegroundColor Cyan -NoNewline
+    Write-Host "-$totalDeletions" -ForegroundColor Red
+    Write-Host ""
+}
 
 # Crear mensaje de commit
 $commitMessage = "v$newVersion"
