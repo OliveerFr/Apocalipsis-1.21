@@ -9,6 +9,7 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 
 import java.io.File;
 import java.io.IOException;
@@ -1121,6 +1122,57 @@ public class SkillService {
     
     // ==================== INVOCACIONES ====================
     
+    // Task ID para el seguimiento de mascotas
+    private int petFollowTaskId = -1;
+    
+    /**
+     * Inicia el sistema de seguimiento de mascotas invocadas
+     */
+    private void startPetFollowTask() {
+        if (petFollowTaskId != -1) {
+            Bukkit.getScheduler().cancelTask(petFollowTaskId);
+        }
+        
+        // Task que hace que las mascotas sigan a sus dueños cada 10 ticks
+        petFollowTaskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, () -> {
+            for (Map.Entry<UUID, java.util.List<UUID>> entry : entidadesInvocadas.entrySet()) {
+                UUID playerUuid = entry.getKey();
+                Player player = Bukkit.getPlayer(playerUuid);
+                if (player == null || !player.isOnline()) continue;
+                
+                java.util.List<UUID> entityIds = entry.getValue();
+                if (entityIds == null) continue;
+                
+                for (UUID entityId : entityIds) {
+                    org.bukkit.entity.Entity entity = Bukkit.getEntity(entityId);
+                    if (entity == null || entity.isDead()) continue;
+                    
+                    // Calcular distancia al jugador
+                    double distance = entity.getLocation().distance(player.getLocation());
+                    
+                    // Si está muy lejos, teleportar
+                    if (distance > 30) {
+                        entity.teleport(player.getLocation().add(
+                            (Math.random() - 0.5) * 2, 0, (Math.random() - 0.5) * 2));
+                        continue;
+                    }
+                    
+                    // Si está a distancia media, hacer que camine hacia el jugador
+                    if (distance > 6 && entity instanceof org.bukkit.entity.Mob mob) {
+                        // El pathfinder hará que se acerque
+                        mob.getPathfinder().moveTo(player.getLocation());
+                    }
+                    
+                    // Partículas sutiles de vinculo cada cierto tiempo
+                    if (Math.random() < 0.1) {
+                        entity.getWorld().spawnParticle(org.bukkit.Particle.HEART, 
+                            entity.getLocation().add(0, 1, 0), 1, 0.2, 0.2, 0.2, 0);
+                    }
+                }
+            }
+        }, 10L, 10L); // Cada 0.5 segundos
+    }
+    
     /**
      * Invoca un lobo compañero que sigue y protege al jugador
      * Duración: 15 minutos, Cooldown: 20 minutos
@@ -1147,29 +1199,60 @@ public class SkillService {
         int cantidad = hasSkill(uuid, Skill.MANADA_LOBOS) ? 3 : 1;
         boolean mejorado = hasSkill(uuid, Skill.DOMADOR_BESTIAS);
         
+        // Iniciar task de seguimiento si no está corriendo
+        if (petFollowTaskId == -1) {
+            startPetFollowTask();
+        }
+        
         for (int i = 0; i < cantidad; i++) {
             org.bukkit.Location loc = player.getLocation().add(
                 (Math.random() - 0.5) * 2, 0, (Math.random() - 0.5) * 2);
             org.bukkit.entity.Wolf wolf = player.getWorld().spawn(loc, org.bukkit.entity.Wolf.class);
             wolf.setTamed(true);
             wolf.setOwner(player);
-            wolf.setCustomName("§b" + player.getName() + "'s Wolf");
+            wolf.setCustomName("§b🐺 " + player.getName());
             wolf.setCustomNameVisible(true);
+            wolf.setSitting(false); // Asegurar que NO esté sentado
+            wolf.setCollarColor(org.bukkit.DyeColor.CYAN);
+            
+            // Prevenir que desaparezca
+            wolf.setPersistent(true);
+            wolf.setRemoveWhenFarAway(false);
             
             if (mejorado) {
                 // 2x más fuerte con DOMADOR_BESTIAS
                 wolf.getAttribute(Attribute.MAX_HEALTH).setBaseValue(40); // 20 hearts
                 wolf.setHealth(40);
                 wolf.getAttribute(Attribute.ATTACK_DAMAGE).setBaseValue(8); // 4 hearts damage
+                wolf.setCustomName("§6🐺 " + player.getName() + " §c[+]");
             }
             
             // Registrar entidad
             entidadesInvocadas.computeIfAbsent(uuid, k -> new java.util.ArrayList<>())
                 .add(wolf.getUniqueId());
+            
+            // Efecto de aparición
+            wolf.getWorld().spawnParticle(org.bukkit.Particle.CLOUD, wolf.getLocation().add(0, 0.5, 0), 
+                10, 0.3, 0.3, 0.3, 0.02);
         }
         
         // Programar despawn después de 15 minutos
-        Bukkit.getScheduler().runTaskLater(plugin, () -> despawnEntidades(uuid), 15 * 60 * 20L);
+        final java.util.List<UUID> spawnedWolves = new java.util.ArrayList<>(
+            entidadesInvocadas.getOrDefault(uuid, new java.util.ArrayList<>()));
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            for (UUID wolfId : spawnedWolves) {
+                org.bukkit.entity.Entity entity = Bukkit.getEntity(wolfId);
+                if (entity != null && !entity.isDead()) {
+                    entity.getWorld().spawnParticle(org.bukkit.Particle.CLOUD, 
+                        entity.getLocation(), 20, 0.5, 0.5, 0.5, 0.1);
+                    entity.remove();
+                }
+            }
+            Player p = Bukkit.getPlayer(uuid);
+            if (p != null && p.isOnline()) {
+                p.sendMessage("§7Tus lobos se han marchado...");
+            }
+        }, 15 * 60 * 20L);
         
         // Cooldown de 20 minutos
         loboCompañeroCooldowns.put(uuid, System.currentTimeMillis() + 20 * 60 * 1000);
@@ -1204,29 +1287,60 @@ public class SkillService {
         // Limpiar entidades anteriores
         despawnEntidades(uuid);
         
+        // Iniciar task de seguimiento si no está corriendo
+        if (petFollowTaskId == -1) {
+            startPetFollowTask();
+        }
+        
         boolean mejorado = hasSkill(uuid, Skill.DOMADOR_BESTIAS);
         
         org.bukkit.entity.Cat cat = player.getWorld().spawn(player.getLocation(), org.bukkit.entity.Cat.class);
         cat.setTamed(true);
         cat.setOwner(player);
-        cat.setCustomName("§e" + player.getName() + "'s Guardian");
+        cat.setCustomName("§e🐱 " + player.getName());
         cat.setCustomNameVisible(true);
+        cat.setSitting(false); // Asegurar que NO esté sentado
+        
+        // Prevenir que desaparezca
+        cat.setPersistent(true);
+        cat.setRemoveWhenFarAway(false);
+        
+        // Elegir un tipo de gato aleatorio pero bonito
+        org.bukkit.entity.Cat.Type[] tipos = org.bukkit.entity.Cat.Type.values();
+        cat.setCatType(tipos[(int)(Math.random() * tipos.length)]);
         
         if (mejorado) {
             cat.getAttribute(Attribute.MAX_HEALTH).setBaseValue(40);
             cat.setHealth(40);
+            cat.setCustomName("§6🐱 " + player.getName() + " §c[+]");
         }
+        
+        // Efecto de aparición
+        cat.getWorld().spawnParticle(org.bukkit.Particle.HEART, cat.getLocation().add(0, 0.5, 0), 
+            5, 0.3, 0.3, 0.3, 0);
         
         entidadesInvocadas.computeIfAbsent(uuid, k -> new java.util.ArrayList<>())
             .add(cat.getUniqueId());
         
         // Despawn después de 20 minutos
-        Bukkit.getScheduler().runTaskLater(plugin, () -> despawnEntidades(uuid), 20 * 60 * 20L);
+        final UUID catId = cat.getUniqueId();
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            org.bukkit.entity.Entity entity = Bukkit.getEntity(catId);
+            if (entity != null && !entity.isDead()) {
+                entity.getWorld().spawnParticle(org.bukkit.Particle.CLOUD, 
+                    entity.getLocation(), 15, 0.3, 0.3, 0.3, 0.05);
+                entity.remove();
+            }
+            Player p = Bukkit.getPlayer(uuid);
+            if (p != null && p.isOnline()) {
+                p.sendMessage("§7Tu gato guardián se ha marchado...");
+            }
+        }, 20 * 60 * 20L);
         
         // Cooldown 25 minutos
         gatoGuardianCooldowns.put(uuid, System.currentTimeMillis() + 25 * 60 * 1000);
         
-        player.sendMessage("§e§l🐱 ¡Gato guardián invocado! §7(20 min)");
+        player.sendMessage("§e§l🐱 ¡Gato guardián invocado! §7(20 min) - Ahuyenta creepers y phantoms");
         player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_CAT_PURREOW, 1.0f, 1.0f);
         
         return true;
@@ -1253,45 +1367,112 @@ public class SkillService {
         
         despawnEntidades(uuid);
         
-        org.bukkit.entity.Allay allay = player.getWorld().spawn(player.getLocation().add(0, 1, 0), org.bukkit.entity.Allay.class);
-        allay.setCustomName("§d" + player.getName() + "'s Allay");
-        allay.setCustomNameVisible(true);
+        // Iniciar task de seguimiento si no está corriendo
+        if (petFollowTaskId == -1) {
+            startPetFollowTask();
+        }
         
-        entidadesInvocadas.computeIfAbsent(uuid, k -> new java.util.ArrayList<>())
-            .add(allay.getUniqueId());
+        boolean mejorado = hasSkill(uuid, Skill.DOMADOR_BESTIAS);
+        int cantidad = mejorado ? 2 : 1; // Con Domador de Bestias, 2 allays
         
-        // Task para que el allay recoja items y los lleve al jugador
-        final UUID allayId = allay.getUniqueId();
-        Bukkit.getScheduler().runTaskTimer(plugin, task -> {
-            Player p = Bukkit.getPlayer(uuid);
-            if (p == null || !p.isOnline()) {
-                despawnEntidades(uuid);
-                task.cancel();
-                return;
-            }
+        for (int i = 0; i < cantidad; i++) {
+            org.bukkit.entity.Allay allay = player.getWorld().spawn(
+                player.getLocation().add((Math.random() - 0.5) * 2, 1.5, (Math.random() - 0.5) * 2), 
+                org.bukkit.entity.Allay.class);
+            allay.setCustomName("§d✧ " + player.getName());
+            allay.setCustomNameVisible(true);
             
-            org.bukkit.entity.Entity entity = Bukkit.getEntity(allayId);
-            if (entity == null || entity.isDead()) {
-                task.cancel();
-                return;
-            }
+            // Prevenir que desaparezca
+            allay.setPersistent(true);
+            allay.setRemoveWhenFarAway(false);
             
-            // Buscar items cercanos al allay y llevarlos al jugador
-            for (org.bukkit.entity.Entity e : entity.getNearbyEntities(8, 4, 8)) {
-                if (e instanceof org.bukkit.entity.Item item) {
-                    // Teleportar item al jugador
-                    item.teleport(p.getLocation());
+            // Efecto de aparición
+            allay.getWorld().spawnParticle(org.bukkit.Particle.NOTE, 
+                allay.getLocation(), 10, 0.5, 0.5, 0.5, 0);
+            
+            entidadesInvocadas.computeIfAbsent(uuid, k -> new java.util.ArrayList<>())
+                .add(allay.getUniqueId());
+            
+            // Task para que el allay recoja items y los lleve al jugador
+            final UUID allayId = allay.getUniqueId();
+            Bukkit.getScheduler().runTaskTimer(plugin, task -> {
+                Player p = Bukkit.getPlayer(uuid);
+                if (p == null || !p.isOnline()) {
+                    task.cancel();
+                    return;
                 }
-            }
-        }, 20L, 40L); // Cada 2 segundos
+                
+                org.bukkit.entity.Entity entity = Bukkit.getEntity(allayId);
+                if (entity == null || entity.isDead()) {
+                    task.cancel();
+                    return;
+                }
+                
+                org.bukkit.entity.Allay a = (org.bukkit.entity.Allay) entity;
+                
+                // Hacer que siga al jugador
+                if (a.getLocation().distance(p.getLocation()) > 15) {
+                    a.teleport(p.getLocation().add(0, 1.5, 0));
+                } else if (a.getLocation().distance(p.getLocation()) > 5) {
+                    // Volar hacia el jugador
+                    org.bukkit.util.Vector direction = p.getLocation().add(0, 1, 0)
+                        .toVector().subtract(a.getLocation().toVector()).normalize().multiply(0.3);
+                    a.setVelocity(direction);
+                }
+                
+                // Buscar items cercanos al allay y llevarlos al jugador
+                int itemsCollected = 0;
+                for (org.bukkit.entity.Entity e : entity.getNearbyEntities(8, 4, 8)) {
+                    if (e instanceof org.bukkit.entity.Item item && !item.isDead()) {
+                        // Verificar si el item puede ser recogido
+                        if (item.getPickupDelay() > 0) continue;
+                        
+                        // Dar el item directamente al jugador
+                        ItemStack stack = item.getItemStack();
+                        java.util.HashMap<Integer, ItemStack> leftover = p.getInventory().addItem(stack);
+                        
+                        if (leftover.isEmpty()) {
+                            item.remove();
+                            itemsCollected++;
+                            
+                            // Efecto de recolección
+                            a.getWorld().spawnParticle(org.bukkit.Particle.HAPPY_VILLAGER, 
+                                item.getLocation(), 5, 0.2, 0.2, 0.2, 0);
+                        }
+                    }
+                }
+                
+                // Notificar al jugador (máx cada 5 segundos)
+                if (itemsCollected > 0 && Math.random() < 0.3) {
+                    p.playSound(p.getLocation(), org.bukkit.Sound.ENTITY_ALLAY_AMBIENT_WITH_ITEM, 0.5f, 1.2f);
+                }
+            }, 20L, 20L); // Cada segundo
+        }
         
         // Despawn después de 10 minutos
-        Bukkit.getScheduler().runTaskLater(plugin, () -> despawnEntidades(uuid), 10 * 60 * 20L);
+        final java.util.List<UUID> spawnedAllays = new java.util.ArrayList<>(
+            entidadesInvocadas.getOrDefault(uuid, new java.util.ArrayList<>()));
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            for (UUID allayId : spawnedAllays) {
+                org.bukkit.entity.Entity entity = Bukkit.getEntity(allayId);
+                if (entity != null && !entity.isDead()) {
+                    entity.getWorld().spawnParticle(org.bukkit.Particle.NOTE, 
+                        entity.getLocation(), 15, 0.5, 0.5, 0.5, 0);
+                    entity.remove();
+                }
+            }
+            Player p = Bukkit.getPlayer(uuid);
+            if (p != null && p.isOnline()) {
+                p.sendMessage("§7Tu allay recolector se ha marchado...");
+            }
+        }, 10 * 60 * 20L);
         
         // Cooldown 15 minutos
         allayRecolectorCooldowns.put(uuid, System.currentTimeMillis() + 15 * 60 * 1000);
         
-        player.sendMessage("§d§l✧ ¡Allay recolector invocado! §7(10 min)");
+        String msg = cantidad > 1 ? "§d§l✧ ¡" + cantidad + " Allays recolectores invocados! §7(10 min)"
+                                  : "§d§l✧ ¡Allay recolector invocado! §7(10 min)";
+        player.sendMessage(msg);
         player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_ALLAY_AMBIENT_WITHOUT_ITEM, 1.0f, 1.0f);
         
         return true;
@@ -1375,24 +1556,90 @@ public class SkillService {
         
         despawnEntidades(uuid);
         
+        // Iniciar task de seguimiento si no está corriendo
+        if (petFollowTaskId == -1) {
+            startPetFollowTask();
+        }
+        
         boolean mejorado = hasSkill(uuid, Skill.DOMADOR_BESTIAS);
         
         org.bukkit.entity.IronGolem golem = player.getWorld().spawn(player.getLocation(), org.bukkit.entity.IronGolem.class);
         golem.setPlayerCreated(true);
-        golem.setCustomName("§7" + player.getName() + "'s Golem");
+        golem.setCustomName("§7🛡 " + player.getName());
         golem.setCustomNameVisible(true);
+        
+        // Prevenir que desaparezca
+        golem.setPersistent(true);
+        golem.setRemoveWhenFarAway(false);
         
         if (mejorado) {
             golem.getAttribute(Attribute.MAX_HEALTH).setBaseValue(200); // 100 hearts
             golem.setHealth(200);
             golem.getAttribute(Attribute.ATTACK_DAMAGE).setBaseValue(30);
+            golem.setCustomName("§6🛡 " + player.getName() + " §c[+]");
+        } else {
+            golem.getAttribute(Attribute.MAX_HEALTH).setBaseValue(100);
+            golem.setHealth(100);
+            golem.getAttribute(Attribute.ATTACK_DAMAGE).setBaseValue(15);
         }
+        
+        // Efecto de aparición épico
+        golem.getWorld().spawnParticle(org.bukkit.Particle.EXPLOSION_EMITTER, 
+            golem.getLocation().add(0, 1, 0), 1);
+        golem.getWorld().playSound(golem.getLocation(), org.bukkit.Sound.BLOCK_ANVIL_LAND, 0.7f, 0.5f);
         
         entidadesInvocadas.computeIfAbsent(uuid, k -> new java.util.ArrayList<>())
             .add(golem.getUniqueId());
         
+        // Task para que el golem ataque mobs hostiles cerca del jugador
+        final UUID golemId = golem.getUniqueId();
+        Bukkit.getScheduler().runTaskTimer(plugin, task -> {
+            Player p = Bukkit.getPlayer(uuid);
+            if (p == null || !p.isOnline()) {
+                task.cancel();
+                return;
+            }
+            
+            org.bukkit.entity.Entity entity = Bukkit.getEntity(golemId);
+            if (entity == null || entity.isDead()) {
+                task.cancel();
+                return;
+            }
+            
+            org.bukkit.entity.IronGolem g = (org.bukkit.entity.IronGolem) entity;
+            
+            // Hacer que siga al jugador si está lejos
+            double dist = g.getLocation().distance(p.getLocation());
+            if (dist > 25) {
+                g.teleport(p.getLocation().add(2, 0, 2));
+            } else if (dist > 10 && g.getTarget() == null) {
+                g.getPathfinder().moveTo(p.getLocation());
+            }
+            
+            // Buscar mobs hostiles cercanos para atacar
+            if (g.getTarget() == null || g.getTarget().isDead()) {
+                for (org.bukkit.entity.Entity e : g.getNearbyEntities(15, 8, 15)) {
+                    if (e instanceof org.bukkit.entity.Monster monster && !(e instanceof org.bukkit.entity.Player)) {
+                        g.setTarget(monster);
+                        break;
+                    }
+                }
+            }
+        }, 20L, 20L);
+        
         // Despawn después de 5 minutos
-        Bukkit.getScheduler().runTaskLater(plugin, () -> despawnEntidades(uuid), 5 * 60 * 20L);
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            org.bukkit.entity.Entity entity = Bukkit.getEntity(golemId);
+            if (entity != null && !entity.isDead()) {
+                entity.getWorld().spawnParticle(org.bukkit.Particle.SMOKE, 
+                    entity.getLocation(), 30, 0.5, 1, 0.5, 0.1);
+                entity.remove();
+            }
+            Player p = Bukkit.getPlayer(uuid);
+            if (p != null && p.isOnline()) {
+                p.sendMessage("§7Tu gólem protector se ha desvanecido...");
+            }
+        }, 5 * 60 * 20L);
         
         // Cooldown 10 minutos
         golemProtectorCooldowns.put(uuid, System.currentTimeMillis() + 10 * 60 * 1000);
@@ -1556,6 +1803,14 @@ public class SkillService {
      */
     public java.util.List<UUID> getEntidadesInvocadas(UUID uuid) {
         return entidadesInvocadas.get(uuid);
+    }
+    
+    /**
+     * Obtiene TODAS las entidades invocadas de todos los jugadores
+     * Usado por el listener para detectar muerte de mascotas
+     */
+    public Map<UUID, java.util.List<UUID>> getAllInvocaciones() {
+        return entidadesInvocadas;
     }
     
     /**
@@ -1784,6 +2039,16 @@ public class SkillService {
             Bukkit.getScheduler().cancelTask(effectTaskId);
             effectTaskId = -1;
         }
+        if (petFollowTaskId != -1) {
+            Bukkit.getScheduler().cancelTask(petFollowTaskId);
+            petFollowTaskId = -1;
+        }
+        
+        // Despawnear todas las entidades invocadas
+        for (UUID uuid : new java.util.ArrayList<>(entidadesInvocadas.keySet())) {
+            despawnEntidades(uuid);
+        }
+        
         saveData();
     }
     

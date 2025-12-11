@@ -91,11 +91,22 @@ ranks:
 # ════════════════════════════════════════════════════════════════════
 # NOTAS DE PROGRESIÓN (SISTEMA BALANCEADO - 2.5 MESES / 75 DÍAS)
 # ════════════════════════════════════════════════════════════════════
+# 
+# [v2.0] SISTEMA DE XP DIFERENCIADO POR RANGO
+# ═══════════════════════════════════════════════════════════════════
+# Rangos NOVATO → VETERANO: XP pasiva + misiones (progresión normal)
+# Rangos LEYENDA → ABSOLUTO: SOLO MISIONES dan XP (progresión élite)
+#
+# Esto significa que:
+# - Los rangos altos no suben por minar, matar, craftear, etc.
+# - Solo las MISIONES dan XP para rangos LEYENDA, MAESTRO, TITAN, ABSOLUTO
+# - Los eventos especiales y logros SÍ siguen dando XP
+#
 # Fuentes de XP (jugador activo):
 # - Misiones: ~1,000-1,200 XP/día (fuente principal 75-80%)
-# - Mobs: 1 XP/hostile, 75 XP/jefe (~50-100 XP/día)
-# - Minado: 4 XP/diamante, 8 XP/debris (~80-120 XP/día)
-# - Farming/Craft/Pesca: ~50-80 XP/día
+# - Mobs: 1 XP/hostile, 75 XP/jefe (~50-100 XP/día) [BLOQUEADO LEYENDA+]
+# - Minado: 4 XP/diamante, 8 XP/debris (~80-120 XP/día) [BLOQUEADO LEYENDA+]
+# - Farming/Craft/Pesca: ~50-80 XP/día [BLOQUEADO LEYENDA+]
 # Total: ~1,400-1,500 XP/día promedio (jugador muy activo)
 #
 # Progresión balanceada para 2.5 meses (75 días):
@@ -103,9 +114,9 @@ ranks:
 # - EXPLORADOR → SOBREVIVIENTE: +7,350 XP (Nivel 15) → ~10-12 días total
 # - SOBREVIVIENTE → VETERANO: +12,600 XP (Nivel 22) → ~20-25 días total
 # - VETERANO → LEYENDA: +17,850 XP (Nivel 29) → ~35-40 días total
-# - LEYENDA → MAESTRO: +23,100 XP (Nivel 36) → ~50-55 días total
-# - MAESTRO → TITAN: +28,350 XP (Nivel 43) → ~65-70 días total
-# - TITAN → ABSOLUTO: +18,375 XP (Nivel 50) → ~75 días total
+# - LEYENDA → MAESTRO: +23,100 XP (Nivel 36) → ~50-55 días total [Solo misiones]
+# - MAESTRO → TITAN: +28,350 XP (Nivel 43) → ~65-70 días total [Solo misiones]
+# - TITAN → ABSOLUTO: +18,375 XP (Nivel 50) → ~75 días total [Solo misiones]
 #
 # Jugador muy activo (1,450 XP/día): Alcanza ABSOLUTO en ~75 días ✨
 # Jugador activo (1,100 XP/día): Alcanza ABSOLUTO en ~100 días (3.3 meses)

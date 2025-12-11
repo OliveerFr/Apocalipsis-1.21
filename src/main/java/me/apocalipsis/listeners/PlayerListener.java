@@ -95,6 +95,13 @@ public class PlayerListener implements Listener {
         // [FIX DEFINITIVO] Forzar board compartido (crítico para que todos vean lo mismo)
         player.setScoreboard(org.bukkit.Bukkit.getScoreboardManager().getMainScoreboard());
         
+        // [v2.0 CASTIGOS PENDIENTES] Aplicar castigos por misiones fallidas de días anteriores
+        org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (plugin.getMissionService() != null) {
+                plugin.getMissionService().applyPendingPenalty(player);
+            }
+        }, 30L); // 1.5 segundos después de conectarse (para que vea el título de bienvenida primero)
+        
         // [EVASION PUNISHMENT] Aplicar castigos físicos pendientes
         plugin.getDisasterEvasionTracker().applyReconnectPunishment(player);
         
@@ -150,6 +157,70 @@ public class PlayerListener implements Listener {
             // Actualizar header/footer para todos
             tablistManager.updateAll();
         }, 10L);
+        
+        // ═══════════════════════════════════════════════════════════════════
+        // [v2.0] SISTEMA DE BIENVENIDA PARA NUEVOS JUGADORES
+        // ═══════════════════════════════════════════════════════════════════
+        if (!player.hasPlayedBefore()) {
+            // Nuevo jugador - mostrar tutorial de bienvenida
+            org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                sendWelcomeTutorial(player);
+            }, 60L); // 3 segundos después de entrar
+        }
+        
+        // ═══════════════════════════════════════════════════════════════════
+        // [v2.0] NOTIFICACIÓN DE RECOMPENSAS PENDIENTES
+        // ═══════════════════════════════════════════════════════════════════
+        org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (plugin.getRewardClaimSystem() != null) {
+                int pendingRewards = plugin.getRewardClaimSystem().getTotalPendingItems(player.getUniqueId());
+                if (pendingRewards > 0) {
+                    player.sendMessage("");
+                    player.sendMessage("§6§l🎁 §e¡Tienes §a" + pendingRewards + " §erecompensa(s) pendiente(s)!");
+                    player.sendMessage("§7   Usa §a/recompensa §7o §a/avo menu §7para reclamarlas.");
+                    player.sendMessage("");
+                    player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 0.8f);
+                }
+            }
+        }, 80L); // 4 segundos después de entrar
+    }
+    
+    /**
+     * Envía tutorial de bienvenida a nuevos jugadores
+     */
+    private void sendWelcomeTutorial(Player player) {
+        player.sendTitle(
+            "§5§l¡BIENVENIDO AL APOCALIPSIS!",
+            "§7Un mundo donde la supervivencia es todo...",
+            20, 100, 20
+        );
+        
+        player.playSound(player.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
+        
+        // Mensaje de tutorial después del título
+        org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            player.sendMessage("");
+            player.sendMessage("§5§l═══════════════════════════════════════════");
+            player.sendMessage("§d§l    ¡BIENVENIDO AL SERVIDOR APOCALIPSIS!");
+            player.sendMessage("§5§l═══════════════════════════════════════════");
+            player.sendMessage("");
+            player.sendMessage("§e§lGuía Rápida de Supervivencia:");
+            player.sendMessage("");
+            player.sendMessage("§a▸ §f/avo menu §7- Menú principal con todo");
+            player.sendMessage("§a▸ §f/recompensa §7- Reclamar recompensas");
+            player.sendMessage("§a▸ §f/avo status §7- Ver tu estado");
+            player.sendMessage("§a▸ §f/avo protecciones §7- Cómo sobrevivir");
+            player.sendMessage("");
+            player.sendMessage("§c§l¡IMPORTANTE!");
+            player.sendMessage("§7• Completa tus §emisiones diarias §7para ganar XP y PS");
+            player.sendMessage("§7• Sobrevive a los §cdesastres §7(terremotos, huracanes, fuego)");
+            player.sendMessage("§7• Sube de §drango §7para desbloquear recompensas");
+            player.sendMessage("");
+            player.sendMessage("§6Consejo: §eUsa §a/avo menu §epara empezar.");
+            player.sendMessage("");
+            player.sendMessage("§5§l═══════════════════════════════════════════");
+            player.sendMessage("");
+        }, 80L); // 4 segundos después del título
     }
 
     @EventHandler

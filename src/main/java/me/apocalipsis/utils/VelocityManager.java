@@ -1,15 +1,16 @@
 package me.apocalipsis.utils;
 
-import org.bukkit.entity.Player;
-import org.bukkit.util.Vector;
-import org.bukkit.Bukkit;
-import me.apocalipsis.Apocalipsis;
-
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
+import org.bukkit.util.Vector;
+
+import me.apocalipsis.Apocalipsis;
 
 /**
  * Gestiona aplicación gradual de velocidad para evitar detección de anti-cheats
@@ -63,35 +64,35 @@ public class VelocityManager {
     
     /**
      * Aplica protección temporal contra el kick por "floating too long"
-     * Usa allowFlight temporalmente y resetea fall distance
+     * Solo resetea fall distance continuamente - NO activa vuelo para evitar bans de anti-cheat
      */
     private void applyAntiKickProtection(Player player) {
         UUID uuid = player.getUniqueId();
         
-        // Si ya está protegido, no hacer nada extra
+        // Si ya está protegido, solo resetear fall distance
         if (protectedPlayers.contains(uuid)) {
             player.setFallDistance(0f);
             return;
         }
         
-        // Guardar estado original de allowFlight
-        boolean wasAllowFlight = player.getAllowFlight();
-        
-        // Activar protección
+        // Activar protección (sin tocar allowFlight)
         protectedPlayers.add(uuid);
-        player.setAllowFlight(true);
         player.setFallDistance(0f);
         
-        // Programar restauración del estado
+        // Resetear fall distance continuamente durante la protección
+        int taskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, () -> {
+            if (player.isOnline()) {
+                player.setFallDistance(0f);
+            }
+        }, 0L, 5L); // Cada 5 ticks (0.25s)
+        
+        // Programar fin de la protección
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (player.isOnline()) {
-                // Solo desactivar si no estaba permitido originalmente y no está volando
-                if (!wasAllowFlight && !player.isFlying()) {
-                    player.setAllowFlight(false);
-                }
                 player.setFallDistance(0f);
             }
             protectedPlayers.remove(uuid);
+            Bukkit.getScheduler().cancelTask(taskId);
         }, PROTECTION_TICKS);
     }
     

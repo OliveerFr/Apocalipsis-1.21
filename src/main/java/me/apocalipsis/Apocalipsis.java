@@ -41,6 +41,7 @@ import me.apocalipsis.utils.ConfigManager;
 import me.apocalipsis.utils.OnlinePlayersCache;
 import me.apocalipsis.utils.VelocityManager;
 import me.apocalipsis.ui.RewardClaimSystem;
+import me.apocalipsis.ui.MainMenuManager;
 import me.apocalipsis.commands.RecompensaCommand;
 import me.apocalipsis.skills.SkillService;
 import me.apocalipsis.skills.SkillTreeGUI;
@@ -80,6 +81,7 @@ public final class Apocalipsis extends JavaPlugin {
     private ScoreboardManager scoreboardManager;
     private TablistManager tablistManager;
     private RewardClaimSystem rewardClaimSystem;
+    private MainMenuManager mainMenuManager;
 
     // Listeners
     private MissionListener missionListener;
@@ -171,6 +173,9 @@ public final class Apocalipsis extends JavaPlugin {
         
         // Inicializar sistema de recompensas reclamables
         rewardClaimSystem = new RewardClaimSystem(this);
+        
+        // Inicializar menú principal
+        mainMenuManager = new MainMenuManager(this);
 
         // Registrar desastres (ahora con PerformanceAdapter)
         disasterRegistry.registerDefaults(this, messageBus, soundUtil, timeService, performanceAdapter);
@@ -617,6 +622,10 @@ public final class Apocalipsis extends JavaPlugin {
     
     public RewardClaimSystem getRewardClaimSystem() {
         return rewardClaimSystem;
+    }
+    
+    public MainMenuManager getMainMenuManager() {
+        return mainMenuManager;
     }
     
     public SkillService getSkillService() {

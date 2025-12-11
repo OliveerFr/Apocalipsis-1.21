@@ -105,4 +105,30 @@ public enum XPSource {
         if (name().startsWith("STREAK") || name().startsWith("FIRST") || name().startsWith("WEEKEND")) return "Bonus";
         return "Otros";
     }
+    
+    /**
+     * [LEYENDA+] Determina si esta fuente de XP es "pasiva" (no misiones).
+     * Los rangos LEYENDA+ solo ganan XP por misiones, no por fuentes pasivas.
+     * 
+     * Fuentes NO pasivas (siempre dan XP):
+     * - MISSION_* (misiones)
+     * - EVENT_* (eventos del servidor)
+     * - ADVANCEMENT_* (logros importantes)
+     * 
+     * Fuentes pasivas (bloqueadas para LEYENDA+):
+     * - Matar mobs, minar, craftear, pescar, etc.
+     */
+    public boolean isPassive() {
+        // Misiones NUNCA son pasivas - siempre dan XP
+        if (name().startsWith("MISSION")) return false;
+        
+        // Eventos del servidor tampoco son pasivos
+        if (name().startsWith("EVENT")) return false;
+        
+        // Logros importantes no son pasivos
+        if (name().startsWith("ADVANCEMENT")) return false;
+        
+        // Todo lo demás es pasivo (minar, matar, craftear, pescar, etc.)
+        return true;
+    }
 }

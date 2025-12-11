@@ -591,10 +591,11 @@ public class HuracanNew extends DisasterBase {
             pushZ *= (1 - agachadoReduction);
         }
 
-        // NUEVO: Durante ráfaga fuerte, añadir levitate
-        if (rachaActiva && rachaSistemaEnabled && !isUnderRoof(player)) {
-            player.addPotionEffect(new PotionEffect(PotionEffectType.LEVITATION, 20, 0, false, false));
-        }
+        // DESACTIVADO: Levitation causa detección de vuelo por anti-cheats
+        // Durante ráfaga fuerte, solo empujar horizontalmente (sin levitar)
+        // if (rachaActiva && rachaSistemaEnabled && !isUnderRoof(player)) {
+        //     player.addPotionEffect(new PotionEffect(PotionEffectType.LEVITATION, 20, 0, false, false));
+        // }
 
         Vector velocity = player.getVelocity();
         velocity.add(new Vector(pushX, 0, pushZ));

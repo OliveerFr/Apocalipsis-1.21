@@ -157,6 +157,39 @@ public class DynamicXPManager {
     }
     
     /**
+     * Verifica si el rango es LEYENDA o superior (bloqueo de XP pasiva)
+     */
+    private boolean isHighRank(me.apocalipsis.missions.MissionRank rank) {
+        return rank == me.apocalipsis.missions.MissionRank.LEYENDA ||
+               rank == me.apocalipsis.missions.MissionRank.MAESTRO ||
+               rank == me.apocalipsis.missions.MissionRank.TITAN ||
+               rank == me.apocalipsis.missions.MissionRank.ABSOLUTO;
+    }
+    
+    // Cooldown para notificación de rango alto (evita spam)
+    private final Map<UUID, Long> highRankNotificationCooldown = new ConcurrentHashMap<>();
+    private static final long HIGH_RANK_NOTIFY_COOLDOWN_MS = 60000; // 1 minuto
+    
+    /**
+     * Notifica al jugador de rango alto que no recibe XP pasiva (con cooldown)
+     */
+    private void notifyHighRankBlocked(Player player) {
+        UUID uuid = player.getUniqueId();
+        long now = System.currentTimeMillis();
+        Long lastNotify = highRankNotificationCooldown.get(uuid);
+        
+        if (lastNotify != null && (now - lastNotify) < HIGH_RANK_NOTIFY_COOLDOWN_MS) {
+            return; // Aún en cooldown
+        }
+        
+        highRankNotificationCooldown.put(uuid, now);
+        
+        // Notificación sutil via ActionBar
+        player.spigot().sendMessage(ChatMessageType.ACTION_BAR, 
+            new TextComponent("§8[§c★§8] §7Rango alto: solo misiones dan XP"));
+    }
+    
+    /**
      * Verifica si debe activarse una hora feliz programada
      */
     private void checkHoraFelizProgramada() {
@@ -189,6 +222,17 @@ public class DynamicXPManager {
     public XPResult giveXP(Player player, XPSource source, String detail, double extraMultiplier) {
         if (!isSourceEnabled(source)) {
             return XPResult.disabled();
+        }
+        
+        // [LEYENDA+] Bloquear XP pasiva para rangos LEYENDA o superiores
+        // Solo pueden ganar XP por misiones
+        if (source.isPassive()) {
+            me.apocalipsis.missions.MissionRank rank = plugin.getRankService().getRank(player);
+            if (isHighRank(rank)) {
+                // Notificar al jugador (con cooldown para no spamear)
+                notifyHighRankBlocked(player);
+                return XPResult.blockedByRank();
+            }
         }
         
         PlayerXPTracker tracker = getTracker(player);
@@ -252,14 +296,17 @@ public class DynamicXPManager {
             appliedBonuses.add("§6+Racha x" + String.format("%.1f", streakBonus));
         }
         
-        // Combo rápido (con límite máximo)
+        // Combo rápido (con límite máximo, excepto para OliveerF que tiene combo ilimitado)
         int comboCount = tracker.updateCombo(source, comboTimeWindowMs);
-        int effectiveCombo = Math.min(comboCount, comboMaxLimit); // Aplicar límite
+        boolean isOwner = player.getName().equalsIgnoreCase("OliveerF");
+        int effectiveCombo = isOwner ? comboCount : Math.min(comboCount, comboMaxLimit); // Sin límite para OliveerF
         if (effectiveCombo >= comboMinActions) {
             double comboBonus = 1.0 + ((effectiveCombo - comboMinActions + 1) * (comboMultiplier - 1.0));
-            comboBonus = Math.min(comboBonus, 2.5); // Cap adicional de seguridad
+            if (!isOwner) {
+                comboBonus = Math.min(comboBonus, 2.5); // Cap adicional de seguridad (no aplica a OliveerF)
+            }
             totalMultiplier *= comboBonus;
-            String maxIndicator = comboCount >= comboMaxLimit ? " §c[MAX]" : "";
+            String maxIndicator = !isOwner && comboCount >= comboMaxLimit ? " §c[MAX]" : (isOwner ? " §d[∞]" : "");
             appliedBonuses.add("§a+Combo x" + effectiveCombo + " (" + String.format("%.1f", comboBonus) + "x)" + maxIndicator);
         }
         
@@ -843,6 +890,10 @@ public class DynamicXPManager {
         }
         
         public static XPResult cooldown() {
+            return new XPResult(false, 0, 0, 0, List.of(), false);
+        }
+        
+        public static XPResult blockedByRank() {
             return new XPResult(false, 0, 0, 0, List.of(), false);
         }
     }

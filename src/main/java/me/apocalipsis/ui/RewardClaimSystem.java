@@ -355,7 +355,53 @@ public class RewardClaimSystem implements Listener {
                 return;
             }
             
-            // Permitir tomar el item
+            // [v2.0] Verificar si es un bloque de protección especial
+            if (isProtectionBlockItem(clicked)) {
+                event.setCancelled(true);
+                
+                // Extraer y ejecutar el comando
+                String command = extractProtectionCommand(clicked);
+                if (command != null && !command.isEmpty()) {
+                    // Ejecutar el comando y luego /ps get automáticamente
+                    final String playerName = player.getName();
+                    Bukkit.getScheduler().runTask(plugin, () -> {
+                        try {
+                            // Ejecutar ps give
+                            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command);
+                            plugin.getLogger().info("[RewardClaimSystem] ✓ Comando PS ejecutado: " + command);
+                            
+                            // [FIX] Ejecutar automáticamente /ps get para el jugador después de un pequeño delay
+                            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                                try {
+                                    // Hacer que el jugador ejecute /ps get automáticamente
+                                    player.performCommand("ps get");
+                                    plugin.getLogger().info("[RewardClaimSystem] ✓ /ps get ejecutado automáticamente para " + playerName);
+                                } catch (Exception e) {
+                                    plugin.getLogger().warning("[RewardClaimSystem] No se pudo ejecutar /ps get: " + e.getMessage());
+                                }
+                            }, 5L); // 5 ticks de delay (0.25 segundos)
+                            
+                            // Notificar al jugador
+                            player.sendMessage("");
+                            player.sendMessage("§a§l🛡 §a¡Bloque de protección reclamado!");
+                            player.sendMessage("§7El bloque ha sido añadido a tu inventario automáticamente.");
+                            player.sendMessage("");
+                            player.playSound(player.getLocation(), Sound.BLOCK_BEACON_ACTIVATE, 1.0f, 1.5f);
+                        } catch (Exception e) {
+                            player.sendMessage("§c✘ Error al reclamar bloque de protección. Contacta a un admin.");
+                            plugin.getLogger().severe("[RewardClaimSystem] Error ejecutando comando PS: " + e.getMessage());
+                        }
+                    });
+                    
+                    // Remover el item del inventario
+                    event.getClickedInventory().setItem(event.getSlot(), null);
+                } else {
+                    player.sendMessage("§c✘ Error: Comando de protección no válido.");
+                }
+                return;
+            }
+            
+            // Permitir tomar otros items normalmente
             // El item se removerá automáticamente
         }
     }
@@ -546,6 +592,56 @@ public class RewardClaimSystem implements Listener {
         }
         pendingRewards.clear();
         playersWithMenuOpen.clear();
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // PROTECCIÓN BLOCK HELPERS
+    // ═══════════════════════════════════════════════════════════════════
+    
+    /**
+     * Verifica si un ItemStack es un bloque de protección especial
+     * (creado por RewardService para comandos ps give)
+     */
+    private boolean isProtectionBlockItem(ItemStack item) {
+        if (item == null || item.getType() != Material.EMERALD_BLOCK) {
+            return false;
+        }
+        
+        if (!item.hasItemMeta() || !item.getItemMeta().hasLore()) {
+            return false;
+        }
+        
+        List<String> lore = item.getItemMeta().getLore();
+        if (lore == null) return false;
+        
+        // Buscar el marcador especial
+        for (String line : lore) {
+            if (line.startsWith("§8§oPS_CMD:")) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Extrae el comando PS del lore de un item de bloque de protección
+     */
+    private String extractProtectionCommand(ItemStack item) {
+        if (!item.hasItemMeta() || !item.getItemMeta().hasLore()) {
+            return null;
+        }
+        
+        List<String> lore = item.getItemMeta().getLore();
+        if (lore == null) return null;
+        
+        for (String line : lore) {
+            if (line.startsWith("§8§oPS_CMD:")) {
+                return line.replace("§8§oPS_CMD:", "").trim();
+            }
+        }
+        
+        return null;
     }
     
     // ═══════════════════════════════════════════════════════════════════

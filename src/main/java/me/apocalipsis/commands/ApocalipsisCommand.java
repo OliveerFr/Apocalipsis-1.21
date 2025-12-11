@@ -188,6 +188,9 @@ public class ApocalipsisCommand implements CommandExecutor {
             case "skillstats":
                 cmdSkillStats(sender, args);
                 break;
+            case "menu":
+                cmdMenu(sender);
+                break;
             default:
                 sender.sendMessage("§cSubcomando desconocido. Usa /avo para ver ayuda.");
                 break;
@@ -515,8 +518,10 @@ public class ApocalipsisCommand implements CommandExecutor {
         // missionService.resetExploreTrackers();
         missionService.resetHeightCounters();
         
-        // Finalizar día (marca misiones como fallidas)
-        missionService.endDay();
+        // [DEPRECADO] endDay ya no se usa
+        // Los castigos ahora se aplican automáticamente cuando se llama a /avo newday
+        // que verifica misiones pendientes del día anterior
+        sender.sendMessage("§7§oNota: Los castigos se aplican automáticamente en /avo newday");
         
         messageBus.broadcast("§7⌛ §fDía finalizado. Misiones no completadas han sido marcadas como §cfallidas§f.", "endday");
         sender.sendMessage("§7Día finalizado. Usa §e/avo newday§7 para iniciar un nuevo día con misiones frescas.");
@@ -4027,5 +4032,23 @@ public class ApocalipsisCommand implements CommandExecutor {
             sender.sendMessage("  §e/avo skillstats top [n] §7- Top N skills más usadas");
             sender.sendMessage("  §e/avo skillstats player <nombre> §7- Stats de un jugador");
         }
+    }
+    
+    /**
+     * Abre el menú principal para jugadores
+     * Acceso centralizado a todas las funciones del plugin
+     */
+    private void cmdMenu(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage("§cEste comando solo puede ser usado por jugadores.");
+            return;
+        }
+        
+        if (plugin.getMainMenuManager() == null) {
+            sender.sendMessage("§cEl menú principal no está disponible.");
+            return;
+        }
+        
+        plugin.getMainMenuManager().openMainMenu(player);
     }
 }

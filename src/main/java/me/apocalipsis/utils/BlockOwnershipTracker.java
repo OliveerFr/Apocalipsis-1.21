@@ -291,55 +291,78 @@ public class BlockOwnershipTracker {
     /**
      * Sincroniza el cache con la base de datos
      */
-    private void syncToDatabase() {
+    private synchronized void syncToDatabase() {
         if (dbConnection == null) return;
         
         try {
-            dbConnection.setAutoCommit(false);
+            // Verificar que la conexión esté válida
+            if (dbConnection.isClosed()) {
+                plugin.getLogger().warning("[BlockTracker] Conexión DB cerrada, reinicializando...");
+                initDatabase();
+                if (dbConnection == null || dbConnection.isClosed()) {
+                    return;
+                }
+            }
             
-            // Sincronizar bloques
-            try (PreparedStatement stmt = dbConnection.prepareStatement(
-                    "INSERT OR REPLACE INTO block_owners (block_key, owner_uuid, timestamp) VALUES (?, ?, ?)")) {
+            // Guardar el estado actual de auto-commit
+            boolean wasAutoCommit = dbConnection.getAutoCommit();
+            
+            try {
+                dbConnection.setAutoCommit(false);
                 
-                int count = 0;
-                for (Map.Entry<String, UUID> entry : blockOwners.entrySet()) {
-                    String key = entry.getKey();
-                    Long timestamp = blockTimestamps.get(key);
-                    if (timestamp == null) continue;
+                // Sincronizar bloques
+                try (PreparedStatement stmt = dbConnection.prepareStatement(
+                        "INSERT OR REPLACE INTO block_owners (block_key, owner_uuid, timestamp) VALUES (?, ?, ?)")) {
                     
-                    stmt.setString(1, key);
-                    stmt.setString(2, entry.getValue().toString());
-                    stmt.setLong(3, timestamp);
-                    stmt.addBatch();
-                    
-                    count++;
-                    if (count % 1000 == 0) {
-                        stmt.executeBatch();
+                    int count = 0;
+                    for (Map.Entry<String, UUID> entry : blockOwners.entrySet()) {
+                        String key = entry.getKey();
+                        Long timestamp = blockTimestamps.get(key);
+                        if (timestamp == null) continue;
+                        
+                        stmt.setString(1, key);
+                        stmt.setString(2, entry.getValue().toString());
+                        stmt.setLong(3, timestamp);
+                        stmt.addBatch();
+                        
+                        count++;
+                        if (count % 1000 == 0) {
+                            stmt.executeBatch();
+                        }
                     }
+                    stmt.executeBatch();
                 }
-                stmt.executeBatch();
-            }
-            
-            // Sincronizar última conexión de jugadores
-            try (PreparedStatement stmt = dbConnection.prepareStatement(
-                    "INSERT OR REPLACE INTO player_last_seen (player_uuid, last_seen) VALUES (?, ?)")) {
                 
-                for (Map.Entry<UUID, Long> entry : playerLastSeen.entrySet()) {
-                    stmt.setString(1, entry.getKey().toString());
-                    stmt.setLong(2, entry.getValue());
-                    stmt.addBatch();
+                // Sincronizar última conexión de jugadores
+                try (PreparedStatement stmt = dbConnection.prepareStatement(
+                        "INSERT OR REPLACE INTO player_last_seen (player_uuid, last_seen) VALUES (?, ?)")) {
+                    
+                    for (Map.Entry<UUID, Long> entry : playerLastSeen.entrySet()) {
+                        stmt.setString(1, entry.getKey().toString());
+                        stmt.setLong(2, entry.getValue());
+                        stmt.addBatch();
+                    }
+                    stmt.executeBatch();
                 }
-                stmt.executeBatch();
+                
+                dbConnection.commit();
+                
+            } finally {
+                // Restaurar estado de auto-commit
+                try {
+                    dbConnection.setAutoCommit(wasAutoCommit);
+                } catch (SQLException ignored) {
+                    // Si falla aquí, no es crítico
+                }
             }
-            
-            dbConnection.commit();
-            dbConnection.setAutoCommit(true);
             
         } catch (SQLException e) {
             plugin.getLogger().warning("[BlockTracker] Error sincronizando DB: " + e.getMessage());
             try {
-                dbConnection.rollback();
-                dbConnection.setAutoCommit(true);
+                if (dbConnection != null && !dbConnection.isClosed() && !dbConnection.getAutoCommit()) {
+                    dbConnection.rollback();
+                    dbConnection.setAutoCommit(true);
+                }
             } catch (SQLException ex) {
                 // Ignorar
             }

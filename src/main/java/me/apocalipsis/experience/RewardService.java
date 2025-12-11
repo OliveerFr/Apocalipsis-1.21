@@ -29,6 +29,7 @@ import org.bukkit.entity.Firework;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.FireworkMeta;
+import org.bukkit.inventory.meta.ItemMeta;
 
 import me.apocalipsis.Apocalipsis;
 import me.apocalipsis.missions.MissionDifficulty;
@@ -158,20 +159,18 @@ public class RewardService {
             if (item != null) {
                 items.add(item);
             } else {
-                // Comandos que no son "give" se ejecutan inmediatamente (ej: ps give)
+                // Comandos especiales (ps give) van al sistema de reclamación
                 specialCommands.add(processedCommand);
             }
         }
         
-        // Ejecutar comandos especiales (como ps give) INMEDIATAMENTE al subir de rango
-        // Estos NO van al sistema de reclamación porque no son items
-        int protectionBlocksGiven = 0;
+        // [v2.0] Los bloques de protección ahora van al menú de recompensas
+        // En lugar de ejecutarse inmediatamente, aparecen como items reclamables
+        int protectionBlocksTotal = 0;
         for (String cmd : specialCommands) {
-            plugin.getLogger().info("[Rewards] Ejecutando comando especial: " + cmd);
-            
-            // Contar bloques de protección
+            // Detectar comandos de bloques de protección
             if (cmd.toLowerCase().startsWith("ps give") || cmd.toLowerCase().startsWith("ps admin give")) {
-                // Extraer cantidad del comando (formato: ps give player block [cantidad])
+                // Extraer cantidad del comando
                 String[] parts = cmd.split("\\s+");
                 int amount = 1;
                 if (parts.length >= 4) {
@@ -181,39 +180,25 @@ public class RewardService {
                         amount = 1;
                     }
                 }
-                protectionBlocksGiven += amount;
-            }
-            
-            final String finalCmd = cmd;
-            final Player finalPlayer = player;
-            Bukkit.getScheduler().runTask(plugin, () -> {
-                try {
-                    plugin.getLogger().info("[Rewards] Consola ejecutando: /" + finalCmd);
-                    // Ejecutar como consola del servidor (tiene todos los permisos)
-                    Bukkit.dispatchCommand(Bukkit.getConsoleSender(), finalCmd);
-                    plugin.getLogger().info("[Rewards] ✓ Comando enviado: " + finalCmd);
-                } catch (Exception e) {
-                    plugin.getLogger().severe("[Rewards] ✗ Error ejecutando comando: " + finalCmd);
-                    plugin.getLogger().severe("[Rewards] Error: " + e.getMessage());
-                    e.printStackTrace();
-                    // Notificar al jugador del error
-                    if (finalPlayer != null && finalPlayer.isOnline()) {
-                        finalPlayer.sendMessage("§c[Error] No se pudo entregar bloque de protección. Contacta a un admin.");
+                protectionBlocksTotal += amount;
+                
+                // Crear item visual para el menú de recompensas
+                ItemStack protectionItem = createProtectionBlockItem(cmd, amount);
+                items.add(protectionItem);
+                
+                plugin.getLogger().info("[Rewards] Bloque de protección añadido a recompensas: " + cmd);
+            } else {
+                // Otros comandos especiales se ejecutan inmediatamente
+                final String finalCmd = cmd;
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    try {
+                        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), finalCmd);
+                        plugin.getLogger().info("[Rewards] ✓ Comando ejecutado: " + finalCmd);
+                    } catch (Exception e) {
+                        plugin.getLogger().severe("[Rewards] ✗ Error ejecutando comando: " + finalCmd);
                     }
-                }
-            });
-        }
-        
-        // Notificar sobre bloques de protección otorgados
-        if (protectionBlocksGiven > 0) {
-            final int blocks = protectionBlocksGiven;
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                player.sendMessage("");
-                player.sendMessage("§a§l🛡 §a¡Has recibido §e" + blocks + " bloque(s) de protección§a!");
-                player.sendMessage("§7Usa §f/ps get §7para obtenerlos en tu inventario.");
-                player.sendMessage("");
-                player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_BEACON_ACTIVATE, 1.0f, 1.5f);
-            }, 5L);
+                });
+            }
         }
         
         // Añadir items al sistema de reclamación
@@ -233,6 +218,9 @@ public class RewardService {
             player.sendMessage("");
             player.sendMessage("§6§l════════════════════════════════════════");
             player.sendMessage("§e§l  🎁 RECOMPENSAS DE RANGO DISPONIBLES");
+            if (protectionBlocksTotal > 0) {
+                player.sendMessage("§a§l  🛡 +" + protectionBlocksTotal + " Bloque(s) de Protección");
+            }
             player.sendMessage("§7  Usa §f/recompensa §7para reclamar tus items.");
             player.sendMessage("§7  Tienes §e24 horas §7para reclamarlas.");
             player.sendMessage("§6§l════════════════════════════════════════");
@@ -360,6 +348,41 @@ public class RewardService {
         }
         
         return null;
+    }
+    
+    /**
+     * Crea un ItemStack especial que representa un bloque de protección.
+     * Este item se muestra en el menú de recompensas y al hacer click
+     * ejecuta el comando para dar el bloque de protección.
+     * 
+     * @param command El comando completo (ej: "ps give Player 15 2")
+     * @param amount La cantidad de bloques
+     * @return ItemStack con el bloque de esmeralda y metadata especial
+     */
+    private ItemStack createProtectionBlockItem(String command, int amount) {
+        ItemStack item = new ItemStack(Material.EMERALD_BLOCK, amount);
+        ItemMeta meta = item.getItemMeta();
+        
+        if (meta != null) {
+            meta.setDisplayName("§a§l🛡 Bloque de Protección");
+            
+            List<String> lore = new ArrayList<>();
+            lore.add("");
+            lore.add("§7Cantidad: §e" + amount);
+            lore.add("");
+            lore.add("§7Este bloque te protege de");
+            lore.add("§7los desastres naturales.");
+            lore.add("");
+            lore.add("§e▶ Click para reclamar");
+            lore.add("");
+            // Guardar el comando en el lore (oculto)
+            lore.add("§8§oPS_CMD:" + command);
+            
+            meta.setLore(lore);
+            item.setItemMeta(meta);
+        }
+        
+        return item;
     }
     
     // ═══════════════════════════════════════════════════════════════════

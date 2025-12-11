@@ -82,56 +82,49 @@ muerte_en_desastre:
 
 # ═══════════════════════════════════════════════════════════════════
 # MISIONES FALLIDAS AL FINALIZAR DÍA
+# Sistema de castigos SUAVES (solo XP, sonidos, notificaciones)
 # ═══════════════════════════════════════════════════════════════════
 mision_fallida:
   enabled: true
   
-  # Penalización por misión fallida (se aplica por CADA misión no completada)
-  por_mision:
-    # Efectos base (siempre se aplican)
-    efectos_base:
-      - tipo: "HUNGER"
-        duracion_segundos: 120   # 2 minutos
-        amplificador: 0
-    
-    # Efectos adicionales (chance por cada misión fallida)
-    efectos_adicionales:
-      probabilidad: 0.25         # 25% por misión
-      lista:
-        - tipo: "SLOW"
-          duracion_segundos: 60
-          amplificador: 0
-        - tipo: "WEAKNESS"
-          duracion_segundos: 45
-          amplificador: 0
+  # [v2.0] Castigos SUAVES - Sin efectos de poción, solo pérdida de XP
+  # El sistema ahora es más amigable: solo quita XP y notifica al jugador
   
-  # Penalización acumulativa (si fallas MUCHAS misiones)
+  # Pérdida de XP por misión fallida (escalado por dificultad)
+  # Valores moderados para no frustrar al jugador
+  perdida_xp_por_dificultad:
+    FACIL: 15            # Pérdida leve
+    MEDIA: 30            # Pérdida moderada  
+    DIFICIL: 50          # Pérdida notable
+  
+  # Penalización acumulativa (si fallas 3+ misiones)
+  # Solo muestra advertencias adicionales, NO efectos negativos
   penalizacion_acumulativa:
     umbral_misiones: 3           # Si fallas 3+ misiones
-    efectos:
-      - tipo: "UNLUCK"           # Mala suerte
-        duracion_segundos: 300   # 5 minutos
-        amplificador: 1          # Nivel 2
-      - tipo: "SLOW_DIGGING"
-        duracion_segundos: 180   # 3 minutos
-        amplificador: 1
+    mensaje_advertencia: true    # Mostrar mensaje de advertencia
+    sonido_extra: true           # Sonido adicional de alerta
   
-  # Pérdida de PS por misión fallida (escalado por dificultad)
-  # Reducido porque hay más misiones/día ahora
-  perdida_ps_por_dificultad:
-    FACIL: 2             # Antes 3 (-33%)
-    NORMAL: 5            # Antes 6 (-17%)
-    DIFICIL: 8           # Antes 10 (-20%)
-    EXTREMA: 12          # Antes 15 (-20%)
+  # Cooldown entre notificaciones (evita spam)
+  cooldown_notificacion_segundos: 10
   
   mensajes:
-    mision_fallida: "&7Misión fallida: &c%mision% &7(-&c%ps% PS&7)"
-    acumulativo: "&c&l⚠ Has fallado %cantidad% misiones! Penalización severa aplicada."
+    mision_fallida_single: "&c✗ &7Misión fallida: &c%mision% &7(-&c%xp% XP&7)"
+    mision_fallida_multiple: "&c✗ &7Has fallado &c%cantidad% &7misiones. &7(-&c%xp% XP&7)"
+    advertencia_acumulativa: "&c&l⚠ &7¡Cuidado! Fallar muchas misiones reduce tu progreso."
+    tip_ayuda: "&7Tip: Enfócate en misiones más fáciles si tienes poco tiempo."
   
   sonidos:
     fallo: "ENTITY_VILLAGER_NO"
     volumen: 0.8
     pitch: 0.7
+    acumulativo: "BLOCK_NOTE_BLOCK_BASS"
+    acumulativo_volumen: 1.0
+    acumulativo_pitch: 0.5
+  
+  # [REMOVIDO] Efectos de poción - Ya no se aplican
+  # El sistema anterior era muy punitivo, ahora solo afecta XP
+  # efectos_base: REMOVIDO
+  # efectos_adicionales: REMOVIDO
 
 # ═══════════════════════════════════════════════════════════════════
 # INACTIVIDAD / AFK DURANTE DESASTRE

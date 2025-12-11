@@ -54,10 +54,29 @@ public class MissionService {
     // [1.21.8] Control de celebración por jugador (evita retrigger)
     private final Set<UUID> playerDailyCompleteFired = new HashSet<>();
     
+    // [v2.0] Sistema de castigos pendientes y tracking de actividad
+    private final Map<UUID, Integer> playerLastActiveDay = new HashMap<>();      // Último día en que el jugador estuvo activo
+    private final Map<UUID, PendingPenalty> pendingPenalties = new HashMap<>();  // Castigos pendientes para jugadores offline
+    
     // [ALTURA] Variables mantenidas por compatibilidad (tipo deshabilitado pero código residual aún referenciado)
     private final Map<UUID, Integer> heightSeconds = new HashMap<>();
     private int heightTaskId = -1;
     private boolean debugExplore = false;
+    
+    /**
+     * Clase para almacenar castigos pendientes
+     */
+    public static class PendingPenalty {
+        public final int xpLoss;
+        public final int failedMissionsCount;
+        public final int dayFailed;
+        
+        public PendingPenalty(int xpLoss, int failedMissionsCount, int dayFailed) {
+            this.xpLoss = xpLoss;
+            this.failedMissionsCount = failedMissionsCount;
+            this.dayFailed = dayFailed;
+        }
+    }
 
     public MissionService(Apocalipsis plugin, MessageBus messageBus) {
         this.plugin = plugin;
@@ -142,10 +161,21 @@ public class MissionService {
 
     /**
      * Asigna misiones para un nuevo día a todos los jugadores online.
-     * IMPORTANTE: Limpia las misiones del día anterior antes de asignar nuevas.
+     * IMPORTANTE: 
+     * - Primero verifica y aplica castigos por misiones fallidas del día anterior
+     * - Solo castiga a jugadores que estuvieron activos el día anterior
+     * - Guarda castigos pendientes para jugadores offline
+     * - Luego limpia las misiones y asigna nuevas
+     * 
      * Este método se llama desde /avo newday
      */
     public void assignMissionsForDay(int day) {
+        int previousDay = day - 1;
+        
+        // [v2.0] PASO 1: Verificar y aplicar castigos del día anterior
+        // Solo para jugadores que estuvieron activos ese día
+        processDayEndPenalties(previousDay);
+        
         // [FIX] Limpiar todas las misiones del día anterior
         playerAssignments.clear();
         
@@ -155,7 +185,7 @@ public class MissionService {
         
         // Asignar nuevas misiones a todos los jugadores online
         for (Player player : plugin.getServer().getOnlinePlayers()) {
-            assignMissionsToPlayer(player);
+            assignMissionsToPlayer(player, day);
         }
         
         savePlayerData();
@@ -164,9 +194,208 @@ public class MissionService {
             plugin.getLogger().info("[MISIONES] Nuevo día " + day + " iniciado. Misiones anteriores limpiadas, nuevas asignadas a " + plugin.getServer().getOnlinePlayers().size() + " jugadores.");
         }
     }
+    
+    /**
+     * Procesa los castigos por misiones fallidas del día anterior.
+     * - Aplica castigos inmediatamente a jugadores online
+     * - Guarda castigos pendientes para jugadores offline
+     * - Solo afecta a jugadores que estuvieron activos ese día
+     */
+    private void processDayEndPenalties(int dayToCheck) {
+        if (dayToCheck <= 0) return; // No hay día anterior válido
+        
+        // Copiar para evitar ConcurrentModification
+        Map<UUID, List<MissionAssignment>> assignmentsCopy = new HashMap<>(playerAssignments);
+        
+        for (Map.Entry<UUID, List<MissionAssignment>> entry : assignmentsCopy.entrySet()) {
+            UUID uuid = entry.getKey();
+            List<MissionAssignment> assignments = entry.getValue();
+            
+            // Verificar si el jugador estuvo activo el día que estamos cerrando
+            Integer lastActiveDay = playerLastActiveDay.get(uuid);
+            if (lastActiveDay == null || lastActiveDay != dayToCheck) {
+                // El jugador no estuvo activo ese día, no penalizar
+                if (plugin.getConfigManager().isDebugCiclo()) {
+                    plugin.getLogger().info("[CASTIGOS] Jugador " + uuid + " no estuvo activo día " + dayToCheck + ", sin castigo");
+                }
+                continue;
+            }
+            
+            // Contar misiones fallidas (no completadas)
+            List<MissionAssignment> failedMissions = assignments.stream()
+                .filter(a -> !a.isCompleted() && !a.isFailed())
+                .collect(Collectors.toList());
+            
+            if (failedMissions.isEmpty()) {
+                // No hay misiones fallidas, nada que hacer
+                continue;
+            }
+            
+            // Calcular pérdida de XP
+            int totalXPLoss = calculateXPLoss(failedMissions);
+            
+            // Crear castigo pendiente
+            PendingPenalty penalty = new PendingPenalty(totalXPLoss, failedMissions.size(), dayToCheck);
+            
+            // Verificar si el jugador está online
+            Player player = plugin.getServer().getPlayer(uuid);
+            if (player != null && player.isOnline()) {
+                // Aplicar castigo inmediatamente
+                applyPendingPenalty(player, penalty);
+            } else {
+                // Guardar castigo pendiente para cuando entre
+                pendingPenalties.put(uuid, penalty);
+                
+                if (plugin.getConfigManager().isDebugCiclo()) {
+                    plugin.getLogger().info("[CASTIGOS] Castigo pendiente guardado para " + uuid + 
+                        ": -" + totalXPLoss + " XP por " + failedMissions.size() + " misiones fallidas");
+                }
+            }
+            
+            // Marcar misiones como fallidas
+            for (MissionAssignment assignment : failedMissions) {
+                assignment.setFailed(true);
+            }
+        }
+        
+        savePlayerData();
+    }
+    
+    /**
+     * Calcula la pérdida de XP total por misiones fallidas
+     */
+    private int calculateXPLoss(List<MissionAssignment> failedMissions) {
+        int totalXPLoss = 0;
+        for (MissionAssignment assignment : failedMissions) {
+            MissionDifficulty difficulty = assignment.getMission().getDificultad();
+            int xpLoss = switch (difficulty) {
+                case FACIL -> 15;
+                case MEDIA -> 30;
+                case DIFICIL -> 50;
+                default -> 20;
+            };
+            totalXPLoss += xpLoss;
+        }
+        return totalXPLoss;
+    }
+    
+    /**
+     * Aplica castigo pendiente a un jugador que acaba de conectarse.
+     * Llamado desde PlayerListener.onPlayerJoin()
+     * @return true si se aplicó un castigo pendiente
+     */
+    public boolean applyPendingPenalty(Player player) {
+        UUID uuid = player.getUniqueId();
+        PendingPenalty penalty = pendingPenalties.remove(uuid);
+        
+        if (penalty == null) {
+            return false;
+        }
+        
+        // Obtener XP actual y calcular nuevo valor
+        int currentXP = plugin.getExperienceService().getXP(player);
+        int newXP = Math.max(0, currentXP - penalty.xpLoss);
+        
+        // Solo aplicar si hay algo que quitar
+        if (penalty.xpLoss > 0 && currentXP > 0) {
+            plugin.getExperienceService().setXP(player, newXP);
+            
+            // Sonido de penalización
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 0.8f, 0.7f);
+            
+            // Mensaje explicativo
+            messageBus.sendMessage(player, "§c§l⚠ Castigo Pendiente Aplicado");
+            if (penalty.failedMissionsCount == 1) {
+                messageBus.sendMessage(player, "§7Fallaste §c1§7 misión del día §e" + penalty.dayFailed + "§7. (§c-" + penalty.xpLoss + " XP§7)");
+            } else {
+                messageBus.sendMessage(player, "§7Fallaste §c" + penalty.failedMissionsCount + "§7 misiones del día §e" + penalty.dayFailed + "§7. (§c-" + penalty.xpLoss + " XP§7)");
+            }
+            messageBus.sendMessage(player, "§7Tip: Completa tus misiones antes de desconectarte.");
+            
+            // ActionBar
+            messageBus.sendActionBar(player, "§c⚠ -" + penalty.xpLoss + " XP por misiones fallidas");
+            
+            // Partículas sutiles
+            player.getWorld().spawnParticle(Particle.SMOKE, player.getLocation().add(0, 1.5, 0), 10, 0.3, 0.3, 0.3, 0.02);
+            
+            // Log
+            if (plugin.getConfigManager().isDebugCiclo()) {
+                plugin.getLogger().info("[CASTIGOS] Castigo pendiente aplicado a " + player.getName() + 
+                    ": -" + penalty.xpLoss + " XP por " + penalty.failedMissionsCount + " misiones del día " + penalty.dayFailed);
+            }
+            
+            // Actualizar scoreboard
+            if (plugin.getScoreboardManager() != null) {
+                plugin.getScoreboardManager().updatePlayer(player);
+            }
+        }
+        
+        savePlayerData();
+        return true;
+    }
+    
+    /**
+     * Aplica un castigo directamente a un jugador online.
+     * Usado por processDayEndPenalties cuando el jugador está conectado.
+     */
+    private void applyPendingPenalty(Player player, PendingPenalty penalty) {
+        // Obtener XP actual y calcular nuevo valor
+        int currentXP = plugin.getExperienceService().getXP(player);
+        int newXP = Math.max(0, currentXP - penalty.xpLoss);
+        
+        // Solo aplicar si hay algo que quitar
+        if (penalty.xpLoss > 0 && currentXP > 0) {
+            plugin.getExperienceService().setXP(player, newXP);
+            
+            // Sonido de penalización
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 0.8f, 0.7f);
+            
+            // Mensaje explicativo
+            if (penalty.failedMissionsCount == 1) {
+                messageBus.sendMessage(player, "§c✗ §7Misión fallida del día anterior §7(§c-" + penalty.xpLoss + " XP§7)");
+            } else {
+                messageBus.sendMessage(player, "§c✗ §7Fallaste §c" + penalty.failedMissionsCount + "§7 misiones del día anterior. (§c-" + penalty.xpLoss + " XP§7)");
+            }
+            
+            // ActionBar
+            messageBus.sendActionBar(player, "§c⚠ -" + penalty.xpLoss + " XP por misiones fallidas");
+            
+            // Partículas sutiles
+            player.getWorld().spawnParticle(Particle.SMOKE, player.getLocation().add(0, 1.5, 0), 10, 0.3, 0.3, 0.3, 0.02);
+            
+            // Sonido adicional si muchas misiones fallidas
+            if (penalty.failedMissionsCount >= 3) {
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
+                }, 10L);
+            }
+            
+            // Log
+            if (plugin.getConfigManager().isDebugCiclo()) {
+                plugin.getLogger().info("[CASTIGOS] Castigo aplicado a " + player.getName() + 
+                    ": -" + penalty.xpLoss + " XP por " + penalty.failedMissionsCount + " misiones");
+            }
+            
+            // Actualizar scoreboard
+            if (plugin.getScoreboardManager() != null) {
+                plugin.getScoreboardManager().updatePlayer(player);
+            }
+        }
+    }
 
     public void assignMissionsToPlayer(Player player) {
+        assignMissionsToPlayer(player, plugin.getStateManager().getCurrentDay());
+    }
+    
+    /**
+     * Asigna misiones a un jugador específico y marca el día como activo
+     */
+    public void assignMissionsToPlayer(Player player, int currentDay) {
         UUID uuid = player.getUniqueId();
+        
+        // [v2.0] Marcar el día actual como activo para este jugador
+        // Esto es importante para saber si debe recibir castigo al finalizar el día
+        playerLastActiveDay.put(uuid, currentDay);
         
         // [FIX] Si el jugador ya tiene misiones asignadas, no reasignar
         List<MissionAssignment> existing = playerAssignments.get(uuid);
@@ -532,33 +761,6 @@ public class MissionService {
                "§7" + String.valueOf(empty).repeat(Math.max(0, emptyBars));
     }
 
-    /**
-     * Finaliza el día actual marcando todas las misiones no completadas como fallidas.
-     * Este método se llama desde /avo endday
-     */
-    public void endDay() {
-        int totalFailed = 0;
-        int totalCompleted = 0;
-        
-        for (UUID uuid : playerAssignments.keySet()) {
-            List<MissionAssignment> assignments = playerAssignments.get(uuid);
-            for (MissionAssignment assignment : assignments) {
-                if (assignment.isCompleted()) {
-                    totalCompleted++;
-                } else if (!assignment.isFailed()) {
-                    assignment.setFailed(true);
-                    totalFailed++;
-                }
-            }
-        }
-        
-        savePlayerData();
-        
-        if (plugin.getConfigManager().isDebugCiclo()) {
-            plugin.getLogger().info("[MISIONES] Día finalizado. Completadas: " + totalCompleted + ", Fallidas: " + totalFailed);
-        }
-    }
-
     public List<MissionAssignment> getActiveAssignments(Player player) {
         return playerAssignments.getOrDefault(player.getUniqueId(), Collections.emptyList());
     }
@@ -612,6 +814,23 @@ public class MissionService {
                 }
                 playerPs.put(uuid, xp);
                 
+                // [v2.0] Cargar día activo
+                int lastActiveDay = playerSection.getInt("last_active_day", 0);
+                if (lastActiveDay > 0) {
+                    playerLastActiveDay.put(uuid, lastActiveDay);
+                }
+                
+                // [v2.0] Cargar castigo pendiente
+                ConfigurationSection penaltySection = playerSection.getConfigurationSection("pending_penalty");
+                if (penaltySection != null) {
+                    int xpLoss = penaltySection.getInt("xp_loss", 0);
+                    int failedCount = penaltySection.getInt("failed_count", 0);
+                    int dayFailed = penaltySection.getInt("day_failed", 0);
+                    if (xpLoss > 0 && failedCount > 0) {
+                        pendingPenalties.put(uuid, new PendingPenalty(xpLoss, failedCount, dayFailed));
+                    }
+                }
+                
                 List<MissionAssignment> assignments = new ArrayList<>();
                 List<Map<?, ?>> assignmentsList = playerSection.getMapList("assignments");
                 
@@ -660,11 +879,27 @@ public class MissionService {
 
             FileConfiguration config = new YamlConfiguration();
             
+            // Guardar datos de jugadores con assignments
             for (Map.Entry<UUID, List<MissionAssignment>> entry : playerAssignments.entrySet()) {
                 String path = "players." + entry.getKey().toString();
+                UUID uuid = entry.getKey();
                 
                 // [UNIFICACIÓN] Guardar como "xp" (el sistema unificado)
-                config.set(path + ".xp", playerPs.getOrDefault(entry.getKey(), 0));
+                config.set(path + ".xp", playerPs.getOrDefault(uuid, 0));
+                
+                // [v2.0] Guardar día activo
+                Integer lastActiveDay = playerLastActiveDay.get(uuid);
+                if (lastActiveDay != null && lastActiveDay > 0) {
+                    config.set(path + ".last_active_day", lastActiveDay);
+                }
+                
+                // [v2.0] Guardar castigo pendiente si existe
+                PendingPenalty penalty = pendingPenalties.get(uuid);
+                if (penalty != null) {
+                    config.set(path + ".pending_penalty.xp_loss", penalty.xpLoss);
+                    config.set(path + ".pending_penalty.failed_count", penalty.failedMissionsCount);
+                    config.set(path + ".pending_penalty.day_failed", penalty.dayFailed);
+                }
                 
                 List<Map<String, Object>> assignmentsList = new ArrayList<>();
                 for (MissionAssignment assignment : entry.getValue()) {
@@ -677,6 +912,25 @@ public class MissionService {
                 }
                 
                 config.set(path + ".assignments", assignmentsList);
+            }
+            
+            // [v2.0] Guardar también jugadores que solo tienen castigo pendiente (sin assignments actuales)
+            for (Map.Entry<UUID, PendingPenalty> entry : pendingPenalties.entrySet()) {
+                UUID uuid = entry.getKey();
+                if (!playerAssignments.containsKey(uuid)) {
+                    String path = "players." + uuid.toString();
+                    config.set(path + ".xp", playerPs.getOrDefault(uuid, 0));
+                    
+                    Integer lastActiveDay = playerLastActiveDay.get(uuid);
+                    if (lastActiveDay != null && lastActiveDay > 0) {
+                        config.set(path + ".last_active_day", lastActiveDay);
+                    }
+                    
+                    PendingPenalty penalty = entry.getValue();
+                    config.set(path + ".pending_penalty.xp_loss", penalty.xpLoss);
+                    config.set(path + ".pending_penalty.failed_count", penalty.failedMissionsCount);
+                    config.set(path + ".pending_penalty.day_failed", penalty.dayFailed);
+                }
             }
 
             config.save(dataFile);

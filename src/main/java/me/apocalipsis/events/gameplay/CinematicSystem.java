@@ -359,7 +359,9 @@ public class CinematicSystem {
     }
     
     /**
-     * Freeze frame - congela al jugador en el lugar
+     * Freeze frame - inmoviliza al jugador con efectos de poción
+     * MODIFICADO: Ya no teleporta continuamente para evitar detección de anti-cheat
+     * Solo usa efectos de poción para reducir movimiento
      */
     public void freezeFrame(Player player, int durationTicks) {
         UUID uuid = player.getUniqueId();
@@ -371,7 +373,23 @@ public class CinematicSystem {
         Location frozenLoc = player.getLocation().clone();
         frozenLocations.put(uuid, frozenLoc);
         
-        // Efectos de inmovilización
+        // [FIX] Si el jugador está en el aire, moverlo al suelo primero
+        // para evitar que quede flotando y sea detectado como volando
+        if (!player.isOnGround()) {
+            // Buscar el suelo debajo
+            Location groundLoc = frozenLoc.clone();
+            for (int y = 0; y < 10; y++) {
+                groundLoc.subtract(0, 1, 0);
+                if (groundLoc.getBlock().getType().isSolid()) {
+                    groundLoc.add(0, 1, 0); // Subir un bloque sobre el suelo
+                    player.teleport(groundLoc);
+                    frozenLoc = groundLoc;
+                    break;
+                }
+            }
+        }
+        
+        // Efectos de inmovilización (solo pociones, sin teleport continuo)
         player.addPotionEffect(new PotionEffect(
             PotionEffectType.SLOWNESS,
             durationTicks,
@@ -380,14 +398,10 @@ public class CinematicSystem {
             false
         ));
         
-        player.addPotionEffect(new PotionEffect(
-            PotionEffectType.JUMP_BOOST,
-            durationTicks,
-            -255,
-            false,
-            false
-        ));
+        // [FIX] No usar JUMP_BOOST negativo, causa problemas de flotación
+        // En su lugar, solo slowness extremo que previene casi todo movimiento
         
+        final Location finalFrozenLoc = frozenLoc;
         BukkitTask freezeTask = new BukkitRunnable() {
             private int ticksRemaining = durationTicks;
             
@@ -396,13 +410,14 @@ public class CinematicSystem {
                 if (!player.isOnline() || ticksRemaining <= 0) {
                     frozenLocations.remove(uuid);
                     activeCinematicsTask.remove(uuid);
+                    player.removePotionEffect(PotionEffectType.SLOWNESS);
                     this.cancel();
                     return;
                 }
                 
-                // Forzar posición congelada
-                player.teleport(frozenLoc);
-                player.setVelocity(new Vector(0, 0, 0));
+                // [FIX] Solo cancelar velocidad, no teleportar continuamente
+                player.setVelocity(new Vector(0, player.getVelocity().getY(), 0));
+                player.setFallDistance(0f);
                 
                 // Efecto visual de "tiempo detenido"
                 if (ticksRemaining % 10 == 0) {

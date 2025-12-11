@@ -17,14 +17,20 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.entity.FoodLevelChangeEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryType;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.Merchant;
+import org.bukkit.inventory.MerchantRecipe;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Vector;
@@ -1401,5 +1407,167 @@ public class SkillEffectListener implements Listener {
         } catch (IOException e) {
             plugin.getLogger().warning("[Skills] Error guardando waypoints: " + e.getMessage());
         }
+    }
+    
+    // ==================== MERCADER SUPREMO - DESCUENTOS EN TRADES ====================
+    
+    /**
+     * Listener para aplicar descuentos de MERCADER_SUPREMO cuando el jugador
+     * interactúa con un villager. Modifica los precios de los trades.
+     */
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onVillagerInteract(PlayerInteractEntityEvent event) {
+        if (!(event.getRightClicked() instanceof org.bukkit.entity.Villager villager)) return;
+        
+        Player player = event.getPlayer();
+        UUID uuid = player.getUniqueId();
+        
+        // Verificar si tiene la habilidad MERCADER_SUPREMO
+        if (!hasSkillCached(uuid, Skill.MERCADER_SUPREMO)) return;
+        
+        // Obtener el porcentaje de descuento según el nivel
+        double descuentoPercent = skillService.getLevelEffect(uuid, Skill.MERCADER_SUPREMO);
+        if (descuentoPercent <= 0) return;
+        
+        // Aplicar descuento a todos los trades del villager
+        applyTradeDiscount(player, villager, descuentoPercent);
+        
+        // Mensaje sutil de confirmación (con anti-spam)
+        if (canSendMessage(uuid, "mercader_supremo")) {
+            player.sendMessage("§a§l✦ §eMercader Supremo: §7-" + (int)descuentoPercent + "% en trades");
+            trackSkillUsage(uuid, Skill.MERCADER_SUPREMO);
+        }
+    }
+    
+    /**
+     * Aplica el descuento a los trades del villager.
+     * Esto modifica temporalmente los precios cuando el jugador abre el trade.
+     */
+    private void applyTradeDiscount(Player player, org.bukkit.entity.Villager villager, double descuentoPercent) {
+        List<MerchantRecipe> originalRecipes = villager.getRecipes();
+        List<MerchantRecipe> discountedRecipes = new ArrayList<>();
+        
+        for (MerchantRecipe originalRecipe : originalRecipes) {
+            // Obtener ingredientes (precio)
+            List<ItemStack> ingredients = originalRecipe.getIngredients();
+            List<ItemStack> discountedIngredients = new ArrayList<>();
+            
+            for (ItemStack ingredient : ingredients) {
+                if (ingredient == null || ingredient.getType() == Material.AIR) {
+                    discountedIngredients.add(ingredient);
+                    continue;
+                }
+                
+                // Aplicar descuento solo a esmeraldas (moneda principal)
+                if (ingredient.getType() == Material.EMERALD) {
+                    int originalAmount = ingredient.getAmount();
+                    int discountedAmount = (int) Math.max(1, Math.ceil(originalAmount * (1 - descuentoPercent / 100.0)));
+                    
+                    ItemStack discountedItem = ingredient.clone();
+                    discountedItem.setAmount(discountedAmount);
+                    discountedIngredients.add(discountedItem);
+                } else {
+                    discountedIngredients.add(ingredient.clone());
+                }
+            }
+            
+            // Crear nueva receta con precio reducido
+            MerchantRecipe newRecipe = new MerchantRecipe(
+                originalRecipe.getResult().clone(),
+                originalRecipe.getUses(),
+                originalRecipe.getMaxUses() * 3, // Trades "infinitos" (triplicar usos)
+                originalRecipe.hasExperienceReward(),
+                originalRecipe.getVillagerExperience(),
+                originalRecipe.getPriceMultiplier(),
+                originalRecipe.getDemand(),
+                originalRecipe.getSpecialPrice() - 5 // Reducción adicional de precio especial
+            );
+            
+            newRecipe.setIngredients(discountedIngredients);
+            discountedRecipes.add(newRecipe);
+        }
+        
+        // Aplicar las recetas modificadas
+        villager.setRecipes(discountedRecipes);
+        
+        // Programar restauración de precios después de que cierre el inventario (30 seg máx)
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            // Los villagers regeneran sus trades con el tiempo normalmente
+            // No necesitamos restaurar explícitamente
+        }, 600L);
+    }
+    
+    /**
+     * Listener alternativo para cuando el jugador hace click en un trade.
+     * Puede usarse para tracking o efectos adicionales.
+     */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onTradeClick(InventoryClickEvent event) {
+        if (!(event.getWhoClicked() instanceof Player player)) return;
+        if (event.getInventory().getType() != InventoryType.MERCHANT) return;
+        if (event.getSlot() != 2) return; // Slot del resultado del trade
+        if (event.getCurrentItem() == null || event.getCurrentItem().getType() == Material.AIR) return;
+        
+        UUID uuid = player.getUniqueId();
+        
+        // Verificar si tiene MERCADER_SUPREMO para mostrar efecto visual
+        if (hasSkillCached(uuid, Skill.MERCADER_SUPREMO)) {
+            // Efecto visual de descuento aplicado
+            player.getWorld().spawnParticle(Particle.HAPPY_VILLAGER, 
+                player.getLocation().add(0, 1.5, 0), 5, 0.3, 0.3, 0.3, 0);
+            player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.3f, 1.5f);
+        }
+    }
+    
+    // ==================== MEJORA DE INVOCACIONES - SEGUIMIENTO Y NOTIFICACIONES ====================
+    
+    /**
+     * Detecta cuando una mascota invocada muere y notifica al jugador
+     */
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onSummonDeath(EntityDeathEvent event) {
+        org.bukkit.entity.LivingEntity entity = event.getEntity();
+        UUID entityId = entity.getUniqueId();
+        
+        // Buscar si esta entidad pertenece a algún jugador
+        for (Map.Entry<UUID, java.util.List<UUID>> entry : skillService.getAllInvocaciones().entrySet()) {
+            UUID playerUuid = entry.getKey();
+            java.util.List<UUID> summons = entry.getValue();
+            
+            if (summons != null && summons.contains(entityId)) {
+                // La mascota del jugador murió
+                Player player = Bukkit.getPlayer(playerUuid);
+                if (player != null && player.isOnline()) {
+                    String entityName = getEntityDisplayName(entity);
+                    player.sendMessage("§c§l☠ §7Tu §e" + entityName + " §7ha muerto!");
+                    player.playSound(player.getLocation(), Sound.ENTITY_WOLF_WHINE, 0.7f, 1.0f);
+                    
+                    // Partículas de luto
+                    player.getWorld().spawnParticle(Particle.SOUL, 
+                        entity.getLocation().add(0, 1, 0), 10, 0.3, 0.5, 0.3, 0.02);
+                }
+                
+                // Remover de la lista
+                summons.remove(entityId);
+                break;
+            }
+        }
+    }
+    
+    /**
+     * Obtiene el nombre amigable de una entidad invocada
+     */
+    private String getEntityDisplayName(org.bukkit.entity.LivingEntity entity) {
+        if (entity.getCustomName() != null) {
+            // Extraer tipo de la mascota desde el nombre custom
+            if (entity instanceof org.bukkit.entity.Wolf) return "Lobo Compañero";
+            if (entity instanceof org.bukkit.entity.Cat) return "Gato Guardián";
+            if (entity instanceof org.bukkit.entity.Allay) return "Allay Recolector";
+            if (entity instanceof org.bukkit.entity.Bee) return "Abeja Protectora";
+            if (entity instanceof org.bukkit.entity.IronGolem) return "Gólem Protector";
+            if (entity instanceof org.bukkit.entity.Vex) return "Vex Vengador";
+            if (entity instanceof org.bukkit.entity.Warden) return "Warden Temporal";
+        }
+        return entity.getType().name().replace("_", " ").toLowerCase();
     }
 }
