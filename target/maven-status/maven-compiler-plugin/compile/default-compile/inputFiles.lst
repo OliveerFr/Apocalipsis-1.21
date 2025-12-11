@@ -11,6 +11,7 @@ Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\events\t
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\skills\SkillTreeGUI.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\experience\RewardService.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\missions\MissionRenderer.java
+Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\tutorial\ProgressiveDifficultySystem.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\utils\ConfigManager.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\events\testing\scenarios\PlayerDeathScenario.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\listeners\ChatListener.java
@@ -37,6 +38,7 @@ Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\events\t
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\events\testing\scenarios\PartialParticipationScenario.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\ScoreboardManager.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\missions\MissionType.java
+Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\tutorial\TutorialManager.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\utils\BlockOwnershipTracker.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\missions\MissionCatalog.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\events\testing\scenarios\AFKPlayerScenario.java
@@ -63,6 +65,7 @@ Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\state\Se
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\events\testing\BotBehaviorProfile.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\events\testing\EventTestBot.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\missions\MissionAssignment.java
+Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\tutorial\TutorialListener.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\experience\AbilityService.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\commands\RecompensaCommand.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\FeedbackSystem.java

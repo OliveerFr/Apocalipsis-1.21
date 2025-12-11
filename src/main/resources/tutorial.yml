@@ -1,0 +1,419 @@
+# ════════════════════════════════════════════════════════════════════
+# Apocalipsis — tutorial.yml
+# Sistema de tutorial para nuevos jugadores con dificultad progresiva
+# ════════════════════════════════════════════════════════════════════
+
+version: 1
+
+# ═══════════════════════════════════════════════════════════════
+# CONFIGURACIÓN GENERAL
+# ═══════════════════════════════════════════════════════════════
+
+tutorial:
+  enabled: true
+  verbose_logging: true              # Logs detallados en consola
+  
+  # Esperar 5 minutos antes de iniciar tutorial (tiempo de registro)
+  retraso_inicio_minutos: 5
+  
+  # Mensaje de bienvenida inicial (al conectar)
+  mensaje_bienvenida:
+    enabled: true
+    titulo: "&6&l🌋 APOCALIPSIS SURVIVAL"
+    subtitulo: "&e¡Bienvenido, %player%!"
+    chat: |
+      &8&m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      &6&l    🌋 BIENVENIDO A APOCALIPSIS SURVIVAL
+      &8&m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+      &e¡Bienvenido, &6%player%&e!
+      
+      &7El tutorial comenzará en &e5 minutos&7.
+      &7Mientras tanto, puedes explorar libremente.
+      
+      &aUsa &f/avo menu &apara ver todas tus opciones.
+      
+      &8&m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# ═══════════════════════════════════════════════════════════════
+# SISTEMA DE DIFICULTAD PROGRESIVA TEMPORAL
+# ═══════════════════════════════════════════════════════════════
+
+dificultad_progresiva:
+  enabled: true
+  
+  # Fase 1: MUY FÁCIL (Primeros 30 minutos)
+  fase_1:
+    duracion_minutos: 30
+    multiplicador_daño: 0.1           # 10% del daño normal
+    multiplicador_frecuencia: 0.2     # 80% menos frecuentes
+    permitir_knockback: false         # Sin empujones
+    xp_bonus: 1.5                     # +50% XP
+    regeneracion_pasiva: true         # Regeneración I permanente
+    nombre: "&a🌱 Fase Tutorial"
+    descripcion: "Desastres muy suaves"
+    
+  # Fase 2: FÁCIL (30-60 minutos)
+  fase_2:
+    duracion_minutos: 30
+    multiplicador_daño: 0.25          # 25% del daño
+    multiplicador_frecuencia: 0.4     # 60% menos frecuentes
+    permitir_knockback: false         # Sin empujones
+    xp_bonus: 1.3                     # +30% XP
+    regeneracion_pasiva: true         # Regeneración I permanente
+    nombre: "&e🔰 Fase Adaptación"
+    descripcion: "Desastres suaves"
+    
+  # Fase 3: MODERADO (1-2 horas)
+  fase_3:
+    duracion_minutos: 60
+    multiplicador_daño: 0.5           # 50% del daño
+    multiplicador_frecuencia: 0.6     # 40% menos frecuentes
+    permitir_knockback: true          # Ya puede empujar
+    xp_bonus: 1.2                     # +20% XP
+    regeneracion_pasiva: false        # Sin regeneración
+    nombre: "&6⚡ Fase Intermedia"
+    descripcion: "Desastres moderados"
+    
+  # Fase 4: NORMAL (2-4 horas)
+  fase_4:
+    duracion_minutos: 120
+    multiplicador_daño: 0.75          # 75% del daño
+    multiplicador_frecuencia: 0.8     # 20% menos frecuentes
+    permitir_knockback: true          # Ya puede empujar
+    xp_bonus: 1.1                     # +10% XP
+    regeneracion_pasiva: false        # Sin regeneración
+    nombre: "&c⚔️ Fase Avanzada"
+    descripcion: "Desastres fuertes"
+    
+  # Después de 240 minutos (4 horas): Dificultad Global (100%)
+  fase_final:
+    multiplicador_daño: 1.0           # 100% dificultad global
+    multiplicador_frecuencia: 1.0     # Igual que todos
+    permitir_knockback: true          # Normal
+    xp_bonus: 1.0                     # Sin bonus
+    regeneracion_pasiva: false        # Sin regeneración
+    nombre: "&4💀 Dificultad Global"
+    descripcion: "Sin protección"
+  
+  # Notificaciones de cambio de fase
+  notificar_cambio_fase:
+    enabled: true
+    mostrar_titulo: true
+    titulo: "&e⚠️ CAMBIO DE DIFICULTAD"
+    subtitulo: "&7%fase_anterior% → %fase_nueva%"
+    sonido: "ENTITY_PLAYER_LEVELUP"
+    mensaje_chat: |
+      &8&m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      &e⚠️ &6CAMBIO DE DIFICULTAD
+      &8&m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+      &7Fase anterior: %fase_anterior%
+      &7Nueva fase: %fase_nueva%
+      
+      &7Dificultad: &c%porcentaje_anterior%% &7→ &c%porcentaje_nuevo%%
+      
+      &7Los desastres ahora son %descripcion%.
+      &a¡Sigue construyendo tu base!
+      
+      &7Próxima fase en: &e%tiempo_restante%
+      &8&m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+  # Notificación al alcanzar dificultad global
+  mensaje_dificultad_global:
+    enabled: true
+    mostrar_titulo: true
+    titulo: "&4&l⚔️ DIFICULTAD GLOBAL"
+    subtitulo: "&c¡Fase de adaptación completada!"
+    sonido: "UI_TOAST_CHALLENGE_COMPLETE"
+    fuegos_artificiales: 3
+    mensaje_chat: |
+      &8&m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      &4&l    ⚔️ DIFICULTAD GLOBAL ALCANZADA
+      &8&m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+      &e¡Has completado la fase de adaptación!
+      
+      &cAhora los desastres tienen FUERZA COMPLETA.
+      &cYa no tienes protección especial.
+      
+      &6💡 Consejos finales:
+      &7• Completa misiones diarias para mejorar
+      &7• Sube de rango para obtener habilidades
+      &7• Construye una base bien protegida
+      &7• ¡Usa &f/avo menu &7para ver tu progreso!
+      
+      &a¡Buena suerte, sobreviviente! &c🔥
+      
+      &8&m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  # Notificación en ActionBar (cada 10 minutos)
+  actionbar_progreso:
+    enabled: true
+    intervalo_minutos: 10
+    formato: "&e⏰ Dificultad: &c%porcentaje%% &8| &7Próxima fase en: &e%tiempo_restante% &8| &f/avo menu"
+
+# ═══════════════════════════════════════════════════════════════
+# KIT DE INICIO PARA NUEVOS JUGADORES
+# ═══════════════════════════════════════════════════════════════
+
+kit_inicio:
+  enabled: true
+  otorgar_automatico: true
+  dar_despues_de_minutos: 5         # Dar después de 5 minutos (inicio del tutorial)
+  
+  items:
+    # Supervivencia básica
+    - "give %player% minecraft:cooked_beef 16"
+    - "give %player% minecraft:bread 16"
+    - "give %player% minecraft:water_bucket 2"
+    
+    # Herramientas de hierro
+    - "give %player% minecraft:iron_pickaxe 1"
+    - "give %player% minecraft:iron_axe 1"
+    - "give %player% minecraft:iron_sword 1"
+    - "give %player% minecraft:iron_shovel 1"
+    
+    # Materiales de construcción
+    - "give %player% minecraft:cobblestone 128"
+    - "give %player% minecraft:dirt 64"
+    - "give %player% minecraft:torch 32"
+    - "give %player% minecraft:oak_planks 64"
+    
+    # Extras
+    - "give %player% minecraft:bed 1"
+    - "give %player% minecraft:crafting_table 1"
+    - "give %player% minecraft:furnace 1"
+    - "give %player% minecraft:bucket 2"
+    
+  mensaje_entrega:
+    mostrar_titulo: true
+    titulo: "&6&l🎁 KIT DE INICIO"
+    subtitulo: "&e¡Comienza tu aventura!"
+    sonido: "ENTITY_PLAYER_LEVELUP"
+    mensaje_chat: |
+      &8&m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      &6&l       🎓 TUTORIAL INTERACTIVO
+      &8&m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+      &e¡Es hora de aprender a sobrevivir!
+      
+      &a✅ Kit de inicio entregado
+      &a✅ Dificultad: &2MUY FÁCIL (10%)
+      &a✅ Subirá gradualmente en 4 horas
+      
+      &7Usa &f/avo menu &7para ver el tutorial completo.
+      
+      &8&m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# ═══════════════════════════════════════════════════════════════
+# DEMOSTRACIÓN DE RANGOS (MOTIVACIÓN)
+# ═══════════════════════════════════════════════════════════════
+
+demo_rangos:
+  enabled: true
+  mostrar_en_etapa: 5               # Se muestra en la etapa 5 del tutorial
+  
+  # Simular efectos de EXPLORADOR temporalmente
+  simular_efectos_explorador:
+    enabled: true
+    duracion_segundos: 60           # Demo dura 1 minuto
+    efectos:
+      - "SPEED:1"                   # Speed I
+    
+  mensaje_inicio:
+    mostrar_titulo: true
+    titulo: "&b&l✨ DEMO DE RANGO"
+    subtitulo: "&eExperimentando EXPLORADOR..."
+    sonido: "ENTITY_PLAYER_LEVELUP"
+    mensaje_chat: |
+      &8&m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      &b&l       ✨ DEMOSTRACIÓN DE RANGO
+      &8&m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+      &e¡Mira lo que obtienes al alcanzar &bEXPLORADOR&e!
+      
+      &6🎁 RECOMPENSAS AL SUBIR:
+      &7• 8 Diamantes 💎
+      &7• 5 Manzanas Doradas 🍎
+      &7• 16 Bloques de Hierro
+      &7• 1 Bloque de Protección 🛡️
+      
+      &a✨ HABILIDADES PERMANENTES:
+      &7• Velocidad I (permanente)
+      &7• +5% de XP en todas las acciones
+      
+      &e¡Ahora tienes Speed I por 60 segundos!
+      &7Imagina tenerlo permanentemente...
+      
+      &8&m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+  mensaje_fin:
+    mostrar_titulo: true
+    titulo: "&c&lDemo Finalizada"
+    subtitulo: "&7¡Sube de rango para tenerlo siempre!"
+    sonido: "BLOCK_NOTE_BLOCK_PLING"
+    mensaje_chat: |
+      &8&m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      &c&l       Demo de EXPLORADOR finalizada
+      &8&m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+      &7¿Te gustó tener Speed I?
+      
+      &e¡Sube de rango para tenerlo PERMANENTEMENTE!
+      &7Completa misiones, gana XP, mejora.
+      
+      &6Y esto es solo el &bEXPLORADOR&6...
+      &6Imagina llegar a &d&lABSOLUTO&6! 💎
+      
+      &8&m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# ═══════════════════════════════════════════════════════════════
+# SISTEMA DE TIPS PROGRESIVOS (BASADO EN TIEMPO JUGADO)
+# ═══════════════════════════════════════════════════════════════
+
+tips_progresivos:
+  enabled: true
+  intervalo_minutos: 8              # Cada 8 minutos
+  solo_para_tiempo_jugado_minutos: 240  # Solo primeras 4 horas
+  mostrar_en_actionbar: true        # Menos intrusivo que chat
+  sonido: "BLOCK_NOTE_BLOCK_PLING"
+  
+  # Tips contextuales según tiempo jugado
+  tips:
+    # Primeros 30 minutos (Fase 1)
+    - mensaje: "&e💡 TIP: &7Usa &f/avo menu &7para ver todas tus opciones."
+      tiempo_minimo_minutos: 5
+      tiempo_maximo_minutos: 30
+      
+    - mensaje: "&e💡 TIP: &7Los desastres empiezan muy suaves y aumentan gradualmente."
+      tiempo_minimo_minutos: 10
+      tiempo_maximo_minutos: 30
+      
+    - mensaje: "&e💡 TIP: &7Completa misiones con &f/misiones &7para ganar XP rápido."
+      tiempo_minimo_minutos: 15
+      tiempo_maximo_minutos: 30
+      
+    - mensaje: "&e💡 TIP: &7El agua apaga el fuego. ¡Lleva siempre un cubo!"
+      tiempo_minimo_minutos: 20
+      tiempo_maximo_minutos: 30
+      
+    # 30-60 minutos (Fase 2)
+    - mensaje: "&e💡 TIP: &7Construye bajo tierra para estar más seguro de los desastres."
+      tiempo_minimo_minutos: 30
+      tiempo_maximo_minutos: 60
+      
+    - mensaje: "&e💡 TIP: &7Usa &f/habilidades &7para invertir puntos en tu árbol de habilidades."
+      tiempo_minimo_minutos: 35
+      tiempo_maximo_minutos: 60
+      
+    - mensaje: "&e💡 TIP: &7Los bloques de protección protegen tu base. ¡Consigue más subiendo de rango!"
+      tiempo_minimo_minutos: 45
+      tiempo_maximo_minutos: 60
+      
+    - mensaje: "&e💡 TIP: &7Cada misión completada da recompensas extra según dificultad."
+      tiempo_minimo_minutos: 50
+      tiempo_maximo_minutos: 60
+      
+    # 1-2 horas (Fase 3)
+    - mensaje: "&e💡 TIP: &7Agacharte reduce el knockback del Huracán."
+      tiempo_minimo_minutos: 60
+      tiempo_maximo_minutos: 120
+      
+    - mensaje: "&e💡 TIP: &7Durante un Terremoto, aléjate del epicentro (zona roja)."
+      tiempo_minimo_minutos: 75
+      tiempo_maximo_minutos: 120
+      
+    - mensaje: "&e💡 TIP: &7Las evasiones exitosas dan bonus de XP. ¡Practica esquivar!"
+      tiempo_minimo_minutos: 90
+      tiempo_maximo_minutos: 120
+      
+    - mensaje: "&e💡 TIP: &7Construye múltiples refugios en diferentes ubicaciones."
+      tiempo_minimo_minutos: 105
+      tiempo_maximo_minutos: 120
+      
+    # 2-4 horas (Fase 4)
+    - mensaje: "&e💡 TIP: &7Cada rango te da habilidades permanentes automáticas."
+      tiempo_minimo_minutos: 120
+      tiempo_maximo_minutos: 240
+      
+    - mensaje: "&e💡 TIP: &7Usa &f/avo stats &7para ver tus estadísticas y desastres evadidos."
+      tiempo_minimo_minutos: 150
+      tiempo_maximo_minutos: 240
+      
+    - mensaje: "&e💡 TIP: &7Los desastres no rompen bloques en zonas protegidas de otros jugadores."
+      tiempo_minimo_minutos: 180
+      tiempo_maximo_minutos: 240
+      
+    - mensaje: "&e💡 TIP: &7Pronto alcanzarás la dificultad global. ¡Prepárate bien!"
+      tiempo_minimo_minutos: 210
+      tiempo_maximo_minutos: 240
+      
+    # 4+ horas (Dificultad Global alcanzada)
+    - mensaje: "&e💡 TIP: &7Ya tienes la dificultad completa. ¡Sigue mejorando con misiones!"
+      tiempo_minimo_minutos: 240
+      tiempo_maximo_minutos: 999999
+
+# ═══════════════════════════════════════════════════════════════
+# ETAPAS DEL TUTORIAL (INTEGRADAS EN /avo menu)
+# ═══════════════════════════════════════════════════════════════
+
+etapas_tutorial:
+  # Etapa 1: Menú Principal
+  etapa_1:
+    titulo: "&6🎯 Paso 1: Menú Principal"
+    descripcion: "Aprende a usar /avo menu"
+    completar_automaticamente: true
+    
+  # Etapa 2: Desastres Naturales
+  etapa_2:
+    titulo: "&6🌋 Paso 2: Desastres"
+    descripcion: "Conoce los 3 tipos de desastres"
+    
+  # Etapa 3: Supervivencia
+  etapa_3:
+    titulo: "&6🛡️ Paso 3: Supervivencia"
+    descripcion: "Aprende las prioridades básicas"
+    
+  # Etapa 4: Progresión
+  etapa_4:
+    titulo: "&6📈 Paso 4: Sistema de Rangos"
+    descripcion: "Conoce cómo mejorar"
+    
+  # Etapa 5: Demo de Rangos
+  etapa_5:
+    titulo: "&b✨ Paso 5: Demo de EXPLORADOR"
+    descripcion: "¡Experimenta los beneficios!"
+    
+  # Etapa 6: Árbol de Habilidades
+  etapa_6:
+    titulo: "&6🌳 Paso 6: Habilidades"
+    descripcion: "Personaliza tu estilo de juego"
+    
+  # Etapa 7: Comandos
+  etapa_7:
+    titulo: "&6📋 Paso 7: Comandos Clave"
+    descripcion: "Memoriza los comandos importantes"
+
+# ═══════════════════════════════════════════════════════════════
+# CONFIGURACIÓN AVANZADA
+# ═══════════════════════════════════════════════════════════════
+
+avanzado:
+  # Almacenar progreso del tutorial en base de datos
+  guardar_progreso: true
+  
+  # Permitir que jugadores salten el tutorial
+  permitir_saltar_tutorial: false
+  
+  # Comandos para administradores
+  comandos_admin:
+    - "/tutorial reset <jugador>"     # Reiniciar tutorial de un jugador
+    - "/tutorial skip <jugador>"      # Saltar tutorial de un jugador
+    - "/tutorial fase <jugador> <1-5>" # Cambiar fase manualmente
+    
+  # Métricas y análisis
+  metricas:
+    trackear_completado: true
+    trackear_tiempo_por_etapa: true
+    trackear_muertes_durante_tutorial: true

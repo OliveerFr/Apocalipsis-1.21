@@ -21,6 +21,7 @@ import me.apocalipsis.state.StateManager;
 import me.apocalipsis.state.TimeService;
 import me.apocalipsis.ui.MessageBus;
 import me.apocalipsis.ui.SoundUtil;
+import me.apocalipsis.tutorial.ProgressiveDifficultySystem;
 
 public class DisasterController {
 
@@ -30,6 +31,7 @@ public class DisasterController {
     private final DisasterRegistry registry;
     private final MessageBus messageBus;
     private final SoundUtil soundUtil;
+    private final ProgressiveDifficultySystem progressiveDifficulty;
 
     // [RECONSTRUCCIÓN] Fuente única de tiempo (evitar duplicación BossBars)
     private BukkitTask uiTask;
@@ -78,13 +80,22 @@ public class DisasterController {
     private long lastSafeLogTs = 0L;
 
     public DisasterController(Apocalipsis plugin, StateManager stateManager, TimeService timeService,
-                             DisasterRegistry registry, MessageBus messageBus, SoundUtil soundUtil) {
+                             DisasterRegistry registry, MessageBus messageBus, SoundUtil soundUtil,
+                             ProgressiveDifficultySystem progressiveDifficulty) {
         this.plugin = plugin;
         this.stateManager = stateManager;
         this.timeService = timeService;
         this.registry = registry;
         this.messageBus = messageBus;
         this.soundUtil = soundUtil;
+        this.progressiveDifficulty = progressiveDifficulty;
+    }
+    
+    /**
+     * Obtiene el sistema de dificultad progresiva
+     */
+    public ProgressiveDifficultySystem getProgressiveDifficultySystem() {
+        return progressiveDifficulty;
     }
     
     /**

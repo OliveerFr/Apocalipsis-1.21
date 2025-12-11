@@ -344,6 +344,41 @@ public class MainMenuManager implements Listener {
             "MOCHILA"
         ));
         
+        // Slot 49: TUTORIAL (para nuevos jugadores)
+        boolean hasReachedGlobal = plugin.getProgressiveDifficultySystem().hasReachedGlobalDifficulty(player);
+        Material tutorialMaterial = hasReachedGlobal ? Material.WRITTEN_BOOK : Material.ENCHANTED_BOOK;
+        String tutorialTitle = hasReachedGlobal ? "§7§l📖 Tutorial" : "§a§l📖 Tutorial §8(§e¡Nuevo!§8)";
+        
+        long playedMinutes = plugin.getProgressiveDifficultySystem().getPlayedTimeMinutes(player);
+        long remainingMinutes = plugin.getProgressiveDifficultySystem().getRemainingTimeToNextPhase(player);
+        String timeFormatted = plugin.getProgressiveDifficultySystem().formatRemainingTime(remainingMinutes);
+        int difficulty = plugin.getProgressiveDifficultySystem().getPlayerPhase(player).getPercentDifficulty();
+        
+        List<String> tutorialLore = new ArrayList<>();
+        tutorialLore.add("");
+        tutorialLore.add("§7Guía para nuevos jugadores");
+        tutorialLore.add("");
+        if (hasReachedGlobal) {
+            tutorialLore.add("§a✓ Dificultad Global alcanzada");
+            tutorialLore.add("§7Puedes revisar el tutorial");
+            tutorialLore.add("§7en cualquier momento.");
+        } else {
+            tutorialLore.add("§7Dificultad actual: §c" + difficulty + "%");
+            tutorialLore.add("§7Tiempo jugado: §e" + (playedMinutes) + " min");
+            tutorialLore.add("§7Próxima fase en: §e" + timeFormatted);
+            tutorialLore.add("");
+            tutorialLore.add("§e¡Aprende a sobrevivir!");
+        }
+        tutorialLore.add("");
+        tutorialLore.add("§e▶ Click para ver tutorial");
+        
+        menu.setItem(49, createMenuItem(
+            tutorialMaterial,
+            tutorialTitle,
+            tutorialLore,
+            "TUTORIAL"
+        ));
+        
         // Slot 51: ENDERCHEST
         menu.setItem(51, createMenuItem(
             Material.ENDER_CHEST,
@@ -462,6 +497,11 @@ public class MainMenuManager implements Listener {
                     player.performCommand("backpack");
                     break;
                     
+                case "TUTORIAL":
+                    // Abrir menú de tutorial
+                    showTutorialMenu(player);
+                    break;
+                    
                 case "ENDERCHEST":
                     // Abrir enderchest del jugador
                     player.openInventory(player.getEnderChest());
@@ -559,6 +599,78 @@ public class MainMenuManager implements Listener {
         player.sendMessage("  §7desbloquear §5habilidades§7.");
         player.sendMessage("");
         player.sendMessage("§d§l══════════════════════════════════");
+        player.sendMessage("");
+    }
+    
+    /**
+     * Muestra el menú de tutorial para nuevos jugadores
+     */
+    private void showTutorialMenu(Player player) {
+        boolean hasReachedGlobal = plugin.getProgressiveDifficultySystem().hasReachedGlobalDifficulty(player);
+        long playedMinutes = plugin.getProgressiveDifficultySystem().getPlayedTimeMinutes(player);
+        long remainingMinutes = plugin.getProgressiveDifficultySystem().getRemainingTimeToNextPhase(player);
+        String timeFormatted = plugin.getProgressiveDifficultySystem().formatRemainingTime(remainingMinutes);
+        int difficulty = plugin.getProgressiveDifficultySystem().getPlayerPhase(player).getPercentDifficulty();
+        
+        player.sendMessage("");
+        player.sendMessage("§6§l═════════ TUTORIAL APOCALIPSIS ═════════");
+        player.sendMessage("");
+        
+        if (!hasReachedGlobal) {
+            player.sendMessage("§e§l📊 TU PROGRESO DE ADAPTACIÓN:");
+            player.sendMessage("  §7Dificultad actual: §c" + difficulty + "%");
+            player.sendMessage("  §7Tiempo jugado: §e" + playedMinutes + " minutos");
+            player.sendMessage("  §7Próxima fase en: §e" + timeFormatted);
+            player.sendMessage("");
+            player.sendMessage("§7Los desastres empiezan §asuaves §7y aumentan");
+            player.sendMessage("§7gradualmente durante tus primeras §e4 horas§7.");
+            player.sendMessage("");
+        } else {
+            player.sendMessage("§a§l✓ Has alcanzado la dificultad global");
+            player.sendMessage("§7Ya no tienes protección de nuevos.");
+            player.sendMessage("");
+        }
+        
+        player.sendMessage("§e§l🌋 SOBRE LOS DESASTRES:");
+        player.sendMessage("  §c• Terremoto §8- Rompe bloques cercanos");
+        player.sendMessage("    §7→ Evasión: Aléjate del epicentro");
+        player.sendMessage("  §6• Lluvia de Fuego §8- Incendia todo");
+        player.sendMessage("    §7→ Evasión: Usa agua o corre");
+        player.sendMessage("  §9• Huracán §8- Empuja y lanza items");
+        player.sendMessage("    §7→ Evasión: Agáchate o escóndete");
+        player.sendMessage("");
+        
+        player.sendMessage("§e§l📋 PRIORIDADES DE SUPERVIVENCIA:");
+        player.sendMessage("  §a1. §7Construye un §erefugio subterráneo");
+        player.sendMessage("  §a2. §7Completa §emisiones diarias §7(/misiones)");
+        player.sendMessage("  §a3. §7Consigue §6bloques de protección §7(por rango)");
+        player.sendMessage("  §a4. §7Desbloquea §5habilidades §7(/habilidades)");
+        player.sendMessage("");
+        
+        player.sendMessage("§e§l📈 CÓMO MEJORAR:");
+        player.sendMessage("  §7• Gana XP completando misiones");
+        player.sendMessage("  §7• Sube de rango para obtener:");
+        player.sendMessage("    §8→ Habilidades permanentes");
+        player.sendMessage("    §8→ Recompensas épicas");
+        player.sendMessage("    §8→ Bloques de protección");
+        player.sendMessage("");
+        
+        player.sendMessage("§e§lCOMANDOS ÚTILES:");
+        player.sendMessage("  §a/avo menu §8- Menú principal");
+        player.sendMessage("  §a/misiones §8- Ver misiones");
+        player.sendMessage("  §a/habilidades §8- Árbol de habilidades");
+        player.sendMessage("  §a/avo stats §8- Tus estadísticas");
+        player.sendMessage("  §a/recompensa §8- Reclamar recompensas");
+        player.sendMessage("");
+        
+        if (!hasReachedGlobal) {
+            player.sendMessage("§6§l💡 CONSEJO:");
+            player.sendMessage("§7Usa /avo menu frecuentemente para ver tu progreso.");
+            player.sendMessage("§7¡Los primeros días son cruciales!");
+            player.sendMessage("");
+        }
+        
+        player.sendMessage("§6§l═════════════════════════════════════════");
         player.sendMessage("");
     }
     

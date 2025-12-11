@@ -7,10 +7,15 @@
  */
 package me.apocalipsis;
 
+import java.io.File;
+
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import me.apocalipsis.commands.ApocalipsisCommand;
 import me.apocalipsis.commands.AvoTabCompleter;
+import me.apocalipsis.commands.RecompensaCommand;
 import me.apocalipsis.disaster.DisasterController;
 import me.apocalipsis.disaster.DisasterEvasionTracker;
 import me.apocalipsis.disaster.DisasterRegistry;
@@ -30,9 +35,17 @@ import me.apocalipsis.listeners.MissionListener;
 import me.apocalipsis.listeners.PlayerListener;
 import me.apocalipsis.missions.MissionService;
 import me.apocalipsis.missions.RankService;
+import me.apocalipsis.skills.BackpackService;
+import me.apocalipsis.skills.SkillEffectListener;
+import me.apocalipsis.skills.SkillService;
+import me.apocalipsis.skills.SkillTreeGUI;
 import me.apocalipsis.state.StateManager;
 import me.apocalipsis.state.TimeService;
+import me.apocalipsis.tutorial.ProgressiveDifficultySystem;
+import me.apocalipsis.tutorial.TutorialManager;
+import me.apocalipsis.ui.MainMenuManager;
 import me.apocalipsis.ui.MessageBus;
+import me.apocalipsis.ui.RewardClaimSystem;
 import me.apocalipsis.ui.ScoreboardManager;
 import me.apocalipsis.ui.SoundUtil;
 import me.apocalipsis.ui.TablistManager;
@@ -40,13 +53,6 @@ import me.apocalipsis.utils.BlockOwnershipTracker;
 import me.apocalipsis.utils.ConfigManager;
 import me.apocalipsis.utils.OnlinePlayersCache;
 import me.apocalipsis.utils.VelocityManager;
-import me.apocalipsis.ui.RewardClaimSystem;
-import me.apocalipsis.ui.MainMenuManager;
-import me.apocalipsis.commands.RecompensaCommand;
-import me.apocalipsis.skills.SkillService;
-import me.apocalipsis.skills.SkillTreeGUI;
-import me.apocalipsis.skills.SkillEffectListener;
-import me.apocalipsis.skills.BackpackService;
 
 public final class Apocalipsis extends JavaPlugin {
 
@@ -92,6 +98,11 @@ public final class Apocalipsis extends JavaPlugin {
     private DisasterEvasionTracker evasionTracker;
     private OnlinePlayersCache onlinePlayersCache; // [OPTIMIZACIÓN] Cache de jugadores online
     private VelocityManager velocityManager; // [FIX] Sistema anti-cheat safe para velocity
+    
+    // Tutorial system
+    private ProgressiveDifficultySystem progressiveDifficultySystem;
+    private TutorialManager tutorialManager;
+    private FileConfiguration tutorialConfig;
 
     @Override
     public void onEnable() {
@@ -108,6 +119,7 @@ public final class Apocalipsis extends JavaPlugin {
         saveResource("evasiones.yml", false);
         saveResource("protecciones.yml", false);
         saveResource("skills.yml", false);
+        saveResource("tutorial.yml", false);
 
         // Inicializar servicios
         configManager = new ConfigManager(this);
@@ -156,9 +168,21 @@ public final class Apocalipsis extends JavaPlugin {
         velocityManager = new VelocityManager(this);
         getLogger().info("[VelocityManager] ✓ Sistema de velocity smoothing iniciado");
         
-        // Inicializar disaster system
+        // Cargar configuración de tutorial
+        File tutorialFile = new File(getDataFolder(), "tutorial.yml");
+        tutorialConfig = YamlConfiguration.loadConfiguration(tutorialFile);
+        
+        // Inicializar sistema de dificultad progresiva para nuevos
+        progressiveDifficultySystem = new ProgressiveDifficultySystem(this, tutorialConfig);
+        getLogger().info("[Tutorial] ✓ Sistema de dificultad progresiva iniciado");
+        
+        // Inicializar tutorial manager
+        tutorialManager = new TutorialManager(this, tutorialConfig, progressiveDifficultySystem, messageBus);
+        getLogger().info("[Tutorial] ✓ Sistema de tutorial para nuevos jugadores iniciado");
+        
+        // Inicializar disaster system (ahora con dificultad progresiva)
         disasterRegistry = new DisasterRegistry();
-        disasterController = new DisasterController(this, stateManager, timeService, disasterRegistry, messageBus, soundUtil);
+        disasterController = new DisasterController(this, stateManager, timeService, disasterRegistry, messageBus, soundUtil, progressiveDifficultySystem);
         
         // Inicializar event system
         eventController = new EventController(this);
@@ -402,6 +426,10 @@ public final class Apocalipsis extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new DisasterEvasionListener(this), this);
         getServer().getPluginManager().registerEvents(new me.apocalipsis.listeners.ChatListener(this), this);
         getServer().getPluginManager().registerEvents(new me.apocalipsis.events.SusurroPiedraRotaListener(this), this);
+        
+        // Registrar listener de tutorial
+        getServer().getPluginManager().registerEvents(new me.apocalipsis.tutorial.TutorialListener(this, tutorialManager), this);
+        getLogger().info("[Tutorial] ✓ Listener de tutorial registrado");
 
         // Cargar estado
         stateManager.loadState();
@@ -650,5 +678,19 @@ public final class Apocalipsis extends JavaPlugin {
      */
     public OnlinePlayersCache getOnlinePlayersCache() {
         return onlinePlayersCache;
+    }
+    
+    /**
+     * Obtiene el sistema de dificultad progresiva para nuevos jugadores
+     */
+    public ProgressiveDifficultySystem getProgressiveDifficultySystem() {
+        return progressiveDifficultySystem;
+    }
+    
+    /**
+     * Obtiene el gestor de tutorial para nuevos jugadores
+     */
+    public TutorialManager getTutorialManager() {
+        return tutorialManager;
     }
 }
