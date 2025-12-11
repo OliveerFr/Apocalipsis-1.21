@@ -22,6 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.OfflinePlayer;
+import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.configuration.ConfigurationSection;
@@ -82,6 +83,17 @@ public class BlockOwnershipTracker {
         BlockFace.EAST, BlockFace.WEST
     };
     
+    // Cache para protecciones (evita reflection constante)
+    private final Map<String, Boolean> protectionCache = new ConcurrentHashMap<>();
+    private static final long CACHE_EXPIRE_MS = 5000; // 5 segundos
+    private final Map<String, Long> cacheTimestamps = new ConcurrentHashMap<>();
+    
+    // Plugins de protección detectados
+    private boolean hasWorldGuard = false;
+    private boolean hasProtectionStones = false;
+    private Object wgInstance;
+    private Class<?> psRegionClass;
+    
     public BlockOwnershipTracker(Apocalipsis plugin) {
         this.plugin = plugin;
         this.blockOwners = new ConcurrentHashMap<>();
@@ -98,6 +110,9 @@ public class BlockOwnershipTracker {
         
         // Cargar datos de DB a cache
         loadFromDatabase();
+        
+        // Detectar plugins de protección
+        detectProtectionPlugins();
         
         // Iniciar tareas automáticas
         startCleanupTask();
@@ -444,11 +459,71 @@ public class BlockOwnershipTracker {
     
     /**
      * Verifica si un bloque puede ser destruido por un desastre.
+     * Ahora verifica: BlockOwnership, WorldGuard y ProtectionStones CON CACHE.
      */
     public boolean canDisasterDestroyBlock(Block block, Player affectedPlayer) {
+        String blockKey = getBlockKey(block);
+        String cacheKey = blockKey + ":" + affectedPlayer.getUniqueId();
+        
+        // Verificar cache (5 segundos de vida)
+        Long cacheTime = cacheTimestamps.get(cacheKey);
+        if (cacheTime != null && (System.currentTimeMillis() - cacheTime) < CACHE_EXPIRE_MS) {
+            Boolean cached = protectionCache.get(cacheKey);
+            if (cached != null) {
+                return cached;
+            }
+        }
+        
+        // Calcular protección
+        boolean canDestroy = checkBlockProtection(block, affectedPlayer);
+        
+        // Guardar en cache
+        protectionCache.put(cacheKey, canDestroy);
+        cacheTimestamps.put(cacheKey, System.currentTimeMillis());
+        
+        // Limpiar cache antigua (cada 100 checks)
+        if (protectionCache.size() > 1000) {
+            cleanExpiredCache();
+        }
+        
+        return canDestroy;
+    }
+    
+    /**
+     * Lógica real de verificación de protección (sin cache)
+     */
+    private boolean checkBlockProtection(Block block, Player affectedPlayer) {
+        UUID playerId = affectedPlayer.getUniqueId();
+        
+        // [PRIORIDAD 1] Verificar spawn protegido
+        if (isInSpawnProtection(block.getLocation())) {
+            if (plugin.getConfig().getBoolean("protecciones.verbose_logging", false)) {
+                plugin.getLogger().info("[BlockTracker] Bloque protegido: En spawn");
+            }
+            return false;
+        }
+        
+        // [PRIORIDAD 2] Verificar regiones de WorldGuard
+        if (hasWorldGuard && isProtectedByWorldGuard(block, affectedPlayer)) {
+            if (plugin.getConfig().getBoolean("protecciones.verbose_logging", false)) {
+                plugin.getLogger().info("[BlockTracker] Bloque protegido por WorldGuard: " + 
+                    block.getX() + "," + block.getY() + "," + block.getZ());
+            }
+            return false;
+        }
+        
+        // [PRIORIDAD 3] Verificar regiones de ProtectionStones
+        if (hasProtectionStones && isProtectedByProtectionStones(block, affectedPlayer)) {
+            if (plugin.getConfig().getBoolean("protecciones.verbose_logging", false)) {
+                plugin.getLogger().info("[BlockTracker] Bloque protegido por ProtectionStones: " + 
+                    block.getX() + "," + block.getY() + "," + block.getZ());
+            }
+            return false;
+        }
+        
+        // [PRIORIDAD 4] Verificar BlockOwnership (sistema interno)
         String key = getBlockKey(block);
         UUID owner = blockOwners.get(key);
-        UUID playerId = affectedPlayer.getUniqueId();
         
         // Si no tiene dueño, verificar bloques conectados
         if (owner == null) {
@@ -457,6 +532,10 @@ public class BlockOwnershipTracker {
                 if (connectedOwner != null && !connectedOwner.equals(playerId)) {
                     // Verificar si el dueño conectado está activo
                     if (isPlayerActive(connectedOwner)) {
+                        if (plugin.getConfig().getBoolean("protecciones.verbose_logging", false)) {
+                            plugin.getLogger().info("[BlockTracker] Bloque protegido: Conectado a bloques de " + 
+                                Bukkit.getOfflinePlayer(connectedOwner).getName());
+                        }
                         return false;
                     }
                 }
@@ -475,7 +554,195 @@ public class BlockOwnershipTracker {
         }
         
         // Dueño activo diferente -> NO permitir
+        if (plugin.getConfig().getBoolean("protecciones.verbose_logging", false)) {
+            plugin.getLogger().info("[BlockTracker] Bloque protegido: Dueño " + 
+                Bukkit.getOfflinePlayer(owner).getName() + " está activo");
+        }
         return false;
+    }
+    
+    /**
+     * Detecta plugins de protección disponibles
+     */
+    private void detectProtectionPlugins() {
+        // Detectar WorldGuard
+        if (Bukkit.getPluginManager().getPlugin("WorldGuard") != null) {
+            try {
+                Class<?> wgClass = Class.forName("com.sk89q.worldguard.WorldGuard");
+                wgInstance = wgClass.getMethod("getInstance").invoke(null);
+                hasWorldGuard = true;
+                plugin.getLogger().info("[BlockTracker] ✓ WorldGuard detectado - Protecciones habilitadas");
+            } catch (Exception e) {
+                plugin.getLogger().warning("[BlockTracker] WorldGuard encontrado pero no se pudo inicializar");
+            }
+        }
+        
+        // Detectar ProtectionStones
+        if (Bukkit.getPluginManager().getPlugin("ProtectionStones") != null) {
+            try {
+                psRegionClass = Class.forName("dev.espi.protectionstones.PSRegion");
+                hasProtectionStones = true;
+                plugin.getLogger().info("[BlockTracker] ✓ ProtectionStones detectado - Protecciones habilitadas");
+            } catch (Exception e) {
+                plugin.getLogger().warning("[BlockTracker] ProtectionStones encontrado pero no se pudo inicializar");
+            }
+        }
+        
+        if (!hasWorldGuard && !hasProtectionStones) {
+            plugin.getLogger().info("[BlockTracker] No se detectaron plugins de protección externos");
+        }
+    }
+    
+    /**
+     * Limpia cache expirado
+     */
+    private void cleanExpiredCache() {
+        long now = System.currentTimeMillis();
+        cacheTimestamps.entrySet().removeIf(entry -> (now - entry.getValue()) > CACHE_EXPIRE_MS);
+        protectionCache.keySet().removeIf(key -> !cacheTimestamps.containsKey(key));
+    }
+    
+    /**
+     * Verifica si una ubicación está en el spawn protegido
+     */
+    private boolean isInSpawnProtection(Location loc) {
+        World world = loc.getWorld();
+        if (world == null) return false;
+        
+        Location spawn = world.getSpawnLocation();
+        int spawnRadius = Bukkit.getServer().getSpawnRadius();
+        
+        if (spawnRadius <= 0) return false;
+        
+        double distance = spawn.distance(loc);
+        return distance <= spawnRadius;
+    }
+    
+    /**
+     * Verifica si un bloque está protegido por WorldGuard.
+     * Retorna true si está en una región y el jugador NO tiene permisos de destruir.
+     */
+    private boolean isProtectedByWorldGuard(Block block, Player player) {
+        try {
+            // Verificar si WorldGuard está cargado
+            if (Bukkit.getPluginManager().getPlugin("WorldGuard") == null) {
+                return false;
+            }
+            
+            // Usar reflection para evitar dependencia hard
+            Class<?> wgClass = Class.forName("com.sk89q.worldguard.WorldGuard");
+            Object wgInstance = wgClass.getMethod("getInstance").invoke(null);
+            Object platformClass = wgInstance.getClass().getMethod("getPlatform").invoke(wgInstance);
+            Object regionContainer = platformClass.getClass().getMethod("getRegionContainer").invoke(platformClass);
+            
+            // Obtener RegionManager del mundo
+            Class<?> worldClass = Class.forName("com.sk89q.worldedit.bukkit.BukkitAdapter");
+            Object weWorld = worldClass.getMethod("adapt", org.bukkit.World.class).invoke(null, block.getWorld());
+            Object regionManager = regionContainer.getClass().getMethod("get", Class.forName("com.sk89q.worldedit.world.World")).invoke(regionContainer, weWorld);
+            
+            if (regionManager == null) {
+                return false; // No hay regiones en este mundo
+            }
+            
+            // Convertir location
+            Object weLocation = worldClass.getMethod("adapt", org.bukkit.Location.class).invoke(null, block.getLocation());
+            Class<?> vectorClass = Class.forName("com.sk89q.worldedit.math.BlockVector3");
+            Object blockVector = weLocation.getClass().getMethod("toVector").invoke(weLocation);
+            blockVector = vectorClass.getMethod("toBlockPoint").invoke(blockVector);
+            
+            // Obtener regiones aplicables
+            Object applicableRegions = regionManager.getClass().getMethod("getApplicableRegions", vectorClass).invoke(regionManager, blockVector);
+            
+            // Si hay regiones, verificar si el jugador es miembro/dueño
+            int regionCount = (int) applicableRegions.getClass().getMethod("size").invoke(applicableRegions);
+            
+            if (regionCount > 0) {
+                // Hay regiones protegiendo este bloque
+                // Verificar si el jugador es miembro o tiene bypass
+                Object localPlayer = worldClass.getMethod("adapt", Player.class).invoke(null, player);
+                
+                // Verificar bypass permission
+                if (player.hasPermission("worldguard.region.bypass." + block.getWorld().getName())) {
+                    return false;
+                }
+                
+                // Verificar membresía en alguna región
+                Object regions = applicableRegions.getClass().getMethod("getRegions").invoke(applicableRegions);
+                for (Object region : (Iterable<?>) regions) {
+                    Object members = region.getClass().getMethod("getMembers").invoke(region);
+                    Object owners = region.getClass().getMethod("getOwners").invoke(region);
+                    
+                    UUID playerUuid = player.getUniqueId();
+                    boolean isMember = (boolean) members.getClass().getMethod("contains", UUID.class).invoke(members, playerUuid);
+                    boolean isOwner = (boolean) owners.getClass().getMethod("contains", UUID.class).invoke(owners, playerUuid);
+                    
+                    if (isMember || isOwner) {
+                        return false; // Es miembro/dueño, permitir destruir
+                    }
+                }
+                
+                // No es miembro de ninguna región -> bloque protegido
+                return true;
+            }
+            
+            return false;
+            
+        } catch (Exception e) {
+            // Si falla, asumir no protegido (fail-safe)
+            return false;
+        }
+    }
+    
+    /**
+     * Verifica si un bloque está protegido por ProtectionStones.
+     * Retorna true si está en una región PS y el jugador NO es el dueño.
+     */
+    private boolean isProtectedByProtectionStones(Block block, Player player) {
+        try {
+            // Verificar si ProtectionStones está cargado
+            if (Bukkit.getPluginManager().getPlugin("ProtectionStones") == null) {
+                return false;
+            }
+            
+            // Usar API de ProtectionStones
+            Class<?> psApiClass = Class.forName("dev.espi.protectionstones.PSRegion");
+            Object psRegion = psApiClass.getMethod("fromLocation", org.bukkit.Location.class)
+                .invoke(null, block.getLocation());
+            
+            if (psRegion == null) {
+                return false; // No hay región PS aquí
+            }
+            
+            // Verificar si el jugador es owner/member
+            UUID playerUuid = player.getUniqueId();
+            
+            // Obtener owners
+            Object owners = psRegion.getClass().getMethod("getOwners").invoke(psRegion);
+            if (owners instanceof java.util.List) {
+                for (Object ownerUuid : (java.util.List<?>) owners) {
+                    if (ownerUuid.equals(playerUuid)) {
+                        return false; // Es owner, permitir destruir
+                    }
+                }
+            }
+            
+            // Obtener members
+            Object members = psRegion.getClass().getMethod("getMembers").invoke(psRegion);
+            if (members instanceof java.util.List) {
+                for (Object memberUuid : (java.util.List<?>) members) {
+                    if (memberUuid.equals(playerUuid)) {
+                        return false; // Es member, permitir destruir
+                    }
+                }
+            }
+            
+            // No es owner ni member -> bloque protegido
+            return true;
+            
+        } catch (Exception e) {
+            // Si falla, asumir no protegido (fail-safe)
+            return false;
+        }
     }
     
     /**
