@@ -124,13 +124,23 @@ public class ProgressiveDifficultySystem {
             long now = System.currentTimeMillis();
             firstJoinTime.put(uuid, now);
             
-            if (verboseLogging) {
-                plugin.getLogger().info(String.format(
-                    "[Tutorial] Jugador %s registrado. Inicio de dificultad progresiva.",
-                    player.getName()
-                ));
-            }
+            plugin.getLogger().info(String.format(
+                "[Tutorial] Jugador %s registrado en sistema de dificultad progresiva. Timestamp: %d",
+                player.getName(), now
+            ));
+        } else {
+            plugin.getLogger().info(String.format(
+                "[Tutorial] Jugador %s ya estaba registrado. Timestamp existente: %d",
+                player.getName(), firstJoinTime.get(uuid)
+            ));
         }
+    }
+    
+    /**
+     * Verifica si un jugador tiene datos registrados
+     */
+    public boolean hasPlayerData(Player player) {
+        return firstJoinTime.containsKey(player.getUniqueId());
     }
     
     /**

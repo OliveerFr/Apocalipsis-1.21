@@ -160,12 +160,10 @@ public class TutorialManager {
         // Iniciar ActionBar de progreso
         startActionBarProgress(player);
         
-        if (verboseLogging) {
-            plugin.getLogger().info(String.format(
-                "[Tutorial] Jugador %s iniciado. Tutorial comenzará en %d minutos.",
-                player.getName(), tutorialDelayMinutes
-            ));
-        }
+        plugin.getLogger().info(String.format(
+            "[Tutorial] Jugador %s iniciado. Tutorial comenzará en %d minutos.",
+            player.getName(), tutorialDelayMinutes
+        ));
     }
     
     /**
@@ -207,6 +205,11 @@ public class TutorialManager {
     private void scheduleTutorialStart(Player player) {
         UUID uuid = player.getUniqueId();
         
+        plugin.getLogger().info(String.format(
+            "[Tutorial] Programando inicio de tutorial para %s en %d minutos (%d ticks)",
+            player.getName(), tutorialDelayMinutes, tutorialDelayMinutes * 20L * 60L
+        ));
+        
         // Cancelar tarea anterior si existe
         if (scheduledTutorials.containsKey(uuid)) {
             scheduledTutorials.get(uuid).cancel();
@@ -217,7 +220,16 @@ public class TutorialManager {
         
         BukkitTask task = Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (player.isOnline()) {
+                plugin.getLogger().info(String.format(
+                    "[Tutorial] Ejecutando tarea programada para %s",
+                    player.getName()
+                ));
                 startTutorial(player);
+            } else {
+                plugin.getLogger().info(String.format(
+                    "[Tutorial] Jugador %s offline, cancelando tutorial",
+                    player.getName()
+                ));
             }
         }, delayTicks);
         
@@ -231,19 +243,28 @@ public class TutorialManager {
         UUID uuid = player.getUniqueId();
         TutorialState state = tutorialStates.get(uuid);
         
-        if (state == null || state.isTutorialStarted()) return;
+        plugin.getLogger().info(String.format(
+            "[Tutorial] startTutorial llamado para %s. Estado: %s",
+            player.getName(), (state == null ? "null" : "existe")
+        ));
+        
+        if (state == null || state.isTutorialStarted()) {
+            plugin.getLogger().warning(String.format(
+                "[Tutorial] Tutorial ya iniciado o estado null para %s. Saltando.",
+                player.getName()
+            ));
+            return;
+        }
         
         state.setTutorialStarted(true);
         
         // Entregar kit de inicio
         giveStarterKit(player);
         
-        if (verboseLogging) {
-            plugin.getLogger().info(String.format(
-                "[Tutorial] Tutorial iniciado para %s. Kit entregado.",
-                player.getName()
-            ));
-        }
+        plugin.getLogger().info(String.format(
+            "[Tutorial] Tutorial iniciado para %s. Kit entregado.",
+            player.getName()
+        ));
     }
     
     /**

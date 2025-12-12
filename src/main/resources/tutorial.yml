@@ -13,6 +13,10 @@ tutorial:
   enabled: true
   verbose_logging: true              # Logs detallados en consola
   
+  # Criterios de detección mejorados
+  max_tiempo_jugado_minutos: 60      # Máximo tiempo jugado para activar tutorial (1 hora)
+  solo_rango_novato: true            # Solo activar si el jugador es NOVATO
+  
   # Esperar 5 minutos antes de iniciar tutorial (tiempo de registro)
   retraso_inicio_minutos: 5
   

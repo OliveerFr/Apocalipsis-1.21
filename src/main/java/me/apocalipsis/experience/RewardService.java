@@ -168,37 +168,16 @@ public class RewardService {
         // En lugar de ejecutarse inmediatamente, aparecen como items reclamables
         int protectionBlocksTotal = 0;
         for (String cmd : specialCommands) {
-            // Detectar comandos de bloques de protección
-            if (cmd.toLowerCase().startsWith("ps give") || cmd.toLowerCase().startsWith("ps admin give")) {
-                // Extraer cantidad del comando
-                String[] parts = cmd.split("\\s+");
-                int amount = 1;
-                if (parts.length >= 4) {
-                    try {
-                        amount = Integer.parseInt(parts[parts.length - 1]);
-                    } catch (NumberFormatException e) {
-                        amount = 1;
-                    }
+            // Todos los comandos especiales (incluido ps give) se ejecutan inmediatamente
+            final String finalCmd = cmd;
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                try {
+                    Bukkit.dispatchCommand(Bukkit.getConsoleSender(), finalCmd);
+                    plugin.getLogger().info("[Rewards] ✓ Comando ejecutado: " + finalCmd);
+                } catch (Exception e) {
+                    plugin.getLogger().severe("[Rewards] ✗ Error ejecutando comando: " + finalCmd);
                 }
-                protectionBlocksTotal += amount;
-                
-                // Crear item visual para el menú de recompensas
-                ItemStack protectionItem = createProtectionBlockItem(cmd, amount);
-                items.add(protectionItem);
-                
-                plugin.getLogger().info("[Rewards] Bloque de protección añadido a recompensas: " + cmd);
-            } else {
-                // Otros comandos especiales se ejecutan inmediatamente
-                final String finalCmd = cmd;
-                Bukkit.getScheduler().runTask(plugin, () -> {
-                    try {
-                        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), finalCmd);
-                        plugin.getLogger().info("[Rewards] ✓ Comando ejecutado: " + finalCmd);
-                    } catch (Exception e) {
-                        plugin.getLogger().severe("[Rewards] ✗ Error ejecutando comando: " + finalCmd);
-                    }
-                });
-            }
+            });
         }
         
         // Añadir items al sistema de reclamación
