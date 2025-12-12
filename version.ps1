@@ -96,6 +96,31 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Success "JAR creado: target/Apocalipsis-$newVersion.jar"
 
+# Limpiar JARs antiguos del target/
+Write-Info "Limpiando JARs antiguos de target/..."
+$targetPath = Join-Path $PSScriptRoot "target"
+if (Test-Path $targetPath) {
+    $newJarName = "Apocalipsis-$newVersion.jar"
+    $newJarShaded = "Apocalipsis-$newVersion-shaded.jar"
+    $originalJar = "original-Apocalipsis-$newVersion.jar"
+    
+    $oldJars = Get-ChildItem -Path $targetPath -Filter "*.jar" | Where-Object {
+        $_.Name -ne $newJarName -and 
+        $_.Name -ne $newJarShaded -and 
+        $_.Name -ne $originalJar
+    }
+    
+    if ($oldJars.Count -gt 0) {
+        foreach ($jar in $oldJars) {
+            Remove-Item $jar.FullName -Force
+            Write-Host "  - Eliminado: $($jar.Name)" -ForegroundColor DarkGray
+        }
+        Write-Success "Eliminados $($oldJars.Count) JAR(s) antiguo(s)"
+    } else {
+        Write-Info "No hay JARs antiguos que eliminar"
+    }
+}
+
 # Git operations
 Write-Info "Ejecutando operaciones de Git..."
 
