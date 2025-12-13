@@ -1,0 +1,273 @@
+# ════════════════════════════════════════════════════════════════════
+# Apocalipsis — stream_features.yml
+# Características exclusivas cuando el streamer está online
+# ════════════════════════════════════════════════════════════════════
+
+version: 1
+
+# ═══════════════════════════════════════════════════════════════
+# 🎮 CONFIGURACIÓN GENERAL
+# ═══════════════════════════════════════════════════════════════
+
+streamer:
+  username: "OliveerF"             # Tu username de Minecraft
+  modo_debug: true              # Logs detallados para testing
+
+# ═══════════════════════════════════════════════════════════════
+# 📺 DROPS ESPECIALES DE STREAM
+# Items únicos que solo dropean cuando estás online
+# ═══════════════════════════════════════════════════════════════
+
+drops_stream:
+  enabled: true
+  
+  # Chance de drop especial (solo cuando streamer online)
+  chance_base: 0.15             # 15% de chance por mob hostil
+  
+  # Items especiales
+  items:
+    # Token de Stream (para canjear por recompensas épicas)
+    - tipo: "NETHER_STAR"
+      nombre: "&6&l⭐ Token de Stream"
+      lore:
+        - "&7Item especial del stream"
+        - "&eObtención: &aMob hostil durante stream"
+        - "&7"
+        - "&6Úsalo con /avo canjear"
+      cantidad: 1
+      chance: 0.05              # 5% chance
+      
+    # Fragmento de Esmeralda (crafteable en bloque)
+    - tipo: "EMERALD"
+      nombre: "&a&l💎 Fragmento del Stream"
+      lore:
+        - "&7Obtenido durante el stream"
+        - "&e9 fragmentos = 1 Bloque de Esmeralda"
+      cantidad: 1
+      chance: 0.10              # 10% chance
+  
+  # Mensaje al obtener drop
+  mensaje: "&6&l[STREAM DROP] &e¡Has obtenido %item%!"
+  sonido: "ENTITY_PLAYER_LEVELUP"
+
+# ═══════════════════════════════════════════════════════════════
+# 🎯 MISIONES EXCLUSIVAS DE STREAM
+# Misiones adicionales solo disponibles cuando streameas
+# ═══════════════════════════════════════════════════════════════
+
+misiones_stream:
+  enabled: true
+  
+  # Misiones que aparecen SOLO cuando el streamer está online
+  # Se añaden a las misiones diarias normales
+  cantidad_adicional: 3         # +3 misiones extra durante stream
+  
+  # Bonus XP para misiones de stream
+  multiplicador_xp: 2.0         # x2 XP en misiones de stream
+  
+  # Pool de misiones exclusivas
+  pool:
+    stream_caceria_epica:
+      nombre: "&6[STREAM] &eCacería Épica"
+      descripcion: "Mata 50 mobs hostiles mientras el streamer está online"
+      objetivo:
+        tipo: "MATAR_MOBS"
+        cantidad: 50
+        mobs: ["ZOMBIE", "SKELETON", "CREEPER", "SPIDER", "ENDERMAN"]
+      recompensas:
+        xp: 500
+        items:
+          - "give %player% minecraft:diamond 5"
+          - "give %player% minecraft:enchanted_golden_apple 2"
+    
+    stream_minero_legendario:
+      nombre: "&6[STREAM] &eMinero Legendario"
+      descripcion: "Mina 100 minerales valiosos durante el stream"
+      objetivo:
+        tipo: "MINAR"
+        cantidad: 100
+        bloques: ["DIAMOND_ORE", "EMERALD_ORE", "ANCIENT_DEBRIS", "GOLD_ORE"]
+      recompensas:
+        xp: 800
+        items:
+          - "give %player% minecraft:netherite_ingot 3"
+          - "give %player% minecraft:diamond 10"
+    
+    stream_constructor:
+      nombre: "&6[STREAM] &eConstructor Dedicado"
+      descripcion: "Coloca 500 bloques durante el stream"
+      objetivo:
+        tipo: "COLOCAR_BLOQUES"
+        cantidad: 500
+      recompensas:
+        xp: 400
+        items:
+          - "give %player% minecraft:diamond_block 2"
+
+# ═══════════════════════════════════════════════════════════════
+# 🎊 EVENTOS AUTOMÁTICOS DE STREAM
+# Eventos que se activan solo cuando streameas
+# ═══════════════════════════════════════════════════════════════
+
+eventos_stream:
+  enabled: true
+  
+  # Evento cada X minutos durante el stream
+  intervalo_minutos: 30         # Cada 30 minutos
+  
+  # Tipos de eventos
+  eventos:
+    lluvia_de_recursos:
+      enabled: true
+      peso: 30                  # Probabilidad relativa
+      nombre: "&6&l⭐ LLUVIA DE RECURSOS"
+      descripcion: "&eTodos los jugadores reciben recursos gratis!"
+      items_por_jugador:
+        - "give %player% minecraft:diamond 3"
+        - "give %player% minecraft:gold_ingot 8"
+        - "give %player% minecraft:iron_ingot 16"
+        - "give %player% minecraft:emerald 2"
+      mensaje_global: "&6&l[STREAM EVENT] &e¡Lluvia de recursos! Todos reciben items gratis"
+    
+    doble_drops:
+      enabled: true
+      peso: 25
+      nombre: "&6&l⭐ DOBLE DROPS"
+      descripcion: "&e¡Doble drops de mobs durante 10 minutos!"
+      duracion_minutos: 10
+      multiplicador: 2.0
+      mensaje_inicio: "&6&l[STREAM EVENT] &e¡DOBLE DROPS activado por 10 minutos!"
+      mensaje_fin: "&6&l[STREAM EVENT] &7Doble drops finalizado"
+    
+    boss_especial:
+      enabled: true
+      peso: 20
+      nombre: "&6&l⭐ BOSS DEL STREAM"
+      descripcion: "&e¡Ha aparecido un boss épico!"
+      boss:
+        tipo: "WITHER"
+        nombre: "&4&l⚡ Boss del Stream"
+        salud_multiplicador: 3.0
+        dano_multiplicador: 1.5
+      recompensas_kill:
+        items:
+          - "give %player% minecraft:nether_star 2"
+          - "give %player% minecraft:netherite_ingot 5"
+          - "give %player% minecraft:enchanted_golden_apple 3"
+        xp: 1000
+      mensaje_spawn: "&c&l[BOSS] &e¡Un Boss del Stream ha aparecido! Coordenadas: %coords%"
+    
+    mega_experiencia:
+      enabled: true
+      peso: 25
+      nombre: "&6&l⭐ MEGA EXPERIENCIA"
+      descripcion: "&e¡XP x5 durante 15 minutos!"
+      duracion_minutos: 15
+      multiplicador: 5.0
+      mensaje_inicio: "&6&l[STREAM EVENT] &e¡MEGA XP x5 activado por 15 minutos!"
+      mensaje_fin: "&6&l[STREAM EVENT] &7Mega XP finalizado"
+
+# ═══════════════════════════════════════════════════════════════
+# 🏆 SISTEMA DE CANJEO DE TOKENS
+# Canjear Tokens de Stream por recompensas épicas
+# ═══════════════════════════════════════════════════════════════
+
+canje_tokens:
+  enabled: true
+  comando: "/avo canjear"
+  
+  # Recompensas disponibles
+  recompensas:
+    kit_diamante:
+      nombre: "&b&lKit Diamante"
+      descripcion: "Armadura completa de diamante + herramientas"
+      costo_tokens: 5
+      items:
+        - "give %player% minecraft:diamond_helmet 1"
+        - "give %player% minecraft:diamond_chestplate 1"
+        - "give %player% minecraft:diamond_leggings 1"
+        - "give %player% minecraft:diamond_boots 1"
+        - "give %player% minecraft:diamond_sword 1"
+        - "give %player% minecraft:diamond_pickaxe 1"
+    
+    kit_netherite:
+      nombre: "&c&lKit Netherite"
+      descripcion: "Armadura completa de netherite"
+      costo_tokens: 15
+      items:
+        - "give %player% minecraft:netherite_helmet 1"
+        - "give %player% minecraft:netherite_chestplate 1"
+        - "give %player% minecraft:netherite_leggings 1"
+        - "give %player% minecraft:netherite_boots 1"
+    
+    elytra_especial:
+      nombre: "&d&lÉlitro del Stream"
+      descripcion: "Élitro + 64 cohetes"
+      costo_tokens: 10
+      items:
+        - "give %player% minecraft:elytra 1"
+        - "give %player% minecraft:firework_rocket 64"
+    
+    bloque_proteccion:
+      nombre: "&a&lBloque de Protección x3"
+      descripcion: "3 bloques de protección de terreno"
+      costo_tokens: 8
+      items:
+        - "ps give 15 %player% 3"
+    
+    mega_pack:
+      nombre: "&6&l⭐ MEGA PACK ÉPICO"
+      descripcion: "Pack completo de items legendarios"
+      costo_tokens: 25
+      items:
+        - "give %player% minecraft:netherite_ingot 20"
+        - "give %player% minecraft:diamond 32"
+        - "give %player% minecraft:enchanted_golden_apple 8"
+        - "give %player% minecraft:totem_of_undying 3"
+        - "give %player% minecraft:nether_star 5"
+        - "ps give 15 %player% 5"
+
+# ═══════════════════════════════════════════════════════════════
+# 📊 ESTADÍSTICAS Y RANKING DE STREAM
+# ═══════════════════════════════════════════════════════════════
+
+estadisticas:
+  enabled: true
+  
+  # Ranking de jugadores más activos durante streams
+  ranking:
+    enabled: true
+    mostrar_top: 10             # Top 10 jugadores
+    actualizar_minutos: 30      # Actualizar cada 30 min
+    
+  # Recompensas semanales para top jugadores
+  recompensas_semanales:
+    enabled: true
+    top_1:
+      items:
+        - "give %player% minecraft:netherite_block 3"
+        - "give %player% minecraft:enchanted_golden_apple 10"
+        - "ps give 15 %player% 5"
+      xp: 2000
+    top_2:
+      items:
+        - "give %player% minecraft:netherite_block 2"
+        - "give %player% minecraft:enchanted_golden_apple 6"
+        - "ps give 15 %player% 3"
+      xp: 1500
+    top_3:
+      items:
+        - "give %player% minecraft:netherite_block 1"
+        - "give %player% minecraft:enchanted_golden_apple 4"
+        - "ps give 15 %player% 2"
+      xp: 1000
+
+# ═══════════════════════════════════════════════════════════════
+# 💬 MENSAJES Y NOTIFICACIONES
+# ═══════════════════════════════════════════════════════════════
+
+mensajes:
+  recordatorio_periodico:
+    enabled: true
+    intervalo_minutos: 20       # Cada 20 min cuando streameas
+    mensaje: "&6&l[STREAM] &e¡Recuerda que estás ganando &a&lx3 XP &emientras el streamer está online!"

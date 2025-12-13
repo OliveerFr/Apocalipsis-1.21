@@ -140,12 +140,38 @@ xp_dinamico:
   actionbar:
     enabled: true               # Mostrar XP ganado en ActionBar
   
-  # Multiplicadores base
+  # ═══════════════════════════════════════════════════════════════
+  # 🎮 SISTEMA DE PRESENCIA DEL STREAMER
+  # XP normal cuando streameas, reducido cuando no estás
+  # ═══════════════════════════════════════════════════════════════
+  presencia_streamer:
+    enabled: true
+    
+    # Usuario del streamer (cambia "Riolu" por tu username)
+    streamer_username: "Riolu"
+    
+    # Cuando el streamer está ONLINE = XP normal
+    multiplicador_online: 1.0       # x1.0 = XP normal, sin cambios
+    
+    # Cuando el streamer está OFFLINE = XP reducido
+    multiplicador_offline: 0.3      # x0.3 = 70% menos XP
+    
+    # Notificaciones
+    notificar_conexion: true
+    notificar_desconexion: true
+    mensaje_conexion: "&6&l[STREAM] &e¡El streamer está ONLINE! &aXP normal restaurado"
+    mensaje_desconexion: "&6&l[STREAM] &7El streamer se desconectó. &cXP reducido al 30%"
+    
+    # Título cuando te conectas
+    titulo_conexion:
+      enabled: true
+      titulo: "&6&l⭐ STREAM ONLINE"
+      subtitulo: "&eXP normal activado"
+  
+  # Multiplicadores base (REDUCIDOS - ahora el foco es el streamer)
   multiplicadores:
-    fin_de_semana: 1.5          # x1.5 los sábados y domingos
-    noche: 1.2                  # x1.2 durante la noche in-game
-    racha_por_dia: 0.1          # +10% por cada día de racha
-    max_dias_racha: 7           # Máximo 7 días = +70%
+    racha_por_dia: 0.05             # +5% por cada día de racha (antes 10%)
+    max_dias_racha: 7               # Máximo 7 días = +35% (antes +70%)
   
   # ─────────────────────────────────────────────────────────────
   # COMBOS RÁPIDOS - Bonus por acciones consecutivas
@@ -180,24 +206,6 @@ xp_dinamico:
     enabled: true               # Activar sistema de milestones
     # Los milestones se otorgan automáticamente al alcanzar:
     # 50, 100, 250, 500, 1000, 2500, 5000 acciones por categoría
-  
-  # ─────────────────────────────────────────────────────────────
-  # HORA FELIZ - Eventos de XP doble
-  # ─────────────────────────────────────────────────────────────
-  hora_feliz:
-    multiplicador: 2.0          # Multiplicador durante hora feliz
-    # Horas felices programadas (automáticas)
-    programadas:
-      noche_viernes:
-        hora_inicio: 20         # 8 PM
-        minuto_inicio: 0
-        duracion_minutos: 120   # 2 horas
-        dias: [FRIDAY]          # Solo viernes
-      sabado_tarde:
-        hora_inicio: 16         # 4 PM
-        minuto_inicio: 0
-        duracion_minutos: 60
-        dias: [SATURDAY]
       domingo_noche:
         hora_inicio: 19         # 7 PM
         minuto_inicio: 0
@@ -257,7 +265,11 @@ fuentes_xp:
       enabled: true
       xp: 1
       cooldown_ms: 500
-    raro:                      # Oro, Lapislázuli, Redstone, Cuarzo
+    cuarzo:                    # Cuarzo del Nether (SIN XP)
+      enabled: false
+      xp: 0
+      cooldown_ms: 0
+    raro:                      # Oro, Lapislázuli, Redstone
       enabled: true
       xp: 3
       cooldown_ms: 500

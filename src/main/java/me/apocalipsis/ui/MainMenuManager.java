@@ -292,6 +292,36 @@ public class MainMenuManager implements Listener {
             "EVASIONES"
         ));
         
+        // Slot 33: ESTADO STREAMER (NUEVO)
+        boolean streamerOnline = isStreamerOnline();
+        String estadoStreamer = streamerOnline ? "§a§l✓ ONLINE" : "§c§l✗ OFFLINE";
+        String xpMultiplier = streamerOnline ? "§aXP Normal (x1.0)" : "§cXP Reducido (x0.3)";
+        Material streamerIcon = streamerOnline ? Material.LIME_DYE : Material.GRAY_DYE;
+        
+        List<String> streamerLore = new ArrayList<>();
+        streamerLore.add("");
+        streamerLore.add("§7Estado: " + estadoStreamer);
+        streamerLore.add("§7Multiplicador: " + xpMultiplier);
+        streamerLore.add("");
+        if (streamerOnline) {
+            streamerLore.add("§a¡El streamer está conectado!");
+            streamerLore.add("§7Aprovecha para ganar XP normal");
+            streamerLore.add("§7y participar en eventos exclusivos.");
+        } else {
+            streamerLore.add("§7El streamer no está conectado.");
+            streamerLore.add("§7XP reducido al 30% del normal.");
+            streamerLore.add("§e¡Vuelve cuando haya stream!");
+        }
+        streamerLore.add("");
+        streamerLore.add("§8▸ Sistema de presencia");
+        
+        menu.setItem(33, createMenuItem(
+            streamerIcon,
+            "§6§l🎮 Estado del Stream",
+            streamerLore,
+            "STREAM_STATUS"
+        ));
+        
         // Slot 34: EVENTOS
         String estadoEvento = plugin.getEventController().hasActiveEvent() ? "§a¡ACTIVO!" : "§7Ninguno activo";
         menu.setItem(34, createMenuItem(
@@ -677,6 +707,17 @@ public class MainMenuManager implements Listener {
     // ═══════════════════════════════════════════════════════════════════
     // UTILIDADES
     // ═══════════════════════════════════════════════════════════════════
+    
+    /**
+     * Verifica si el streamer está online
+     */
+    private boolean isStreamerOnline() {
+        String streamerUsername = plugin.getConfigManager().getRecompensasConfig()
+            .getString("xp_dinamico.presencia_streamer.streamer_username", "Riolu");
+        
+        Player streamer = Bukkit.getPlayer(streamerUsername);
+        return streamer != null && streamer.isOnline();
+    }
     
     private ItemStack createBorderItem(Material material) {
         ItemStack item = new ItemStack(material);
