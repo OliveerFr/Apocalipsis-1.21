@@ -154,7 +154,7 @@ xp_dinamico:
     multiplicador_online: 1.0       # x1.0 = XP normal, sin cambios
     
     # Cuando el streamer está OFFLINE = XP reducido
-    multiplicador_offline: 0.3      # x0.3 = 70% menos XP
+    multiplicador_offline: 0.2      # x0.2 = 80% menos XP
     
     # Notificaciones
     notificar_conexion: true
@@ -167,6 +167,143 @@ xp_dinamico:
       enabled: true
       titulo: "&6&l⭐ STREAM ONLINE"
       subtitulo: "&eXP normal activado"
+  
+  # ═══════════════════════════════════════════════════════════════
+  # 👥 SISTEMA DE REFERIDOS - Recompensas por traer jugadores nuevos
+  # ═══════════════════════════════════════════════════════════════
+  sistema_referidos:
+    enabled: true
+    
+    # Recompensa INMEDIATA cuando el jugador nuevo se une
+    recompensa_invitacion:
+      xp: 500                           # 500 XP al invitar
+      comandos:
+        - "give %player% minecraft:diamond 5"
+        - "give %player% minecraft:golden_apple 3"
+        - "give %player% minecraft:experience_bottle 10"
+      mensaje: "&6&l[REFERIDO] &e%jugador_nuevo% &ase unió por ti! &6+500 XP, +5 Diamantes"
+      titulo:
+        enabled: true
+        titulo: "&6&l¡NUEVO JUGADOR!"
+        subtitulo: "&e+500 XP por invitar a &a%jugador_nuevo%"
+    
+    # Recompensas PROGRESIVAS cuando el referido alcanza hitos
+    hitos_referido:
+      # Cuando el referido alcanza EXPLORADOR (nivel 2)
+      nivel_2:
+        xp: 300
+        comandos:
+          - "give %player% minecraft:diamond 3"
+          - "give %player% minecraft:ender_pearl 5"
+        mensaje: "&6&l[REFERIDO] &e%jugador_nuevo% &aalcanzó Explorador! &6+300 XP"
+      
+      # Cuando el referido alcanza SOBREVIVIENTE (nivel 3)
+      nivel_3:
+        xp: 500
+        comandos:
+          - "give %player% minecraft:diamond 5"
+          - "give %player% minecraft:netherite_scrap 1"
+          - "ps give 15 %player% 5"    # 5 bloques de protección
+        mensaje: "&6&l[REFERIDO] &e%jugador_nuevo% &aalcanzó Sobreviviente! &6+500 XP, +5 PS"
+      
+      # Cuando el referido alcanza VETERANO (nivel 4)
+      nivel_4:
+        xp: 800
+        comandos:
+          - "give %player% minecraft:netherite_ingot 1"
+          - "give %player% minecraft:enchanted_golden_apple 2"
+          - "ps give 15 %player% 8"    # 8 bloques de protección
+        mensaje: "&6&l[REFERIDO] &e%jugador_nuevo% &aalcanzó Veterano! &6+800 XP, +8 PS"
+      
+      # Cuando el referido alcanza LEYENDA (nivel 5+)
+      nivel_5:
+        xp: 1500
+        comandos:
+          - "give %player% minecraft:netherite_ingot 2"
+          - "give %player% minecraft:nether_star 1"
+          - "ps give 15 %player% 15"   # 15 bloques de protección
+        mensaje: "&6&l[REFERIDO] &e%jugador_nuevo% &aalcanzó Leyenda! &6+1500 XP, +15 PS, +1 Estrella"
+    
+    # BONUS ACUMULATIVO por cantidad de referidos activos
+    bonus_acumulativo:
+      enabled: true
+      # Jugador con 3+ referidos activos = +5% XP permanente
+      3_referidos:
+        multiplicador_xp: 1.05
+        mensaje: "&6&l[REFERIDOS] &e3 jugadores activos! &a+5% XP permanente"
+      # Jugador con 5+ referidos activos = +10% XP permanente
+      5_referidos:
+        multiplicador_xp: 1.10
+        mensaje: "&6&l[REFERIDOS] &e5 jugadores activos! &a+10% XP permanente"
+      # Jugador con 10+ referidos activos = +15% XP permanente
+      10_referidos:
+        multiplicador_xp: 1.15
+        comandos:
+          - "give %player% minecraft:elytra 1"
+        mensaje: "&6&l[REFERIDOS] &e10 jugadores activos! &a+15% XP + Élitro"
+    
+    # Definición de "jugador activo": ha jugado en las últimas X horas
+    tiempo_actividad_horas: 168      # 7 días (1 semana)
+    
+    # Comando para invitar: /invitar <jugador>
+    comando_invitacion: "/invitar"
+  
+  # ═══════════════════════════════════════════════════════════════
+  # 🌍 BONIFICACIÓN POR POBLACIÓN ALTA - Servidor activo = más XP
+  # ═══════════════════════════════════════════════════════════════
+  bonificacion_poblacion:
+    enabled: true
+    
+    # Población base (promedio normal del servidor)
+    poblacion_base: 5                # Ajusta según tu promedio habitual
+    
+    # Multiplicadores dinámicos según población online
+    niveles:
+      # 6-8 jugadores: +10% XP
+      moderado:
+        jugadores_minimos: 6
+        multiplicador: 1.10
+        mensaje: "&a&l[POBLACIÓN] &e6+ jugadores online! &a+10% XP"
+        actionbar: "&a⚡ Servidor Activo: +10% XP"
+      
+      # 9-12 jugadores: +20% XP
+      alto:
+        jugadores_minimos: 9
+        multiplicador: 1.20
+        mensaje: "&a&l[POBLACIÓN] &e9+ jugadores online! &a+20% XP"
+        actionbar: "&a⚡ Servidor Muy Activo: +20% XP"
+      
+      # 13-16 jugadores: +30% XP
+      muy_alto:
+        jugadores_minimos: 13
+        multiplicador: 1.30
+        mensaje: "&6&l[POBLACIÓN] &e13+ jugadores online! &6+30% XP"
+        actionbar: "&6⚡ ¡Servidor Épico!: +30% XP"
+      
+      # 17+ jugadores: +50% XP + recompensas extras cada hora
+      record:
+        jugadores_minimos: 17
+        multiplicador: 1.50
+        recompensas_horarias:
+          enabled: true
+          xp: 200
+          comandos:
+            - "give %player% minecraft:diamond 3"
+            - "give %player% minecraft:golden_apple 2"
+          mensaje: "&6&l⭐ HORA COMPLETA EN RÉCORD! &e+200 XP, +3 Diamantes"
+        mensaje: "&6&l[POBLACIÓN] &c17+ jugadores! &6&l+50% XP + Bonus horario"
+        actionbar: "&6&l⚡ ¡RÉCORD DEL SERVIDOR!: +50% XP"
+    
+    # Notificaciones de cambio de nivel
+    notificar_cambios: true
+    notificar_actionbar: true        # Mostrar bonus en ActionBar constantemente
+    intervalo_notificacion_seg: 300  # Re-notificar cada 5 minutos
+    
+    # Efectos visuales cuando se alcanza récord
+    efectos_record:
+      fuegos_artificiales: true
+      particulas: true
+      sonido: true
   
   # Multiplicadores base (REDUCIDOS - ahora el foco es el streamer)
   multiplicadores:

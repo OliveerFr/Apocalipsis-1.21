@@ -11,7 +11,7 @@ version: 1
 
 streamer:
   username: "OliveerF"             # Tu username de Minecraft
-  modo_debug: true              # Logs detallados para testing
+  modo_debug: false              # Logs detallados para testing
 
 # ═══════════════════════════════════════════════════════════════
 # 📺 DROPS ESPECIALES DE STREAM

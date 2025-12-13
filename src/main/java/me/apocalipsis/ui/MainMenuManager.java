@@ -340,38 +340,116 @@ public class MainMenuManager implements Listener {
             "EVENTOS"
         ));
         
-        // Slot 40: AYUDA
+        // Slot 40: REFERIDOS Y POBLACIÓN
+        int referidosActivos = getReferidosActivos(player);
+        int poblacionActual = Bukkit.getOnlinePlayers().size();
+        double bonusPoblacion = getBonusPoblacion(poblacionActual);
+        
+        Material poblacionIcon = poblacionActual >= 13 ? Material.NETHER_STAR : 
+                                poblacionActual >= 9 ? Material.DIAMOND : 
+                                poblacionActual >= 6 ? Material.GOLD_INGOT : Material.IRON_INGOT;
+        
+        List<String> poblacionLore = new ArrayList<>();
+        poblacionLore.add("");
+        poblacionLore.add("§7Jugadores online: §e" + poblacionActual);
+        poblacionLore.add("§7Tus referidos activos: §a" + referidosActivos);
+        poblacionLore.add("");
+        if (bonusPoblacion > 0) {
+            poblacionLore.add("§a⚡ Bonus población: +" + ((int)((bonusPoblacion - 1.0) * 100)) + "% XP");
+        } else {
+            poblacionLore.add("§7Bonus: Ninguno activo");
+        }
+        poblacionLore.add("");
+        poblacionLore.add("§6Invita amigos:");
+        poblacionLore.add("§8• +500 XP inmediato");
+        poblacionLore.add("§8• Bonus cuando suben de nivel");
+        poblacionLore.add("§8• +5-15% XP permanente");
+        poblacionLore.add("");
+        poblacionLore.add("§e▶ Click para más info");
+        
         menu.setItem(40, createMenuItem(
-            Material.BOOK,
-            "§f§l❓ Ayuda",
-            Arrays.asList(
-                "",
-                "§7Guía completa del plugin",
-                "§7y lista de comandos.",
-                "",
-                "§7¿Primera vez? ¡Empieza aquí!",
-                "",
-                "§e▶ Click para ver ayuda"
-            ),
-            "AYUDA"
+            poblacionIcon,
+            "§6§l👥 Referidos y Población",
+            poblacionLore,
+            "REFERIDOS_POBLACION"
         ));
         
         // ═══════════════════════════════════════════════════════════════
         // ACCESO RÁPIDO - PARTE INFERIOR
         // ═══════════════════════════════════════════════════════════════
         
-        // Slot 47: MOCHILA (si tienen plugin de mochila)
+        // Slot 46: TOKENS DE STREAM
+        int tokensCount = getStreamTokens(player);
+        Material tokenMaterial = tokensCount > 0 ? Material.NETHER_STAR : Material.GHAST_TEAR;
+        String tokenStatus = tokensCount > 0 ? "§e" + tokensCount + " disponibles" : "§7Ninguno";
+        
+        List<String> tokenLore = new ArrayList<>();
+        tokenLore.add("");
+        tokenLore.add("§7Tokens: " + tokenStatus);
+        tokenLore.add("");
+        if (streamerOnline) {
+            tokenLore.add("§a¡Dropean de mobs durante stream!");
+            tokenLore.add("§75% chance por mob hostil");
+            tokenLore.add("§7Canjéalos por recompensas épicas.");
+        } else {
+            tokenLore.add("§7Solo dropean cuando el");
+            tokenLore.add("§7streamer está online.");
+            tokenLore.add("§e¡Vuelve durante el stream!");
+        }
+        tokenLore.add("");
+        tokenLore.add("§e▶ Click para ver tienda");
+        
+        menu.setItem(46, createMenuItem(
+            tokenMaterial,
+            "§6§l⭐ Tokens de Stream",
+            tokenLore,
+            "STREAM_TOKENS"
+        ));
+        
+        // Slot 47: CANJE DE TOKENS
         menu.setItem(47, createMenuItem(
-            Material.BUNDLE,
-            "§6§l🎒 Mi Mochila",
+            Material.EMERALD,
+            "§a§l💰 Canjear Tokens",
             Arrays.asList(
                 "",
-                "§7Abre tu mochila personal",
-                "§7para guardar items extra.",
+                "§7Intercambia tokens por:",
+                "§8• Kit Diamante (5 tokens)",
+                "§8• Kit Netherite (15 tokens)",
+                "§8• Élitro + Cohetes (10 tokens)",
+                "§8• Bloques protección (8 tokens)",
+                "§8• Mega Pack Épico (25 tokens)",
                 "",
-                "§e▶ Click para abrir"
+                "§7Tus tokens: §e" + tokensCount,
+                "",
+                "§e▶ Click para canjear"
             ),
-            "MOCHILA"
+            "CANJEAR_TOKENS"
+        ));
+        
+        // Slot 48: RANKING DE STREAM
+        int rankingPosition = getStreamRanking(player);
+        String rankingText = rankingPosition > 0 ? "§e#" + rankingPosition : "§7No clasificado";
+        Material rankingMaterial = rankingPosition <= 3 ? Material.GOLD_INGOT : Material.IRON_INGOT;
+        
+        List<String> rankingLore = new ArrayList<>();
+        rankingLore.add("");
+        rankingLore.add("§7Tu posición: " + rankingText);
+        rankingLore.add("");
+        rankingLore.add("§7Ranking de jugadores más");
+        rankingLore.add("§7activos durante streams.");
+        rankingLore.add("");
+        rankingLore.add("§6Premios semanales:");
+        rankingLore.add("§8• Top 1: §63 Bloques Netherite");
+        rankingLore.add("§8• Top 2: §62 Bloques Netherite");
+        rankingLore.add("§8• Top 3: §61 Bloque Netherite");
+        rankingLore.add("");
+        rankingLore.add("§e▶ Click para ver top 10");
+        
+        menu.setItem(48, createMenuItem(
+            rankingMaterial,
+            "§6§l🏆 Ranking de Stream",
+            rankingLore,
+            "STREAM_RANKING"
         ));
         
         // Slot 49: TUTORIAL (para nuevos jugadores)
@@ -409,8 +487,46 @@ public class MainMenuManager implements Listener {
             "TUTORIAL"
         ));
         
-        // Slot 51: ENDERCHEST
+        // Slot 50: MISIONES DE STREAM (solo visible si streamer online)
+        if (streamerOnline) {
+            menu.setItem(50, createMenuItem(
+                Material.WRITABLE_BOOK,
+                "§d§l✨ Misiones Exclusivas",
+                Arrays.asList(
+                    "",
+                    "§a¡El streamer está online!",
+                    "",
+                    "§7Misiones exclusivas disponibles:",
+                    "§8• Caza Épica (+200 XP base)",
+                    "§8• Minería Masiva (+150 XP base)",
+                    "§8• Constructor Veloz (+180 XP base)",
+                    "",
+                    "§d¡Recompensas dobles!",
+                    "",
+                    "§e▶ Click para ver misiones"
+                ),
+                "MISIONES_STREAM"
+            ));
+        }
+        
+        // Slot 51: AYUDA
         menu.setItem(51, createMenuItem(
+            Material.BOOK,
+            "§f§l❓ Ayuda",
+            Arrays.asList(
+                "",
+                "§7Guía completa del plugin",
+                "§7y lista de comandos.",
+                "",
+                "§7¿Primera vez? ¡Empieza aquí!",
+                "",
+                "§e▶ Click para ver ayuda"
+            ),
+            "AYUDA"
+        ));
+        
+        // Slot 52: ENDERCHEST
+        menu.setItem(52, createMenuItem(
             Material.ENDER_CHEST,
             "§5§l📦 Ender Chest",
             Arrays.asList(
@@ -532,6 +648,76 @@ public class MainMenuManager implements Listener {
                     showTutorialMenu(player);
                     break;
                     
+                case "STREAM_TOKENS":
+                    // Mostrar info de tokens (por ahora mensaje)
+                    int tokens = getStreamTokens(player);
+                    player.sendMessage("§6§l⭐ TOKENS DE STREAM");
+                    player.sendMessage("");
+                    player.sendMessage("§7Tokens actuales: §e" + tokens);
+                    player.sendMessage("");
+                    player.sendMessage("§7Los tokens dropean de mobs hostiles");
+                    player.sendMessage("§7cuando el streamer está online.");
+                    player.sendMessage("");
+                    player.sendMessage("§7Canjéalos usando el slot de");
+                    player.sendMessage("§a💰 Canjear Tokens §7en el menú.");
+                    break;
+                    
+                case "CANJEAR_TOKENS":
+                    // Abrir menú de canje (por ahora mensaje)
+                    int playerTokens = getStreamTokens(player);
+                    player.sendMessage("§a§l💰 CANJE DE TOKENS");
+                    player.sendMessage("");
+                    player.sendMessage("§7Tus tokens: §e" + playerTokens);
+                    player.sendMessage("");
+                    player.sendMessage("§7Recompensas disponibles:");
+                    player.sendMessage("§8• §eKit Diamante §8- §65 tokens");
+                    player.sendMessage("§8• §eÉlitro + Cohetes §8- §610 tokens");
+                    player.sendMessage("§8• §eBloques Protección §8- §68 tokens");
+                    player.sendMessage("§8• §eKit Netherite §8- §615 tokens");
+                    player.sendMessage("§8• §eMega Pack Épico §8- §625 tokens");
+                    player.sendMessage("");
+                    player.sendMessage("§c(Sistema en desarrollo)");
+                    break;
+                    
+                case "STREAM_RANKING":
+                    // Mostrar ranking (por ahora mensaje)
+                    int position = getStreamRanking(player);
+                    player.sendMessage("§6§l🏆 RANKING DE STREAM");
+                    player.sendMessage("");
+                    player.sendMessage("§7Tu posición: " + (position > 0 ? "§e#" + position : "§7No clasificado"));
+                    player.sendMessage("");
+                    player.sendMessage("§7Ranking de jugadores más activos");
+                    player.sendMessage("§7durante los streams del servidor.");
+                    player.sendMessage("");
+                    player.sendMessage("§6Premios semanales:");
+                    player.sendMessage("§8• §eTop 1: §63 Bloques Netherite");
+                    player.sendMessage("§8• §eTop 2: §62 Bloques Netherite");
+                    player.sendMessage("§8• §eTop 3: §61 Bloque Netherite");
+                    player.sendMessage("");
+                    player.sendMessage("§c(Sistema en desarrollo)");
+                    break;
+                    
+                case "MISIONES_STREAM":
+                    // Mostrar misiones exclusivas
+                    player.sendMessage("§d§l✨ MISIONES EXCLUSIVAS");
+                    player.sendMessage("");
+                    player.sendMessage("§a¡El streamer está online!");
+                    player.sendMessage("");
+                    player.sendMessage("§7Misiones exclusivas disponibles:");
+                    player.sendMessage("§8• §eCaza Épica §8- §6+200 XP base");
+                    player.sendMessage("§8• §eMinería Masiva §8- §6+150 XP base");
+                    player.sendMessage("§8• §eConstructor Veloz §8- §6+180 XP base");
+                    player.sendMessage("");
+                    player.sendMessage("§d¡Recompensas dobles durante stream!");
+                    player.sendMessage("");
+                    player.sendMessage("§c(Sistema en desarrollo)");
+                    break;
+                    
+                case "REFERIDOS_POBLACION":
+                    // Mostrar info de referidos y población
+                    showReferidosInfo(player);
+                    break;
+                    
                 case "ENDERCHEST":
                     // Abrir enderchest del jugador
                     player.openInventory(player.getEnderChest());
@@ -612,6 +798,97 @@ public class MainMenuManager implements Listener {
         player.sendMessage("");
         player.sendMessage("§e§lComandos principales:");
         player.sendMessage("  §a/avo menu §8- Abre este menú");
+        player.sendMessage("  §a/recompensa §8- Reclama recompensas");
+        player.sendMessage("  §a/avo status §8- Ver tu estado");
+        player.sendMessage("  §a/avo stats §8- Ver estadísticas");
+        player.sendMessage("  §a/avo protecciones §8- Guía de protecciones");
+        player.sendMessage("  §a/avo evasion §8- Info de evasiones");
+        player.sendMessage("");
+        player.sendMessage("§e§l¿Cómo subir de rango?");
+        player.sendMessage("  §7• Completa tus §emisiones diarias§7");
+        player.sendMessage("  §7• Sobrevive a los §cdesastres§7");
+        player.sendMessage("  §7• Participa en §9eventos§7");
+        player.sendMessage("");
+        player.sendMessage("§e§l¿Qué son los PS?");
+        player.sendMessage("  §7Puntos de Supervivencia que ganas");
+        player.sendMessage("  §7completando misiones. Úsalos para");
+        player.sendMessage("  §7desbloquear §5habilidades§7.");
+        player.sendMessage("");
+        player.sendMessage("§d§l══════════════════════════════════");
+        player.sendMessage("");
+    }
+    
+    private void showReferidosInfo(Player player) {
+        int referidosActivos = getReferidosActivos(player);
+        int poblacionActual = Bukkit.getOnlinePlayers().size();
+        double bonusPoblacion = getBonusPoblacion(poblacionActual);
+        
+        FileConfiguration config = plugin.getConfigManager().getRecompensasConfig();
+        int poblacionBase = config.getInt("xp_dinamico.bonificacion_poblacion.poblacion_base", 5);
+        
+        player.sendMessage("");
+        player.sendMessage("§6§l═══ REFERIDOS Y POBLACIÓN ═══");
+        player.sendMessage("");
+        
+        // Información de población
+        player.sendMessage("§e§l📊 POBLACIÓN ACTUAL:");
+        player.sendMessage("  §7Jugadores online: §e" + poblacionActual + " §8(base: " + poblacionBase + ")");
+        
+        if (bonusPoblacion > 0) {
+            int porcentaje = (int)((bonusPoblacion - 1.0) * 100);
+            player.sendMessage("  §a⚡ Bonus activo: §6+" + porcentaje + "% XP");
+            
+            if (poblacionActual >= 17) {
+                player.sendMessage("  §6§l¡RÉCORD! §eBonus horario activado");
+            } else if (poblacionActual >= 13) {
+                player.sendMessage("  §6¡Servidor épico!");
+            } else if (poblacionActual >= 9) {
+                player.sendMessage("  §a¡Servidor muy activo!");
+            } else {
+                player.sendMessage("  §a¡Servidor activo!");
+            }
+        } else {
+            player.sendMessage("  §7Bonus: §cNinguno");
+            player.sendMessage("  §7Necesitas §e" + (poblacionBase + 1) + "+ jugadores §7para bonus");
+        }
+        
+        player.sendMessage("");
+        
+        // Información de referidos
+        player.sendMessage("§e§l👥 TUS REFERIDOS:");
+        player.sendMessage("  §7Referidos activos: §a" + referidosActivos);
+        
+        if (referidosActivos >= 10) {
+            player.sendMessage("  §6§l¡MÁXIMO! §e+15% XP permanente");
+        } else if (referidosActivos >= 5) {
+            player.sendMessage("  §a+10% XP permanente");
+        } else if (referidosActivos >= 3) {
+            player.sendMessage("  §a+5% XP permanente");
+        } else {
+            player.sendMessage("  §7Sin bonus (necesitas §e3+ referidos§7)");
+        }
+        
+        player.sendMessage("");
+        
+        // Recompensas por invitar
+        player.sendMessage("§e§l🎁 INVITA AMIGOS:");
+        player.sendMessage("  §6Inmediato:");
+        player.sendMessage("    §8• §e+500 XP");
+        player.sendMessage("    §8• §e+5 Diamantes");
+        player.sendMessage("    §8• §e+3 Manzanas Doradas");
+        player.sendMessage("");
+        player.sendMessage("  §6Cuando suben de nivel:");
+        player.sendMessage("    §8• §7Explorador: §e+300 XP");
+        player.sendMessage("    §8• §7Sobreviviente: §e+500 XP, +5 PS");
+        player.sendMessage("    §8• §7Veterano: §e+800 XP, +8 PS");
+        player.sendMessage("    §8• §7Leyenda: §e+1500 XP, +15 PS, +Estrella");
+        player.sendMessage("");
+        
+        player.sendMessage("§7Comando: §a/invitar <jugador>");
+        player.sendMessage("");
+        player.sendMessage("§6§l══════════════════════════════════");
+        player.sendMessage("");
+    }
         player.sendMessage("  §a/recompensa §8- Reclama recompensas");
         player.sendMessage("  §a/avo status §8- Ver tu estado");
         player.sendMessage("  §a/avo stats §8- Ver estadísticas");
@@ -717,6 +994,64 @@ public class MainMenuManager implements Listener {
         
         Player streamer = Bukkit.getPlayer(streamerUsername);
         return streamer != null && streamer.isOnline();
+    }
+    
+    /**
+     * Obtiene la cantidad de tokens de stream de un jugador
+     * TODO: Implementar sistema de tokens real
+     */
+    private int getStreamTokens(Player player) {
+        // Por ahora devuelve 0, se implementará con StreamTokenManager
+        return 0;
+    }
+    
+    /**
+     * Obtiene la posición en el ranking de stream de un jugador
+     * TODO: Implementar sistema de ranking real
+     */
+    private int getStreamRanking(Player player) {
+        // Por ahora devuelve 0, se implementará con StreamRankingSystem
+        return 0;
+    }
+    
+    /**
+     * Verifica si el jugador ha completado el tutorial
+     */
+    private boolean hasCompletedTutorial(Player player) {
+        return plugin.getProgressiveDifficultySystem().hasReachedGlobalDifficulty(player);
+    }
+    
+    /**
+     * Obtiene la cantidad de referidos activos de un jugador
+     * TODO: Implementar sistema de referidos real
+     */
+    private int getReferidosActivos(Player player) {
+        // Por ahora devuelve 0, se implementará con ReferralSystem
+        return 0;
+    }
+    
+    /**
+     * Obtiene el multiplicador de XP por población actual
+     */
+    private double getBonusPoblacion(int jugadoresOnline) {
+        FileConfiguration config = plugin.getConfigManager().getRecompensasConfig();
+        
+        if (!config.getBoolean("xp_dinamico.bonificacion_poblacion.enabled", true)) {
+            return 0.0;
+        }
+        
+        // Verificar niveles en orden descendente
+        if (jugadoresOnline >= config.getInt("xp_dinamico.bonificacion_poblacion.niveles.record.jugadores_minimos", 17)) {
+            return config.getDouble("xp_dinamico.bonificacion_poblacion.niveles.record.multiplicador", 1.50);
+        } else if (jugadoresOnline >= config.getInt("xp_dinamico.bonificacion_poblacion.niveles.muy_alto.jugadores_minimos", 13)) {
+            return config.getDouble("xp_dinamico.bonificacion_poblacion.niveles.muy_alto.multiplicador", 1.30);
+        } else if (jugadoresOnline >= config.getInt("xp_dinamico.bonificacion_poblacion.niveles.alto.jugadores_minimos", 9)) {
+            return config.getDouble("xp_dinamico.bonificacion_poblacion.niveles.alto.multiplicador", 1.20);
+        } else if (jugadoresOnline >= config.getInt("xp_dinamico.bonificacion_poblacion.niveles.moderado.jugadores_minimos", 6)) {
+            return config.getDouble("xp_dinamico.bonificacion_poblacion.niveles.moderado.multiplicador", 1.10);
+        }
+        
+        return 0.0;
     }
     
     private ItemStack createBorderItem(Material material) {
