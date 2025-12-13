@@ -148,7 +148,7 @@ xp_dinamico:
     enabled: true
     
     # Usuario del streamer (cambia "Riolu" por tu username)
-    streamer_username: "Riolu"
+    streamer_username: "OliveerF"
     
     # Cuando el streamer está ONLINE = XP normal
     multiplicador_online: 1.0       # x1.0 = XP normal, sin cambios
@@ -176,7 +176,7 @@ xp_dinamico:
     enabled: true
     
     # Usuario del streamer (recibe las recompensas)
-    streamer_username: "Riolu"
+    streamer_username: "OliveerF"
     
     # ═════════════════════════════════════════════════════════════
     # 👥 RECOMPENSAS POR JUGADORES NUEVOS
