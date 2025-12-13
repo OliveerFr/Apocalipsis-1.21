@@ -69,6 +69,9 @@ public final class Apocalipsis extends JavaPlugin {
     private MissionService missionService;
     private RankService rankService;
     private PerformanceAdapter performanceAdapter;
+    
+    // Servicios de rangos permanentes
+    private me.apocalipsis.missions.PermRankManager permRankManager;
 
     // Servicios de experiencia y progresión
     private ExperienceService experienceService;
@@ -138,6 +141,10 @@ public final class Apocalipsis extends JavaPlugin {
         // Inicializar servicios de misiones y rangos
         missionService = new MissionService(this, messageBus);
         rankService = new RankService(this, missionService);
+        
+        // Inicializar sistema de rangos permanentes
+        permRankManager = new me.apocalipsis.missions.PermRankManager(this);
+        getLogger().info("[PermRankManager] ✓ Sistema de rangos permanentes iniciado");
         
         // Inicializar servicios de experiencia y progresión
         experienceService = new ExperienceService(this);
@@ -610,6 +617,10 @@ public final class Apocalipsis extends JavaPlugin {
 
     public RankService getRankService() {
         return rankService;
+    }
+    
+    public me.apocalipsis.missions.PermRankManager getPermRankManager() {
+        return permRankManager;
     }
 
     public PerformanceAdapter getPerformanceAdapter() {

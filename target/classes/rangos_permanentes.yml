@@ -1,0 +1,139 @@
+# ════════════════════════════════════════════════════════════════════
+# Apocalipsis — rangos_permanentes.yml
+# Sistema de rangos personalizados/permanentes independientes del XP
+# ════════════════════════════════════════════════════════════════════
+
+# Estos rangos son independientes del sistema de rangos por XP
+# Se asignan manualmente con /avo setpermrank
+# Tienen prioridad sobre los rangos normales en el tab y prefix
+
+version: 1
+
+# ═══════════════════════════════════════════════════════════════
+# RANGOS PERMANENTES PREDEFINIDOS
+# ═══════════════════════════════════════════════════════════════
+
+rangos:
+  # Ejemplo: Rango VIP
+  vip:
+    display_name: "§6§l[VIP]"
+    tab_prefix: "§6[VIP] §f"
+    tab_suffix: ""
+    chat_prefix: "§6[VIP] §f"
+    color: "§6"
+    # Efectos permanentes (se aplican constantemente)
+    efectos:
+      enabled: true
+      potion_effects:
+        - "SPEED:1"              # Velocidad nivel 1
+        - "NIGHT_VISION:1"       # Visión nocturna
+    # Heredar efectos del rango normal
+    heredar_efectos_rango_normal: true
+    # Prioridad en el tab (mayor = más importante)
+    prioridad: 10
+  
+  # Ejemplo: Rango STREAMER/YOUTUBER
+  streamer:
+    display_name: "§c§l[STREAMER]"
+    tab_prefix: "§c[STREAM] §f"
+    tab_suffix: " §c⭐"
+    chat_prefix: "§c[STREAMER] §f"
+    color: "§c"
+    efectos:
+      enabled: true
+      potion_effects:
+        - "SPEED:2"
+        - "NIGHT_VISION:1"
+        - "REGENERATION:1"
+    heredar_efectos_rango_normal: true
+    prioridad: 50
+  
+  # Ejemplo: Rango MODERADOR
+  moderador:
+    display_name: "§9§l[MOD]"
+    tab_prefix: "§9[MOD] §f"
+    tab_suffix: ""
+    chat_prefix: "§9[MOD] §f"
+    color: "§9"
+    efectos:
+      enabled: true
+      potion_effects:
+        - "SPEED:1"
+        - "NIGHT_VISION:1"
+    heredar_efectos_rango_normal: true
+    prioridad: 30
+  
+  # Ejemplo: Rango ADMIN
+  admin:
+    display_name: "§4§l[ADMIN]"
+    tab_prefix: "§4[ADMIN] §f"
+    tab_suffix: ""
+    chat_prefix: "§4[ADMIN] §f"
+    color: "§4"
+    efectos:
+      enabled: true
+      potion_effects:
+        - "SPEED:2"
+        - "NIGHT_VISION:1"
+        - "REGENERATION:1"
+        - "DAMAGE_RESISTANCE:1"
+    heredar_efectos_rango_normal: true
+    prioridad: 100
+  
+  # Ejemplo: Rango BUILDER
+  builder:
+    display_name: "§e§l[BUILDER]"
+    tab_prefix: "§e[BUILD] §f"
+    tab_suffix: " §e⚒"
+    chat_prefix: "§e[BUILDER] §f"
+    color: "§e"
+    efectos:
+      enabled: true
+      potion_effects:
+        - "SPEED:1"
+        - "HASTE:2"             # Minería rápida
+    heredar_efectos_rango_normal: true
+    prioridad: 20
+
+# ═══════════════════════════════════════════════════════════════
+# ASIGNACIONES DE RANGOS PERMANENTES A JUGADORES
+# ═══════════════════════════════════════════════════════════════
+
+# Formato: UUID del jugador
+# Se gestionan con /avo setpermrank <jugador> <rango> [tiempo]
+asignaciones:
+  # Ejemplo (se añadirán automáticamente con el comando):
+  # "069a79f4-44e9-4726-a5be-fca90e38aaf5":
+  #   rango: "vip"
+  #   asignado_fecha: 1702425600000  # Timestamp en milisegundos
+  #   expira_fecha: 0                 # 0 = permanente, >0 = timestamp de expiración
+
+# ═══════════════════════════════════════════════════════════════
+# CONFIGURACIÓN DEL SISTEMA
+# ═══════════════════════════════════════════════════════════════
+
+configuracion:
+  # Activar el sistema de rangos permanentes
+  enabled: true
+  
+  # Formato del tab list
+  tab_format:
+    # Mostrar rango permanente si lo tiene, sino rango normal
+    enabled: true
+    # Formato compacto: elimina espacio extra y simplifica
+    compacto: true
+    # Formato: {PERM_PREFIX}{PLAYER_NAME}{PERM_SUFFIX}
+    # Si no tiene rango permanente: {RANK_PREFIX}{PLAYER_NAME}
+  
+  # Actualizar efectos cada X ticks (20 ticks = 1 segundo)
+  actualizar_efectos_ticks: 100    # 5 segundos
+  
+  # Duración de los efectos (en segundos)
+  # Debe ser mayor que actualizar_efectos_ticks
+  duracion_efectos_segundos: 15
+  
+  # Guardar cambios automáticamente
+  auto_save: true
+  
+  # Intervalo de guardado automático (en ticks)
+  auto_save_interval: 6000         # 5 minutos

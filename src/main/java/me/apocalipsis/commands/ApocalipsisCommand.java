@@ -1,7 +1,9 @@
 package me.apocalipsis.commands;
 
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -190,6 +192,18 @@ public class ApocalipsisCommand implements CommandExecutor {
                 break;
             case "menu":
                 cmdMenu(sender);
+                break;
+            case "newrank":
+                cmdNewRank(sender, args);
+                break;
+            case "setpermrank":
+                cmdSetPermRank(sender, args);
+                break;
+            case "removepermrank":
+                cmdRemovePermRank(sender, args);
+                break;
+            case "listpermranks":
+                cmdListPermRanks(sender);
                 break;
             default:
                 sender.sendMessage("§cSubcomando desconocido. Usa /avo para ver ayuda.");
@@ -4050,5 +4064,271 @@ public class ApocalipsisCommand implements CommandExecutor {
         }
         
         plugin.getMainMenuManager().openMainMenu(player);
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // COMANDOS DE RANGOS PERMANENTES
+    // ═══════════════════════════════════════════════════════════════════
+    
+    /**
+     * Crea un nuevo rango permanente/personalizado
+     * Uso: /avo newrank <nombre> <tipo:permanente/temporal>
+     */
+    private void cmdNewRank(CommandSender sender, String[] args) {
+        if (!sender.isOp()) {
+            sender.sendMessage("§cSolo operadores pueden usar este comando.");
+            return;
+        }
+        
+        if (args.length < 3) {
+            sender.sendMessage("§6§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+            sender.sendMessage("§e§lCREAR RANGO PERMANENTE");
+            sender.sendMessage("");
+            sender.sendMessage("§7Uso: §e/avo newrank <id> <tipo>");
+            sender.sendMessage("");
+            sender.sendMessage("§7Tipos disponibles:");
+            sender.sendMessage("  §apermanente §7- Rango fijo que no expira");
+            sender.sendMessage("  §etemporal §7- Rango con duración limitada");
+            sender.sendMessage("");
+            sender.sendMessage("§7Después de crear el rango, edita el archivo");
+            sender.sendMessage("§7§orangos_permanentes.yml §7para configurar:");
+            sender.sendMessage("  §8• Display name y color");
+            sender.sendMessage("  §8• Tab prefix/suffix");
+            sender.sendMessage("  §8• Chat prefix");
+            sender.sendMessage("  §8• Efectos de poción");
+            sender.sendMessage("  §8• Prioridad");
+            sender.sendMessage("  §8• Herencia de efectos del rango normal");
+            sender.sendMessage("");
+            sender.sendMessage("§7Ejemplo:");
+            sender.sendMessage("  §e/avo newrank vip permanente");
+            sender.sendMessage("§6§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+            return;
+        }
+        
+        String rankId = args[1].toLowerCase();
+        String tipo = args[2].toLowerCase();
+        
+        if (!tipo.equals("permanente") && !tipo.equals("temporal")) {
+            sender.sendMessage("§cTipo inválido. Usa: permanente o temporal");
+            return;
+        }
+        
+        // Verificar si ya existe
+        if (plugin.getPermRankManager().getRank(rankId) != null) {
+            sender.sendMessage("§cYa existe un rango con ese ID: §e" + rankId);
+            return;
+        }
+        
+        // Crear rango con valores por defecto
+        String displayName = "§f[" + rankId.toUpperCase() + "]";
+        String tabPrefix = "§f[" + rankId.toUpperCase() + "] ";
+        String tabSuffix = "";
+        String chatPrefix = "§f[" + rankId.toUpperCase() + "] ";
+        String color = "§f";
+        int priority = 10;
+        boolean inheritNormal = false;
+        
+        boolean success = plugin.getPermRankManager().createRank(
+            rankId, displayName, tabPrefix, tabSuffix, chatPrefix, 
+            color, priority, inheritNormal, null
+        );
+        
+        if (success) {
+            sender.sendMessage("§a✓ Rango creado: §e" + rankId);
+            sender.sendMessage("§7Tipo: §e" + tipo);
+            sender.sendMessage("");
+            sender.sendMessage("§7Edita §orangos_permanentes.yml §7para personalizar:");
+            sender.sendMessage("  §8• Display name, color, prefix/suffix");
+            sender.sendMessage("  §8• Efectos de poción");
+            sender.sendMessage("  §8• Prioridad (mayor = más importante)");
+            sender.sendMessage("");
+            sender.sendMessage("§7Luego recarga: §e/avo reload");
+        } else {
+            sender.sendMessage("§cError al crear el rango.");
+        }
+    }
+    
+    /**
+     * Asigna un rango permanente a un jugador
+     * Uso: /avo setpermrank <jugador> <rango> [tiempo]
+     */
+    private void cmdSetPermRank(CommandSender sender, String[] args) {
+        if (!sender.isOp()) {
+            sender.sendMessage("§cSolo operadores pueden usar este comando.");
+            return;
+        }
+        
+        if (args.length < 3) {
+            sender.sendMessage("§6§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+            sender.sendMessage("§e§lASIGNAR RANGO PERMANENTE");
+            sender.sendMessage("");
+            sender.sendMessage("§7Uso: §e/avo setpermrank <jugador> <rango> [tiempo]");
+            sender.sendMessage("");
+            sender.sendMessage("§7Tiempo (opcional):");
+            sender.sendMessage("  §aSin especificar §7- Permanente");
+            sender.sendMessage("  §e1d, 7d, 30d §7- Días");
+            sender.sendMessage("  §e1h, 24h, 168h §7- Horas");
+            sender.sendMessage("  §e1m, 60m, 1440m §7- Minutos");
+            sender.sendMessage("");
+            sender.sendMessage("§7Rangos disponibles:");
+            for (String rankId : plugin.getPermRankManager().getRankIds()) {
+                var rank = plugin.getPermRankManager().getRank(rankId);
+                sender.sendMessage("  " + rank.getDisplayName() + " §8(" + rankId + ")");
+            }
+            sender.sendMessage("");
+            sender.sendMessage("§7Ejemplos:");
+            sender.sendMessage("  §e/avo setpermrank Steve vip §7- VIP permanente");
+            sender.sendMessage("  §e/avo setpermrank Alex admin 30d §7- Admin por 30 días");
+            sender.sendMessage("§6§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+            return;
+        }
+        
+        Player target = Bukkit.getPlayer(args[1]);
+        if (target == null || !target.isOnline()) {
+            sender.sendMessage("§cJugador no encontrado: §e" + args[1]);
+            return;
+        }
+        
+        String rankId = args[2].toLowerCase();
+        var rank = plugin.getPermRankManager().getRank(rankId);
+        
+        if (rank == null) {
+            sender.sendMessage("§cRango no encontrado: §e" + rankId);
+            sender.sendMessage("§7Usa §e/avo listpermranks §7para ver disponibles");
+            return;
+        }
+        
+        // Parsear tiempo si se especificó
+        long durationMillis = 0;
+        String durationText = "permanente";
+        
+        if (args.length >= 4) {
+            String timeStr = args[3].toLowerCase();
+            try {
+                long amount = Long.parseLong(timeStr.replaceAll("[^0-9]", ""));
+                
+                if (timeStr.endsWith("d")) {
+                    durationMillis = amount * 24 * 60 * 60 * 1000; // días
+                    durationText = amount + " día" + (amount != 1 ? "s" : "");
+                } else if (timeStr.endsWith("h")) {
+                    durationMillis = amount * 60 * 60 * 1000; // horas
+                    durationText = amount + " hora" + (amount != 1 ? "s" : "");
+                } else if (timeStr.endsWith("m")) {
+                    durationMillis = amount * 60 * 1000; // minutos
+                    durationText = amount + " minuto" + (amount != 1 ? "s" : "");
+                } else {
+                    sender.sendMessage("§cFormato de tiempo inválido. Usa: 30d, 24h, 60m");
+                    return;
+                }
+            } catch (NumberFormatException e) {
+                sender.sendMessage("§cFormato de tiempo inválido: §e" + timeStr);
+                return;
+            }
+        }
+        
+        // Asignar rango
+        boolean success = plugin.getPermRankManager().assignRank(
+            target.getUniqueId(), rankId, durationMillis
+        );
+        
+        if (success) {
+            sender.sendMessage("§a✓ Rango asignado:");
+            sender.sendMessage("  §7Jugador: §e" + target.getName());
+            sender.sendMessage("  §7Rango: " + rank.getDisplayName());
+            sender.sendMessage("  §7Duración: §e" + durationText);
+            
+            // Notificar al jugador
+            target.sendMessage("");
+            target.sendMessage("§6§l⭐ RANGO ASIGNADO");
+            target.sendMessage("");
+            target.sendMessage("§7Has recibido el rango " + rank.getDisplayName());
+            target.sendMessage("§7Duración: §e" + durationText);
+            target.sendMessage("");
+            
+            // Actualizar tab
+            plugin.getPermRankManager().updatePlayerTab(target);
+        } else {
+            sender.sendMessage("§cError al asignar el rango.");
+        }
+    }
+    
+    /**
+     * Remueve el rango permanente de un jugador
+     * Uso: /avo removepermrank <jugador>
+     */
+    private void cmdRemovePermRank(CommandSender sender, String[] args) {
+        if (!sender.isOp()) {
+            sender.sendMessage("§cSolo operadores pueden usar este comando.");
+            return;
+        }
+        
+        if (args.length < 2) {
+            sender.sendMessage("§7Uso: §e/avo removepermrank <jugador>");
+            return;
+        }
+        
+        Player target = Bukkit.getPlayer(args[1]);
+        if (target == null || !target.isOnline()) {
+            sender.sendMessage("§cJugador no encontrado: §e" + args[1]);
+            return;
+        }
+        
+        var currentRank = plugin.getPermRankManager().getPlayerPermRank(target.getUniqueId());
+        
+        if (currentRank == null) {
+            sender.sendMessage("§7" + target.getName() + " no tiene un rango permanente.");
+            return;
+        }
+        
+        boolean success = plugin.getPermRankManager().removeRank(target.getUniqueId());
+        
+        if (success) {
+            sender.sendMessage("§a✓ Rango removido de §e" + target.getName());
+            sender.sendMessage("  §7Rango anterior: " + currentRank.getDisplayName());
+            
+            // Notificar al jugador
+            target.sendMessage("§7Tu rango permanente " + currentRank.getDisplayName() + " §7ha sido removido.");
+            
+            // Actualizar tab
+            plugin.getPermRankManager().updatePlayerTab(target);
+        } else {
+            sender.sendMessage("§cError al remover el rango.");
+        }
+    }
+    
+    /**
+     * Lista todos los rangos permanentes disponibles
+     * Uso: /avo listpermranks
+     */
+    private void cmdListPermRanks(CommandSender sender) {
+        Set<String> rankIds = plugin.getPermRankManager().getRankIds();
+        
+        if (rankIds.isEmpty()) {
+            sender.sendMessage("§7No hay rangos permanentes creados.");
+            sender.sendMessage("§7Usa §e/avo newrank <id> <tipo> §7para crear uno.");
+            return;
+        }
+        
+        sender.sendMessage("§6§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+        sender.sendMessage("§e§lRANGOS PERMANENTES DISPONIBLES");
+        sender.sendMessage("");
+        
+        List<String> sortedIds = new ArrayList<>(rankIds);
+        sortedIds.sort(String::compareTo);
+        
+        for (String rankId : sortedIds) {
+            var rank = plugin.getPermRankManager().getRank(rankId);
+            sender.sendMessage(rank.getDisplayName() + " §8(" + rankId + ")");
+            sender.sendMessage("  §7Prioridad: §e" + rank.getPriority());
+            sender.sendMessage("  §7Tab: §f" + rank.getTabPrefix() + "JUGADOR" + rank.getTabSuffix());
+            
+            if (!rank.getPotionEffects().isEmpty()) {
+                sender.sendMessage("  §7Efectos: §a" + rank.getPotionEffects().size() + " activos");
+            }
+            sender.sendMessage("");
+        }
+        
+        sender.sendMessage("§7Total: §e" + rankIds.size() + " rangos");
+        sender.sendMessage("§6§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
     }
 }

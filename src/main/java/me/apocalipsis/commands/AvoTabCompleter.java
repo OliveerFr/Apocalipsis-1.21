@@ -33,7 +33,8 @@ public class AvoTabCompleter implements TabCompleter {
                 "reload", "admin", "escanear", "protecciones", "eco", "eco_sombras",
                 "evento3", "susurro", "xp", "experience", "nivel", "level", "evasion", "evasiones",
                 "autotest", "habilidad", "habilidades", "skill", "skills",
-                "blockinfo", "bloque", "blockstats", "skillstats"
+                "blockinfo", "bloque", "blockstats", "skillstats",
+                "newrank", "setpermrank", "removepermrank", "listpermranks"
             );
             
             return subcommands.stream()
@@ -137,6 +138,20 @@ public class AvoTabCompleter implements TabCompleter {
                         .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
                         .collect(Collectors.toList());
                 
+                case "newrank":
+                    // Sugerir tipo de rango
+                    return Arrays.asList("permanente", "temporal").stream()
+                        .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
+                        .collect(Collectors.toList());
+                
+                case "setpermrank":
+                case "removepermrank":
+                    // Sugerir jugadores online
+                    return plugin.getServer().getOnlinePlayers().stream()
+                        .map(Player::getName)
+                        .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
+                        .collect(Collectors.toList());
+                
                 case "autotest":
                     // Sugerir subcomandos de autotest
                     return Arrays.asList("start", "stop", "run", "suite", "bots", "report", "clear").stream()
@@ -156,6 +171,14 @@ public class AvoTabCompleter implements TabCompleter {
         
         if (args.length == 3) {
             String subCmd = args[0].toLowerCase();
+            
+            // /avo setpermrank <jugador> <rankId>
+            if (subCmd.equals("setpermrank")) {
+                // Sugerir IDs de rangos permanentes disponibles
+                return new ArrayList<>(plugin.getPermRankManager().getRankIds()).stream()
+                    .filter(s -> s.toLowerCase().startsWith(args[2].toLowerCase()))
+                    .collect(Collectors.toList());
+            }
             
             // /avo admin add|remove <jugador>
             if (subCmd.equals("admin")) {
@@ -334,6 +357,14 @@ public class AvoTabCompleter implements TabCompleter {
                         .collect(Collectors.toList());
                 }
             }
+        }
+        
+        // args.length == 4: /avo setpermrank <jugador> <rankId> [duration]
+        if (args.length == 4 && args[0].equalsIgnoreCase("setpermrank")) {
+            // Sugerir duraciones comunes
+            return Arrays.asList("permanent", "1d", "7d", "30d", "1h", "24h", "60m").stream()
+                .filter(s -> s.toLowerCase().startsWith(args[3].toLowerCase()))
+                .collect(Collectors.toList());
         }
         
         // args.length == 4: /avo evasion reduce <jugador> <cantidad>

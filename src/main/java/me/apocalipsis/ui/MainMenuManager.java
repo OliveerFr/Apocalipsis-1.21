@@ -695,11 +695,6 @@ public class MainMenuManager implements Listener {
                     player.sendMessage("§c(Sistema en desarrollo)");
                     break;
                     
-                case "AYUDA":
-                    // Mostrar ayuda
-                    showHelpInfo(player);
-                    break;
-                    
                 case "ENDERCHEST":
                     // Abrir enderchest del jugador
                     player.openInventory(player.getEnderChest());
@@ -780,25 +775,6 @@ public class MainMenuManager implements Listener {
         player.sendMessage("");
         player.sendMessage("§e§lComandos principales:");
         player.sendMessage("  §a/avo menu §8- Abre este menú");
-        player.sendMessage("  §a/recompensa §8- Reclama recompensas");
-        player.sendMessage("  §a/avo status §8- Ver tu estado");
-        player.sendMessage("  §a/avo stats §8- Ver estadísticas");
-        player.sendMessage("  §a/avo protecciones §8- Guía de protecciones");
-        player.sendMessage("  §a/avo evasion §8- Info de evasiones");
-        player.sendMessage("");
-        player.sendMessage("§e§l¿Cómo subir de rango?");
-        player.sendMessage("  §7• Completa tus §emisiones diarias§7");
-        player.sendMessage("  §7• Sobrevive a los §cdesastres§7");
-        player.sendMessage("  §7• Participa en §9eventos§7");
-        player.sendMessage("");
-        player.sendMessage("§e§l¿Qué son los PS?");
-        player.sendMessage("  §7Puntos de Supervivencia que ganas");
-        player.sendMessage("  §7completando misiones. Úsalos para");
-        player.sendMessage("  §7desbloquear §5habilidades§7.");
-        player.sendMessage("");
-        player.sendMessage("§d§l══════════════════════════════════");
-        player.sendMessage("");
-    }
         player.sendMessage("  §a/recompensa §8- Reclama recompensas");
         player.sendMessage("  §a/avo status §8- Ver tu estado");
         player.sendMessage("  §a/avo stats §8- Ver estadísticas");

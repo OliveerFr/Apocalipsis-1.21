@@ -95,6 +95,13 @@ public class PlayerListener implements Listener {
         // [FIX DEFINITIVO] Forzar board compartido (crítico para que todos vean lo mismo)
         player.setScoreboard(org.bukkit.Bukkit.getScoreboardManager().getMainScoreboard());
         
+        // [RANGOS PERMANENTES] Actualizar tab con rango permanente si tiene uno
+        org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (plugin.getPermRankManager() != null) {
+                plugin.getPermRankManager().updatePlayerTab(player);
+            }
+        }, 20L); // 1 segundo después para dar tiempo a que cargue todo
+        
         // [v2.0 CASTIGOS PENDIENTES] Aplicar castigos por misiones fallidas de días anteriores
         org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (plugin.getMissionService() != null) {
