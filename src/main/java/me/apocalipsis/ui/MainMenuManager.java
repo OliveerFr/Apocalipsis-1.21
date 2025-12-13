@@ -340,38 +340,20 @@ public class MainMenuManager implements Listener {
             "EVENTOS"
         ));
         
-        // Slot 40: REFERIDOS Y POBLACIÓN
-        int referidosActivos = getReferidosActivos(player);
-        int poblacionActual = Bukkit.getOnlinePlayers().size();
-        double bonusPoblacion = getBonusPoblacion(poblacionActual);
-        
-        Material poblacionIcon = poblacionActual >= 13 ? Material.NETHER_STAR : 
-                                poblacionActual >= 9 ? Material.DIAMOND : 
-                                poblacionActual >= 6 ? Material.GOLD_INGOT : Material.IRON_INGOT;
-        
-        List<String> poblacionLore = new ArrayList<>();
-        poblacionLore.add("");
-        poblacionLore.add("§7Jugadores online: §e" + poblacionActual);
-        poblacionLore.add("§7Tus referidos activos: §a" + referidosActivos);
-        poblacionLore.add("");
-        if (bonusPoblacion > 0) {
-            poblacionLore.add("§a⚡ Bonus población: +" + ((int)((bonusPoblacion - 1.0) * 100)) + "% XP");
-        } else {
-            poblacionLore.add("§7Bonus: Ninguno activo");
-        }
-        poblacionLore.add("");
-        poblacionLore.add("§6Invita amigos:");
-        poblacionLore.add("§8• +500 XP inmediato");
-        poblacionLore.add("§8• Bonus cuando suben de nivel");
-        poblacionLore.add("§8• +5-15% XP permanente");
-        poblacionLore.add("");
-        poblacionLore.add("§e▶ Click para más info");
-        
+        // Slot 40: AYUDA
         menu.setItem(40, createMenuItem(
-            poblacionIcon,
-            "§6§l👥 Referidos y Población",
-            poblacionLore,
-            "REFERIDOS_POBLACION"
+            Material.BOOK,
+            "§f§l❓ Ayuda",
+            Arrays.asList(
+                "",
+                "§7Guía completa del plugin",
+                "§7y lista de comandos.",
+                "",
+                "§7¿Primera vez? ¡Empieza aquí!",
+                "",
+                "§e▶ Click para ver ayuda"
+            ),
+            "AYUDA"
         ));
         
         // ═══════════════════════════════════════════════════════════════
@@ -713,9 +695,9 @@ public class MainMenuManager implements Listener {
                     player.sendMessage("§c(Sistema en desarrollo)");
                     break;
                     
-                case "REFERIDOS_POBLACION":
-                    // Mostrar info de referidos y población
-                    showReferidosInfo(player);
+                case "AYUDA":
+                    // Mostrar ayuda
+                    showHelpInfo(player);
                     break;
                     
                 case "ENDERCHEST":
@@ -815,78 +797,6 @@ public class MainMenuManager implements Listener {
         player.sendMessage("  §7desbloquear §5habilidades§7.");
         player.sendMessage("");
         player.sendMessage("§d§l══════════════════════════════════");
-        player.sendMessage("");
-    }
-    
-    private void showReferidosInfo(Player player) {
-        int referidosActivos = getReferidosActivos(player);
-        int poblacionActual = Bukkit.getOnlinePlayers().size();
-        double bonusPoblacion = getBonusPoblacion(poblacionActual);
-        
-        FileConfiguration config = plugin.getConfigManager().getRecompensasConfig();
-        int poblacionBase = config.getInt("xp_dinamico.bonificacion_poblacion.poblacion_base", 5);
-        
-        player.sendMessage("");
-        player.sendMessage("§6§l═══ REFERIDOS Y POBLACIÓN ═══");
-        player.sendMessage("");
-        
-        // Información de población
-        player.sendMessage("§e§l📊 POBLACIÓN ACTUAL:");
-        player.sendMessage("  §7Jugadores online: §e" + poblacionActual + " §8(base: " + poblacionBase + ")");
-        
-        if (bonusPoblacion > 0) {
-            int porcentaje = (int)((bonusPoblacion - 1.0) * 100);
-            player.sendMessage("  §a⚡ Bonus activo: §6+" + porcentaje + "% XP");
-            
-            if (poblacionActual >= 17) {
-                player.sendMessage("  §6§l¡RÉCORD! §eBonus horario activado");
-            } else if (poblacionActual >= 13) {
-                player.sendMessage("  §6¡Servidor épico!");
-            } else if (poblacionActual >= 9) {
-                player.sendMessage("  §a¡Servidor muy activo!");
-            } else {
-                player.sendMessage("  §a¡Servidor activo!");
-            }
-        } else {
-            player.sendMessage("  §7Bonus: §cNinguno");
-            player.sendMessage("  §7Necesitas §e" + (poblacionBase + 1) + "+ jugadores §7para bonus");
-        }
-        
-        player.sendMessage("");
-        
-        // Información de referidos
-        player.sendMessage("§e§l👥 TUS REFERIDOS:");
-        player.sendMessage("  §7Referidos activos: §a" + referidosActivos);
-        
-        if (referidosActivos >= 10) {
-            player.sendMessage("  §6§l¡MÁXIMO! §e+15% XP permanente");
-        } else if (referidosActivos >= 5) {
-            player.sendMessage("  §a+10% XP permanente");
-        } else if (referidosActivos >= 3) {
-            player.sendMessage("  §a+5% XP permanente");
-        } else {
-            player.sendMessage("  §7Sin bonus (necesitas §e3+ referidos§7)");
-        }
-        
-        player.sendMessage("");
-        
-        // Recompensas por invitar
-        player.sendMessage("§e§l🎁 INVITA AMIGOS:");
-        player.sendMessage("  §6Inmediato:");
-        player.sendMessage("    §8• §e+500 XP");
-        player.sendMessage("    §8• §e+5 Diamantes");
-        player.sendMessage("    §8• §e+3 Manzanas Doradas");
-        player.sendMessage("");
-        player.sendMessage("  §6Cuando suben de nivel:");
-        player.sendMessage("    §8• §7Explorador: §e+300 XP");
-        player.sendMessage("    §8• §7Sobreviviente: §e+500 XP, +5 PS");
-        player.sendMessage("    §8• §7Veterano: §e+800 XP, +8 PS");
-        player.sendMessage("    §8• §7Leyenda: §e+1500 XP, +15 PS, +Estrella");
-        player.sendMessage("");
-        
-        player.sendMessage("§7Comando: §a/invitar <jugador>");
-        player.sendMessage("");
-        player.sendMessage("§6§l══════════════════════════════════");
         player.sendMessage("");
     }
         player.sendMessage("  §a/recompensa §8- Reclama recompensas");
@@ -1019,39 +929,6 @@ public class MainMenuManager implements Listener {
      */
     private boolean hasCompletedTutorial(Player player) {
         return plugin.getProgressiveDifficultySystem().hasReachedGlobalDifficulty(player);
-    }
-    
-    /**
-     * Obtiene la cantidad de referidos activos de un jugador
-     * TODO: Implementar sistema de referidos real
-     */
-    private int getReferidosActivos(Player player) {
-        // Por ahora devuelve 0, se implementará con ReferralSystem
-        return 0;
-    }
-    
-    /**
-     * Obtiene el multiplicador de XP por población actual
-     */
-    private double getBonusPoblacion(int jugadoresOnline) {
-        FileConfiguration config = plugin.getConfigManager().getRecompensasConfig();
-        
-        if (!config.getBoolean("xp_dinamico.bonificacion_poblacion.enabled", true)) {
-            return 0.0;
-        }
-        
-        // Verificar niveles en orden descendente
-        if (jugadoresOnline >= config.getInt("xp_dinamico.bonificacion_poblacion.niveles.record.jugadores_minimos", 17)) {
-            return config.getDouble("xp_dinamico.bonificacion_poblacion.niveles.record.multiplicador", 1.50);
-        } else if (jugadoresOnline >= config.getInt("xp_dinamico.bonificacion_poblacion.niveles.muy_alto.jugadores_minimos", 13)) {
-            return config.getDouble("xp_dinamico.bonificacion_poblacion.niveles.muy_alto.multiplicador", 1.30);
-        } else if (jugadoresOnline >= config.getInt("xp_dinamico.bonificacion_poblacion.niveles.alto.jugadores_minimos", 9)) {
-            return config.getDouble("xp_dinamico.bonificacion_poblacion.niveles.alto.multiplicador", 1.20);
-        } else if (jugadoresOnline >= config.getInt("xp_dinamico.bonificacion_poblacion.niveles.moderado.jugadores_minimos", 6)) {
-            return config.getDouble("xp_dinamico.bonificacion_poblacion.niveles.moderado.multiplicador", 1.10);
-        }
-        
-        return 0.0;
     }
     
     private ItemStack createBorderItem(Material material) {

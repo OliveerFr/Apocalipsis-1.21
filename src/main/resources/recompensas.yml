@@ -169,87 +169,329 @@ xp_dinamico:
       subtitulo: "&eXP normal activado"
   
   # ═══════════════════════════════════════════════════════════════
-  # 👥 SISTEMA DE REFERIDOS - Recompensas por traer jugadores nuevos
+  # 🎁 RECOMPENSAS PARA EL STREAMER - Logros y Hitos del Servidor
+  # Las recompensas se acumulan en /recompensas para reclamarlas cuando quieras
   # ═══════════════════════════════════════════════════════════════
-  sistema_referidos:
+  recompensas_streamer:
     enabled: true
     
-    # Recompensa INMEDIATA cuando el jugador nuevo se une
-    recompensa_invitacion:
-      xp: 500                           # 500 XP al invitar
-      comandos:
-        - "give %player% minecraft:diamond 5"
-        - "give %player% minecraft:golden_apple 3"
-        - "give %player% minecraft:experience_bottle 10"
-      mensaje: "&6&l[REFERIDO] &e%jugador_nuevo% &ase unió por ti! &6+500 XP, +5 Diamantes"
-      titulo:
-        enabled: true
-        titulo: "&6&l¡NUEVO JUGADOR!"
-        subtitulo: "&e+500 XP por invitar a &a%jugador_nuevo%"
+    # Usuario del streamer (recibe las recompensas)
+    streamer_username: "Riolu"
     
-    # Recompensas PROGRESIVAS cuando el referido alcanza hitos
-    hitos_referido:
-      # Cuando el referido alcanza EXPLORADOR (nivel 2)
-      nivel_2:
+    # ═════════════════════════════════════════════════════════════
+    # 👥 RECOMPENSAS POR JUGADORES NUEVOS
+    # ═════════════════════════════════════════════════════════════
+    jugador_nuevo:
+      # Cuando un jugador NUEVO se une al servidor
+      primer_join:
+        titulo: "§6§l¡Jugador Nuevo!"
+        descripcion: "§e%jugador% §7se unió por primera vez"
         xp: 300
         comandos:
           - "give %player% minecraft:diamond 3"
-          - "give %player% minecraft:ender_pearl 5"
-        mensaje: "&6&l[REFERIDO] &e%jugador_nuevo% &aalcanzó Explorador! &6+300 XP"
-      
-      # Cuando el referido alcanza SOBREVIVIENTE (nivel 3)
-      nivel_3:
-        xp: 500
+          - "give %player% minecraft:golden_apple 2"
+        acumulable: true          # Se guarda en /recompensas
+        
+      # Cuando el jugador nuevo juega su primera hora
+      primera_hora:
+        titulo: "§a§l¡Primera Hora Completada!"
+        descripcion: "§e%jugador% §7jugó su primera hora"
+        xp: 200
         comandos:
-          - "give %player% minecraft:diamond 5"
-          - "give %player% minecraft:netherite_scrap 1"
-          - "ps give 15 %player% 5"    # 5 bloques de protección
-        mensaje: "&6&l[REFERIDO] &e%jugador_nuevo% &aalcanzó Sobreviviente! &6+500 XP, +5 PS"
+          - "give %player% minecraft:diamond 2"
+          - "give %player% minecraft:experience_bottle 5"
+        acumulable: true
       
-      # Cuando el referido alcanza VETERANO (nivel 4)
-      nivel_4:
-        xp: 800
-        comandos:
-          - "give %player% minecraft:netherite_ingot 1"
-          - "give %player% minecraft:enchanted_golden_apple 2"
-          - "ps give 15 %player% 8"    # 8 bloques de protección
-        mensaje: "&6&l[REFERIDO] &e%jugador_nuevo% &aalcanzó Veterano! &6+800 XP, +8 PS"
-      
-      # Cuando el referido alcanza LEYENDA (nivel 5+)
-      nivel_5:
-        xp: 1500
-        comandos:
-          - "give %player% minecraft:netherite_ingot 2"
+      # Cuando el jugador nuevo alcanza cada rango
+      rangos:
+        EXPLORADOR:
+          titulo: "§b§l¡Explorador Alcanzado!"
+          descripcion: "§e%jugador% §7alcanzó Explorador"
+          xp: 500
+          comandos:
+            - "give %player% minecraft:diamond 5"
+            - "give %player% minecraft:emerald 3"
+        
+        SOBREVIVIENTE:
+          titulo: "§e§l¡Sobreviviente Alcanzado!"
+          descripcion: "§e%jugador% §7alcanzó Sobreviviente"
+          xp: 800
+          comandos:
+            - "give %player% minecraft:diamond 8"
+            - "give %player% minecraft:netherite_scrap 1"
+            - "ps give 15 %player% 5"
+        
+        VETERANO:
+          titulo: "§6§l¡Veterano Alcanzado!"
+          descripcion: "§e%jugador% §7alcanzó Veterano"
+          xp: 1200
+          comandos:
+            - "give %player% minecraft:netherite_ingot 1"
+            - "give %player% minecraft:enchanted_golden_apple 3"
+            - "ps give 15 %player% 10"
+        
+        LEYENDA:
+          titulo: "§c§l¡Leyenda Alcanzada!"
+          descripcion: "§e%jugador% §7alcanzó Leyenda"
+          xp: 2000
+          comandos:
+            - "give %player% minecraft:netherite_ingot 2"
+            - "give %player% minecraft:nether_star 1"
+            - "ps give 15 %player% 15"
+        
+        MAESTRO:
+          titulo: "§5§l¡Maestro Alcanzado!"
+          descripcion: "§e%jugador% §7alcanzó Maestro"
+          xp: 3000
+          comandos:
+            - "give %player% minecraft:netherite_ingot 3"
+            - "give %player% minecraft:nether_star 2"
+            - "give %player% minecraft:elytra 1"
+        
+        TITAN:
+          titulo: "§4§l¡Titán Alcanzado!"
+          descripcion: "§e%jugador% §7alcanzó Titán"
+          xp: 5000
+          comandos:
+            - "give %player% minecraft:netherite_ingot 5"
+            - "give %player% minecraft:nether_star 3"
+            - "give %player% minecraft:enchanted_golden_apple 5"
+        
+        ABSOLUTO:
+          titulo: "§f§l¡ABSOLUTO ALCANZADO!"
+          descripcion: "§e%jugador% §7alcanzó §f§lABSOLUTO"
+          xp: 10000
+          comandos:
+            - "give %player% minecraft:netherite_block 1"
+            - "give %player% minecraft:nether_star 5"
+            - "give %player% minecraft:dragon_egg 1"
+    
+    # ═════════════════════════════════════════════════════════════
+    # 🌍 RECOMPENSAS POR RÉCORDS DE POBLACIÓN
+    # ═════════════════════════════════════════════════════════════
+    records_poblacion:
+      # Cuando se alcanza un nuevo récord histórico
+      nuevo_record:
+        titulo: "§6§l⭐ ¡NUEVO RÉCORD!"
+        descripcion: "§7Récord histórico: §e%cantidad% §7jugadores online"
+        xp_por_jugador: 100         # 100 XP por cada jugador
+        comandos_base:
+          - "give %player% minecraft:diamond 10"
           - "give %player% minecraft:nether_star 1"
-          - "ps give 15 %player% 15"   # 15 bloques de protección
-        mensaje: "&6&l[REFERIDO] &e%jugador_nuevo% &aalcanzó Leyenda! &6+1500 XP, +15 PS, +1 Estrella"
+        # Comandos adicionales según cantidad
+        por_cantidad:
+          10_jugadores:
+            comandos:
+              - "give %player% minecraft:netherite_ingot 1"
+          15_jugadores:
+            comandos:
+              - "give %player% minecraft:netherite_ingot 2"
+              - "give %player% minecraft:enchanted_golden_apple 3"
+          20_jugadores:
+            comandos:
+              - "give %player% minecraft:netherite_block 1"
+              - "give %player% minecraft:nether_star 2"
+          25_jugadores:
+            comandos:
+              - "give %player% minecraft:netherite_block 2"
+              - "give %player% minecraft:dragon_head 1"
+        acumulable: true
+      
+      # Cuando mantienes X jugadores durante Y tiempo
+      poblacion_sostenida:
+        # 10+ jugadores durante 1 hora
+        10_jugadores_1hora:
+          titulo: "§a§l¡Población Sostenida!"
+          descripcion: "§710+ jugadores §7durante §e1 hora"
+          xp: 1000
+          comandos:
+            - "give %player% minecraft:diamond 15"
+            - "give %player% minecraft:netherite_scrap 2"
+          acumulable: true
+        
+        # 15+ jugadores durante 1 hora
+        15_jugadores_1hora:
+          titulo: "§6§l¡Gran Población Sostenida!"
+          descripcion: "§715+ jugadores §7durante §e1 hora"
+          xp: 2000
+          comandos:
+            - "give %player% minecraft:netherite_ingot 2"
+            - "give %player% minecraft:nether_star 1"
+          acumulable: true
+        
+        # 20+ jugadores durante 1 hora
+        20_jugadores_1hora:
+          titulo: "§c§l¡POBLACIÓN ÉPICA!"
+          descripcion: "§720+ jugadores §7durante §e1 hora"
+          xp: 5000
+          comandos:
+            - "give %player% minecraft:netherite_block 1"
+            - "give %player% minecraft:nether_star 3"
+            - "give %player% minecraft:enchanted_golden_apple 10"
+          acumulable: true
     
-    # BONUS ACUMULATIVO por cantidad de referidos activos
-    bonus_acumulativo:
-      enabled: true
-      # Jugador con 3+ referidos activos = +5% XP permanente
-      3_referidos:
-        multiplicador_xp: 1.05
-        mensaje: "&6&l[REFERIDOS] &e3 jugadores activos! &a+5% XP permanente"
-      # Jugador con 5+ referidos activos = +10% XP permanente
-      5_referidos:
-        multiplicador_xp: 1.10
-        mensaje: "&6&l[REFERIDOS] &e5 jugadores activos! &a+10% XP permanente"
-      # Jugador con 10+ referidos activos = +15% XP permanente
-      10_referidos:
-        multiplicador_xp: 1.15
+    # ═════════════════════════════════════════════════════════════
+    # 📊 HITOS ACUMULATIVOS
+    # ═════════════════════════════════════════════════════════════
+    hitos_acumulativos:
+      # Total de jugadores nuevos que se unieron
+      jugadores_nuevos_totales:
+        5_jugadores:
+          titulo: "§a§l¡5 Jugadores Nuevos!"
+          descripcion: "§7Has atraído §e5 jugadores §7nuevos"
+          xp: 1000
+          comandos:
+            - "give %player% minecraft:diamond 20"
+            - "give %player% minecraft:netherite_scrap 3"
+        
+        10_jugadores:
+          titulo: "§6§l¡10 Jugadores Nuevos!"
+          descripcion: "§7Has atraído §e10 jugadores §7nuevos"
+          xp: 2500
+          comandos:
+            - "give %player% minecraft:netherite_ingot 2"
+            - "give %player% minecraft:nether_star 1"
+        
+        25_jugadores:
+          titulo: "§c§l¡25 Jugadores Nuevos!"
+          descripcion: "§7Has atraído §e25 jugadores §7nuevos"
+          xp: 5000
+          comandos:
+            - "give %player% minecraft:netherite_ingot 5"
+            - "give %player% minecraft:nether_star 3"
+            - "give %player% minecraft:elytra 1"
+        
+        50_jugadores:
+          titulo: "§5§l¡50 JUGADORES NUEVOS!"
+          descripcion: "§7Has atraído §e50 jugadores §7nuevos"
+          xp: 10000
+          comandos:
+            - "give %player% minecraft:netherite_block 2"
+            - "give %player% minecraft:nether_star 5"
+            - "give %player% minecraft:dragon_egg 1"
+        
+        100_jugadores:
+          titulo: "§f§l¡100 JUGADORES NUEVOS!"
+          descripcion: "§7Has atraído §e§l100 jugadores §7nuevos"
+          xp: 25000
+          comandos:
+            - "give %player% minecraft:netherite_block 5"
+            - "give %player% minecraft:nether_star 10"
+            - "give %player% minecraft:beacon 1"
+      
+      # Total de jugadores que alcanzaron cada rango
+      jugadores_por_rango:
+        5_exploradores:
+          titulo: "§b¡5 Exploradores!"
+          xp: 800
+          comandos:
+            - "give %player% minecraft:diamond 10"
+        
+        10_sobrevivientes:
+          titulo: "§e¡10 Sobrevivientes!"
+          xp: 2000
+          comandos:
+            - "give %player% minecraft:netherite_ingot 2"
+        
+        5_veteranos:
+          titulo: "§6¡5 Veteranos!"
+          xp: 3000
+          comandos:
+            - "give %player% minecraft:netherite_ingot 3"
+            - "give %player% minecraft:nether_star 1"
+        
+        5_leyendas:
+          titulo: "§c¡5 Leyendas!"
+          xp: 5000
+          comandos:
+            - "give %player% minecraft:netherite_block 1"
+            - "give %player% minecraft:nether_star 2"
+    
+    # ═════════════════════════════════════════════════════════════
+    # 🏆 LOGROS ESPECIALES
+    # ═════════════════════════════════════════════════════════════
+    logros_especiales:
+      # Primera vez que alguien alcanza ABSOLUTO
+      primer_absoluto:
+        titulo: "§f§l⭐ PRIMER ABSOLUTO"
+        descripcion: "§e%jugador% §7es el primer §f§lABSOLUTO"
+        xp: 15000
         comandos:
-          - "give %player% minecraft:elytra 1"
-        mensaje: "&6&l[REFERIDOS] &e10 jugadores activos! &a+15% XP + Élitro"
+          - "give %player% minecraft:netherite_block 3"
+          - "give %player% minecraft:nether_star 10"
+          - "give %player% minecraft:beacon 1"
+        unico: true               # Solo se da una vez
+      
+      # Stream más largo (horas consecutivas)
+      stream_maratoniano:
+        6_horas:
+          titulo: "§a§l¡Stream de 6 Horas!"
+          xp: 2000
+          comandos:
+            - "give %player% minecraft:diamond 20"
+        
+        12_horas:
+          titulo: "§6§l¡Stream de 12 Horas!"
+          xp: 5000
+          comandos:
+            - "give %player% minecraft:netherite_ingot 3"
+            - "give %player% minecraft:nether_star 2"
+        
+        24_horas:
+          titulo: "§c§l¡STREAM DE 24 HORAS!"
+          xp: 20000
+          comandos:
+            - "give %player% minecraft:netherite_block 2"
+            - "give %player% minecraft:nether_star 5"
+            - "give %player% minecraft:dragon_head 1"
+      
+      # Retención: X jugadores volvieron después de 7 días
+      buena_retencion:
+        5_jugadores_retenidos:
+          titulo: "§a¡Buena Retención!"
+          descripcion: "§75 jugadores §7volvieron después de §e7+ días"
+          xp: 1500
+          comandos:
+            - "give %player% minecraft:diamond 15"
+        
+        10_jugadores_retenidos:
+          titulo: "§6¡Excelente Retención!"
+          descripcion: "§710 jugadores §7volvieron después de §e7+ días"
+          xp: 3000
+          comandos:
+            - "give %player% minecraft:netherite_ingot 2"
+            - "give %player% minecraft:nether_star 1"
     
-    # Definición de "jugador activo": ha jugado en las últimas X horas
-    tiempo_actividad_horas: 168      # 7 días (1 semana)
-    
-    # Comando para invitar: /invitar <jugador>
-    comando_invitacion: "/invitar"
+    # ═════════════════════════════════════════════════════════════
+    # ⚙️ CONFIGURACIÓN DEL SISTEMA
+    # ═════════════════════════════════════════════════════════════
+    configuracion:
+      # Notificaciones
+      notificar_recompensa_disponible: true
+      mensaje_notificacion: "&6&l[RECOMPENSA] &e¡Tienes una nueva recompensa en /recompensas!"
+      titulo_notificacion:
+        enabled: true
+        titulo: "&6&l⭐ NUEVA RECOMPENSA"
+        subtitulo: "&eRevisa /recompensas"
+      
+      # Sonido al recibir recompensa
+      sonido:
+        enabled: true
+        tipo: "ENTITY_PLAYER_LEVELUP"
+        volumen: 1.0
+        pitch: 1.2
+      
+      # Guardar en base de datos
+      persistente: true
+      
+      # Expiración de recompensas (0 = nunca expiran)
+      dias_expiracion: 0
+      
+      # Límite de recompensas acumuladas
+      limite_recompensas: 100       # Máximo 100 recompensas pendientes
   
   # ═══════════════════════════════════════════════════════════════
-  # 🌍 BONIFICACIÓN POR POBLACIÓN ALTA - Servidor activo = más XP
+  # 🌍 BONIFICACIÓN POR POBLACIÓN ALTA - Multiplicador para todos
   # ═══════════════════════════════════════════════════════════════
   bonificacion_poblacion:
     enabled: true
@@ -257,7 +499,7 @@ xp_dinamico:
     # Población base (promedio normal del servidor)
     poblacion_base: 5                # Ajusta según tu promedio habitual
     
-    # Multiplicadores dinámicos según población online
+    # Multiplicadores dinámicos según población online (para TODOS los jugadores)
     niveles:
       # 6-8 jugadores: +10% XP
       moderado:
@@ -280,18 +522,11 @@ xp_dinamico:
         mensaje: "&6&l[POBLACIÓN] &e13+ jugadores online! &6+30% XP"
         actionbar: "&6⚡ ¡Servidor Épico!: +30% XP"
       
-      # 17+ jugadores: +50% XP + recompensas extras cada hora
+      # 17+ jugadores: +50% XP
       record:
         jugadores_minimos: 17
         multiplicador: 1.50
-        recompensas_horarias:
-          enabled: true
-          xp: 200
-          comandos:
-            - "give %player% minecraft:diamond 3"
-            - "give %player% minecraft:golden_apple 2"
-          mensaje: "&6&l⭐ HORA COMPLETA EN RÉCORD! &e+200 XP, +3 Diamantes"
-        mensaje: "&6&l[POBLACIÓN] &c17+ jugadores! &6&l+50% XP + Bonus horario"
+        mensaje: "&6&l[POBLACIÓN] &c17+ jugadores! &6&l+50% XP"
         actionbar: "&6&l⚡ ¡RÉCORD DEL SERVIDOR!: +50% XP"
     
     # Notificaciones de cambio de nivel
