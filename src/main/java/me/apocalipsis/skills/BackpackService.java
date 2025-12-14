@@ -77,11 +77,24 @@ public class BackpackService implements Listener {
         Inventory inv = Bukkit.createInventory(holder, size, title);
         holder.setInventory(inv);
         
-        // Cargar contenido
+        // Cargar contenido (preservando todo el contenido previo)
         ItemStack[] contents = backpacks.get(uuid);
         if (contents != null) {
+            // Si el tamaño guardado es menor que el actual, expandir
+            if (contents.length < size) {
+                plugin.getLogger().info("[Backpack] Expandiendo mochila de " + player.getName() + 
+                    " de " + contents.length + " a " + size + " slots");
+                ItemStack[] expanded = new ItemStack[size];
+                System.arraycopy(contents, 0, expanded, 0, contents.length);
+                backpacks.put(uuid, expanded);
+                contents = expanded;
+            }
+            
+            // Cargar todo el contenido disponible
             for (int i = 0; i < Math.min(contents.length, size); i++) {
-                inv.setItem(i, contents[i]);
+                if (contents[i] != null) {
+                    inv.setItem(i, contents[i]);
+                }
             }
         }
         
@@ -90,16 +103,26 @@ public class BackpackService implements Listener {
     }
     
     /**
-     * Obtiene el tamaño de la mochila según las habilidades del jugador
+     * Obtiene el tamaño de la mochila según las habilidades y niveles del jugador
      */
     public int getBackpackSize(UUID uuid) {
+        // INVENTARIO_INFINITO siempre da 54 slots (no tiene niveles)
         if (skillService.hasSkill(uuid, Skill.INVENTARIO_INFINITO)) {
-            return 54; // Cofre doble
-        } else if (skillService.hasSkill(uuid, Skill.BOLSILLOS_SIN_FONDO)) {
-            return 27; // Cofre simple
-        } else if (skillService.hasSkill(uuid, Skill.BOLSILLOS_PROFUNDOS)) {
-            return 9; // 1 fila
+            return 54;
         }
+        
+        // BOLSILLOS_SIN_FONDO: 27/36/45 slots según nivel
+        if (skillService.hasSkill(uuid, Skill.BOLSILLOS_SIN_FONDO)) {
+            double effect = skillService.getLevelEffect(uuid, Skill.BOLSILLOS_SIN_FONDO);
+            return (int) effect; // 27, 36, o 45
+        }
+        
+        // BOLSILLOS_PROFUNDOS: 9/18/27 slots según nivel
+        if (skillService.hasSkill(uuid, Skill.BOLSILLOS_PROFUNDOS)) {
+            double effect = skillService.getLevelEffect(uuid, Skill.BOLSILLOS_PROFUNDOS);
+            return (int) effect; // 9, 18, o 27
+        }
+        
         return 0; // Sin mochila
     }
     
@@ -110,9 +133,11 @@ public class BackpackService implements Listener {
         if (skillService.hasSkill(uuid, Skill.INVENTARIO_INFINITO)) {
             return "§6§l✦ §eInventario Infinito §6§l✦";
         } else if (skillService.hasSkill(uuid, Skill.BOLSILLOS_SIN_FONDO)) {
-            return "§6§l✦ §eBolsillos Sin Fondo §6§l✦";
+            SkillLevel level = skillService.getSkillLevel(uuid, Skill.BOLSILLOS_SIN_FONDO);
+            return "§6§l✦ §eBolsillos Sin Fondo " + level.getColor() + level.getRoman() + " §6§l✦";
         } else if (skillService.hasSkill(uuid, Skill.BOLSILLOS_PROFUNDOS)) {
-            return "§6§l✦ §eBolsillos Profundos §6§l✦";
+            SkillLevel level = skillService.getSkillLevel(uuid, Skill.BOLSILLOS_PROFUNDOS);
+            return "§6§l✦ §eBolsillos Profundos " + level.getColor() + level.getRoman() + " §6§l✦";
         }
         return "§eMochila";
     }
@@ -148,9 +173,19 @@ public class BackpackService implements Listener {
         if (inv.getHolder() instanceof BackpackHolder holder) {
             UUID uuid = holder.getOwner();
             
-            // Guardar contenido
-            ItemStack[] contents = new ItemStack[inv.getSize()];
-            for (int i = 0; i < inv.getSize(); i++) {
+            // Guardar contenido con el tamaño actual
+            int currentSize = inv.getSize();
+            ItemStack[] contents = backpacks.getOrDefault(uuid, new ItemStack[currentSize]);
+            
+            // Si el array guardado es más pequeño que el actual, expandir
+            if (contents.length < currentSize) {
+                ItemStack[] expanded = new ItemStack[currentSize];
+                System.arraycopy(contents, 0, expanded, 0, contents.length);
+                contents = expanded;
+            }
+            
+            // Guardar contenido actual
+            for (int i = 0; i < currentSize; i++) {
                 contents[i] = inv.getItem(i);
             }
             backpacks.put(uuid, contents);
