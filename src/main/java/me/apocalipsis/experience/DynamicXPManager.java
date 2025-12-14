@@ -125,6 +125,14 @@ public class DynamicXPManager {
         multiplicadorOnline = config.getDouble("xp_dinamico.presencia_streamer.multiplicador_online", 1.0);
         multiplicadorOffline = config.getDouble("xp_dinamico.presencia_streamer.multiplicador_offline", 0.2);
         
+        // Log de sistema de presencia del streamer
+        if (presenciaStreamerEnabled) {
+            plugin.getLogger().info("[XP-Streamer] Sistema activado: " + streamerUsername + 
+                " | Online=" + multiplicadorOnline + "x | Offline=" + multiplicadorOffline + "x");
+        } else {
+            plugin.getLogger().warning("[XP-Streamer] Sistema DESACTIVADO en recompensas.yml");
+        }
+        
         // Hora feliz
         horaFelizMultiplier = config.getDouble("xp_dinamico.hora_feliz.multiplicador", 2.0);
         
