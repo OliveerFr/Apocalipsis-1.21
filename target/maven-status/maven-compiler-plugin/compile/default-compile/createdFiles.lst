@@ -234,6 +234,7 @@ me\apocalipsis\ui\FeedbackSystem$1.class
 me\apocalipsis\commands\ApocalipsisCommand$1.class
 me\apocalipsis\experience\AbilityService.class
 me\apocalipsis\events\gameplay\GuardianPhaseSystem.class
+me\apocalipsis\listeners\StreamDropListener$KillBurst.class
 me\apocalipsis\events\gameplay\DialogSystem$Speaker.class
 me\apocalipsis\events\gameplay\DialogSystem$Dialog.class
 me\apocalipsis\events\gameplay\EventAudioSystem$6.class

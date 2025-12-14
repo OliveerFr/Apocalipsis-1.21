@@ -70,6 +70,12 @@ public class DynamicXPManager {
     // ActionBar
     private boolean actionBarEnabled = true;
     
+    // Presencia del Streamer
+    private boolean presenciaStreamerEnabled = false;
+    private String streamerUsername = "OliveerF";
+    private double multiplicadorOnline = 1.0;
+    private double multiplicadorOffline = 0.2;
+    
     // Horas felices programadas
     private List<HoraFelizSchedule> horasFelicesProgramadas = new ArrayList<>();
     
@@ -112,6 +118,12 @@ public class DynamicXPManager {
         
         // ActionBar
         actionBarEnabled = config.getBoolean("xp_dinamico.actionbar.enabled", true);
+        
+        // Presencia del Streamer
+        presenciaStreamerEnabled = config.getBoolean("xp_dinamico.presencia_streamer.enabled", false);
+        streamerUsername = config.getString("xp_dinamico.presencia_streamer.streamer_username", "OliveerF");
+        multiplicadorOnline = config.getDouble("xp_dinamico.presencia_streamer.multiplicador_online", 1.0);
+        multiplicadorOffline = config.getDouble("xp_dinamico.presencia_streamer.multiplicador_offline", 0.2);
         
         // Hora feliz
         horaFelizMultiplier = config.getDouble("xp_dinamico.hora_feliz.multiplicador", 2.0);
@@ -294,6 +306,21 @@ public class DynamicXPManager {
             double streakBonus = 1.0 + (Math.min(streakDays, maxStreakDays) * streakMultiplier);
             totalMultiplier *= streakBonus;
             appliedBonuses.add("§6+Racha x" + String.format("%.1f", streakBonus));
+        }
+        
+        // Presencia del Streamer (verificación en tiempo real)
+        if (presenciaStreamerEnabled) {
+            boolean streamerOnline = isStreamerOnline();
+            double streamerMult = streamerOnline ? multiplicadorOnline : multiplicadorOffline;
+            totalMultiplier *= streamerMult;
+            
+            if (streamerOnline) {
+                if (multiplicadorOnline != 1.0) {
+                    appliedBonuses.add("§6+Streamer ON x" + String.format("%.1f", multiplicadorOnline));
+                }
+            } else {
+                appliedBonuses.add("§7-Streamer OFF x" + String.format("%.1f", multiplicadorOffline));
+            }
         }
         
         // Combo rápido (con límite máximo, excepto para OliveerF que tiene combo ilimitado)
@@ -670,6 +697,14 @@ public class DynamicXPManager {
     public void cleanupOfflinePlayers() {
         playerTrackers.entrySet().removeIf(entry -> 
             Bukkit.getPlayer(entry.getKey()) == null);
+    }
+    
+    /**
+     * Verifica si el streamer está online (en tiempo real)
+     */
+    private boolean isStreamerOnline() {
+        Player streamer = Bukkit.getPlayerExact(streamerUsername);
+        return streamer != null && streamer.isOnline();
     }
     
     /**

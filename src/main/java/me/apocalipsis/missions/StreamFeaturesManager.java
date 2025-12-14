@@ -92,10 +92,41 @@ public class StreamFeaturesManager {
     }
     
     /**
-     * Verifica si el streamer está online
+     * Tarea periódica que verifica y anuncia cambios de estado
+     * Solo se usa para broadcasts automáticos, no para verificaciones en tiempo real
+     */
+    private void checkAndBroadcastStreamerStatus() {
+        Player streamer = Bukkit.getPlayerExact(streamerUsername);
+        boolean currentStatus = (streamer != null && streamer.isOnline());
+        boolean wasOnline = streamerOnline;
+        
+        streamerOnline = currentStatus;
+        
+        // Solo broadcast si cambió de estado
+        if (wasOnline != currentStatus) {
+            if (currentStatus) {
+                broadcastStreamerOnline();
+            } else {
+                broadcastStreamerOffline();
+            }
+        }
+    }
+    
+    /**
+     * Verifica si el streamer está online (en tiempo real)
+     * Este método verifica en tiempo real en vez de usar la caché
      */
     public boolean isStreamerOnline() {
-        return streamerOnline;
+        // Verificación en tiempo real para precisión en UIs
+        Player streamer = Bukkit.getPlayerExact(streamerUsername);
+        boolean currentStatus = (streamer != null && streamer.isOnline());
+        
+        // Actualizar caché si es diferente (sin broadcast para evitar spam)
+        if (currentStatus != streamerOnline) {
+            streamerOnline = currentStatus;
+        }
+        
+        return currentStatus;
     }
     
     /**
@@ -122,6 +153,7 @@ public class StreamFeaturesManager {
         for (Player player : Bukkit.getOnlinePlayers()) {
             player.sendMessage(mensajeOnline);
             player.sendMessage(mensajeDrops);
+            player.sendMessage("§aXP normal restaurado.");
         }
     }
     
@@ -135,6 +167,7 @@ public class StreamFeaturesManager {
         
         for (Player player : Bukkit.getOnlinePlayers()) {
             player.sendMessage(mensajeOffline);
+            player.sendMessage("§7XP reducido al §c20% §7hasta que vuelva.");
         }
     }
     
@@ -316,8 +349,8 @@ public class StreamFeaturesManager {
      * Inicia las tareas periódicas
      */
     private void startTasks() {
-        // Tarea de actualización de estado del streamer (cada 5 segundos)
-        Bukkit.getScheduler().runTaskTimer(plugin, this::updateStreamerStatus, 100L, 100L);
+        // Tarea de verificación y broadcast de estado del streamer (cada 5 segundos)
+        Bukkit.getScheduler().runTaskTimer(plugin, this::checkAndBroadcastStreamerStatus, 100L, 100L);
         
         // Tarea de recordatorio periódico
         if (config.getBoolean("mensajes.recordatorio_periodico.enabled", true)) {

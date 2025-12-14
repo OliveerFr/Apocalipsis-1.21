@@ -24,6 +24,14 @@ streamer:
 drops_stream:
   enabled: true
   
+  # Sistema anti-farmeo: Cooldown entre drops por jugador
+  # Esto previene que granjas de mobs y XP den tokens/fragmentos constantemente
+  cooldown_segundos: 5          # Tiempo de espera entre drops (5 segundos recomendado)
+  
+  # Detección de matanzas masivas (anti-granja)
+  # Si un jugador mata más de X mobs en 1 segundo, solo se procesa 1 drop
+  max_mobs_por_segundo: 5       # Si mata más de 5 mobs/segundo, considera que está farmeando
+  
   # Chance de drop especial (solo cuando streamer online)
   chance_base: 0.08             # 12% de chance por mob hostil (balanceado)
   
