@@ -121,7 +121,10 @@ public final class Apocalipsis extends JavaPlugin {
         saveResource("eventos.yml", false);
         saveResource("misiones_new.yml", false);
         saveResource("rangos.yml", false);
-        saveResource("recompensas.yml", false);
+        
+        // AUTO-UPDATE: Verificar versión de recompensas.yml
+        checkAndUpdateConfig("recompensas.yml", getDescription().getVersion());
+        
         saveResource("chat.yml", false);
         saveResource("evasiones.yml", false);
         saveResource("protecciones.yml", false);
@@ -735,5 +738,49 @@ public final class Apocalipsis extends JavaPlugin {
      */
     public TutorialManager getTutorialManager() {
         return tutorialManager;
+    }
+    
+    /**
+     * AUTO-UPDATE: Verifica la versión de un archivo de configuración y lo actualiza si es necesario
+     * @param fileName Nombre del archivo (ej: "recompensas.yml")
+     * @param requiredVersion Versión mínima requerida (del plugin)
+     */
+    private void checkAndUpdateConfig(String fileName, String requiredVersion) {
+        File configFile = new File(getDataFolder(), fileName);
+        
+        // Si el archivo no existe, crearlo
+        if (!configFile.exists()) {
+            saveResource(fileName, false);
+            getLogger().info("[AUTO-UPDATE] Creado " + fileName + " v" + requiredVersion);
+            return;
+        }
+        
+        // Leer versión actual
+        FileConfiguration config = YamlConfiguration.loadConfiguration(configFile);
+        String currentVersion = config.getString("version", "0");
+        
+        // Verificar si necesita actualización (comparar versiones)
+        if (!currentVersion.equals(requiredVersion)) {
+            getLogger().warning("[AUTO-UPDATE] " + fileName + " está desactualizado (v" + currentVersion + " → v" + requiredVersion + ")");
+            
+            // Hacer backup del archivo viejo
+            File backup = new File(getDataFolder(), fileName + ".backup-v" + currentVersion);
+            try {
+                java.nio.file.Files.copy(configFile.toPath(), backup.toPath(), 
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                getLogger().info("[AUTO-UPDATE] Backup guardado: " + backup.getName());
+            } catch (Exception e) {
+                getLogger().warning("[AUTO-UPDATE] No se pudo crear backup: " + e.getMessage());
+            }
+            
+            // Eliminar el archivo viejo
+            configFile.delete();
+            
+            // Copiar el nuevo del JAR
+            saveResource(fileName, true);
+            getLogger().info("[AUTO-UPDATE] ✓ " + fileName + " actualizado a v" + requiredVersion);
+        } else {
+            getLogger().info("[AUTO-UPDATE] " + fileName + " está actualizado (v" + currentVersion + ")");
+        }
     }
 }

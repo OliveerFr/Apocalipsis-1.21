@@ -4,7 +4,7 @@
 # y recompensas por completar misiones diarias
 # ════════════════════════════════════════════════════════════════════
 
-version: 1
+version: "1.22.17"  # Sistema de presencia del streamer + Fix cuarzo
 
 # ═══════════════════════════════════════════════════════════════
 # RECOMPENSAS POR COMPLETAR MISIONES INDIVIDUALES

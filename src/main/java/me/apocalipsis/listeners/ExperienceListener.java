@@ -149,9 +149,9 @@ public class ExperienceListener implements Listener {
             return XPSource.MINE_EPIC;
         }
         
-        // Raros
+        // Raros (QUARTZ ELIMINADO - no debe dar XP)
         if (name.contains("GOLD_ORE") || name.contains("LAPIS_ORE") || name.contains("REDSTONE_ORE") ||
-            name.contains("NETHER_GOLD") || name.contains("QUARTZ")) {
+            name.contains("NETHER_GOLD")) {
             return XPSource.MINE_RARE;
         }
         
