@@ -68,6 +68,13 @@ public class ExperienceListener implements Listener {
         Player player = event.getPlayer();
         xpManager.checkStreakReset(player);
         xpManager.updateLoginStreak(player);
+        
+        // [IMPORTANTE] Aplicar habilidades de rango al conectarse
+        if (plugin.getAbilityService() != null) {
+            org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                plugin.getAbilityService().applyAbilities(player, false); // Sin notificar
+            }, 40L); // 2 segundos después del login
+        }
     }
     
     // ═══════════════════════════════════════════════════════════════

@@ -389,11 +389,24 @@ public class ExperienceService {
         // 🎁 Entregar recompensas del rango
         if (plugin.getRewardService() != null) {
             org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                plugin.getLogger().info("[XP] Entregando recompensas a " + player.getName() + " por rango " + newRank.name());
                 boolean delivered = plugin.getRewardService().deliverRewards(player, newRank);
                 if (delivered) {
-                    player.sendMessage("§a§l✔ §7Recompensas de rango entregadas!");
+                    plugin.getLogger().info("[XP] ✓ Recompensas entregadas exitosamente a " + player.getName());
+                } else {
+                    plugin.getLogger().warning("[XP] ✗ No se pudieron entregar recompensas a " + player.getName() + " (ya entregadas o sin config)");
                 }
             }, 20L); // 1 segundo de delay para que vea el título primero
+        } else {
+            plugin.getLogger().severe("[XP] ERROR: RewardService es NULL! No se pueden entregar recompensas.");
+        }
+        
+        // 💪 Aplicar habilidades del nuevo rango
+        if (plugin.getAbilityService() != null) {
+            org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                plugin.getAbilityService().applyAbilities(player, true);
+                player.sendMessage("§a§l✔ §7Habilidades de rango " + rankName + " §7activadas!");
+            }, 40L); // 2 segundos después de las recompensas
         }
         
         plugin.getLogger().info("[XP] " + player.getName() + " subió de rango: " + oldRank.name() + " → " + newRank.name());

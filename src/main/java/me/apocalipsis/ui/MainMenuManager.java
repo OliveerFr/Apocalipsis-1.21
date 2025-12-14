@@ -534,8 +534,12 @@ public class MainMenuManager implements Listener {
                     break;
                     
                 case "STREAM_FEATURES":
-                    // Abrir menú de canje de tokens
-                    plugin.getStreamFeaturesManager().showRedeemMenu(player);
+                    // Abrir menú GUI de Stream Features
+                    if (plugin.getStreamMenuGUI() != null) {
+                        plugin.getStreamMenuGUI().openMainMenu(player);
+                    } else {
+                        plugin.getStreamFeaturesManager().showRedeemMenu(player);
+                    }
                     break;
                     
                 case "SKILLS":

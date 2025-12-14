@@ -75,6 +75,7 @@ public final class Apocalipsis extends JavaPlugin {
     
     // Servicios de stream features
     private me.apocalipsis.missions.StreamFeaturesManager streamFeaturesManager;
+    private me.apocalipsis.ui.StreamMenuGUI streamMenuGUI;
 
     // Servicios de experiencia y progresión
     private ExperienceService experienceService;
@@ -153,6 +154,7 @@ public final class Apocalipsis extends JavaPlugin {
         
         // Inicializar sistema de stream features
         streamFeaturesManager = new me.apocalipsis.missions.StreamFeaturesManager(this);
+        streamMenuGUI = new me.apocalipsis.ui.StreamMenuGUI(this, streamFeaturesManager);
         getLogger().info("[StreamFeaturesManager] ✓ Sistema de stream features iniciado");
         
         // Inicializar servicios de experiencia y progresión
@@ -647,6 +649,10 @@ public final class Apocalipsis extends JavaPlugin {
     
     public me.apocalipsis.missions.StreamFeaturesManager getStreamFeaturesManager() {
         return streamFeaturesManager;
+    }
+    
+    public me.apocalipsis.ui.StreamMenuGUI getStreamMenuGUI() {
+        return streamMenuGUI;
     }
 
     public PerformanceAdapter getPerformanceAdapter() {

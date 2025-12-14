@@ -111,9 +111,17 @@ public class StreamFeaturesManager {
     private void broadcastStreamerOnline() {
         if (!config.getBoolean("drops_stream.enabled", true)) return;
         
+        String mensajeOnline = config.getString("mensajes.streamer_online", 
+            "&6&l[STREAM] &e¡" + streamerUsername + " está online!");
+        String mensajeDrops = config.getString("mensajes.drops_activados", 
+            "&7&o¡Drops especiales activados! Mata mobs para obtener tokens.");
+        
+        mensajeOnline = mensajeOnline.replace("&", "§").replace("%streamer%", streamerUsername);
+        mensajeDrops = mensajeDrops.replace("&", "§");
+        
         for (Player player : Bukkit.getOnlinePlayers()) {
-            player.sendMessage("§6§l[STREAM] §e¡" + streamerUsername + " está online!");
-            player.sendMessage("§7§o¡Drops especiales activados! Mata mobs para obtener tokens.");
+            player.sendMessage(mensajeOnline);
+            player.sendMessage(mensajeDrops);
         }
     }
     
@@ -121,8 +129,12 @@ public class StreamFeaturesManager {
      * Notifica a todos que el streamer está offline
      */
     private void broadcastStreamerOffline() {
+        String mensajeOffline = config.getString("mensajes.streamer_offline", 
+            "&6&l[STREAM] &7" + streamerUsername + " está offline.");
+        mensajeOffline = mensajeOffline.replace("&", "§").replace("%streamer%", streamerUsername);
+        
         for (Player player : Bukkit.getOnlinePlayers()) {
-            player.sendMessage("§6§l[STREAM] §7" + streamerUsername + " está offline.");
+            player.sendMessage(mensajeOffline);
         }
     }
     
@@ -171,6 +183,7 @@ public class StreamFeaturesManager {
         
         // Enviar mensaje
         String mensaje = config.getString("drops_stream.mensaje", "§6§l[STREAM DROP] §e¡Has obtenido %item%!");
+        mensaje = mensaje.replace("&", "§"); // Convertir códigos de color
         mensaje = mensaje.replace("%item%", item.getItemMeta().getDisplayName());
         player.sendMessage(mensaje);
         
@@ -322,6 +335,7 @@ public class StreamFeaturesManager {
         
         String mensaje = config.getString("mensajes.recordatorio_periodico.mensaje", 
             "§6§l[STREAM] §e¡Recuerda que estás ganando §a§lx3 XP §emientras el streamer está online!");
+        mensaje = mensaje.replace("&", "§"); // Convertir códigos de color
         
         for (Player player : Bukkit.getOnlinePlayers()) {
             player.sendMessage(mensaje);
@@ -350,17 +364,36 @@ public class StreamFeaturesManager {
         }
         
         int costo = reward.getInt("costo_tokens", 0);
-        int tokens = getPlayerTokens(player.getUniqueId());
         
-        if (tokens < costo) {
-            player.sendMessage("§cNo tienes suficientes tokens. Necesitas: §e" + costo + " §c| Tienes: §e" + tokens);
+        // Contar tokens en base de datos + inventario
+        int tokensDatabase = getPlayerTokens(player.getUniqueId());
+        int tokensInventory = countTokensInInventory(player);
+        int totalTokens = tokensDatabase + tokensInventory;
+        
+        plugin.getLogger().info("[StreamTokens] Canje para " + player.getName() + 
+            " | BD: " + tokensDatabase + " | Inv: " + tokensInventory + " | Total: " + totalTokens + " | Costo: " + costo);
+        
+        if (totalTokens < costo) {
+            player.sendMessage("§cNo tienes suficientes tokens. Necesitas: §e" + costo + " §c| Tienes: §e" + totalTokens);
             return false;
         }
         
-        // Quitar tokens
-        if (!removePlayerTokens(player.getUniqueId(), costo, "Canje: " + rewardId)) {
-            player.sendMessage("§cError al procesar los tokens.");
-            return false;
+        // Primero quitar tokens del inventario
+        int remaining = costo;
+        if (tokensInventory > 0) {
+            int toRemove = Math.min(tokensInventory, remaining);
+            removeTokensFromInventory(player, toRemove);
+            remaining -= toRemove;
+            plugin.getLogger().info("[StreamTokens] Removidos " + toRemove + " tokens del inventario");
+        }
+        
+        // Luego quitar de la base de datos si es necesario
+        if (remaining > 0) {
+            if (!removePlayerTokens(player.getUniqueId(), remaining, "Canje: " + rewardId)) {
+                player.sendMessage("§cError al procesar los tokens.");
+                return false;
+            }
+            plugin.getLogger().info("[StreamTokens] Removidos " + remaining + " tokens de la base de datos");
         }
         
         // Dar recompensas
@@ -373,7 +406,7 @@ public class StreamFeaturesManager {
         String nombre = reward.getString("nombre", rewardId);
         player.sendMessage("§a§l¡Canje exitoso!");
         player.sendMessage("§7Has canjeado: " + nombre.replace("&", "§"));
-        player.sendMessage("§7Tokens restantes: §e" + getPlayerTokens(player.getUniqueId()));
+        player.sendMessage("§7Tokens restantes: §e" + (getPlayerTokens(player.getUniqueId()) + countTokensInInventory(player)));
         
         return true;
     }
@@ -422,6 +455,59 @@ public class StreamFeaturesManager {
         }
         
         player.sendMessage("§6§l═══════════════════════════════");
+    }
+    
+    /**
+     * Cuenta cuántos tokens físicos tiene un jugador en su inventario
+     */
+    private int countTokensInInventory(Player player) {
+        int count = 0;
+        for (ItemStack item : player.getInventory().getContents()) {
+            if (isTokenItem(item)) {
+                count += item.getAmount();
+            }
+        }
+        return count;
+    }
+    
+    /**
+     * Verifica si un item es un token de stream
+     */
+    private boolean isTokenItem(ItemStack item) {
+        if (item == null || item.getType() != Material.NETHER_STAR) return false;
+        if (!item.hasItemMeta()) return false;
+        
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null || !meta.hasDisplayName()) return false;
+        
+        String name = meta.getDisplayName();
+        return name.contains("Token de Stream");
+    }
+    
+    /**
+     * Quita una cantidad específica de tokens del inventario del jugador
+     */
+    private void removeTokensFromInventory(Player player, int amount) {
+        int remaining = amount;
+        
+        for (int i = 0; i < player.getInventory().getSize(); i++) {
+            if (remaining <= 0) break;
+            
+            ItemStack item = player.getInventory().getItem(i);
+            if (!isTokenItem(item)) continue;
+            
+            int stackAmount = item.getAmount();
+            
+            if (stackAmount <= remaining) {
+                // Remover todo el stack
+                player.getInventory().setItem(i, null);
+                remaining -= stackAmount;
+            } else {
+                // Reducir el stack
+                item.setAmount(stackAmount - remaining);
+                remaining = 0;
+            }
+        }
     }
     
     /**

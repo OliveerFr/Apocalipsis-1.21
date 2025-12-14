@@ -3,6 +3,7 @@ package me.apocalipsis.listeners;
 import me.apocalipsis.missions.MissionService;
 import me.apocalipsis.missions.MissionType;
 import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -37,6 +38,15 @@ public class MissionListener implements Listener {
         if (player == null) return;
         
         Material material = event.getBlock().getType();
+        
+        // [VALIDACIÓN] END_STONE solo cuenta si se rompe en el End
+        if (material == Material.END_STONE) {
+            World.Environment dimension = player.getWorld().getEnvironment();
+            if (dimension != World.Environment.THE_END) {
+                return; // No contar si no está en el End
+            }
+        }
+        
         missionService.progressMission(player, MissionType.ROMPER, material.name(), 1);
     }
 

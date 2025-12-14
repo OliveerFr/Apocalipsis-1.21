@@ -3512,6 +3512,12 @@ public class ApocalipsisCommand implements CommandExecutor {
                 cmdHabilidadesToggles(player);
                 break;
                 
+            case "reload":
+            case "recargar":
+            case "refresh":
+                cmdHabilidadesReload(player);
+                break;
+                
             case "comprar":
             case "buy":
             case "unlock":
@@ -3767,6 +3773,33 @@ public class ApocalipsisCommand implements CommandExecutor {
         }
         
         player.sendMessage("§6§l══════════════════════════");
+    }
+    
+    private void cmdHabilidadesReload(Player player) {
+        player.sendMessage("§6§l[HABILIDADES] §7Recargando tus habilidades...");
+        
+        try {
+            // Forzar limpieza de cache si existe
+            plugin.getSkillService().clearPlayerCache(player.getUniqueId());
+            
+            // Reaplicar todos los efectos
+            plugin.getSkillService().applySkillEffects(player);
+            
+            // Mensaje de éxito
+            player.sendMessage("§a✓ Habilidades recargadas correctamente.");
+            player.sendMessage("§7Tus efectos han sido reaplicados.");
+            
+            // Sonido de confirmación
+            player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 0.5f, 1.2f);
+            
+            // Log para debugging
+            plugin.getLogger().info("[Skills] Habilidades recargadas para " + player.getName());
+            
+        } catch (Exception e) {
+            player.sendMessage("§c✗ Error al recargar habilidades: " + e.getMessage());
+            plugin.getLogger().warning("[Skills] Error recargando habilidades para " + player.getName() + ": " + e.getMessage());
+            e.printStackTrace();
+        }
     }
     
     private void cmdHabilidadesComprar(Player player, String skillId) {

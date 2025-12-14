@@ -599,6 +599,9 @@ public class SkillEffectListener implements Listener {
                 p.setHealth(fenixCorazonesRevivir * 2.0); // Corazones configurables
                 p.setFoodLevel(fenixComidaRevivir);
                 
+                // Reaplicar habilidades después del respawn
+                skillService.applySkillEffects(p);
+                
                 // Efectos visuales mejorados
                 spawnPhoenixReviveParticles(p);
                 

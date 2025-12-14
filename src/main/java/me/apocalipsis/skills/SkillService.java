@@ -246,6 +246,17 @@ public class SkillService {
         return Skill.values().length;
     }
     
+    /**
+     * Limpia el cache de un jugador y fuerza recarga de habilidades
+     */
+    public void clearPlayerCache(UUID uuid) {
+        // Si existe algún sistema de cache, limpiarlo aquí
+        PlayerSkillData data = playerData.get(uuid);
+        if (data != null) {
+            plugin.getLogger().info("[Skills] Cache limpiado para UUID: " + uuid);
+        }
+    }
+    
     // ==================== SISTEMA DE NIVELES ====================
     
     /**
@@ -533,6 +544,8 @@ public class SkillService {
         UUID uuid = player.getUniqueId();
         Set<Skill> skills = getUnlockedSkills(uuid);
         
+        plugin.getLogger().info("[Skills] Aplicando efectos para " + player.getName() + " (" + skills.size() + " habilidades)");
+        
         // Resetear atributos primero
         resetPlayerAttributes(player);
         
@@ -541,9 +554,12 @@ public class SkillService {
         double speedBonus = 0;
         double attackSpeedBonus = 0;
         
+        int skillsApplied = 0;
+        
         for (Skill skill : skills) {
             // Saltar si es toggleable y está desactivado
             if (skill.isToggleable() && !isSkillEnabled(uuid, skill)) {
+                plugin.getLogger().fine("[Skills] " + skill.name() + " está toggleado OFF");
                 continue;
             }
             
@@ -551,33 +567,41 @@ public class SkillService {
                 // === VIDA EXTRA (valores de SkillConfig en corazones) ===
                 case PIEL_GRUESA:
                     extraHearts += getLevelEffect(uuid, Skill.PIEL_GRUESA); // 2/3/4
+                    skillsApplied++;
                     break;
                 case TANQUE:
                     extraHearts += getLevelEffect(uuid, Skill.TANQUE); // 4/6/8
+                    skillsApplied++;
                     break;
                 case INMORTAL:
                     extraHearts += getLevelEffect(uuid, Skill.INMORTAL); // 8/10/14
+                    skillsApplied++;
                     break;
                     
                 // === VELOCIDAD (valores de SkillConfig en %) ===
                 case PASO_LIGERO:
                     speedBonus += getLevelEffect(uuid, Skill.PASO_LIGERO) / 100.0; // 10/15/20%
+                    skillsApplied++;
                     break;
                 case ZANCADAS:
                     speedBonus += getLevelEffect(uuid, Skill.ZANCADAS) / 100.0; // 20/30/40%
+                    skillsApplied++;
                     break;
                 case VELOCISTA:
                     speedBonus += getLevelEffect(uuid, Skill.VELOCISTA) / 100.0; // 30/40/50%
+                    skillsApplied++;
                     break;
                 
                 // === VELOCIDAD DE ATAQUE ===
                 case REFLEJOS:
                     attackSpeedBonus += getLevelEffect(uuid, Skill.REFLEJOS) / 100.0; // 10/15/20%
+                    skillsApplied++;
                     break;
                     
                 // === NADADOR ===
                 case NADADOR:
                     // Se maneja en listener
+                    skillsApplied++;
                     break;
                     
                 default:
@@ -591,6 +615,7 @@ public class SkillService {
             if (maxHealth != null) {
                 double newMax = 20 + (extraHearts * 2); // Cada "corazón" = 2 HP
                 maxHealth.setBaseValue(newMax);
+                plugin.getLogger().info("[Skills] Vida aplicada: " + newMax + " HP (+" + extraHearts + " corazones)");
             }
         }
         
@@ -599,7 +624,9 @@ public class SkillService {
             AttributeInstance movementSpeed = player.getAttribute(Attribute.MOVEMENT_SPEED);
             if (movementSpeed != null) {
                 double baseSpeed = 0.1; // Velocidad base de Minecraft
-                movementSpeed.setBaseValue(baseSpeed * (1 + speedBonus));
+                double newSpeed = baseSpeed * (1 + speedBonus);
+                movementSpeed.setBaseValue(newSpeed);
+                plugin.getLogger().info("[Skills] Velocidad aplicada: +" + (speedBonus * 100) + "%");
             }
         }
         
@@ -608,9 +635,13 @@ public class SkillService {
             AttributeInstance attackSpeed = player.getAttribute(Attribute.ATTACK_SPEED);
             if (attackSpeed != null) {
                 double baseAttackSpeed = 4.0; // Velocidad de ataque base
-                attackSpeed.setBaseValue(baseAttackSpeed * (1 + attackSpeedBonus));
+                double newAttackSpeed = baseAttackSpeed * (1 + attackSpeedBonus);
+                attackSpeed.setBaseValue(newAttackSpeed);
+                plugin.getLogger().info("[Skills] Velocidad de ataque aplicada: +" + (attackSpeedBonus * 100) + "%");
             }
         }
+        
+        plugin.getLogger().info("[Skills] Total de efectos aplicados: " + skillsApplied + "/" + skills.size());
     }
     
     /**

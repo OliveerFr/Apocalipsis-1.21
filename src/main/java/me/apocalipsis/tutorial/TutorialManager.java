@@ -142,8 +142,9 @@ public class TutorialManager {
         
         UUID uuid = player.getUniqueId();
         
-        // Registrar en sistema de dificultad progresiva
-        difficultySystem.registerFirstJoin(player);
+        // [IMPORTANTE] NO registrar en el sistema de dificultad todavía
+        // Esto se hará cuando el tutorial termine exitosamente
+        // Si lo hacemos ahora, hasPlayerData() devuelve true y cancela el tutorial
         
         // Crear estado del tutorial
         tutorialStates.put(uuid, new TutorialState());
@@ -261,8 +262,12 @@ public class TutorialManager {
         // Entregar kit de inicio
         giveStarterKit(player);
         
+        // [IMPORTANTE] Registrar en el sistema de dificultad AHORA
+        // Esto marca que el jugador ya recibió el tutorial
+        difficultySystem.registerFirstJoin(player);
+        
         plugin.getLogger().info(String.format(
-            "[Tutorial] Tutorial iniciado para %s. Kit entregado.",
+            "[Tutorial] Tutorial iniciado para %s. Kit entregado y registrado en sistema.",
             player.getName()
         ));
     }

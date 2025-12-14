@@ -499,7 +499,7 @@ public class MissionService {
             
             MissionCatalog mission = assignment.getMission();
             
-            // [MEJORA] Matching flexible para troncos - cualquier log cuenta como madera
+            // [MEJORA] Matching flexible para troncos y minerales
             boolean matches = false;
             if (mission.getTipo() == type) {
                 String objetivo = mission.getObjetivo();
@@ -507,7 +507,12 @@ public class MissionService {
                 // Si la misión pide un log específico o "ANY_LOG", aceptar cualquier tronco
                 if (objetivo.equals("ANY_LOG") || objetivo.endsWith("_LOG")) {
                     matches = isWoodLog(target) && (objetivo.equals("ANY_LOG") || objetivo.equalsIgnoreCase(target));
-                } else {
+                } 
+                // [NUEVO] Si la misión pide un mineral, aceptar también su variante deepslate
+                else if (objetivo.endsWith("_ORE")) {
+                    matches = matchesOreVariant(objetivo, target);
+                } 
+                else {
                     // Match normal para otros materiales
                     matches = objetivo.equalsIgnoreCase(target);
                 }
@@ -1084,6 +1089,39 @@ public class MissionService {
                 Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
             }
         }
+    }
+    
+    /**
+     * [NUEVO] Verifica si un mineral matchea con su objetivo, incluyendo variantes deepslate
+     * Por ejemplo: DIAMOND_ORE matchea con DIAMOND_ORE y DEEPSLATE_DIAMOND_ORE
+     */
+    private boolean matchesOreVariant(String objetivo, String minedBlock) {
+        // Match exacto
+        if (objetivo.equalsIgnoreCase(minedBlock)) {
+            return true;
+        }
+        
+        // Si el objetivo es un ORE normal, aceptar también su variante DEEPSLATE
+        if (objetivo.endsWith("_ORE") && !objetivo.startsWith("DEEPSLATE_")) {
+            // Obtener el tipo de mineral (ej: DIAMOND de DIAMOND_ORE)
+            String oreType = objetivo.replace("_ORE", "");
+            String deepslateVariant = "DEEPSLATE_" + oreType + "_ORE";
+            
+            if (deepslateVariant.equalsIgnoreCase(minedBlock)) {
+                return true;
+            }
+        }
+        
+        // Si el objetivo es DEEPSLATE_X_ORE, aceptar también X_ORE normal
+        if (objetivo.startsWith("DEEPSLATE_") && objetivo.endsWith("_ORE")) {
+            String normalVariant = objetivo.replace("DEEPSLATE_", "");
+            
+            if (normalVariant.equalsIgnoreCase(minedBlock)) {
+                return true;
+            }
+        }
+        
+        return false;
     }
     
     /**

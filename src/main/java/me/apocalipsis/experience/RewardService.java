@@ -146,7 +146,8 @@ public class RewardService {
             return false; // No hay recompensas para este rango
         }
         
-        plugin.getLogger().info("[Rewards] Añadiendo recompensas de " + rank.name() + " a " + player.getName());
+        plugin.getLogger().info("[Rewards] Procesando recompensas de " + rank.name() + " para " + player.getName());
+        plugin.getLogger().info("[Rewards] Comandos configurados: " + reward.getCommands().size());
         
         // Convertir comandos give a ItemStacks y separar comandos especiales
         List<ItemStack> items = new ArrayList<>();
@@ -158,17 +159,19 @@ public class RewardService {
             
             if (item != null) {
                 items.add(item);
+                plugin.getLogger().info("[Rewards] Item parseado: " + item.getType() + " x" + item.getAmount());
             } else {
-                // Comandos especiales (ps give) van al sistema de reclamación
+                // Comandos especiales (ps give) van a ejecutarse inmediatamente
                 specialCommands.add(processedCommand);
+                plugin.getLogger().info("[Rewards] Comando especial detectado: " + processedCommand);
             }
         }
         
-        // [v2.0] Los bloques de protección ahora van al menú de recompensas
-        // En lugar de ejecutarse inmediatamente, aparecen como items reclamables
+        plugin.getLogger().info("[Rewards] Items totales parseados: " + items.size() + " | Comandos especiales: " + specialCommands.size());
+        
+        // Ejecutar comandos especiales inmediatamente
         int protectionBlocksTotal = 0;
         for (String cmd : specialCommands) {
-            // Todos los comandos especiales (incluido ps give) se ejecutan inmediatamente
             final String finalCmd = cmd;
             Bukkit.getScheduler().runTask(plugin, () -> {
                 try {
@@ -176,34 +179,48 @@ public class RewardService {
                     plugin.getLogger().info("[Rewards] ✓ Comando ejecutado: " + finalCmd);
                 } catch (Exception e) {
                     plugin.getLogger().severe("[Rewards] ✗ Error ejecutando comando: " + finalCmd);
+                    e.printStackTrace();
                 }
             });
         }
         
         // Añadir items al sistema de reclamación
-        if (!items.isEmpty() && plugin.getRewardClaimSystem() != null) {
-            String displayName = "§6⬆ Ascenso a " + rank.getDisplayName();
-            plugin.getRewardClaimSystem().addRewards(
-                player.getUniqueId(),
-                "RANGO_" + rank.name(),
-                displayName,
-                items,
-                1440, // 24 horas para reclamar
-                rank.name(),
-                0
-            );
-            
-            // Notificar sobre reclamación
-            player.sendMessage("");
-            player.sendMessage("§6§l════════════════════════════════════════");
-            player.sendMessage("§e§l  🎁 RECOMPENSAS DE RANGO DISPONIBLES");
-            if (protectionBlocksTotal > 0) {
-                player.sendMessage("§a§l  🛡 +" + protectionBlocksTotal + " Bloque(s) de Protección");
+        if (!items.isEmpty()) {
+            if (plugin.getRewardClaimSystem() == null) {
+                plugin.getLogger().severe("[Rewards] ERROR: RewardClaimSystem es NULL!");
+                // Intentar entregar items directamente como fallback
+                for (ItemStack item : items) {
+                    player.getInventory().addItem(item);
+                }
+                player.sendMessage("§c⚠ Sistema de recompensas no disponible. Items entregados directamente.");
+            } else {
+                String displayName = "§6⬆ Ascenso a " + rank.getDisplayName();
+                plugin.getRewardClaimSystem().addRewards(
+                    player.getUniqueId(),
+                    "RANGO_" + rank.name(),
+                    displayName,
+                    items,
+                    1440, // 24 horas para reclamar
+                    rank.name(),
+                    0
+                );
+                
+                plugin.getLogger().info("[Rewards] ✓ Items agregados al sistema de reclamación: " + items.size());
+                
+                // Notificar sobre reclamación
+                player.sendMessage("");
+                player.sendMessage("§6§l════════════════════════════════════════");
+                player.sendMessage("§e§l  🎁 RECOMPENSAS DE RANGO DISPONIBLES");
+                if (protectionBlocksTotal > 0) {
+                    player.sendMessage("§a§l  🛡 +" + protectionBlocksTotal + " Bloque(s) de Protección");
+                }
+                player.sendMessage("§7  Usa §f/recompensa §7para reclamar tus items.");
+                player.sendMessage("§7  Tienes §e24 horas §7para reclamarlas.");
+                player.sendMessage("§6§l════════════════════════════════════════");
+                player.sendMessage("");
             }
-            player.sendMessage("§7  Usa §f/recompensa §7para reclamar tus items.");
-            player.sendMessage("§7  Tienes §e24 horas §7para reclamarlas.");
-            player.sendMessage("§6§l════════════════════════════════════════");
-            player.sendMessage("");
+        } else {
+            plugin.getLogger().warning("[Rewards] No se generaron items para " + rank.name() + " (solo comandos especiales)");
         }
         
         // Enviar mensaje del rango
@@ -375,22 +392,34 @@ public class RewardService {
     public void deliverMissionReward(Player player, MissionDifficulty difficulty) {
         FileConfiguration config = plugin.getConfigManager().getRecompensasConfig();
         
+        plugin.getLogger().info("[Rewards] Procesando recompensa de misión para " + player.getName() + " (dificultad: " + difficulty.name() + ")");
+        
         if (!config.getBoolean("recompensas_por_mision.enabled", true)) {
+            plugin.getLogger().info("[Rewards] Sistema de recompensas por misión deshabilitado");
             return;
         }
         
         String path = "recompensas_por_mision.por_dificultad." + difficulty.name();
         ConfigurationSection section = config.getConfigurationSection(path);
         
-        if (section == null) return;
+        if (section == null) {
+            plugin.getLogger().warning("[Rewards] No existe configuración para: " + path);
+            return;
+        }
         
         double probability = section.getDouble("probabilidad", 0.0);
-        if (random.nextDouble() > probability) {
+        double roll = random.nextDouble();
+        plugin.getLogger().info("[Rewards] Probabilidad: " + probability + " | Roll: " + roll);
+        
+        if (roll > probability) {
+            plugin.getLogger().info("[Rewards] No hay recompensa esta vez (roll no pasó)");
             return; // No hay recompensa esta vez
         }
         
         // Convertir comandos give a ItemStacks
         List<String> commands = section.getStringList("items");
+        plugin.getLogger().info("[Rewards] Comandos configurados: " + commands.size());
+        
         List<ItemStack> items = new ArrayList<>();
         
         for (String command : commands) {
@@ -398,8 +427,13 @@ public class RewardService {
             ItemStack item = parseGiveCommand(processedCommand);
             if (item != null) {
                 items.add(item);
+                plugin.getLogger().info("[Rewards] Item parseado: " + item.getType() + " x" + item.getAmount());
+            } else {
+                plugin.getLogger().warning("[Rewards] No se pudo parsear comando: " + command);
             }
         }
+        
+        plugin.getLogger().info("[Rewards] Items totales parseados: " + items.size());
         
         // Añadir al sistema de reclamación si hay items
         if (!items.isEmpty() && plugin.getRewardClaimSystem() != null) {
@@ -413,6 +447,11 @@ public class RewardService {
                 null,
                 0
             );
+            plugin.getLogger().info("[Rewards] ✓ Items agregados al sistema de reclamación: " + items.size());
+        } else if (items.isEmpty()) {
+            plugin.getLogger().warning("[Rewards] ⚠ No se generaron items para agregar");
+        } else if (plugin.getRewardClaimSystem() == null) {
+            plugin.getLogger().severe("[Rewards] ✗ RewardClaimSystem es NULL!");
         }
         
         // Enviar mensaje

@@ -174,7 +174,7 @@ public class AvoTabCompleter implements TabCompleter {
                 case "skill":
                 case "skills":
                     // Sugerir subcomandos de habilidades
-                    return Arrays.asList("menu", "arbol", "info", "mis", "toggle", "toggles", "comprar", "admin").stream()
+                    return Arrays.asList("menu", "arbol", "info", "mis", "toggle", "toggles", "comprar", "admin", "reload", "recargar", "refresh").stream()
                         .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
                         .collect(Collectors.toList());
             }

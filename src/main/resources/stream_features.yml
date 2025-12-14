@@ -270,6 +270,12 @@ estadisticas:
 # ═══════════════════════════════════════════════════════════════
 
 mensajes:
+  # Mensajes de estado del streamer
+  streamer_online: "&6&l[STREAM] &e¡%streamer% está online!"
+  drops_activados: "&7&o¡Drops especiales activados! Mata mobs para obtener tokens."
+  streamer_offline: "&6&l[STREAM] &7%streamer% está offline."
+  
+  # Recordatorio periódico
   recordatorio_periodico:
     enabled: true
     intervalo_minutos: 20       # Cada 20 min cuando streameas
