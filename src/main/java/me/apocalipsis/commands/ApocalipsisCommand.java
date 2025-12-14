@@ -205,6 +205,10 @@ public class ApocalipsisCommand implements CommandExecutor {
             case "listpermranks":
                 cmdListPermRanks(sender);
                 break;
+            case "canjear":
+            case "redeem":
+                cmdCanjear(sender, args);
+                break;
             default:
                 sender.sendMessage("§cSubcomando desconocido. Usa /avo para ver ayuda.");
                 break;
@@ -276,6 +280,19 @@ public class ApocalipsisCommand implements CommandExecutor {
             {"  §e/avo admin <...>", "§7Gestión excepciones"},
             {"  §e/avo evasion <...>", "§7Gestión evasiones"},
             {"", ""},
+            {"", ""},
+            
+            // Page 5: Stream Features y Rangos Permanentes
+            {"§6▸ Stream Features", ""},
+            {"  §e/avo canjear", "§7Ver tokens y recompensas"},
+            {"  §e/avo canjear <item>", "§7Canjear tokens por item"},
+            {"§7Drops especiales cuando el streamer está online!", ""},
+            {"§6▸ Rangos Permanentes", ""},
+            {"  §e/avo setpermrank <jugador> <rango>", "§7Asignar rango permanente"},
+            {"  §e/avo removepermrank <jugador>", "§7Quitar rango permanente"},
+            {"  §e/avo listpermranks", "§7Lista de rangos disponibles"},
+            {"  §e/avo newrank <id> <tipo>", "§7Crear nuevo rango"},
+            {"§7Rangos personalizados con efectos y prefijos!", ""},
             {"", ""},
             {"", ""}
         };
@@ -4330,5 +4347,33 @@ public class ApocalipsisCommand implements CommandExecutor {
         
         sender.sendMessage("§7Total: §e" + rankIds.size() + " rangos");
         sender.sendMessage("§6§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+    }
+    
+    /**
+     * Canjear tokens de stream por recompensas
+     * Uso: /avo canjear [recompensa]
+     */
+    private void cmdCanjear(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage("§cEste comando solo puede ser usado por jugadores.");
+            return;
+        }
+        
+        me.apocalipsis.missions.StreamFeaturesManager streamManager = plugin.getStreamFeaturesManager();
+        
+        if (args.length < 2) {
+            // Mostrar menú de canje
+            streamManager.showRedeemMenu(player);
+            return;
+        }
+        
+        String rewardId = args[1].toLowerCase();
+        
+        // Intentar canjear
+        boolean success = streamManager.redeemReward(player, rewardId);
+        
+        if (success) {
+            player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
+        }
     }
 }

@@ -1,0 +1,173 @@
+# ════════════════════════════════════════════════════════════════════
+# Apocalipsis — castigos.yml
+# Sistema de penalizaciones mejorado con efectos dinámicos y escalado
+# ════════════════════════════════════════════════════════════════════
+
+version: 1
+enabled: true
+
+# ═══════════════════════════════════════════════════════════════════
+# MUERTE DURANTE DESASTRE ACTIVO
+# ═══════════════════════════════════════════════════════════════════
+muerte_en_desastre:
+  enabled: true
+  
+  # Penalización base (se aplica SIEMPRE al morir en desastre activo)
+  penalizacion_base:
+    - tipo: "WEAKNESS"           # Debilidad
+      duracion_segundos: 60
+      amplificador: 1            # Nivel 2
+    - tipo: "SLOW_DIGGING"       # Fatiga minera
+      duracion_segundos: 90
+      amplificador: 1            # Nivel 2 (más fuerte)
+  
+  # Penalización adicional (probabilidad de recibir efectos extra)
+  penalizacion_adicional:
+    probabilidad: 0.55           # 55% de chance (aumentado)
+    efectos:
+      - tipo: "HUNGER"           # Hambre
+        duracion_segundos: 120
+        amplificador: 2          # Nivel 3 (más fuerte)
+      - tipo: "SLOW"             # Lentitud
+        duracion_segundos: 45
+        amplificador: 1          # Nivel 2
+      - tipo: "POISON"           # Veneno leve
+        duracion_segundos: 20
+        amplificador: 0          # Nivel 1
+  
+  # Penalización severa (baja probabilidad, efectos graves)
+  penalizacion_severa:
+    probabilidad: 0.12           # 12% de chance (aumentado)
+    efectos:
+      - tipo: "CONFUSION"        # Náusea/mareo
+        duracion_segundos: 20
+        amplificador: 0
+      - tipo: "BLINDNESS"        # Ceguera
+        duracion_segundos: 15
+        amplificador: 0
+      - tipo: "WITHER"           # Marchitamiento
+        duracion_segundos: 10
+        amplificador: 0
+      - tipo: "UNLUCK"           # Mala suerte
+        duracion_segundos: 300   # 5 minutos
+        amplificador: 1
+  
+  # Pérdida de PS (puntos de supervivencia) escalado por rango
+  # Ajustado para sistema de 75 días (pérdidas proporcionales)
+  perdida_ps:
+    NOVATO: 10           # Antes 8 (+25%)
+    EXPLORADOR: 15       # Antes 12 (+25%)
+    SOBREVIVIENTE: 25    # Antes 18 (+39%)
+    VETERANO: 40         # Antes 25 (+60%)
+    LEYENDA: 60          # Antes 35 (+71%)
+    MAESTRO: 85          # Antes 50 (+70%)
+    TITAN: 120           # Antes 75 (+60%)
+    ABSOLUTO: 150        # Antes 100 (+50%)
+  
+  # Mensajes y efectos visuales
+  mensajes:
+    muerte: "&c&l✗ Has muerto durante el desastre!"
+    efectos_aplicados: "&7Penalizaciones activas: &c%efectos%"
+    ps_perdidos: "&7Has perdido &c-%ps% PS &7por morir"
+  
+  sonidos:
+    muerte: "ENTITY_WITHER_HURT"
+    volumen: 1.0
+    pitch: 0.8
+  
+  particulas:
+    tipo: "SMOKE_LARGE"
+    cantidad: 30
+    radio: 1.5
+
+# ═══════════════════════════════════════════════════════════════════
+# MISIONES FALLIDAS AL FINALIZAR DÍA
+# Sistema de castigos SUAVES (solo XP, sonidos, notificaciones)
+# ═══════════════════════════════════════════════════════════════════
+mision_fallida:
+  enabled: true
+  
+  # [v2.0] Castigos SUAVES - Sin efectos de poción, solo pérdida de XP
+  # El sistema ahora es más amigable: solo quita XP y notifica al jugador
+  
+  # Pérdida de XP por misión fallida (escalado por dificultad)
+  # Valores moderados para no frustrar al jugador
+  perdida_xp_por_dificultad:
+    FACIL: 15            # Pérdida leve
+    MEDIA: 30            # Pérdida moderada  
+    DIFICIL: 50          # Pérdida notable
+  
+  # Penalización acumulativa (si fallas 3+ misiones)
+  # Solo muestra advertencias adicionales, NO efectos negativos
+  penalizacion_acumulativa:
+    umbral_misiones: 3           # Si fallas 3+ misiones
+    mensaje_advertencia: true    # Mostrar mensaje de advertencia
+    sonido_extra: true           # Sonido adicional de alerta
+  
+  # Cooldown entre notificaciones (evita spam)
+  cooldown_notificacion_segundos: 10
+  
+  mensajes:
+    mision_fallida_single: "&c✗ &7Misión fallida: &c%mision% &7(-&c%xp% XP&7)"
+    mision_fallida_multiple: "&c✗ &7Has fallado &c%cantidad% &7misiones. &7(-&c%xp% XP&7)"
+    advertencia_acumulativa: "&c&l⚠ &7¡Cuidado! Fallar muchas misiones reduce tu progreso."
+    tip_ayuda: "&7Tip: Enfócate en misiones más fáciles si tienes poco tiempo."
+  
+  sonidos:
+    fallo: "ENTITY_VILLAGER_NO"
+    volumen: 0.8
+    pitch: 0.7
+    acumulativo: "BLOCK_NOTE_BLOCK_BASS"
+    acumulativo_volumen: 1.0
+    acumulativo_pitch: 0.5
+  
+  # [REMOVIDO] Efectos de poción - Ya no se aplican
+  # El sistema anterior era muy punitivo, ahora solo afecta XP
+  # efectos_base: REMOVIDO
+  # efectos_adicionales: REMOVIDO
+
+# ═══════════════════════════════════════════════════════════════════
+# INACTIVIDAD / AFK DURANTE DESASTRE
+# ═══════════════════════════════════════════════════════════════════
+inactividad:
+  enabled: true
+  tiempo_umbral_segundos: 180  # 3 minutos sin movimiento
+  
+  # Advertencia antes de penalización
+  advertencia:
+    mensaje: "&e⚠ ¡Estás inactivo! Muévete o recibirás penalizaciones."
+    sonido: "BLOCK_NOTE_BLOCK_PLING"
+    volumen: 1.0
+    pitch: 0.5
+  
+  # Penalización por AFK
+  penalizacion:
+    efectos:
+      - tipo: "HUNGER"
+        duracion_segundos: 180
+        amplificador: 2          # Nivel 3 (grave)
+      - tipo: "WEAKNESS"
+        duracion_segundos: 120
+        amplificador: 1
+    
+    perdida_ps: 10
+    mensaje: "&c&l✗ Penalizado por inactividad durante desastre! &7(-10 PS)"
+
+# ═══════════════════════════════════════════════════════════════════
+# CONFIGURACIÓN GENERAL
+# ═══════════════════════════════════════════════════════════════════
+general:
+  # Inmunidad temporal al respawnear (no recibir castigos inmediatamente)
+  inmunidad_respawn_segundos: 10
+  
+  # PS mínimo (no puede bajar de este valor por penalizaciones)
+  ps_minimo: 0
+  
+  # Debug: mostrar información detallada en consola
+  debug: false
+  
+  # Anuncios públicos de penalizaciones severas
+  anuncio_publico:
+    enabled: true
+    mensaje: "&c%jugador% &7ha recibido penalizaciones severas por &c%razon%"
+    solo_muerte_severa: true   # Solo anunciar muertes con penalización severa

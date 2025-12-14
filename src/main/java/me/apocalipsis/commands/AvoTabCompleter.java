@@ -34,7 +34,8 @@ public class AvoTabCompleter implements TabCompleter {
                 "evento3", "susurro", "xp", "experience", "nivel", "level", "evasion", "evasiones",
                 "autotest", "habilidad", "habilidades", "skill", "skills",
                 "blockinfo", "bloque", "blockstats", "skillstats",
-                "newrank", "setpermrank", "removepermrank", "listpermranks"
+                "newrank", "setpermrank", "removepermrank", "listpermranks",
+                "canjear", "redeem"
             );
             
             return subcommands.stream()
@@ -149,6 +150,16 @@ public class AvoTabCompleter implements TabCompleter {
                     // Sugerir jugadores online
                     return plugin.getServer().getOnlinePlayers().stream()
                         .map(Player::getName)
+                        .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
+                        .collect(Collectors.toList());
+                
+                case "canjear":
+                case "redeem":
+                    // Sugerir IDs de recompensas disponibles
+                    return Arrays.asList(
+                        "kit_diamante", "kit_netherite", "elytra_especial", 
+                        "bloque_proteccion", "mega_pack"
+                    ).stream()
                         .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
                         .collect(Collectors.toList());
                 

@@ -72,6 +72,9 @@ public final class Apocalipsis extends JavaPlugin {
     
     // Servicios de rangos permanentes
     private me.apocalipsis.missions.PermRankManager permRankManager;
+    
+    // Servicios de stream features
+    private me.apocalipsis.missions.StreamFeaturesManager streamFeaturesManager;
 
     // Servicios de experiencia y progresión
     private ExperienceService experienceService;
@@ -123,6 +126,8 @@ public final class Apocalipsis extends JavaPlugin {
         saveResource("protecciones.yml", false);
         saveResource("skills.yml", false);
         saveResource("tutorial.yml", false);
+        saveResource("stream_features.yml", false);
+        saveResource("rangos_permanentes.yml", false);
 
         // Inicializar servicios
         configManager = new ConfigManager(this);
@@ -145,6 +150,10 @@ public final class Apocalipsis extends JavaPlugin {
         // Inicializar sistema de rangos permanentes
         permRankManager = new me.apocalipsis.missions.PermRankManager(this);
         getLogger().info("[PermRankManager] ✓ Sistema de rangos permanentes iniciado");
+        
+        // Inicializar sistema de stream features
+        streamFeaturesManager = new me.apocalipsis.missions.StreamFeaturesManager(this);
+        getLogger().info("[StreamFeaturesManager] ✓ Sistema de stream features iniciado");
         
         // Inicializar servicios de experiencia y progresión
         experienceService = new ExperienceService(this);
@@ -434,6 +443,14 @@ public final class Apocalipsis extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new me.apocalipsis.listeners.ChatListener(this), this);
         getServer().getPluginManager().registerEvents(new me.apocalipsis.events.SusurroPiedraRotaListener(this), this);
         
+        // Registrar listener de stream drops
+        getServer().getPluginManager().registerEvents(new me.apocalipsis.listeners.StreamDropListener(this, streamFeaturesManager), this);
+        getLogger().info("[StreamDropListener] ✓ Listener de drops de stream registrado");
+        
+        // Registrar protección de tokens (bloquea uso en crafting, anvil, etc)
+        getServer().getPluginManager().registerEvents(new me.apocalipsis.listeners.TokenProtectionListener(this), this);
+        getLogger().info("[TokenProtection] ✓ Protección de tokens activada");
+        
         // Registrar listener de tutorial
         getServer().getPluginManager().registerEvents(new me.apocalipsis.tutorial.TutorialListener(this, tutorialManager), this);
         getLogger().info("[Tutorial] ✓ Listener de tutorial registrado");
@@ -493,6 +510,11 @@ public final class Apocalipsis extends JavaPlugin {
         // Guardar datos del skill effect listener (waypoints, stats)
         if (skillEffectListener != null) {
             skillEffectListener.shutdown();
+        }
+        
+        // Detener stream features
+        if (streamFeaturesManager != null) {
+            streamFeaturesManager.shutdown();
         }
         
         // Detener mission height tracker
@@ -621,6 +643,10 @@ public final class Apocalipsis extends JavaPlugin {
     
     public me.apocalipsis.missions.PermRankManager getPermRankManager() {
         return permRankManager;
+    }
+    
+    public me.apocalipsis.missions.StreamFeaturesManager getStreamFeaturesManager() {
+        return streamFeaturesManager;
     }
 
     public PerformanceAdapter getPerformanceAdapter() {

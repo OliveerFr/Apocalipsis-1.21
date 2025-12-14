@@ -243,19 +243,30 @@ public class MainMenuManager implements Listener {
             "PROTECCIONES"
         ));
         
-        // Slot 28: RANGOS
+        // Slot 28: RANGOS (Normal + Permanente)
+        MissionRank normalRank = plugin.getRankService().getRank(player);
+        var permRank = plugin.getPermRankManager().getPlayerPermRank(player.getUniqueId());
+        
+        List<String> rankLore = new ArrayList<>();
+        rankLore.add("");
+        rankLore.add("§7Rango XP: " + normalRank.getDisplayName());
+        
+        if (permRank != null) {
+            rankLore.add("§7Rango Especial: " + permRank.getDisplayName());
+        } else {
+            rankLore.add("§7Rango Especial: §8Ninguno");
+        }
+        
+        rankLore.add("");
+        rankLore.add("§7Ver todos los rangos y");
+        rankLore.add("§7sus recompensas.");
+        rankLore.add("");
+        rankLore.add("§e▶ Click para ver rangos");
+        
         menu.setItem(28, createMenuItem(
             Material.NETHER_STAR,
             "§d§l⭐ Sistema de Rangos",
-            Arrays.asList(
-                "",
-                "§7Tu rango actual: " + plugin.getRankService().getRank(player).getDisplayName(),
-                "",
-                "§7Ver todos los rangos y",
-                "§7sus recompensas.",
-                "",
-                "§e▶ Click para ver rangos"
-            ),
+            rankLore,
             "RANGOS"
         ));
         
@@ -292,34 +303,34 @@ public class MainMenuManager implements Listener {
             "EVASIONES"
         ));
         
-        // Slot 33: ESTADO STREAMER (NUEVO)
+        // Slot 33: STREAM FEATURES (Tokens y Drops)
         boolean streamerOnline = isStreamerOnline();
+        int tokens = plugin.getStreamFeaturesManager().getPlayerTokens(player.getUniqueId());
         String estadoStreamer = streamerOnline ? "§a§l✓ ONLINE" : "§c§l✗ OFFLINE";
-        String xpMultiplier = streamerOnline ? "§aXP Normal (x1.0)" : "§cXP Reducido (x0.3)";
-        Material streamerIcon = streamerOnline ? Material.LIME_DYE : Material.GRAY_DYE;
+        Material streamerIcon = streamerOnline ? Material.NETHER_STAR : Material.GRAY_DYE;
         
         List<String> streamerLore = new ArrayList<>();
         streamerLore.add("");
         streamerLore.add("§7Estado: " + estadoStreamer);
-        streamerLore.add("§7Multiplicador: " + xpMultiplier);
+        streamerLore.add("§7Tus tokens: §e§l" + tokens);
         streamerLore.add("");
         if (streamerOnline) {
-            streamerLore.add("§a¡El streamer está conectado!");
-            streamerLore.add("§7Aprovecha para ganar XP normal");
-            streamerLore.add("§7y participar en eventos exclusivos.");
+            streamerLore.add("§a¡El streamer está online!");
+            streamerLore.add("§7Mata mobs para obtener tokens");
+            streamerLore.add("§7y canjearlos por recompensas.");
         } else {
             streamerLore.add("§7El streamer no está conectado.");
-            streamerLore.add("§7XP reducido al 30% del normal.");
-            streamerLore.add("§e¡Vuelve cuando haya stream!");
+            streamerLore.add("§7Los drops especiales están");
+            streamerLore.add("§7desactivados hasta que vuelva.");
         }
         streamerLore.add("");
-        streamerLore.add("§8▸ Sistema de presencia");
+        streamerLore.add("§e▶ Click para canjear tokens");
         
         menu.setItem(33, createMenuItem(
             streamerIcon,
-            "§6§l🎮 Estado del Stream",
+            "§6§l⭐ Stream Features",
             streamerLore,
-            "STREAM_STATUS"
+            "STREAM_FEATURES"
         ));
         
         // Slot 34: EVENTOS
@@ -359,80 +370,6 @@ public class MainMenuManager implements Listener {
         // ═══════════════════════════════════════════════════════════════
         // ACCESO RÁPIDO - PARTE INFERIOR
         // ═══════════════════════════════════════════════════════════════
-        
-        // Slot 46: TOKENS DE STREAM
-        int tokensCount = getStreamTokens(player);
-        Material tokenMaterial = tokensCount > 0 ? Material.NETHER_STAR : Material.GHAST_TEAR;
-        String tokenStatus = tokensCount > 0 ? "§e" + tokensCount + " disponibles" : "§7Ninguno";
-        
-        List<String> tokenLore = new ArrayList<>();
-        tokenLore.add("");
-        tokenLore.add("§7Tokens: " + tokenStatus);
-        tokenLore.add("");
-        if (streamerOnline) {
-            tokenLore.add("§a¡Dropean de mobs durante stream!");
-            tokenLore.add("§75% chance por mob hostil");
-            tokenLore.add("§7Canjéalos por recompensas épicas.");
-        } else {
-            tokenLore.add("§7Solo dropean cuando el");
-            tokenLore.add("§7streamer está online.");
-            tokenLore.add("§e¡Vuelve durante el stream!");
-        }
-        tokenLore.add("");
-        tokenLore.add("§e▶ Click para ver tienda");
-        
-        menu.setItem(46, createMenuItem(
-            tokenMaterial,
-            "§6§l⭐ Tokens de Stream",
-            tokenLore,
-            "STREAM_TOKENS"
-        ));
-        
-        // Slot 47: CANJE DE TOKENS
-        menu.setItem(47, createMenuItem(
-            Material.EMERALD,
-            "§a§l💰 Canjear Tokens",
-            Arrays.asList(
-                "",
-                "§7Intercambia tokens por:",
-                "§8• Kit Diamante (5 tokens)",
-                "§8• Kit Netherite (15 tokens)",
-                "§8• Élitro + Cohetes (10 tokens)",
-                "§8• Bloques protección (8 tokens)",
-                "§8• Mega Pack Épico (25 tokens)",
-                "",
-                "§7Tus tokens: §e" + tokensCount,
-                "",
-                "§e▶ Click para canjear"
-            ),
-            "CANJEAR_TOKENS"
-        ));
-        
-        // Slot 48: RANKING DE STREAM
-        int rankingPosition = getStreamRanking(player);
-        String rankingText = rankingPosition > 0 ? "§e#" + rankingPosition : "§7No clasificado";
-        Material rankingMaterial = rankingPosition <= 3 ? Material.GOLD_INGOT : Material.IRON_INGOT;
-        
-        List<String> rankingLore = new ArrayList<>();
-        rankingLore.add("");
-        rankingLore.add("§7Tu posición: " + rankingText);
-        rankingLore.add("");
-        rankingLore.add("§7Ranking de jugadores más");
-        rankingLore.add("§7activos durante streams.");
-        rankingLore.add("");
-        rankingLore.add("§6Premios semanales:");
-        rankingLore.add("§8• Top 1: §63 Bloques Netherite");
-        rankingLore.add("§8• Top 2: §62 Bloques Netherite");
-        rankingLore.add("§8• Top 3: §61 Bloque Netherite");
-        rankingLore.add("");
-        rankingLore.add("§e▶ Click para ver top 10");
-        
-        menu.setItem(48, createMenuItem(
-            rankingMaterial,
-            "§6§l🏆 Ranking de Stream",
-            rankingLore,
-            "STREAM_RANKING"
-        ));
         
         // Slot 49: TUTORIAL (para nuevos jugadores)
         boolean hasReachedGlobal = plugin.getProgressiveDifficultySystem().hasReachedGlobalDifficulty(player);
@@ -489,10 +426,10 @@ public class MainMenuManager implements Listener {
                 ),
                 "MISIONES_STREAM"
             ));
-        }
+        } // Fin del if (streamerOnline)
         
-        // Slot 51: AYUDA
-        menu.setItem(51, createMenuItem(
+        // Slot 40: AYUDA
+        menu.setItem(40, createMenuItem(
             Material.BOOK,
             "§f§l❓ Ayuda",
             Arrays.asList(
@@ -592,8 +529,13 @@ public class MainMenuManager implements Listener {
                     break;
                     
                 case "RANGOS":
-                    // Mostrar info de rangos
+                    // Mostrar info de rangos (incluye rangos permanentes)
                     showRanksInfo(player);
+                    break;
+                    
+                case "STREAM_FEATURES":
+                    // Abrir menú de canje de tokens
+                    plugin.getStreamFeaturesManager().showRedeemMenu(player);
                     break;
                     
                 case "SKILLS":
@@ -630,71 +572,6 @@ public class MainMenuManager implements Listener {
                     showTutorialMenu(player);
                     break;
                     
-                case "STREAM_TOKENS":
-                    // Mostrar info de tokens (por ahora mensaje)
-                    int tokens = getStreamTokens(player);
-                    player.sendMessage("§6§l⭐ TOKENS DE STREAM");
-                    player.sendMessage("");
-                    player.sendMessage("§7Tokens actuales: §e" + tokens);
-                    player.sendMessage("");
-                    player.sendMessage("§7Los tokens dropean de mobs hostiles");
-                    player.sendMessage("§7cuando el streamer está online.");
-                    player.sendMessage("");
-                    player.sendMessage("§7Canjéalos usando el slot de");
-                    player.sendMessage("§a💰 Canjear Tokens §7en el menú.");
-                    break;
-                    
-                case "CANJEAR_TOKENS":
-                    // Abrir menú de canje (por ahora mensaje)
-                    int playerTokens = getStreamTokens(player);
-                    player.sendMessage("§a§l💰 CANJE DE TOKENS");
-                    player.sendMessage("");
-                    player.sendMessage("§7Tus tokens: §e" + playerTokens);
-                    player.sendMessage("");
-                    player.sendMessage("§7Recompensas disponibles:");
-                    player.sendMessage("§8• §eKit Diamante §8- §65 tokens");
-                    player.sendMessage("§8• §eÉlitro + Cohetes §8- §610 tokens");
-                    player.sendMessage("§8• §eBloques Protección §8- §68 tokens");
-                    player.sendMessage("§8• §eKit Netherite §8- §615 tokens");
-                    player.sendMessage("§8• §eMega Pack Épico §8- §625 tokens");
-                    player.sendMessage("");
-                    player.sendMessage("§c(Sistema en desarrollo)");
-                    break;
-                    
-                case "STREAM_RANKING":
-                    // Mostrar ranking (por ahora mensaje)
-                    int position = getStreamRanking(player);
-                    player.sendMessage("§6§l🏆 RANKING DE STREAM");
-                    player.sendMessage("");
-                    player.sendMessage("§7Tu posición: " + (position > 0 ? "§e#" + position : "§7No clasificado"));
-                    player.sendMessage("");
-                    player.sendMessage("§7Ranking de jugadores más activos");
-                    player.sendMessage("§7durante los streams del servidor.");
-                    player.sendMessage("");
-                    player.sendMessage("§6Premios semanales:");
-                    player.sendMessage("§8• §eTop 1: §63 Bloques Netherite");
-                    player.sendMessage("§8• §eTop 2: §62 Bloques Netherite");
-                    player.sendMessage("§8• §eTop 3: §61 Bloque Netherite");
-                    player.sendMessage("");
-                    player.sendMessage("§c(Sistema en desarrollo)");
-                    break;
-                    
-                case "MISIONES_STREAM":
-                    // Mostrar misiones exclusivas
-                    player.sendMessage("§d§l✨ MISIONES EXCLUSIVAS");
-                    player.sendMessage("");
-                    player.sendMessage("§a¡El streamer está online!");
-                    player.sendMessage("");
-                    player.sendMessage("§7Misiones exclusivas disponibles:");
-                    player.sendMessage("§8• §eCaza Épica §8- §6+200 XP base");
-                    player.sendMessage("§8• §eMinería Masiva §8- §6+150 XP base");
-                    player.sendMessage("§8• §eConstructor Veloz §8- §6+180 XP base");
-                    player.sendMessage("");
-                    player.sendMessage("§d¡Recompensas dobles durante stream!");
-                    player.sendMessage("");
-                    player.sendMessage("§c(Sistema en desarrollo)");
-                    break;
-                    
                 case "ENDERCHEST":
                     // Abrir enderchest del jugador
                     player.openInventory(player.getEnderChest());
@@ -713,10 +590,12 @@ public class MainMenuManager implements Listener {
     private void showRanksInfo(Player player) {
         MissionRank currentRank = plugin.getRankService().getRank(player);
         int currentXP = plugin.getExperienceService().getXP(player);
+        var permRank = plugin.getPermRankManager().getPlayerPermRank(player.getUniqueId());
         
         player.sendMessage("");
         player.sendMessage("§5§l═══════ SISTEMA DE RANGOS ═══════");
         player.sendMessage("");
+        player.sendMessage("§e§lRangos por XP:");
         player.sendMessage("§7Tu rango actual: " + currentRank.getDisplayName());
         player.sendMessage("§7Tu XP: §a" + currentXP);
         player.sendMessage("");
@@ -737,6 +616,33 @@ public class MainMenuManager implements Listener {
         } else {
             player.sendMessage("");
             player.sendMessage("§6§l¡Has alcanzado el rango máximo!");
+        }
+        
+        // Mostrar rango permanente si lo tiene
+        player.sendMessage("");
+        player.sendMessage("§d§l─────────────────────────────────");
+        player.sendMessage("§e§lRangos Permanentes/Especiales:");
+        player.sendMessage("");
+        
+        if (permRank != null) {
+            player.sendMessage("§7Tu rango especial: " + permRank.getDisplayName());
+            player.sendMessage("§7Prioridad: §e" + permRank.getPriority());
+            
+            if (!permRank.getPotionEffects().isEmpty()) {
+                player.sendMessage("§7Efectos activos: §a" + permRank.getPotionEffects().size());
+            }
+            
+            player.sendMessage("");
+            player.sendMessage("§a§l✓ Tienes un rango especial asignado");
+        } else {
+            player.sendMessage("§7No tienes un rango especial asignado.");
+            player.sendMessage("");
+            player.sendMessage("§7Los rangos especiales son otorgados");
+            player.sendMessage("§7por el staff del servidor para:");
+            player.sendMessage("§8• VIPs y suscriptores");
+            player.sendMessage("§8• Streamers y YouTubers");
+            player.sendMessage("§8• Staff (Moderadores, Admins)");
+            player.sendMessage("§8• Builders y colaboradores");
         }
         
         player.sendMessage("");
@@ -884,11 +790,9 @@ public class MainMenuManager implements Listener {
     
     /**
      * Obtiene la cantidad de tokens de stream de un jugador
-     * TODO: Implementar sistema de tokens real
      */
     private int getStreamTokens(Player player) {
-        // Por ahora devuelve 0, se implementará con StreamTokenManager
-        return 0;
+        return plugin.getStreamFeaturesManager().getPlayerTokens(player.getUniqueId());
     }
     
     /**

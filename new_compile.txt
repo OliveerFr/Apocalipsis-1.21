@@ -1,0 +1,54 @@
+﻿[INFO] Scanning for projects...
+[INFO] 
+[INFO] ---------------------< me.apocalipsis:Apocalipsis >---------------------
+[INFO] Building Apocalipsis 1.22.12
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- maven-clean-plugin:2.5:clean (default-clean) @ Apocalipsis ---
+[INFO] Deleting Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\target
+[INFO] 
+[INFO] --- maven-resources-plugin:2.6:resources (default-resources) @ Apocalipsis ---
+[INFO] Using 'UTF-8' encoding to copy filtered resources.
+[INFO] Copying 17 resources
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.11.0:compile (default-compile) @ Apocalipsis ---
+[INFO] Changes detected - recompiling the module! :source
+[INFO] Compiling 113 source files with javac [forked debug deprecation target 21] to target\classes
+[INFO] -------------------------------------------------------------
+[ERROR] COMPILATION ERROR : 
+[INFO] -------------------------------------------------------------
+[ERROR]   on the class path. A future release of javac may disable annotation processing
+  unless at least one processor is specified by name (-processor), or a search
+  path is specified (--processor-path, --processor-module-path), or annotation
+  processing is enabled explicitly (-proc:only, -proc:full).
+  Use -Xlint:-options to suppress this message.
+  Use -proc:none to disable annotation processing.
+Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\MainMenuManager.java:[469,32] error: ';' expected
+[ERROR] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\MainMenuManager.java:[469,58] error: ';' expected
+[ERROR] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\MainMenuManager.java:[499,4] error: illegal start of expression
+[INFO] 3 errors 
+[INFO] -------------------------------------------------------------
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  8.761 s
+[INFO] Finished at: 2025-12-13T23:11:36-05:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.11.0:compile (default-compile) on project Apocalipsis: Compilation failure: Compilation failure: 
+[ERROR]   on the class path. A future release of javac may disable annotation processing
+[ERROR]   unless at least one processor is specified by name (-processor), or a search
+[ERROR]   path is specified (--processor-path, --processor-module-path), or annotation
+[ERROR]   processing is enabled explicitly (-proc:only, -proc:full).
+[ERROR]   Use -Xlint:-options to suppress this message.
+[ERROR]   Use -proc:none to disable annotation processing.
+[ERROR] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\MainMenuManager.java:[469,32] error: ';' expected
+[ERROR] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\MainMenuManager.java:[469,58] error: ';' expected
+[ERROR] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\MainMenuManager.java:[499,4] error: illegal start of expression
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException

@@ -12,6 +12,9 @@ version: 1
 streamer:
   username: "OliveerF"             # Tu username de Minecraft
   modo_debug: false              # Logs detallados para testing
+  # Multiplicadores especiales para el streamer
+  chance_multiplicador: 2.5      # El streamer tiene 2.5x más chance de drops
+  token_multiplicador: 3.0       # El streamer tiene 3x más chance de tokens
 
 # ═══════════════════════════════════════════════════════════════
 # 📺 DROPS ESPECIALES DE STREAM
@@ -22,7 +25,7 @@ drops_stream:
   enabled: true
   
   # Chance de drop especial (solo cuando streamer online)
-  chance_base: 0.15             # 15% de chance por mob hostil
+  chance_base: 0.08             # 12% de chance por mob hostil (balanceado)
   
   # Items especiales
   items:
@@ -35,7 +38,7 @@ drops_stream:
         - "&7"
         - "&6Úsalo con /avo canjear"
       cantidad: 1
-      chance: 0.05              # 5% chance
+      chance: 0.02              # 2% chance (más accesible)
       
     # Fragmento de Esmeralda (crafteable en bloque)
     - tipo: "EMERALD"
@@ -44,7 +47,7 @@ drops_stream:
         - "&7Obtenido durante el stream"
         - "&e9 fragmentos = 1 Bloque de Esmeralda"
       cantidad: 1
-      chance: 0.10              # 10% chance
+      chance: 0.05              # 5% chance (más accesible)
   
   # Mensaje al obtener drop
   mensaje: "&6&l[STREAM DROP] &e¡Has obtenido %item%!"
@@ -181,7 +184,7 @@ canje_tokens:
     kit_diamante:
       nombre: "&b&lKit Diamante"
       descripcion: "Armadura completa de diamante + herramientas"
-      costo_tokens: 5
+      costo_tokens: 8   # Aumentado de 5 para mayor dificultad
       items:
         - "give %player% minecraft:diamond_helmet 1"
         - "give %player% minecraft:diamond_chestplate 1"
@@ -193,7 +196,7 @@ canje_tokens:
     kit_netherite:
       nombre: "&c&lKit Netherite"
       descripcion: "Armadura completa de netherite"
-      costo_tokens: 15
+      costo_tokens: 25  # Aumentado de 15 para mayor dificultad
       items:
         - "give %player% minecraft:netherite_helmet 1"
         - "give %player% minecraft:netherite_chestplate 1"
@@ -203,7 +206,7 @@ canje_tokens:
     elytra_especial:
       nombre: "&d&lÉlitro del Stream"
       descripcion: "Élitro + 64 cohetes"
-      costo_tokens: 10
+      costo_tokens: 15  # Aumentado de 10
       items:
         - "give %player% minecraft:elytra 1"
         - "give %player% minecraft:firework_rocket 64"
@@ -211,14 +214,14 @@ canje_tokens:
     bloque_proteccion:
       nombre: "&a&lBloque de Protección x3"
       descripcion: "3 bloques de protección de terreno"
-      costo_tokens: 8
+      costo_tokens: 12  # Aumentado de 8
       items:
         - "ps give 15 %player% 3"
     
     mega_pack:
       nombre: "&6&l⭐ MEGA PACK ÉPICO"
       descripcion: "Pack completo de items legendarios"
-      costo_tokens: 25
+      costo_tokens: 40  # Aumentado de 25 para mayor dificultad
       items:
         - "give %player% minecraft:netherite_ingot 20"
         - "give %player% minecraft:diamond 32"
