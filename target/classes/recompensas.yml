@@ -630,10 +630,10 @@ fuentes_xp:
       enabled: true
       xp: 1
       cooldown_ms: 500
-    cuarzo:                    # Cuarzo del Nether (SIN XP)
-      enabled: false
-      xp: 0
-      cooldown_ms: 0
+    cuarzo:                    # Cuarzo del Nether (solo cuarzo crudo, NO smooth) - mismo XP que oro
+      enabled: true
+      xp: 3
+      cooldown_ms: 500
     raro:                      # Oro, Lapislázuli, Redstone
       enabled: true
       xp: 3
