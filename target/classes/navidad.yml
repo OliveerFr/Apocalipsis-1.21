@@ -1,0 +1,104 @@
+# ═══════════════════════════════════════════════════════════════════
+# EVENTO NAVIDAD - Configuración
+# ═══════════════════════════════════════════════════════════════════
+# Evento de pausa narrativa sin combates
+# Control manual por comandos, ambiente sutil
+# ═══════════════════════════════════════════════════════════════════
+
+navidad:
+  enabled: true
+  
+  # ═══════════════════════════════════════════════════════════════
+  # CINEMÁTICA DE INICIO
+  # ═══════════════════════════════════════════════════════════════
+  cinematica:
+    congelar_jugadores: false  # Congelar jugadores durante cinemática (true/false)
+    duracion_segundos: 30      # Duración total de la cinemática
+  
+  # ═══════════════════════════════════════════════════════════════
+  # COORDENADAS DEL ÁRBOL (se setean con comando)
+  # ═══════════════════════════════════════════════════════════════
+  arbol:
+    world: "world"
+    x: 0.0
+    y: 64.0
+    z: 0.0
+    configurado: false
+  
+  # ═══════════════════════════════════════════════════════════════
+  # SISTEMA DE AMBIENTE
+  # ═══════════════════════════════════════════════════════════════
+  ambiente:
+    particulas:
+      nieve: true
+      luces: true
+      chispas: true
+      intensidad: 0.5  # 0.0 - 1.0
+      intervalo_ticks: 40  # Cada 2 segundos
+    sonidos:
+      campanas: true
+      viento: true
+      intervalo_seg: 30
+  
+  # ═══════════════════════════════════════════════════════════════
+  # SISTEMA DE SANTA
+  # ═══════════════════════════════════════════════════════════════
+  santa:
+    frases:
+      - "..."
+      - "Cuídenlos. No todos los mundos llegan tan lejos."
+    spawn_offset: 5  # Bloques desde el árbol
+    nombre: "§c§l✦ Santa §c§l✦"
+  
+  # ═══════════════════════════════════════════════════════════════
+  # SISTEMA DE FRAGMENTOS
+  # ═══════════════════════════════════════════════════════════════
+  fragmentos:
+    material: "AMETHYST_SHARD"
+    nombre: "§d✦ Fragmento de Recuerdo ✦"
+    lore:
+      - "§8Navidad"
+      - ""
+      - "§7Un fragmento que resuena..."
+      - "§7No explica su propósito."
+      - ""
+      - "§8\"Algunos recuerdos pesan más que otros.\""
+    glow: true
+  
+  # ═══════════════════════════════════════════════════════════════
+  # MENSAJES DEL EVENTO
+  # ═══════════════════════════════════════════════════════════════
+  mensajes:
+    inicio: "§7El mundo entra en un momento de calma."
+    fin: "§7El mundo vuelve a la normalidad."
+    regalo_recibido: "§a✦ Has recibido un regalo."
+    fragmento_info: "§7Tienes §d{cantidad} §7fragmentos de recuerdo."
+    arbol_set: "§a✦ Árbol de Navidad establecido en esta ubicación."
+    arbol_no_configurado: "§c✦ El árbol aún no ha sido configurado. Usa §e/avo navidad arbol set"
+    santa_spawn: "§c✦ Santa ha aparecido cerca del árbol..."
+    santa_despawn: "§c✦ Santa se desvanece lentamente..."
+    regalos_activados: "§a✦ Los regalos han sido activados."
+    regalos_desactivados: "§c✦ Los regalos han sido desactivados."
+  
+  # ═══════════════════════════════════════════════════════════════
+  # OBSERVADOR (pensamientos aleatorios, no directos)
+  # ═══════════════════════════════════════════════════════════════
+  observador:
+    pensamientos:
+      - "§8§o...Curioso... incluso los mundos rotos buscan momentos de paz..."
+      - "§8§o...Siempre ocurre antes de que todo vuelva a moverse..."
+      - "§8§o...Los fragmentos no aparecen sin razón..."
+      - "§8§o...Esta calma... ¿es real o solo un respiro?..."
+      - "§8§o...Las puertas se abren cuando menos se espera..."
+    intervalo_min_seg: 300  # 5 minutos mínimo entre pensamientos
+    probabilidad: 0.3  # 30% de chance cuando se chequea
+    max_pensamientos: 10  # Máximo de pensamientos para eventos largos
+  
+  # ═══════════════════════════════════════════════════════════════
+  # CLIFFHANGER
+  # ═══════════════════════════════════════════════════════════════
+  cliffhanger:
+    sonido: "AMBIENT_CAVE"
+    temblor_intensidad: 0.3
+    mensaje_final: "§8§o...y las puertas no se abren solas."
+    duracion_seg: 10  # Duración de la secuencia

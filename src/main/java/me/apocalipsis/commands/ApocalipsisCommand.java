@@ -156,6 +156,9 @@ public class ApocalipsisCommand implements CommandExecutor {
             case "susurro":
                 cmdEvento3(sender, args);
                 break;
+            case "navidad":
+                cmdNavidad(sender, args);
+                break;
             case "xp":
             case "experience":
                 cmdXP(sender, args);
@@ -2417,6 +2420,383 @@ public class ApocalipsisCommand implements CommandExecutor {
             default:
                 sender.sendMessage("§cSubcomando desconocido: §f" + subCmd);
                 sender.sendMessage("§7Usa §e/avo evento3 §7para ver comandos disponibles.");
+                break;
+        }
+    }
+
+    /**
+     * Comandos para el Evento Navidad
+     * /avo navidad <subcomando>
+     */
+    private void cmdNavidad(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("avo.admin")) {
+            sender.sendMessage("§cNo tienes permisos.");
+            return;
+        }
+        
+        if (args.length < 2) {
+            sender.sendMessage("§c§l✦ ════ EVENTO NAVIDAD ════ ✦");
+            sender.sendMessage("§7Un momento de calma en el mundo...");
+            sender.sendMessage("");
+            sender.sendMessage("§e▸ Control Principal:");
+            sender.sendMessage("  §f/avo navidad start §7- Inicia el evento");
+            sender.sendMessage("  §f/avo navidad stop §7- Finaliza el evento");
+            sender.sendMessage("  §f/avo navidad status §7- Estado del evento");
+            sender.sendMessage("  §f/avo navidad reset §7- Reset de emergencia");
+            sender.sendMessage("");
+            sender.sendMessage("§e▸ Ambiente:");
+            sender.sendMessage("  §f/avo navidad ambiente <on|off> §7- Controlar ambiente");
+            sender.sendMessage("");
+            sender.sendMessage("§e▸ Árbol:");
+            sender.sendMessage("  §f/avo navidad arbol set §7- Definir ubicación");
+            sender.sendMessage("  §f/avo navidad arbol activar §7- Intensificar efectos");
+            sender.sendMessage("  §f/avo navidad arbol desactivar §7- Normalizar");
+            sender.sendMessage("");
+            sender.sendMessage("§e▸ Santa:");
+            sender.sendMessage("  §f/avo navidad santa spawn §7- Aparecer Santa");
+            sender.sendMessage("  §f/avo navidad santa despawn §7- Desaparecer Santa");
+            sender.sendMessage("");
+            sender.sendMessage("§e▸ Regalos:");
+            sender.sendMessage("  §f/avo navidad regalos start §7- Activar regalos");
+            sender.sendMessage("  §f/avo navidad regalos stop §7- Desactivar regalos");
+            sender.sendMessage("");
+            sender.sendMessage("§e▸ Fragmentos:");
+            sender.sendMessage("  §f/avo navidad fragmentos give <player> <cantidad>");
+            sender.sendMessage("  §f/avo navidad fragmentos giveall <cantidad>");
+            sender.sendMessage("  §f/avo navidad fragmentos info §7- Ver tus fragmentos");
+            sender.sendMessage("");
+            sender.sendMessage("§e▸ Especial:");
+            sender.sendMessage("  §f/avo navidad cliffhanger §7- Secuencia de cierre");
+            return;
+        }
+        
+        String subCmd = args[1].toLowerCase();
+        
+        // Obtener instancia del evento
+        me.apocalipsis.events.NavidadEvent navidadEvent = null;
+        if (eventController.hasActiveEvent() && 
+            eventController.getActiveEvent() instanceof me.apocalipsis.events.NavidadEvent) {
+            navidadEvent = (me.apocalipsis.events.NavidadEvent) eventController.getActiveEvent();
+        }
+        
+        switch (subCmd) {
+            case "start":
+            case "iniciar":
+                // Verificar si hay desastre activo
+                if (disasterController.hasActiveDisaster()) {
+                    sender.sendMessage("§cYa hay un desastre activo. Usa §e/avo stop §cprimero.");
+                    return;
+                }
+                
+                // Verificar si ya hay evento activo
+                if (eventController.hasActiveEvent()) {
+                    String eventoActivo = eventController.getActiveEvent().getEventId();
+                    sender.sendMessage("§cYa hay un evento activo: §f" + eventoActivo);
+                    sender.sendMessage("§7Usa §e/avo " + eventoActivo.replace("_", " ") + " stop §7primero.");
+                    return;
+                }
+                
+                // Iniciar evento
+                if (eventController.startEvent("navidad")) {
+                    sender.sendMessage("§a✓ Evento §c§l✦ Navidad ✦ §ainiciado");
+                    sender.sendMessage("§7El mundo entra en un momento de calma...");
+                    plugin.getLogger().info(String.format("[Navidad] Iniciado por %s", sender.getName()));
+                } else {
+                    sender.sendMessage("§cNo se pudo iniciar el evento. Verifica la consola.");
+                }
+                break;
+                
+            case "stop":
+            case "detener":
+                if (navidadEvent == null) {
+                    sender.sendMessage("§cEl evento Navidad no está activo.");
+                    return;
+                }
+                
+                eventController.stopActiveEvent();
+                sender.sendMessage("§7✓ Evento §c✦ Navidad ✦ §7finalizado");
+                plugin.getLogger().info(String.format("[Navidad] Detenido por %s", sender.getName()));
+                break;
+                
+            case "status":
+            case "estado":
+                if (navidadEvent == null) {
+                    sender.sendMessage("§c§l✦ ═══ NAVIDAD - ESTADO ═══ ✦");
+                    sender.sendMessage("§7Estado: §cInactivo");
+                    sender.sendMessage("§7Usa §e/avo navidad start §7para iniciarlo.");
+                    return;
+                }
+                
+                sender.sendMessage("§c§l✦ ═══ NAVIDAD - ESTADO ═══ ✦");
+                sender.sendMessage("§7Estado: §aActivo");
+                sender.sendMessage("");
+                sender.sendMessage("§7Ambiente: " + (navidadEvent.isAmbienteActivo() ? "§aActivado" : "§cDesactivado"));
+                sender.sendMessage("§7Regalos: " + (navidadEvent.isRegalosActivos() ? "§aActivados" : "§cDesactivados"));
+                sender.sendMessage("§7Árbol: " + (navidadEvent.isArbolConfigurado() ? 
+                    (navidadEvent.isArbolActivado() ? "§a§lINTENSIFICADO" : "§eConfigurado") : "§cNo configurado"));
+                sender.sendMessage("§7Santa: " + (navidadEvent.isSantaSpawneado() ? "§aSpawneado" : "§cNo presente"));
+                
+                if (navidadEvent.isArbolConfigurado()) {
+                    Location arbol = navidadEvent.getArbolLocation();
+                    sender.sendMessage("");
+                    sender.sendMessage("§7Ubicación árbol: §f" + 
+                        arbol.getWorld().getName() + " " +
+                        arbol.getBlockX() + ", " + arbol.getBlockY() + ", " + arbol.getBlockZ());
+                }
+                break;
+                
+            case "reset":
+                if (navidadEvent == null) {
+                    sender.sendMessage("§cEl evento Navidad no está activo.");
+                    return;
+                }
+                
+                navidadEvent.reset();
+                sender.sendMessage("§a✓ Evento Navidad reseteado");
+                plugin.getLogger().info(String.format("[Navidad] Reset por %s", sender.getName()));
+                break;
+                
+            case "ambiente":
+                if (navidadEvent == null) {
+                    sender.sendMessage("§cEl evento Navidad no está activo.");
+                    return;
+                }
+                
+                if (args.length < 3) {
+                    sender.sendMessage("§cUso: /avo navidad ambiente <on|off>");
+                    return;
+                }
+                
+                String ambienteAction = args[2].toLowerCase();
+                if (ambienteAction.equals("on")) {
+                    navidadEvent.activarAmbiente();
+                    sender.sendMessage("§a✓ Ambiente navideño activado");
+                } else if (ambienteAction.equals("off")) {
+                    navidadEvent.desactivarAmbiente();
+                    sender.sendMessage("§c✓ Ambiente navideño desactivado");
+                } else {
+                    sender.sendMessage("§cUso: /avo navidad ambiente <on|off>");
+                }
+                break;
+                
+            case "arbol":
+                if (args.length < 3) {
+                    sender.sendMessage("§cUso: /avo navidad arbol <set|activar|desactivar>");
+                    return;
+                }
+                
+                String arbolAction = args[2].toLowerCase();
+                switch (arbolAction) {
+                    case "set":
+                        if (!(sender instanceof org.bukkit.entity.Player player)) {
+                            sender.sendMessage("§cSolo jugadores pueden usar este comando.");
+                            return;
+                        }
+                        
+                        if (navidadEvent == null) {
+                            sender.sendMessage("§cEl evento Navidad no está activo.");
+                            return;
+                        }
+                        
+                        navidadEvent.establecerArbol(player.getLocation());
+                        sender.sendMessage("§a✦ Árbol de Navidad establecido en tu ubicación actual.");
+                        plugin.getLogger().info(String.format("[Navidad] Árbol establecido por %s en %s", 
+                            player.getName(), player.getLocation()));
+                        break;
+                        
+                    case "activar":
+                        if (navidadEvent == null) {
+                            sender.sendMessage("§cEl evento Navidad no está activo.");
+                            return;
+                        }
+                        
+                        if (!navidadEvent.isArbolConfigurado()) {
+                            sender.sendMessage("§c✦ El árbol aún no ha sido configurado.");
+                            sender.sendMessage("§7Usa §e/avo navidad arbol set §7primero.");
+                            return;
+                        }
+                        
+                        navidadEvent.activarArbol();
+                        sender.sendMessage("§a✦ Árbol de Navidad intensificado");
+                        break;
+                        
+                    case "desactivar":
+                        if (navidadEvent == null) {
+                            sender.sendMessage("§cEl evento Navidad no está activo.");
+                            return;
+                        }
+                        
+                        navidadEvent.desactivarArbol();
+                        sender.sendMessage("§c✦ Árbol de Navidad normalizado");
+                        break;
+                        
+                    default:
+                        sender.sendMessage("§cUso: /avo navidad arbol <set|activar|desactivar>");
+                        break;
+                }
+                break;
+                
+            case "santa":
+                if (navidadEvent == null) {
+                    sender.sendMessage("§cEl evento Navidad no está activo.");
+                    return;
+                }
+                
+                if (args.length < 3) {
+                    sender.sendMessage("§cUso: /avo navidad santa <spawn|despawn>");
+                    return;
+                }
+                
+                String santaAction = args[2].toLowerCase();
+                if (santaAction.equals("spawn")) {
+                    if (!navidadEvent.isArbolConfigurado()) {
+                        sender.sendMessage("§c✦ El árbol aún no ha sido configurado.");
+                        sender.sendMessage("§7Usa §e/avo navidad arbol set §7primero.");
+                        return;
+                    }
+                    
+                    navidadEvent.spawnearSanta();
+                    sender.sendMessage("§c✦ Santa ha aparecido...");
+                    plugin.getLogger().info(String.format("[Navidad] Santa spawneado por %s", sender.getName()));
+                } else if (santaAction.equals("despawn")) {
+                    navidadEvent.despawnearSanta();
+                    sender.sendMessage("§c✦ Santa se desvanece...");
+                    plugin.getLogger().info(String.format("[Navidad] Santa despawneado por %s", sender.getName()));
+                } else {
+                    sender.sendMessage("§cUso: /avo navidad santa <spawn|despawn>");
+                }
+                break;
+                
+            case "regalos":
+                if (navidadEvent == null) {
+                    sender.sendMessage("§cEl evento Navidad no está activo.");
+                    return;
+                }
+                
+                if (args.length < 3) {
+                    sender.sendMessage("§cUso: /avo navidad regalos <start|stop>");
+                    return;
+                }
+                
+                String regalosAction = args[2].toLowerCase();
+                if (regalosAction.equals("start")) {
+                    navidadEvent.activarRegalos();
+                    sender.sendMessage("§a✦ Los regalos han sido activados.");
+                    plugin.getLogger().info(String.format("[Navidad] Regalos activados por %s", sender.getName()));
+                } else if (regalosAction.equals("stop")) {
+                    navidadEvent.desactivarRegalos();
+                    sender.sendMessage("§c✦ Los regalos han sido desactivados.");
+                    plugin.getLogger().info(String.format("[Navidad] Regalos desactivados por %s", sender.getName()));
+                } else {
+                    sender.sendMessage("§cUso: /avo navidad regalos <start|stop>");
+                }
+                break;
+                
+            case "fragmentos":
+            case "fragmento":
+                if (args.length < 3) {
+                    if (sender instanceof org.bukkit.entity.Player player && navidadEvent != null) {
+                        navidadEvent.mostrarInfoFragmentos(player);
+                        return;
+                    }
+                    sender.sendMessage("§cUso: /avo navidad fragmentos <give|giveall|info>");
+                    return;
+                }
+                
+                if (navidadEvent == null) {
+                    sender.sendMessage("§cEl evento Navidad no está activo.");
+                    return;
+                }
+                
+                String fragmentosAction = args[2].toLowerCase();
+                switch (fragmentosAction) {
+                    case "give":
+                        if (args.length < 5) {
+                            sender.sendMessage("§cUso: /avo navidad fragmentos give <player> <cantidad>");
+                            return;
+                        }
+                        
+                        org.bukkit.entity.Player targetPlayer = plugin.getServer().getPlayer(args[3]);
+                        if (targetPlayer == null) {
+                            sender.sendMessage("§cJugador no encontrado: §f" + args[3]);
+                            return;
+                        }
+                        
+                        int cantidad;
+                        try {
+                            cantidad = Integer.parseInt(args[4]);
+                        } catch (NumberFormatException e) {
+                            sender.sendMessage("§cCantidad inválida: §f" + args[4]);
+                            return;
+                        }
+                        
+                        if (cantidad <= 0) {
+                            sender.sendMessage("§cLa cantidad debe ser mayor a 0");
+                            return;
+                        }
+                        
+                        navidadEvent.darFragmentos(targetPlayer, cantidad);
+                        sender.sendMessage("§a✓ Entregados §d" + cantidad + " §afragmento(s) a §f" + targetPlayer.getName());
+                        plugin.getLogger().info(String.format("[Navidad] %s entregó %d fragmentos a %s", 
+                            sender.getName(), cantidad, targetPlayer.getName()));
+                        break;
+                        
+                    case "giveall":
+                        if (args.length < 4) {
+                            sender.sendMessage("§cUso: /avo navidad fragmentos giveall <cantidad>");
+                            return;
+                        }
+                        
+                        int cantidadAll;
+                        try {
+                            cantidadAll = Integer.parseInt(args[3]);
+                        } catch (NumberFormatException e) {
+                            sender.sendMessage("§cCantidad inválida: §f" + args[3]);
+                            return;
+                        }
+                        
+                        if (cantidadAll <= 0) {
+                            sender.sendMessage("§cLa cantidad debe ser mayor a 0");
+                            return;
+                        }
+                        
+                        navidadEvent.darFragmentosTodos(cantidadAll);
+                        int jugadoresTotal = plugin.getServer().getOnlinePlayers().size();
+                        sender.sendMessage("§a✓ Entregados §d" + cantidadAll + " §afragmento(s) a §f" + 
+                            jugadoresTotal + " §ajugador(es)");
+                        plugin.getLogger().info(String.format("[Navidad] %s entregó %d fragmentos a todos (%d jugadores)", 
+                            sender.getName(), cantidadAll, jugadoresTotal));
+                        break;
+                        
+                    case "info":
+                        if (!(sender instanceof org.bukkit.entity.Player player)) {
+                            sender.sendMessage("§cSolo jugadores pueden ver sus fragmentos.");
+                            return;
+                        }
+                        
+                        navidadEvent.mostrarInfoFragmentos(player);
+                        break;
+                        
+                    default:
+                        sender.sendMessage("§cUso: /avo navidad fragmentos <give|giveall|info>");
+                        break;
+                }
+                break;
+                
+            case "cliffhanger":
+                if (navidadEvent == null) {
+                    sender.sendMessage("§cEl evento Navidad no está activo.");
+                    return;
+                }
+                
+                navidadEvent.activarCliffhanger();
+                sender.sendMessage("§8§o...activando secuencia de cierre...");
+                plugin.getLogger().info(String.format("[Navidad] Cliffhanger activado por %s", sender.getName()));
+                break;
+                
+            default:
+                sender.sendMessage("§cSubcomando desconocido: §f" + subCmd);
+                sender.sendMessage("§7Usa §e/avo navidad §7para ver comandos disponibles.");
                 break;
         }
     }

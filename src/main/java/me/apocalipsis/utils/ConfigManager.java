@@ -20,6 +20,7 @@ public class ConfigManager {
     private FileConfiguration evasionesConfig;
     private FileConfiguration proteccionesConfig;
     private FileConfiguration tutorialConfig;
+    private FileConfiguration navidadConfig;
 
     public ConfigManager(Apocalipsis plugin) {
         this.plugin = plugin;
@@ -37,6 +38,7 @@ public class ConfigManager {
         this.evasionesConfig = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "evasiones.yml"));
         this.proteccionesConfig = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "protecciones.yml"));
         this.tutorialConfig = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "tutorial.yml"));
+        this.navidadConfig = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "navidad.yml"));
     }
     
     /**
@@ -84,6 +86,18 @@ public class ConfigManager {
     
     public FileConfiguration getTutorialConfig() {
         return tutorialConfig;
+    }
+    
+    public FileConfiguration getNavidadConfig() {
+        return navidadConfig;
+    }
+    
+    public void saveNavidadConfig() {
+        try {
+            navidadConfig.save(new File(plugin.getDataFolder(), "navidad.yml"));
+        } catch (java.io.IOException e) {
+            plugin.getLogger().severe("Error guardando navidad.yml: " + e.getMessage());
+        }
     }
 
     public boolean isLluviaFuegoExtraLluvia() {

@@ -35,7 +35,6 @@ me\apocalipsis\experience\ExperienceService.class
 me\apocalipsis\events\testing\scenarios\AnclaSealingScenario.class
 me\apocalipsis\events\gameplay\ParticleEffectSystem$AmbientStyle.class
 me\apocalipsis\events\SusurroPiedraRotaEvent$1.class
-me\apocalipsis\commands\ApocalipsisCommand$WaterScanResult.class
 me\apocalipsis\missions\TokenDatabase.class
 me\apocalipsis\events\gameplay\EnvironmentSystem$AtmosphericEffect.class
 me\apocalipsis\events\gameplay\QTESystem.class
@@ -240,7 +239,6 @@ me\apocalipsis\events\gameplay\DialogSystem$Dialog.class
 me\apocalipsis\events\gameplay\EventAudioSystem$6.class
 me\apocalipsis\events\gameplay\EventAudioSystem.class
 me\apocalipsis\skills\SkillService$PurchasePreview.class
-me\apocalipsis\commands\ApocalipsisCommand.class
 me\apocalipsis\events\gameplay\ChoiceSystem$Choice.class
 me\apocalipsis\utils\BlockOwnershipTracker.class
 me\apocalipsis\events\SusurroPiedraRotaItems$RangoRecompensa.class
@@ -251,6 +249,7 @@ me\apocalipsis\events\gameplay\LoreSystem.class
 me\apocalipsis\events\gameplay\DialogSystem$2.class
 me\apocalipsis\events\gameplay\EnvironmentSystem$5.class
 me\apocalipsis\events\testing\EventTestBot.class
+me\apocalipsis\events\NavidadItems.class
 me\apocalipsis\skills\SkillService.class
 me\apocalipsis\events\gameplay\GuardianPhaseSystem$9.class
 me\apocalipsis\ui\MessageBus.class

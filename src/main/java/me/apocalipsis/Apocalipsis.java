@@ -23,6 +23,7 @@ import me.apocalipsis.disaster.adapters.PerformanceAdapter;
 import me.apocalipsis.events.EcoBrasasEvent;
 import me.apocalipsis.events.EcoSombrasEvent;
 import me.apocalipsis.events.EventController;
+import me.apocalipsis.events.NavidadEvent;
 import me.apocalipsis.events.SusurroPiedraRotaEvent;
 import me.apocalipsis.events.testing.EventAutoTestingSystem;
 import me.apocalipsis.experience.AbilityService;
@@ -132,6 +133,7 @@ public final class Apocalipsis extends JavaPlugin {
         saveResource("tutorial.yml", false);
         saveResource("stream_features.yml", false);
         saveResource("rangos_permanentes.yml", false);
+        saveResource("navidad.yml", false);
 
         // Inicializar servicios
         configManager = new ConfigManager(this);
@@ -235,7 +237,10 @@ public final class Apocalipsis extends JavaPlugin {
         SusurroPiedraRotaEvent susurroEvent = new SusurroPiedraRotaEvent(this, messageBus, soundUtil);
         eventController.registerEvent(susurroEvent);
         
-        getLogger().info("[EventController] ✓ Eventos narrativos registrados (Eco de Brasas, Eco de Sombras, Susurro Piedra Rota)");
+        NavidadEvent navidadEvent = new NavidadEvent(this, messageBus, soundUtil);
+        eventController.registerEvent(navidadEvent);
+        
+        getLogger().info("[EventController] ✓ Eventos narrativos registrados (Eco de Brasas, Eco de Sombras, Susurro Piedra Rota, Navidad)");
 
         // Registrar comandos y tab completer
         ApocalipsisCommand avoCommand = new ApocalipsisCommand(this, stateManager, disasterController, eventController, missionService, timeService, messageBus);

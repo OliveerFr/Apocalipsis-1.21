@@ -35,7 +35,7 @@ public class AvoTabCompleter implements TabCompleter {
                 "autotest", "habilidad", "habilidades", "skill", "skills",
                 "blockinfo", "bloque", "blockstats", "skillstats",
                 "newrank", "setpermrank", "removepermrank", "listpermranks",
-                "canjear", "redeem"
+                "canjear", "redeem", "navidad"
             );
             
             return subcommands.stream()
@@ -177,11 +177,45 @@ public class AvoTabCompleter implements TabCompleter {
                     return Arrays.asList("menu", "arbol", "info", "mis", "toggle", "toggles", "comprar", "admin", "reload", "recargar", "refresh").stream()
                         .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
                         .collect(Collectors.toList());
+                
+                case "navidad":
+                    // Sugerir subcomandos de navidad
+                    return Arrays.asList("start", "stop", "status", "reset", "ambiente", "arbol", "santa", "regalos", "fragmentos", "cliffhanger").stream()
+                        .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
+                        .collect(Collectors.toList());
             }
         }
         
         if (args.length == 3) {
             String subCmd = args[0].toLowerCase();
+            
+            // /avo navidad ambiente|arbol|santa|regalos|fragmentos
+            if (subCmd.equals("navidad")) {
+                String navidadSubCmd = args[1].toLowerCase();
+                switch (navidadSubCmd) {
+                    case "ambiente":
+                        return Arrays.asList("on", "off").stream()
+                            .filter(s -> s.toLowerCase().startsWith(args[2].toLowerCase()))
+                            .collect(Collectors.toList());
+                    case "arbol":
+                        return Arrays.asList("set", "activar", "desactivar").stream()
+                            .filter(s -> s.toLowerCase().startsWith(args[2].toLowerCase()))
+                            .collect(Collectors.toList());
+                    case "santa":
+                        return Arrays.asList("spawn", "despawn").stream()
+                            .filter(s -> s.toLowerCase().startsWith(args[2].toLowerCase()))
+                            .collect(Collectors.toList());
+                    case "regalos":
+                        return Arrays.asList("start", "stop").stream()
+                            .filter(s -> s.toLowerCase().startsWith(args[2].toLowerCase()))
+                            .collect(Collectors.toList());
+                    case "fragmentos":
+                    case "fragmento":
+                        return Arrays.asList("give", "giveall", "info").stream()
+                            .filter(s -> s.toLowerCase().startsWith(args[2].toLowerCase()))
+                            .collect(Collectors.toList());
+                }
+            }
             
             // /avo setpermrank <jugador> <rankId>
             if (subCmd.equals("setpermrank")) {
@@ -376,6 +410,30 @@ public class AvoTabCompleter implements TabCompleter {
             return Arrays.asList("permanent", "1d", "7d", "30d", "1h", "24h", "60m").stream()
                 .filter(s -> s.toLowerCase().startsWith(args[3].toLowerCase()))
                 .collect(Collectors.toList());
+        }
+        
+        // args.length == 4: /avo navidad fragmentos give <player>
+        if (args.length == 4 && args[0].equalsIgnoreCase("navidad")) {
+            if ((args[1].equalsIgnoreCase("fragmentos") || args[1].equalsIgnoreCase("fragmento")) 
+                && args[2].equalsIgnoreCase("give")) {
+                return plugin.getServer().getOnlinePlayers().stream()
+                    .map(Player::getName)
+                    .filter(s -> s.toLowerCase().startsWith(args[3].toLowerCase()))
+                    .collect(Collectors.toList());
+            }
+        }
+        
+        // args.length == 5: /avo navidad fragmentos give <player> <cantidad>
+        // args.length == 4: /avo navidad fragmentos giveall <cantidad>
+        if (args.length >= 4 && args[0].equalsIgnoreCase("navidad")) {
+            if ((args[1].equalsIgnoreCase("fragmentos") || args[1].equalsIgnoreCase("fragmento"))) {
+                if ((args[2].equalsIgnoreCase("give") && args.length == 5) ||
+                    (args[2].equalsIgnoreCase("giveall") && args.length == 4)) {
+                    return Arrays.asList("1", "2", "3", "5", "10", "20", "50").stream()
+                        .filter(s -> s.startsWith(args[args.length - 1]))
+                        .collect(Collectors.toList());
+                }
+            }
         }
         
         // args.length == 4: /avo evasion reduce <jugador> <cantidad>
