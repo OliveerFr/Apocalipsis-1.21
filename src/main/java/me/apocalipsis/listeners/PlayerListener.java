@@ -237,6 +237,11 @@ public class PlayerListener implements Listener {
         // [TIEMPO JUGADO] Limpiar tracking al desconectarse
         trackPlayerQuit(player);
         
+        // [XP] Resetear combos al desconectarse
+        if (plugin.getExperienceListener() != null && plugin.getExperienceListener().getXPManager() != null) {
+            plugin.getExperienceListener().getXPManager().resetPlayerCombos(player);
+        }
+        
         // [RECONSTRUCCIÓN] Remover jugador del BossBar único del DisasterController
         plugin.getDisasterController().removePlayerFromBossBar(player);
         

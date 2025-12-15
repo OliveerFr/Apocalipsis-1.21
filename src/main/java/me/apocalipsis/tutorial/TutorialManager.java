@@ -149,6 +149,16 @@ public class TutorialManager {
         // Crear estado del tutorial
         tutorialStates.put(uuid, new TutorialState());
         
+        // ═══════════════════════════════════════════════════════════
+        // ENTREGAR KIT INMEDIATAMENTE (antes de morir)
+        // ═══════════════════════════════════════════════════════════
+        giveStarterKit(player);
+        
+        // ═══════════════════════════════════════════════════════════
+        // APLICAR BUFF DE REGENERACIÓN ALTA (baja a medida que progresa)
+        // ═══════════════════════════════════════════════════════════
+        applyTutorialBuff(player, 0); // Fase 0 = regeneración máxima
+        
         // Mensaje de bienvenida inmediato (no invasivo)
         showWelcomeMessage(player);
         
@@ -259,9 +269,6 @@ public class TutorialManager {
         
         state.setTutorialStarted(true);
         
-        // Entregar kit de inicio
-        giveStarterKit(player);
-        
         // [IMPORTANTE] Registrar en el sistema de dificultad AHORA
         // Esto marca que el jugador ya recibió el tutorial
         difficultySystem.registerFirstJoin(player);
@@ -270,6 +277,41 @@ public class TutorialManager {
             "[Tutorial] Tutorial iniciado para %s. Kit entregado y registrado en sistema.",
             player.getName()
         ));
+    }
+    
+    /**
+     * Aplica buff de regeneración según la fase del tutorial
+     * Fase 0 (inicio): Regeneration V (muy alto)
+     * Fase 1 (25% progreso): Regeneration IV
+     * Fase 2 (50% progreso): Regeneration III
+     * Fase 3 (75% progreso): Regeneration II
+     * Fase 4 (completo): Se quita el buff
+     */
+    private void applyTutorialBuff(Player player, int phase) {
+        // Quitar buff anterior
+        player.removePotionEffect(PotionEffectType.REGENERATION);
+        
+        if (phase >= 4) {
+            // Tutorial completado, quitar buff
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&',
+                "&a[Tutorial] &7Buff de regeneración removido. ¡Ya estás listo!"));
+            return;
+        }
+        
+        // Aplicar nuevo nivel según fase
+        int level = 5 - phase; // 5, 4, 3, 2
+        int duration = Integer.MAX_VALUE; // Infinito hasta que cambie de fase
+        
+        player.addPotionEffect(new PotionEffect(
+            PotionEffectType.REGENERATION,
+            duration,
+            level - 1, // Level 0-based
+            false, // Sin partículas ambiente
+            false  // Sin partículas
+        ));
+        
+        player.sendMessage(ChatColor.translateAlternateColorCodes('&',
+            "&a[Tutorial] &7Regeneración &e" + level + " &7aplicada mientras aprendes."));
     }
     
     /**

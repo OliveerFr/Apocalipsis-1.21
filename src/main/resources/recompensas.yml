@@ -4,8 +4,6 @@
 # y recompensas por completar misiones diarias
 # ════════════════════════════════════════════════════════════════════
 
-version: "1.22.17"  # Sistema de presencia del streamer + Fix cuarzo
-
 # ═══════════════════════════════════════════════════════════════
 # RECOMPENSAS POR COMPLETAR MISIONES INDIVIDUALES
 # ═══════════════════════════════════════════════════════════════
@@ -578,11 +576,6 @@ xp_dinamico:
     enabled: true               # Activar sistema de milestones
     # Los milestones se otorgan automáticamente al alcanzar:
     # 50, 100, 250, 500, 1000, 2500, 5000 acciones por categoría
-      domingo_noche:
-        hora_inicio: 19         # 7 PM
-        minuto_inicio: 0
-        duracion_minutos: 90
-        dias: [SUNDAY]
 
 # ═══════════════════════════════════════════════════════════════
 # FUENTES DE EXPERIENCIA (XP por acción)

@@ -164,19 +164,37 @@ dificultad_progresiva:
 kit_inicio:
   enabled: true
   otorgar_automatico: true
-  dar_despues_de_minutos: 5         # Dar después de 5 minutos (inicio del tutorial)
+  dar_inmediatamente: true          # Dar INMEDIATAMENTE al entrar (antes de morir)
   
   items:
-    # Supervivencia básica
-    - "give %player% minecraft:cooked_beef 16"
-    - "give %player% minecraft:bread 16"
-    - "give %player% minecraft:water_bucket 2"
+    # Armadura de HIERRO ENCANTADA (Protección II, Durabilidad III)
+    - "give %player% minecraft:iron_helmet{Enchantments:[{id:\"minecraft:protection\",lvl:2},{id:\"minecraft:unbreaking\",lvl:3}]} 1"
+    - "give %player% minecraft:iron_chestplate{Enchantments:[{id:\"minecraft:protection\",lvl:2},{id:\"minecraft:unbreaking\",lvl:3}]} 1"
+    - "give %player% minecraft:iron_leggings{Enchantments:[{id:\"minecraft:protection\",lvl:2},{id:\"minecraft:unbreaking\",lvl:3}]} 1"
+    - "give %player% minecraft:iron_boots{Enchantments:[{id:\"minecraft:protection\",lvl:2},{id:\"minecraft:unbreaking\",lvl:3}]} 1"
     
-    # Herramientas de hierro
-    - "give %player% minecraft:iron_pickaxe 1"
-    - "give %player% minecraft:iron_axe 1"
-    - "give %player% minecraft:iron_sword 1"
-    - "give %player% minecraft:iron_shovel 1"
+    # Herramientas de HIERRO ENCANTADAS
+    - "give %player% minecraft:iron_pickaxe{Enchantments:[{id:\"minecraft:efficiency\",lvl:3},{id:\"minecraft:unbreaking\",lvl:3}]} 1"
+    - "give %player% minecraft:iron_axe{Enchantments:[{id:\"minecraft:efficiency\",lvl:3},{id:\"minecraft:unbreaking\",lvl:3}]} 1"
+    - "give %player% minecraft:iron_sword{Enchantments:[{id:\"minecraft:sharpness\",lvl:2},{id:\"minecraft:unbreaking\",lvl:3}]} 1"
+    - "give %player% minecraft:iron_shovel{Enchantments:[{id:\"minecraft:efficiency\",lvl:3},{id:\"minecraft:unbreaking\",lvl:3}]} 1"
+    
+    # Supervivencia básica MEJORADA
+    - "give %player% minecraft:cooked_beef 32"
+    - "give %player% minecraft:bread 32"
+    - "give %player% minecraft:golden_apple 4"
+    - "give %player% minecraft:water_bucket 2"
+    - "give %player% minecraft:lava_bucket 1"
+    
+    # Recursos de construcción
+    - "give %player% minecraft:oak_log 64"
+    - "give %player% minecraft:cobblestone 128"
+    - "give %player% minecraft:torch 64"
+    
+    # Items útiles
+    - "give %player% minecraft:bed 1"
+    - "give %player% minecraft:crafting_table 2"
+    - "give %player% minecraft:chest 4"
     
     # Materiales de construcción
     - "give %player% minecraft:cobblestone 128"

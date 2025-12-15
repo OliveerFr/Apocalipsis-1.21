@@ -230,6 +230,16 @@ public class DynamicXPManager {
     }
     
     /**
+     * Resetea los combos de un jugador (llamar al desconectarse)
+     */
+    public void resetPlayerCombos(Player player) {
+        PlayerXPTracker tracker = playerTrackers.get(player.getUniqueId());
+        if (tracker != null) {
+            tracker.resetCombos();
+        }
+    }
+    
+    /**
      * Otorga XP dinámico con todos los multiplicadores y bonificaciones
      */
     public XPResult giveXP(Player player, XPSource source, String detail) {
@@ -290,12 +300,6 @@ public class DynamicXPManager {
             appliedBonuses.add("§5+" + dimName + " x" + String.format("%.1f", dimMult));
         }
         
-        // Bonus de fin de semana
-        if (isWeekend() && weekendMultiplier > 1.0) {
-            totalMultiplier *= weekendMultiplier;
-            appliedBonuses.add("§d+Finde x" + weekendMultiplier);
-        }
-        
         // Bonus nocturno (in-game)
         if (isNightTime(player) && nightMultiplier > 1.0) {
             totalMultiplier *= nightMultiplier;
@@ -314,21 +318,6 @@ public class DynamicXPManager {
             double streakBonus = 1.0 + (Math.min(streakDays, maxStreakDays) * streakMultiplier);
             totalMultiplier *= streakBonus;
             appliedBonuses.add("§6+Racha x" + String.format("%.1f", streakBonus));
-        }
-        
-        // Presencia del Streamer (verificación en tiempo real)
-        if (presenciaStreamerEnabled) {
-            boolean streamerOnline = isStreamerOnline();
-            double streamerMult = streamerOnline ? multiplicadorOnline : multiplicadorOffline;
-            totalMultiplier *= streamerMult;
-            
-            if (streamerOnline) {
-                if (multiplicadorOnline != 1.0) {
-                    appliedBonuses.add("§6+Streamer ON x" + String.format("%.1f", multiplicadorOnline));
-                }
-            } else {
-                appliedBonuses.add("§7-Streamer OFF x" + String.format("%.1f", multiplicadorOffline));
-            }
         }
         
         // Combo rápido (con límite máximo, excepto para OliveerF que tiene combo ilimitado)
@@ -350,6 +339,24 @@ public class DynamicXPManager {
             totalMultiplier *= 1.5;
             appliedBonuses.add("§e+Primero del día x1.5");
             tracker.markCategoryUsed(source.getCategory());
+        }
+        
+        // ═══════════════════════════════════════════════════════════════
+        // PRESENCIA DEL STREAMER - Se aplica AL FINAL sobre el total
+        // Esto asegura que sea una penalización REAL del 80% cuando está offline
+        // ═══════════════════════════════════════════════════════════════
+        if (presenciaStreamerEnabled) {
+            boolean streamerOnline = isStreamerOnline();
+            double streamerMult = streamerOnline ? multiplicadorOnline : multiplicadorOffline;
+            totalMultiplier *= streamerMult;
+            
+            if (streamerOnline) {
+                if (multiplicadorOnline != 1.0) {
+                    appliedBonuses.add("§6+Streamer ON x" + String.format("%.1f", multiplicadorOnline));
+                }
+            } else {
+                appliedBonuses.add("§7-Streamer OFF x" + String.format("%.1f", multiplicadorOffline));
+            }
         }
         
         // Calcular XP final
@@ -748,9 +755,10 @@ public class DynamicXPManager {
         // Anti-farm tracking
         private final Map<XPSource, List<Long>> recentActions = new EnumMap<>(XPSource.class);
         
-        // Combo tracking
-        private long lastActionTime = 0;
-        private int comboCount = 0;
+        // Combo tracking (separado por fuente)
+        private final Map<XPSource, Long> lastActionTimeBySource = new EnumMap<>(XPSource.class);
+        private final Map<XPSource, Integer> comboCountBySource = new EnumMap<>(XPSource.class);
+        private XPSource lastComboSource = null;
         
         private int loginStreak = 1;
         private LocalDate lastLoginDate = LocalDate.now();
@@ -778,18 +786,40 @@ public class DynamicXPManager {
         
         /**
          * Actualiza combo y retorna el contador actual
+         * El combo solo se mantiene si es la MISMA fuente de XP
          */
         public int updateCombo(XPSource source, int windowMs) {
             long now = System.currentTimeMillis();
+            Long lastTime = lastActionTimeBySource.get(source);
+            int currentCombo = comboCountBySource.getOrDefault(source, 0);
             
-            if (now - lastActionTime <= windowMs) {
-                comboCount++;
-            } else {
-                comboCount = 1;
+            // Si es una fuente diferente a la última, resetear combos de otras fuentes
+            if (lastComboSource != null && lastComboSource != source) {
+                // Resetear combo de la fuente anterior
+                comboCountBySource.put(lastComboSource, 0);
             }
             
-            lastActionTime = now;
-            return comboCount;
+            // Verificar si está dentro de la ventana de tiempo
+            if (lastTime != null && (now - lastTime) <= windowMs) {
+                currentCombo++;
+            } else {
+                currentCombo = 1; // Primera acción o se acabó el tiempo
+            }
+            
+            lastActionTimeBySource.put(source, now);
+            comboCountBySource.put(source, currentCombo);
+            lastComboSource = source;
+            
+            return currentCombo;
+        }
+        
+        /**
+         * Resetea todos los combos (llamar al desconectarse)
+         */
+        public void resetCombos() {
+            comboCountBySource.clear();
+            lastActionTimeBySource.clear();
+            lastComboSource = null;
         }
         
         /**
