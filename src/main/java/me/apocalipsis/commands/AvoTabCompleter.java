@@ -35,7 +35,7 @@ public class AvoTabCompleter implements TabCompleter {
                 "autotest", "habilidad", "habilidades", "skill", "skills",
                 "blockinfo", "bloque", "blockstats", "skillstats",
                 "newrank", "setpermrank", "removepermrank", "listpermranks",
-                "canjear", "redeem", "navidad"
+                "canjear", "redeem", "navidad", "menu"
             );
             
             return subcommands.stream()

@@ -48,6 +48,10 @@ commands:
     description: Invoca una entidad aliada
     usage: /invocar <entidad>
     aliases: [invoke, invocacion]
+  menu:
+    description: Abre el menú principal de Apocalipsis
+    usage: /menu
+    aliases: [gui, m]
 
 permissions:
   avo.admin:

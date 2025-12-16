@@ -7,15 +7,18 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
+import org.bukkit.attribute.Attribute;
 import org.bukkit.block.Block;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Item;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
@@ -1572,5 +1575,105 @@ public class SkillEffectListener implements Listener {
             if (entity instanceof org.bukkit.entity.Warden) return "Warden Temporal";
         }
         return entity.getType().name().replace("_", " ").toLowerCase();
+    }
+    
+    // ==================== VAMPIRISMO - LIFESTEAL Y HEAL ON KILL ====================
+    
+    /**
+     * Aplica lifesteal cuando un jugador daña a una entidad
+     * Nivel 1: 5% lifesteal
+     * Nivel 2: 8% lifesteal  
+     * Nivel 3: 12% lifesteal + heal on kill
+     */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onVampirismoHit(EntityDamageByEntityEvent event) {
+        // Solo procesar daño de jugador a entidad viviente
+        if (!(event.getDamager() instanceof Player)) return;
+        if (!(event.getEntity() instanceof LivingEntity)) return;
+        
+        Player player = (Player) event.getDamager();
+        LivingEntity victim = (LivingEntity) event.getEntity();
+        
+        // Verificar que el jugador tenga vampirismo
+        int vampirismoLevel = skillService.getSkillLevel(player.getUniqueId(), Skill.VAMPIRISMO).getLevel();
+        if (vampirismoLevel == 0) return;
+        
+        // Calcular porcentaje de lifesteal según nivel
+        double lifestealPercent;
+        switch (vampirismoLevel) {
+            case 1:
+                lifestealPercent = 0.05; // 5%
+                break;
+            case 2:
+                lifestealPercent = 0.08; // 8%
+                break;
+            case 3:
+                lifestealPercent = 0.12; // 12%
+                break;
+            default:
+                return;
+        }
+        
+        // Calcular vida a recuperar (porcentaje del daño final)
+        double finalDamage = event.getFinalDamage();
+        double healthToRestore = finalDamage * lifestealPercent;
+        
+        // Aplicar curación sin exceder la vida máxima
+        if (healthToRestore > 0) {
+            double currentHealth = player.getHealth();
+            double maxHealth = player.getAttribute(Attribute.MAX_HEALTH).getValue();
+            double newHealth = Math.min(currentHealth + healthToRestore, maxHealth);
+            
+            player.setHealth(newHealth);
+            
+            // Efectos visuales de vampirismo
+            player.getWorld().spawnParticle(Particle.HEART, 
+                player.getLocation().add(0, 2, 0), 
+                3, 0.3, 0.3, 0.3, 0);
+            player.getWorld().spawnParticle(Particle.DAMAGE_INDICATOR,
+                victim.getLocation().add(0, victim.getHeight() / 2, 0),
+                5, 0.3, 0.3, 0.3, 0);
+            
+            // Sonido sutil de absorción
+            player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_BURP, 0.3f, 1.5f);
+            
+            // Incrementar estadísticas
+            trackSkillUsage(player.getUniqueId(), Skill.VAMPIRISMO);
+        }
+    }
+    
+    /**
+     * Aplica heal on kill en nivel 3 de vampirismo
+     */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onVampirismoKill(EntityDeathEvent event) {
+        // Verificar que fue matado por un jugador
+        Player killer = event.getEntity().getKiller();
+        if (killer == null) return;
+        
+        // Verificar que tenga vampirismo nivel 3
+        int vampirismoLevel = skillService.getSkillLevel(killer.getUniqueId(), Skill.VAMPIRISMO).getLevel();
+        if (vampirismoLevel != 3) return;
+        
+        // Curar 2 corazones (4 puntos de vida) al matar
+        double currentHealth = killer.getHealth();
+        double maxHealth = killer.getAttribute(Attribute.MAX_HEALTH).getValue();
+        double newHealth = Math.min(currentHealth + 4.0, maxHealth);
+        
+        killer.setHealth(newHealth);
+        
+        // Efectos visuales más intensos para kill heal
+        killer.getWorld().spawnParticle(Particle.HEART,
+            killer.getLocation().add(0, 2, 0),
+            8, 0.5, 0.5, 0.5, 0);
+        killer.getWorld().spawnParticle(Particle.ENCHANT,
+            killer.getLocation().add(0, 1, 0),
+            20, 0.5, 1, 0.5, 1);
+        
+        // Sonido de victoria
+        killer.playSound(killer.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 0.5f, 2.0f);
+        
+        // Mensaje
+        killer.sendMessage("§c❤ §7Vampirismo: §a+2♥");
     }
 }

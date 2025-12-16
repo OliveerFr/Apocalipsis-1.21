@@ -1,5 +1,5 @@
 name: Apocalipsis
-version: '1.22.27'
+version: '1.22.28'
 main: me.apocalipsis.Apocalipsis
 api-version: 1.21
 author: OliveerF
@@ -48,6 +48,10 @@ commands:
     description: Invoca una entidad aliada
     usage: /invocar <entidad>
     aliases: [invoke, invocacion]
+  menu:
+    description: Abre el menú principal de Apocalipsis
+    usage: /menu
+    aliases: [gui, m]
 
 permissions:
   avo.admin:

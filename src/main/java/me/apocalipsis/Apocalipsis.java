@@ -440,6 +440,9 @@ public final class Apocalipsis extends JavaPlugin {
             return java.util.Collections.emptyList();
         });
 
+        // Comando /menu - Atajo para /avo menu
+        getCommand("menu").setExecutor(new me.apocalipsis.commands.MenuCommand(this));
+
         // Registrar listeners
         getServer().getPluginManager().registerEvents(new PlayerListener(this, scoreboardManager, tablistManager), this);
         missionListener = new MissionListener(missionService);
