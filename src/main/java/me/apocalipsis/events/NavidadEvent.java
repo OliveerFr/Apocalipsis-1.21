@@ -86,6 +86,7 @@ public class NavidadEvent extends EventBase {
     private BukkitTask arbolParticleTask;
     private BukkitTask observadorTask;
     private BukkitTask weatherSnowTask;
+    private BukkitTask snowAccumulationTask;
     
     // ═══════════════════════════════════════════════════════════════════
     // CONFIGURACIÓN
@@ -533,6 +534,9 @@ public class NavidadEvent extends EventBase {
         
         // Iniciar sonidos ambiente
         iniciarSonidosAmbiente();
+        
+        // Iniciar acumulación de nieve en el suelo
+        iniciarAcumulacionNieve();
     }
     
     public void desactivarAmbiente() {
@@ -555,6 +559,11 @@ public class NavidadEvent extends EventBase {
         if (ambienteSoundTask != null) {
             ambienteSoundTask.cancel();
             ambienteSoundTask = null;
+        }
+        
+        if (snowAccumulationTask != null) {
+            snowAccumulationTask.cancel();
+            snowAccumulationTask = null;
         }
         
         // Limpiar clima en todos los mundos
@@ -604,6 +613,80 @@ public class NavidadEvent extends EventBase {
                 }
             }
         }, 100L, 100L); // Cada 5 segundos (100 ticks)
+    }
+    
+    /**
+     * Acumula capas de nieve gradualmente en el suelo durante el evento
+     */
+    private void iniciarAcumulacionNieve() {
+        plugin.getLogger().info("[Navidad] Acumulación de nieve en el suelo activada");
+        
+        // Task que acumula nieve cada 10 segundos
+        snowAccumulationTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                World world = player.getWorld();
+                
+                // No acumular nieve en Nether ni End
+                if (world.getEnvironment() == World.Environment.NETHER || 
+                    world.getEnvironment() == World.Environment.THE_END) {
+                    continue;
+                }
+                
+                Location playerLoc = player.getLocation();
+                
+                // Intentar colocar 3-5 capas de nieve en un radio de 15 bloques del jugador
+                int intentos = 3 + random.nextInt(3);
+                
+                for (int i = 0; i < intentos; i++) {
+                    // Ubicación aleatoria alrededor del jugador
+                    double offsetX = (random.nextDouble() * 30) - 15;
+                    double offsetZ = (random.nextDouble() * 30) - 15;
+                    
+                    int blockX = playerLoc.getBlockX() + (int)offsetX;
+                    int blockZ = playerLoc.getBlockZ() + (int)offsetZ;
+                    
+                    // Obtener el bloque más alto en esa ubicación
+                    int highestY = world.getHighestBlockYAt(blockX, blockZ);
+                    Location snowLoc = new Location(world, blockX, highestY, blockZ);
+                    
+                    Block blockBelow = snowLoc.getBlock();
+                    Block blockAbove = snowLoc.clone().add(0, 1, 0).getBlock();
+                    
+                    // Verificar que el bloque de abajo sea sólido y arriba esté vacío
+                    if (!blockBelow.getType().isSolid() || !blockAbove.getType().isAir()) {
+                        continue;
+                    }
+                    
+                    // No colocar nieve sobre ciertos bloques (lava, agua, etc)
+                    Material belowType = blockBelow.getType();
+                    if (belowType == Material.LAVA || 
+                        belowType == Material.WATER ||
+                        belowType == Material.MAGMA_BLOCK ||
+                        belowType.name().contains("LEAVES")) {
+                        continue;
+                    }
+                    
+                    // Si ya hay nieve, aumentar la capa (máximo 8 capas = bloque completo)
+                    if (blockAbove.getType() == Material.SNOW) {
+                        org.bukkit.block.data.type.Snow snowData = 
+                            (org.bukkit.block.data.type.Snow) blockAbove.getBlockData();
+                        
+                        int currentLayers = snowData.getLayers();
+                        if (currentLayers < snowData.getMaximumLayers()) {
+                            snowData.setLayers(currentLayers + 1);
+                            blockAbove.setBlockData(snowData, false);
+                        }
+                    } else if (blockAbove.getType().isAir()) {
+                        // Colocar primera capa de nieve
+                        blockAbove.setType(Material.SNOW, false);
+                        org.bukkit.block.data.type.Snow snowData = 
+                            (org.bukkit.block.data.type.Snow) blockAbove.getBlockData();
+                        snowData.setLayers(1);
+                        blockAbove.setBlockData(snowData, false);
+                    }
+                }
+            }
+        }, 200L, 200L); // Cada 10 segundos (200 ticks)
     }
     
     private void iniciarParticulasAmbiente() {
@@ -1054,9 +1137,9 @@ public class NavidadEvent extends EventBase {
                 
                 // Spawnear muñeco de nieve
                 Snowman snowman = (Snowman) world.spawnEntity(snowmanLoc, EntityType.SNOW_GOLEM);
-                snowman.setAI(false);
+                snowman.setAI(true); // AI activada para que se muevan
                 snowman.setInvulnerable(true);
-                snowman.setSilent(true);
+                snowman.setSilent(false);
                 
                 // Nombres festivos variados
                 String[] nombres = {
