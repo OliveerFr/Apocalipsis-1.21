@@ -52,7 +52,7 @@ public class NavidadEvent extends EventBase {
     // SISTEMA DE SANTA
     // ═══════════════════════════════════════════════════════════════════
     
-    private Villager santaEntity = null;
+    private Player santaPlayer = null; // Santa es el jugador que ejecuta el comando
     private UUID santaUUID = null;
     
     // ═══════════════════════════════════════════════════════════════════
@@ -85,6 +85,7 @@ public class NavidadEvent extends EventBase {
     private BukkitTask ambienteSoundTask;
     private BukkitTask arbolParticleTask;
     private BukkitTask observadorTask;
+    private BukkitTask weatherSnowTask;
     
     // ═══════════════════════════════════════════════════════════════════
     // CONFIGURACIÓN
@@ -246,6 +247,12 @@ public class NavidadEvent extends EventBase {
         inicioEvento = System.currentTimeMillis();
         contadorPensamientosObservador = 0;
         plugin.getLogger().info("[Navidad] Evento iniciado - Iniciando cinemática");
+        
+        // ACTIVAR AMBIENTE AUTOMÁTICAMENTE al iniciar
+        activarAmbiente();
+        
+        // Spawnear muñecos de nieve decorativos alrededor del mundo
+        spawnearMuñecosDeNieve();
         
         // Iniciar cinemática de inicio épica
         iniciarCinematicaInicio();
@@ -518,6 +525,9 @@ public class NavidadEvent extends EventBase {
         ambienteActivo = true;
         plugin.getLogger().info("[Navidad] Ambiente activado");
         
+        // Iniciar clima de nieve constante
+        iniciarClimaNavidad();
+        
         // Iniciar partículas ambiente
         iniciarParticulasAmbiente();
         
@@ -532,6 +542,11 @@ public class NavidadEvent extends EventBase {
         plugin.getLogger().info("[Navidad] Ambiente desactivado");
         
         // Cancelar tasks
+        if (weatherSnowTask != null) {
+            weatherSnowTask.cancel();
+            weatherSnowTask = null;
+        }
+        
         if (ambienteParticleTask != null) {
             ambienteParticleTask.cancel();
             ambienteParticleTask = null;
@@ -541,38 +556,215 @@ public class NavidadEvent extends EventBase {
             ambienteSoundTask.cancel();
             ambienteSoundTask = null;
         }
+        
+        // Limpiar clima en todos los mundos
+        for (World world : Bukkit.getWorlds()) {
+            world.setStorm(false);
+            world.setThundering(false);
+        }
+    }
+    
+    /**
+     * Mantiene el clima nevando constantemente en todos los mundos
+     * durante el evento de Navidad
+     */
+    private void iniciarClimaNavidad() {
+        // Activar nieve inmediatamente en todos los mundos
+        for (World world : Bukkit.getWorlds()) {
+            world.setStorm(true);
+            world.setThundering(false);
+            world.setWeatherDuration(Integer.MAX_VALUE); // Duración infinita
+            world.setClearWeatherDuration(0);
+        }
+        
+        plugin.getLogger().info("[Navidad] Clima de nieve activado en todos los mundos");
+        
+        // Task que verifica y mantiene la nieve cada 5 segundos
+        weatherSnowTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            for (World world : Bukkit.getWorlds()) {
+                // Si el clima cambió, restaurar nieve
+                if (!world.hasStorm()) {
+                    world.setStorm(true);
+                    world.setThundering(false);
+                    world.setWeatherDuration(Integer.MAX_VALUE);
+                    world.setClearWeatherDuration(0);
+                }
+            }
+        }, 100L, 100L); // Cada 5 segundos (100 ticks)
     }
     
     private void iniciarParticulasAmbiente() {
         if (config == null) return;
         
-        int intervalo = config.getInt("ambiente.particulas.intervalo_ticks", 40);
-        double intensidad = config.getDouble("ambiente.particulas.intensidad", 0.5);
+        // Reducir intervalo para efectos más constantes (20 ticks = 1 segundo)
+        int intervalo = config.getInt("ambiente.particulas.intervalo_ticks", 20);
+        double intensidad = config.getDouble("ambiente.particulas.intensidad", 1.5);
         
         ambienteParticleTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
             for (Player player : Bukkit.getOnlinePlayers()) {
                 Location loc = player.getLocation();
                 World world = player.getWorld();
                 
-                // Nieve suave
+                // ═════ NEVADA INTENSA Y CONSTANTE ═════
                 if (config.getBoolean("ambiente.particulas.nieve", true)) {
-                    world.spawnParticle(Particle.SNOWFLAKE, 
-                        loc.clone().add(random.nextDouble() * 20 - 10, 5, random.nextDouble() * 20 - 10),
-                        (int)(3 * intensidad), 2, 0, 2, 0);
+                    // Nieve cayendo abundantemente desde arriba (15-20 copos por tick)
+                    for (int i = 0; i < 15; i++) {
+                        double offsetX = random.nextDouble() * 40 - 20;
+                        double offsetZ = random.nextDouble() * 40 - 20;
+                        double height = 10 + random.nextDouble() * 8;
+                        world.spawnParticle(Particle.SNOWFLAKE, 
+                            loc.clone().add(offsetX, height, offsetZ),
+                            1, 0.2, 0.5, 0.2, 0.01);
+                    }
+                    
+                    // Nieve más densa cerca del jugador
+                    for (int i = 0; i < 10; i++) {
+                        world.spawnParticle(Particle.SNOWFLAKE,
+                            loc.clone().add(
+                                random.nextDouble() * 16 - 8,
+                                random.nextDouble() * 4,
+                                random.nextDouble() * 16 - 8
+                            ),
+                            2, 0.5, 0.5, 0.5, 0.02);
+                    }
+                    
+                    // Nieve acumulándose en el suelo
+                    if (random.nextDouble() < 0.5) {
+                        world.spawnParticle(Particle.BLOCK,
+                            loc.clone().add(
+                                random.nextDouble() * 12 - 6,
+                                0.1,
+                                random.nextDouble() * 12 - 6
+                            ),
+                            3, 1, 0.1, 1, 0,
+                            Material.SNOW_BLOCK.createBlockData());
+                    }
                 }
                 
-                // Luces cálidas
+                // ═════ LUCES NAVIDEÑAS FESTIVAS (Rojo, Verde, Dorado, Blanco) ═════
                 if (config.getBoolean("ambiente.particulas.luces", true)) {
-                    world.spawnParticle(Particle.END_ROD,
-                        loc.clone().add(random.nextDouble() * 15 - 7.5, 3, random.nextDouble() * 15 - 7.5),
-                        1, 0, 0, 0, 0.01);
+                    // Luces doradas cálidas (estilo guirnaldas)
+                    for (int i = 0; i < 5; i++) {
+                        world.spawnParticle(Particle.END_ROD,
+                            loc.clone().add(
+                                random.nextDouble() * 25 - 12.5,
+                                2 + random.nextDouble() * 4,
+                                random.nextDouble() * 25 - 12.5
+                            ),
+                            1, 0, 0, 0, 0.01);
+                    }
+                    
+                    // Luces rojas festivas
+                    if (random.nextDouble() < 0.6) {
+                        world.spawnParticle(Particle.CHERRY_LEAVES,
+                            loc.clone().add(
+                                random.nextDouble() * 20 - 10,
+                                2.5 + random.nextDouble() * 3,
+                                random.nextDouble() * 20 - 10
+                            ),
+                            3, 0.3, 0.3, 0.3, 0.02);
+                    }
+                    
+                    // Luces verdes navideñas
+                    if (random.nextDouble() < 0.4) {
+                        world.spawnParticle(Particle.HAPPY_VILLAGER,
+                            loc.clone().add(
+                                random.nextDouble() * 18 - 9,
+                                2 + random.nextDouble() * 3.5,
+                                random.nextDouble() * 18 - 9
+                            ),
+                            2, 0.2, 0.2, 0.2, 0);
+                    }
+                    
+                    // Destellos blancos brillantes
+                    if (random.nextDouble() < 0.3) {
+                        world.spawnParticle(Particle.GLOW_SQUID_INK,
+                            loc.clone().add(
+                                random.nextDouble() * 15 - 7.5,
+                                2.5 + random.nextDouble() * 3,
+                                random.nextDouble() * 15 - 7.5
+                            ),
+                            1, 0.1, 0.1, 0.1, 0.05);
+                    }
                 }
                 
-                // Chispas ocasionales
-                if (config.getBoolean("ambiente.particulas.chispas", true) && random.nextDouble() < 0.1) {
-                    world.spawnParticle(Particle.FIREWORK,
-                        loc.clone().add(random.nextDouble() * 10 - 5, 4, random.nextDouble() * 10 - 5),
-                        1, 0, 0, 0, 0.01);
+                // ═════ ESTRELLAS BRILLANTES NAVIDEÑAS ═════
+                if (random.nextDouble() < 0.25) {
+                    world.spawnParticle(Particle.GLOW,
+                        loc.clone().add(
+                            random.nextDouble() * 30 - 15,
+                            6 + random.nextDouble() * 4,
+                            random.nextDouble() * 30 - 15
+                        ),
+                        2, 0.1, 0.1, 0.1, 0.08);
+                    
+                    // Estrella dorada grande ocasional
+                    if (random.nextDouble() < 0.3) {
+                        world.spawnParticle(Particle.WAX_OFF,
+                            loc.clone().add(
+                                random.nextDouble() * 25 - 12.5,
+                                7 + random.nextDouble() * 3,
+                                random.nextDouble() * 25 - 12.5
+                            ),
+                            1, 0, 0, 0, 0);
+                    }
+                }
+                
+                // ═════ FUEGOS ARTIFICIALES FESTIVOS ═════
+                if (config.getBoolean("ambiente.particulas.chispas", true) && random.nextDouble() < 0.12) {
+                    // Fuegos artificiales rojos y verdes
+                    Particle fireworkColor = random.nextBoolean() ? Particle.FIREWORK : Particle.CHERRY_LEAVES;
+                    world.spawnParticle(fireworkColor,
+                        loc.clone().add(
+                            random.nextDouble() * 20 - 10,
+                            5 + random.nextDouble() * 4,
+                            random.nextDouble() * 20 - 10
+                        ),
+                        5, 0.5, 0.5, 0.5, 0.08);
+                }
+                
+                // ═════ COPOS DE NIEVE GRANDES OCASIONALES ═════
+                if (random.nextDouble() < 0.08) {
+                    world.spawnParticle(Particle.ITEM_SNOWBALL,
+                        loc.clone().add(
+                            random.nextDouble() * 14 - 7,
+                            6 + random.nextDouble() * 3,
+                            random.nextDouble() * 14 - 7
+                        ),
+                        1, 0, 0, 0, 0);
+                }
+                
+                // ═════ PARTÍCULAS DE ESCARCHA EN EL AIRE ═════
+                if (random.nextDouble() < 0.2) {
+                    world.spawnParticle(Particle.WHITE_ASH,
+                        loc.clone().add(
+                            random.nextDouble() * 10 - 5,
+                            1 + random.nextDouble() * 2,
+                            random.nextDouble() * 10 - 5
+                        ),
+                        3, 0.8, 0.5, 0.8, 0.01);
+                }
+                
+                // ═════ BRILLOS MÁGICOS NAVIDEÑOS ═════
+                if (random.nextDouble() < 0.15) {
+                    world.spawnParticle(Particle.ENCHANT,
+                        loc.clone().add(
+                            random.nextDouble() * 12 - 6,
+                            random.nextDouble() * 3,
+                            random.nextDouble() * 12 - 6
+                        ),
+                        4, 0.5, 1, 0.5, 0.5);
+                }
+                
+                // ═════ REGALOS ENVUELTOS (Partículas de Nota) ═════
+                if (random.nextDouble() < 0.1) {
+                    world.spawnParticle(Particle.NOTE,
+                        loc.clone().add(
+                            random.nextDouble() * 8 - 4,
+                            0.5,
+                            random.nextDouble() * 8 - 4
+                        ),
+                        2, 0.5, 0.5, 0.5, 0);
                 }
             }
         }, intervalo, intervalo);
@@ -581,20 +773,78 @@ public class NavidadEvent extends EventBase {
     private void iniciarSonidosAmbiente() {
         if (config == null) return;
         
-        int intervaloSeg = config.getInt("ambiente.sonidos.intervalo_seg", 30);
+        // Sonidos cada 15 segundos para ambiente constante
+        int intervaloSeg = config.getInt("ambiente.sonidos.intervalo_seg", 15);
         
         ambienteSoundTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
             for (Player player : Bukkit.getOnlinePlayers()) {
-                // Campanas lejanas
+                Location loc = player.getLocation();
+                
+                // ═════ CAMPANAS NAVIDEÑAS FESTIVAS ═════
                 if (config.getBoolean("ambiente.sonidos.campanas", true)) {
-                    player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME, 
-                        0.3f, 0.8f);
+                    // Campanas de iglesia lejanas
+                    player.playSound(loc, Sound.BLOCK_BELL_USE, 
+                        0.4f, 0.8f);
+                    
+                    // Campanas de trineo (jingle bells)
+                    if (random.nextDouble() < 0.6) {
+                        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                            player.playSound(loc, Sound.BLOCK_NOTE_BLOCK_BELL,
+                                0.5f, 1.2f);
+                        }, 10L);
+                        
+                        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                            player.playSound(loc, Sound.BLOCK_NOTE_BLOCK_BELL,
+                                0.5f, 1.4f);
+                        }, 15L);
+                    }
+                    
+                    // Notas musicales navideñas
+                    if (random.nextDouble() < 0.4) {
+                        player.playSound(loc, Sound.BLOCK_NOTE_BLOCK_CHIME,
+                            0.3f, 1.0f);
+                    }
                 }
                 
-                // Viento suave (ocasional)
-                if (config.getBoolean("ambiente.sonidos.viento", true) && random.nextDouble() < 0.3) {
-                    player.playSound(player.getLocation(), Sound.ITEM_ELYTRA_FLYING,
-                        0.2f, 0.5f);
+                // ═════ VIENTO INVERNAL SUAVE ═════
+                if (config.getBoolean("ambiente.sonidos.viento", true) && random.nextDouble() < 0.5) {
+                    player.playSound(loc, Sound.ITEM_ELYTRA_FLYING,
+                        0.15f, 0.4f);
+                }
+                
+                // ═════ SONIDOS MÁGICOS FESTIVOS ═════
+                if (random.nextDouble() < 0.35) {
+                    player.playSound(loc, Sound.BLOCK_AMETHYST_BLOCK_CHIME,
+                        0.25f, 1.2f);
+                }
+                
+                // ═════ CORO NAVIDEÑO (Notas armónicas) ═════
+                if (random.nextDouble() < 0.3) {
+                    // Secuencia de notas armoniosas
+                    player.playSound(loc, Sound.BLOCK_NOTE_BLOCK_HARP,
+                        0.2f, 0.9f);
+                    
+                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                        player.playSound(loc, Sound.BLOCK_NOTE_BLOCK_HARP,
+                            0.2f, 1.2f);
+                    }, 5L);
+                }
+                
+                // ═════ FUEGOS ARTIFICIALES LEJANOS ═════
+                if (random.nextDouble() < 0.15) {
+                    player.playSound(loc, Sound.ENTITY_FIREWORK_ROCKET_BLAST,
+                        0.3f, 0.8f + random.nextFloat() * 0.4f);
+                    
+                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                        player.playSound(loc, Sound.ENTITY_FIREWORK_ROCKET_TWINKLE,
+                            0.25f, 1.0f);
+                    }, 8L);
+                }
+                
+                // ═════ SONIDO DE NIEVE CAYENDO (sutil) ═════
+                if (random.nextDouble() < 0.2) {
+                    player.playSound(loc, Sound.BLOCK_SNOW_BREAK,
+                        0.1f, 0.5f);
                 }
             }
         }, intervaloSeg * 20L, intervaloSeg * 20L);
@@ -701,101 +951,118 @@ public class NavidadEvent extends EventBase {
     // SISTEMA DE SANTA
     // ═══════════════════════════════════════════════════════════════════
     
-    public void spawnearSanta() {
-        if (!arbolConfigurado || arbolLocation == null) {
-            plugin.getLogger().warning("[Navidad] No se puede spawnear Santa: árbol no configurado");
+    /**
+     * Convierte al jugador que ejecuta el comando en Santa
+     * @param player El jugador que será Santa
+     */
+    public void convertirEnSanta(Player player) {
+        if (santaPlayer != null) {
+            player.sendMessage("§c✦ Ya hay un Santa activo: " + santaPlayer.getName());
             return;
         }
         
-        if (santaEntity != null && santaEntity.isValid()) {
-            plugin.getLogger().warning("[Navidad] Santa ya está spawneado");
-            return;
-        }
+        santaPlayer = player;
+        santaUUID = player.getUniqueId();
         
-        // Obtener offset desde config
-        int offset = config != null ? config.getInt("santa.spawn_offset", 5) : 5;
-        
-        // Ubicación cerca del árbol
-        Location spawnLoc = arbolLocation.clone().add(offset, 0, 0);
-        World world = spawnLoc.getWorld();
-        
-        if (world == null) return;
-        
-        // Spawnear villager
-        santaEntity = (Villager) world.spawnEntity(spawnLoc, EntityType.VILLAGER);
-        santaEntity.setProfession(Villager.Profession.NONE);
-        santaEntity.setVillagerType(Villager.Type.SNOW);
-        santaEntity.setAI(false);
-        santaEntity.setInvulnerable(true);
-        santaEntity.setSilent(true);
-        
-        // Nombre custom
-        String nombre = config != null ? 
-            config.getString("santa.nombre", "§c§l✦ Santa §c§l✦") :
-            "§c§l✦ Santa §c§l✦";
-        santaEntity.setCustomName(nombre);
-        santaEntity.setCustomNameVisible(true);
-        
-        santaUUID = santaEntity.getUniqueId();
-        
-        // Efectos de aparición
-        world.spawnParticle(Particle.CLOUD, spawnLoc.clone().add(0, 1, 0), 30, 0.5, 1, 0.5, 0.1);
-        world.spawnParticle(Particle.HAPPY_VILLAGER, spawnLoc.clone().add(0, 1, 0), 20, 0.5, 1, 0.5, 0);
-        world.playSound(spawnLoc, Sound.ENTITY_PLAYER_LEVELUP, 0.7f, 1.0f);
-        
-        // Mensaje
-        String mensaje = config != null ?
-            config.getString("mensajes.santa_spawn", "§c✦ Santa ha aparecido cerca del árbol...") :
-            "§c✦ Santa ha aparecido cerca del árbol...";
-        messageBus.broadcast(mensaje, "navidad-santa-spawn");
-        
-        plugin.getLogger().info("[Navidad] Santa spawneado");
-    }
-    
-    private void iniciarVerificacionSanta() {
-        // Verificar cada 5 segundos que Santa sigue vivo
-        Bukkit.getScheduler().runTaskTimer(plugin, () -> {
-            if (!eventoActivo) return;
-            if (santaEntity == null) return;
-            
-            // Si Santa fue removido/murió, notificar
-            if (!santaEntity.isValid()) {
-                plugin.getLogger().warning("[Navidad] Santa desapareció inesperadamente");
-                santaEntity = null;
-                santaUUID = null;
-            }
-        }, 100L, 100L); // Cada 5 segundos
-    }
-    
-    public void despawnearSanta() {
-        if (santaEntity == null || !santaEntity.isValid()) {
-            plugin.getLogger().warning("[Navidad] Santa no está spawneado");
-            santaEntity = null;
-            santaUUID = null;
-            return;
-        }
-        
-        Location loc = santaEntity.getLocation();
+        Location loc = player.getLocation();
         World world = loc.getWorld();
         
         if (world != null) {
-            // Efectos de desaparición
-            world.spawnParticle(Particle.CLOUD, loc.clone().add(0, 1, 0), 40, 0.5, 1, 0.5, 0.05);
-            world.playSound(loc, Sound.ENTITY_VILLAGER_NO, 0.5f, 0.8f);
+            // Efectos visuales épicos
+            world.spawnParticle(Particle.SNOWFLAKE, loc.clone().add(0, 1, 0), 100, 1, 2, 1, 0.1);
+            world.spawnParticle(Particle.FIREWORK, loc.clone().add(0, 1, 0), 30, 0.5, 1, 0.5, 0.1);
+            world.spawnParticle(Particle.END_ROD, loc.clone().add(0, 1, 0), 50, 1, 1, 1, 0.05);
+            world.playSound(loc, Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.2f);
+            world.playSound(loc, Sound.BLOCK_BELL_USE, 1.0f, 1.0f);
         }
         
-        // Mensaje
-        String mensaje = config != null ?
-            config.getString("mensajes.santa_despawn", "§c✦ Santa se desvanece lentamente...") :
-            "§c✦ Santa se desvanece lentamente...";
+        // Título para el jugador
+        player.sendTitle("§c§l✦ HO HO HO ✦", "§eEres Santa Claus", 10, 60, 20);
+        
+        // Mensaje global
+        String mensaje = "§c§l✦ " + player.getName() + " es ahora Santa Claus §c§l✦";
+        messageBus.broadcast(mensaje, "navidad-santa-spawn");
+        
+        plugin.getLogger().info("[Navidad] " + player.getName() + " convertido en Santa");
+    }
+    
+    /**
+     * Spawnea muñecos de nieve decorativos alrededor de los jugadores
+     * para crear ambiente navideño clásico
+     */
+    private void spawnearMuñecosDeNieve() {
+        // Spawnear 5-8 muñecos de nieve cerca de cada jugador online
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            Location playerLoc = player.getLocation();
+            World world = playerLoc.getWorld();
+            if (world == null) continue;
+            
+            int cantidad = 5 + random.nextInt(4); // 5-8 muñecos por jugador
+            
+            for (int i = 0; i < cantidad; i++) {
+                // Ubicación aleatoria alrededor del jugador (radio 8-25 bloques)
+                double angle = random.nextDouble() * Math.PI * 2;
+                double radius = 8 + random.nextDouble() * 17;
+                double x = playerLoc.getX() + Math.cos(angle) * radius;
+                double z = playerLoc.getZ() + Math.sin(angle) * radius;
+                double y = world.getHighestBlockYAt((int)x, (int)z) + 1;
+                
+                Location snowmanLoc = new Location(world, x, y, z);
+                
+                // Spawnear muñeco de nieve
+                Snowman snowman = (Snowman) world.spawnEntity(snowmanLoc, EntityType.SNOW_GOLEM);
+                snowman.setAI(false);
+                snowman.setInvulnerable(true);
+                snowman.setSilent(true);
+                
+                // Nombres festivos variados
+                String[] nombres = {
+                    "§f❄ Muñeco Navideño ❄",
+                    "§f⛄ Frosty ⛄",
+                    "§f❄ Sr. Nieve ❄",
+                    "§f⛄ Guardián Invernal ⛄",
+                    "§f❄ Olaf ❄"
+                };
+                snowman.setCustomName(nombres[random.nextInt(nombres.length)]);
+                snowman.setCustomNameVisible(true);
+                snowman.setPersistent(true);
+                
+                // Efectos de aparición festivos
+                world.spawnParticle(Particle.SNOWFLAKE, snowmanLoc.clone().add(0, 1, 0), 40, 0.5, 1, 0.5, 0.08);
+                world.spawnParticle(Particle.END_ROD, snowmanLoc.clone().add(0, 0.5, 0), 15, 0.3, 0.5, 0.3, 0.02);
+                world.playSound(snowmanLoc, Sound.BLOCK_SNOW_PLACE, 0.6f, 0.9f);
+            }
+        }
+        
+        plugin.getLogger().info("[Navidad] Muñecos de nieve decorativos spawneados abundantemente");
+    }
+    
+    public void quitarSanta() {
+        if (santaPlayer == null) {
+            plugin.getLogger().warning("[Navidad] No hay Santa activo");
+            return;
+        }
+        
+        Location loc = santaPlayer.getLocation();
+        World world = loc.getWorld();
+        
+        if (world != null) {
+            // Efectos de transición
+            world.spawnParticle(Particle.SNOWFLAKE, loc.clone().add(0, 1, 0), 50, 1, 2, 1, 0.1);
+            world.playSound(loc, Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.7f, 1.0f);
+        }
+        
+        // Mensaje al jugador
+        santaPlayer.sendTitle("§7✦", "§7Ya no eres Santa", 10, 40, 10);
+        
+        // Mensaje global
+        String mensaje = "§7✦ " + santaPlayer.getName() + " ya no es Santa §7✦";
         messageBus.broadcast(mensaje, "navidad-santa-despawn");
         
-        // Remover entidad
-        santaEntity.remove();
-        santaEntity = null;
+        santaPlayer = null;
         santaUUID = null;
         
-        plugin.getLogger().info("[Navidad] Santa despawneado");
+        plugin.getLogger().info("[Navidad] Santa removido");
     }
     
     // ═══════════════════════════════════════════════════════════════════
@@ -991,13 +1258,9 @@ public class NavidadEvent extends EventBase {
             desactivarArbol();
         }
         
-        // Despawnear Santa si existe
-        if (santaEntity != null) {
-            if (santaEntity.isValid()) {
-                santaEntity.remove();
-            }
-            santaEntity = null;
-            santaUUID = null;
+        // Quitar Santa si existe (ahora es un jugador, no una entidad)
+        if (santaPlayer != null) {
+            quitarSanta();
         }
         
         // Cancelar task del Observador
@@ -1052,6 +1315,6 @@ public class NavidadEvent extends EventBase {
     }
     
     public boolean isSantaSpawneado() {
-        return santaEntity != null && santaEntity.isValid();
+        return santaPlayer != null && santaPlayer.isOnline();
     }
 }

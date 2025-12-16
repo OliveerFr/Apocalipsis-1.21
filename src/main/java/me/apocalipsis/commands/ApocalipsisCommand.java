@@ -2649,19 +2649,19 @@ public class ApocalipsisCommand implements CommandExecutor {
                 
                 String santaAction = args[2].toLowerCase();
                 if (santaAction.equals("spawn")) {
-                    if (!navidadEvent.isArbolConfigurado()) {
-                        sender.sendMessage("§c✦ El árbol aún no ha sido configurado.");
-                        sender.sendMessage("§7Usa §e/avo navidad arbol set §7primero.");
+                    // Santa ahora es el jugador que ejecuta el comando
+                    if (!(sender instanceof Player)) {
+                        sender.sendMessage("§c✦ Solo jugadores pueden convertirse en Santa.");
                         return;
                     }
                     
-                    navidadEvent.spawnearSanta();
-                    sender.sendMessage("§c✦ Santa ha aparecido...");
-                    plugin.getLogger().info(String.format("[Navidad] Santa spawneado por %s", sender.getName()));
+                    Player player = (Player) sender;
+                    navidadEvent.convertirEnSanta(player);
+                    plugin.getLogger().info(String.format("[Navidad] %s se convirtió en Santa", sender.getName()));
                 } else if (santaAction.equals("despawn")) {
-                    navidadEvent.despawnearSanta();
-                    sender.sendMessage("§c✦ Santa se desvanece...");
-                    plugin.getLogger().info(String.format("[Navidad] Santa despawneado por %s", sender.getName()));
+                    navidadEvent.quitarSanta();
+                    sender.sendMessage("§c✦ Santa ha sido removido...");
+                    plugin.getLogger().info(String.format("[Navidad] Santa removido por %s", sender.getName()));
                 } else {
                     sender.sendMessage("§cUso: /avo navidad santa <spawn|despawn>");
                 }
