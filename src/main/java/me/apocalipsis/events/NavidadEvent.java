@@ -565,29 +565,42 @@ public class NavidadEvent extends EventBase {
     }
     
     /**
-     * Mantiene el clima nevando constantemente en todos los mundos
-     * durante el evento de Navidad
+     * Mantiene el clima despejado en todos los mundos durante el evento de Navidad
+     * (excepto Nether y End). La nieve visual se logra 100% con partículas densas.
      */
     private void iniciarClimaNavidad() {
-        // Activar nieve inmediatamente en todos los mundos
+        // Desactivar lluvia/tormenta inmediatamente en todos los mundos (excepto Nether y End)
         for (World world : Bukkit.getWorlds()) {
-            world.setStorm(true);
+            // Excluir Nether y End - no pueden tener clima
+            if (world.getEnvironment() == World.Environment.NETHER || 
+                world.getEnvironment() == World.Environment.THE_END) {
+                continue;
+            }
+            
+            // CLIMA DESPEJADO - sin lluvia ni tormenta
+            world.setStorm(false);
             world.setThundering(false);
-            world.setWeatherDuration(Integer.MAX_VALUE); // Duración infinita
-            world.setClearWeatherDuration(0);
+            world.setClearWeatherDuration(Integer.MAX_VALUE); // Despejado infinito
+            world.setWeatherDuration(0);
         }
         
-        plugin.getLogger().info("[Navidad] Clima de nieve activado en todos los mundos");
+        plugin.getLogger().info("[Navidad] Clima despejado activado - nevada 100% visual con partículas");
         
-        // Task que verifica y mantiene la nieve cada 5 segundos
+        // Task que verifica y mantiene el clima despejado cada 5 segundos
         weatherSnowTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
             for (World world : Bukkit.getWorlds()) {
-                // Si el clima cambió, restaurar nieve
-                if (!world.hasStorm()) {
-                    world.setStorm(true);
+                // Excluir Nether y End
+                if (world.getEnvironment() == World.Environment.NETHER || 
+                    world.getEnvironment() == World.Environment.THE_END) {
+                    continue;
+                }
+                
+                // Si el clima cambió a lluvia/tormenta, restaurar despejado
+                if (world.hasStorm() || world.isThundering()) {
+                    world.setStorm(false);
                     world.setThundering(false);
-                    world.setWeatherDuration(Integer.MAX_VALUE);
-                    world.setClearWeatherDuration(0);
+                    world.setClearWeatherDuration(Integer.MAX_VALUE);
+                    world.setWeatherDuration(0);
                 }
             }
         }, 100L, 100L); // Cada 5 segundos (100 ticks)
@@ -596,8 +609,8 @@ public class NavidadEvent extends EventBase {
     private void iniciarParticulasAmbiente() {
         if (config == null) return;
         
-        // Reducir intervalo para efectos más constantes (20 ticks = 1 segundo)
-        int intervalo = config.getInt("ambiente.particulas.intervalo_ticks", 20);
+        // Intervalo ultra rápido para nevada MASIVA que cubra la lluvia en biomas cálidos (10 ticks = 0.5 segundos)
+        int intervalo = config.getInt("ambiente.particulas.intervalo_ticks", 10);
         double intensidad = config.getDouble("ambiente.particulas.intensidad", 1.5);
         
         ambienteParticleTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
@@ -607,37 +620,67 @@ public class NavidadEvent extends EventBase {
                 
                 // ═════ NEVADA INTENSA Y CONSTANTE ═════
                 if (config.getBoolean("ambiente.particulas.nieve", true)) {
-                    // Nieve cayendo abundantemente desde arriba (15-20 copos por tick)
-                    for (int i = 0; i < 15; i++) {
-                        double offsetX = random.nextDouble() * 40 - 20;
-                        double offsetZ = random.nextDouble() * 40 - 20;
-                        double height = 10 + random.nextDouble() * 8;
+                    // Excluir Nether - allí no nieva
+                    if (world.getEnvironment() == World.Environment.NETHER) {
+                        continue;
+                    }
+                    
+                    // CLIMA DESPEJADO + PARTÍCULAS MASIVAS = Nevada visual perfecta sin lluvia
+                    // Esta densidad extrema compensa la ausencia de nieve nativa de MC
+                    
+                    // Nieve cayendo MASIVAMENTE desde arriba (60 copos por tick)
+                    for (int i = 0; i < 60; i++) {
+                        double offsetX = random.nextDouble() * 50 - 25;
+                        double offsetZ = random.nextDouble() * 50 - 25;
+                        double height = 8 + random.nextDouble() * 10;
                         world.spawnParticle(Particle.SNOWFLAKE, 
                             loc.clone().add(offsetX, height, offsetZ),
-                            1, 0.2, 0.5, 0.2, 0.01);
+                            2, 0.3, 0.7, 0.3, 0.02);
                     }
                     
-                    // Nieve más densa cerca del jugador
-                    for (int i = 0; i < 10; i++) {
+                    // Nieve EXTREMADAMENTE densa cerca del jugador (45 copos)
+                    for (int i = 0; i < 45; i++) {
                         world.spawnParticle(Particle.SNOWFLAKE,
                             loc.clone().add(
-                                random.nextDouble() * 16 - 8,
-                                random.nextDouble() * 4,
-                                random.nextDouble() * 16 - 8
+                                random.nextDouble() * 20 - 10,
+                                random.nextDouble() * 5,
+                                random.nextDouble() * 20 - 10
                             ),
-                            2, 0.5, 0.5, 0.5, 0.02);
+                            3, 0.7, 0.7, 0.7, 0.03);
                     }
                     
-                    // Nieve acumulándose en el suelo
-                    if (random.nextDouble() < 0.5) {
+                    // Capa adicional de nieve a media altura (30 copos)
+                    for (int i = 0; i < 30; i++) {
+                        world.spawnParticle(Particle.SNOWFLAKE,
+                            loc.clone().add(
+                                random.nextDouble() * 14 - 7,
+                                2 + random.nextDouble() * 3,
+                                random.nextDouble() * 14 - 7
+                            ),
+                            1, 0.4, 0.4, 0.4, 0.02);
+                    }
+                    
+                    // Nieve acumulándose en el suelo (más frecuente)
+                    if (random.nextDouble() < 0.7) {
                         world.spawnParticle(Particle.BLOCK,
                             loc.clone().add(
                                 random.nextDouble() * 12 - 6,
                                 0.1,
                                 random.nextDouble() * 12 - 6
                             ),
-                            3, 1, 0.1, 1, 0,
+                            5, 1.5, 0.1, 1.5, 0,
                             Material.SNOW_BLOCK.createBlockData());
+                    }
+                    
+                    // WHITE_ASH adicional para efecto de nevada densa
+                    for (int i = 0; i < 15; i++) {
+                        world.spawnParticle(Particle.WHITE_ASH,
+                            loc.clone().add(
+                                random.nextDouble() * 15 - 7.5,
+                                random.nextDouble() * 6,
+                                random.nextDouble() * 15 - 7.5
+                            ),
+                            1, 0.5, 1, 0.5, 0.01);
                     }
                 }
                 
