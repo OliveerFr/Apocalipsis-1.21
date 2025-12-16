@@ -101,6 +101,12 @@ public class StreamDropListener implements Listener {
         Player killer = entity.getKiller();
         if (killer == null) return;
         
+        // ═══ ANTI-FARM: NO DAR TOKENS SI LA ENTIDAD VIENE DE SPAWNER ═══
+        if (entity.fromMobSpawner()) {
+            // No dar recompensas para mobs de spawner
+            return;
+        }
+        
         UUID uuid = killer.getUniqueId();
         long now = System.currentTimeMillis();
         

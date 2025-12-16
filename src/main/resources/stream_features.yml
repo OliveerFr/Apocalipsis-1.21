@@ -32,6 +32,10 @@ drops_stream:
   # Si un jugador mata más de X mobs en 1 segundo, solo se procesa 1 drop
   max_mobs_por_segundo: 5       # Si mata más de 5 mobs/segundo, considera que está farmeando
   
+  # Protección anti-spawner
+  # Los mobs que salen de spawners NO dan tokens ni fragmentos (evita farmeo AFK)
+  ignorar_spawners: true        # Siempre habilitado para evitar abuso
+  
   # Chance de drop especial (solo cuando streamer online)
   chance_base: 0.08             # 12% de chance por mob hostil (balanceado)
   

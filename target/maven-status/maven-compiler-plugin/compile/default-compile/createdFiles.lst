@@ -35,6 +35,7 @@ me\apocalipsis\experience\ExperienceService.class
 me\apocalipsis\events\testing\scenarios\AnclaSealingScenario.class
 me\apocalipsis\events\gameplay\ParticleEffectSystem$AmbientStyle.class
 me\apocalipsis\events\SusurroPiedraRotaEvent$1.class
+me\apocalipsis\commands\ApocalipsisCommand$WaterScanResult.class
 me\apocalipsis\missions\TokenDatabase.class
 me\apocalipsis\events\gameplay\EnvironmentSystem$AtmosphericEffect.class
 me\apocalipsis\events\gameplay\QTESystem.class
@@ -194,13 +195,13 @@ me\apocalipsis\skills\BackpackService$BackpackHolder.class
 me\apocalipsis\skills\SkillEffectListener.class
 me\apocalipsis\disaster\DisasterStatistics.class
 me\apocalipsis\disaster\adapters\PerformanceAdapter$PerformanceState.class
-me\apocalipsis\missions\MissionService$1.class
 me\apocalipsis\listeners\BlockTrackListener$1.class
 me\apocalipsis\missions\MissionRank.class
 me\apocalipsis\ui\UIManager.class
 me\apocalipsis\missions\MissionService$PendingPenalty.class
 me\apocalipsis\utils\ConfigManager.class
 me\apocalipsis\events\gameplay\ChoiceSystem$PendingChoice.class
+me\apocalipsis\events\NavidadEvent.class
 me\apocalipsis\events\testing\scenarios\NucleoDefeatScenario.class
 me\apocalipsis\commands\AvoTabCompleter.class
 me\apocalipsis\events\gameplay\GuardianPhaseSystem$PhaseType.class
@@ -230,7 +231,6 @@ me\apocalipsis\skills\UpgradePreview.class
 me\apocalipsis\events\gameplay\ParticleEffectSystem.class
 me\apocalipsis\disaster\LluviaFuegoNew$WaterProtection.class
 me\apocalipsis\ui\FeedbackSystem$1.class
-me\apocalipsis\commands\ApocalipsisCommand$1.class
 me\apocalipsis\experience\AbilityService.class
 me\apocalipsis\events\gameplay\GuardianPhaseSystem.class
 me\apocalipsis\listeners\StreamDropListener$KillBurst.class
@@ -239,9 +239,11 @@ me\apocalipsis\events\gameplay\DialogSystem$Dialog.class
 me\apocalipsis\events\gameplay\EventAudioSystem$6.class
 me\apocalipsis\events\gameplay\EventAudioSystem.class
 me\apocalipsis\skills\SkillService$PurchasePreview.class
+me\apocalipsis\commands\ApocalipsisCommand.class
 me\apocalipsis\events\gameplay\ChoiceSystem$Choice.class
 me\apocalipsis\utils\BlockOwnershipTracker.class
 me\apocalipsis\events\SusurroPiedraRotaItems$RangoRecompensa.class
+me\apocalipsis\events\NavidadListener.class
 me\apocalipsis\events\SusurroPiedraRotaEvent$12.class
 me\apocalipsis\skills\SkillTier.class
 me\apocalipsis\events\gameplay\EventAudioSystem$MusicTrack.class
