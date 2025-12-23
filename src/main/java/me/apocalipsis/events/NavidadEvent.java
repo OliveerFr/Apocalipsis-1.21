@@ -1808,7 +1808,15 @@ public class NavidadEvent extends EventBase {
      */
     public void iniciarAmigoSecreto() {
         if (amigoSecretoActivo) {
+            messageBus.broadcast("§c✦ El amigo secreto ya está en marcha.", "navidad-amigo-secreto");
+            messageBus.broadcast("§7Los jugadores ya recibieron sus asignaciones.", "navidad-amigo-secreto");
             plugin.getLogger().warning("[Navidad] El amigo secreto ya está activo");
+            return;
+        }
+        
+        if (!eventoActivo) {
+            messageBus.broadcast("§c✦ El evento de Navidad debe estar activo primero.", "navidad-amigo-secreto");
+            messageBus.broadcast("§7Usa §e/avo navidad start §7para iniciar el evento.", "navidad-amigo-secreto");
             return;
         }
         
@@ -1817,7 +1825,14 @@ public class NavidadEvent extends EventBase {
         // Verificar mínimo de jugadores
         int minJugadores = config != null ? config.getInt("amigo_secreto.jugadores_minimos", 2) : 2;
         if (jugadores.size() < minJugadores) {
-            messageBus.broadcast("§c✦ Se necesitan al menos " + minJugadores + " jugadores para el amigo secreto.", "navidad-amigo-secreto");
+            messageBus.broadcast("", "navidad-amigo-secreto");
+            messageBus.broadcast("§c§l✦ No hay suficientes jugadores ✦", "navidad-amigo-secreto");
+            messageBus.broadcast("", "navidad-amigo-secreto");
+            messageBus.broadcast("§7Se necesitan al menos §e" + minJugadores + " jugadores §7online", "navidad-amigo-secreto");
+            messageBus.broadcast("§7para iniciar el Amigo Secreto.", "navidad-amigo-secreto");
+            messageBus.broadcast("", "navidad-amigo-secreto");
+            messageBus.broadcast("§7Jugadores actuales: §c" + jugadores.size(), "navidad-amigo-secreto");
+            messageBus.broadcast("", "navidad-amigo-secreto");
             return;
         }
         
@@ -1879,14 +1894,23 @@ public class NavidadEvent extends EventBase {
                     "§c§lTu amigo secreto es: §e§l" + receptor.getName();
                 
                 dador.sendMessage("");
+                dador.sendMessage("§8§m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                 dador.sendMessage(mensajePrivado);
+                dador.sendMessage("§8§m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                 dador.sendMessage("");
-                
-                // Instrucciones claras
-                dador.sendMessage("§e§l▸ INSTRUCCIONES:");
-                dador.sendMessage("§71. §fAcércate a §e" + receptor.getName());
-                dador.sendMessage("§72. §fPon el item en tu §emano principal");
-                dador.sendMessage("§73. §fUsa: §a/avo navidad entregar");
+                dador.sendMessage("§e§l▸ CÓMO ENTREGAR REGALOS:");
+                dador.sendMessage("");
+                dador.sendMessage("§71. §fAcércate a §e" + receptor.getName() + " §f(menos de 10 bloques)");
+                dador.sendMessage("§72. §fPon tu regalo en la §emano principal");
+                dador.sendMessage("§73. §fEscribe: §a/avo navidad entregar");
+                dador.sendMessage("");
+                dador.sendMessage("§e§l▸ OPCIONAL - Mensaje Personal:");
+                dador.sendMessage("§7  §a/avo navidad entregar §fFeliz Navidad!");
+                dador.sendMessage("");
+                dador.sendMessage("§7Debes dar §emínimo " + cantidadRegalos + " regalos §7a tu amigo secreto.");
+                dador.sendMessage("§7¡Pero puedes dar más si quieres!");
+                dador.sendMessage("");
+                dador.sendMessage("§8Tip: Si olvidas quién es, usa §7/avo navidad miamigo");
                 dador.sendMessage("");
                 
                 // Efectos
@@ -1955,26 +1979,45 @@ public class NavidadEvent extends EventBase {
      */
     public void regalarAJugador(Player dador, Player receptor, String mensajePersonal) {
         if (!eventoActivo) {
+            dador.sendMessage("");
             dador.sendMessage("§c✦ El evento de Navidad no está activo.");
+            dador.sendMessage("§7Este comando solo funciona durante el evento.");
+            dador.sendMessage("");
             return;
         }
         
         if (dador.equals(receptor)) {
+            dador.sendMessage("");
             dador.sendMessage("§c✦ No puedes regalarte a ti mismo.");
+            dador.sendMessage("§7La Navidad es para compartir con otros.");
+            dador.sendMessage("");
             return;
         }
         
         // Verificar distancia (deben estar cerca)
-        if (dador.getLocation().distance(receptor.getLocation()) > 10) {
-            dador.sendMessage("§c✦ Debes estar cerca de §e" + receptor.getName() + " §cpara entregarle el regalo.");
+        double distancia = dador.getLocation().distance(receptor.getLocation());
+        if (distancia > 10) {
+            dador.sendMessage("");
+            dador.sendMessage("§c✦ Estás muy lejos de §e" + receptor.getName());
+            dador.sendMessage("§7Distancia actual: §c" + String.format("%.1f", distancia) + " bloques");
+            dador.sendMessage("§7Acércate a menos de §e10 bloques §7para entregar.");
+            dador.sendMessage("");
             return;
         }
         
         // Obtener item de la mano del jugador
         ItemStack regalo = dador.getInventory().getItemInMainHand();
         if (regalo == null || regalo.getType() == Material.AIR) {
-            dador.sendMessage("§c✦ Debes tener un item en tu mano principal.");
-            dador.sendMessage("§7Pon el regalo que quieres dar en tu mano.");
+            dador.sendMessage("");
+            dador.sendMessage("§c✦ No tienes nada en tu mano principal.");
+            dador.sendMessage("");
+            dador.sendMessage("§e§l▸ CÓMO REGALAR:");
+            dador.sendMessage("§71. §fPon tu regalo en la §emano principal §f(mano derecha)");
+            dador.sendMessage("§72. §fAcércate a §e" + receptor.getName());
+            dador.sendMessage("§73. §fEscribe: §a/avo navidad regalar " + receptor.getName());
+            dador.sendMessage("");
+            dador.sendMessage("§7Con mensaje: §a/avo navidad regalar " + receptor.getName() + " §f¡Felices fiestas!");
+            dador.sendMessage("");
             return;
         }
         
@@ -2059,14 +2102,30 @@ public class NavidadEvent extends EventBase {
      * Entrega un regalo al amigo secreto asignado con mensaje opcional
      */
     public void entregarRegaloAmigoSecreto(Player dador, String mensajePersonal) {
+        if (!eventoActivo) {
+            dador.sendMessage("");
+            dador.sendMessage("§c✦ El evento de Navidad no está activo.");
+            dador.sendMessage("§7Espera a que inicie el evento para dar regalos.");
+            dador.sendMessage("");
+            return;
+        }
+        
         if (!amigoSecretoActivo) {
-            dador.sendMessage("§c✦ El amigo secreto no está activo.");
+            dador.sendMessage("");
+            dador.sendMessage("§c✦ El amigo secreto aún no ha iniciado.");
+            dador.sendMessage("§7Espera a que el sorteo se active.");
+            dador.sendMessage("§7Un admin usará §e/avo navidad sorteo §7cuando sea el momento.");
+            dador.sendMessage("");
             return;
         }
         
         UUID dadorUUID = dador.getUniqueId();
         if (!asignacionesAmigoSecreto.containsKey(dadorUUID)) {
+            dador.sendMessage("");
             dador.sendMessage("§c✦ No estás participando en el amigo secreto.");
+            dador.sendMessage("§7Debes estar online cuando se hizo el sorteo.");
+            dador.sendMessage("§7Aún puedes dar regalos con §e/avo navidad regalar <jugador>");
+            dador.sendMessage("");
             return;
         }
         
@@ -2085,21 +2144,40 @@ public class NavidadEvent extends EventBase {
         Player receptor = Bukkit.getPlayer(receptorUUID);
         
         if (receptor == null || !receptor.isOnline()) {
-            dador.sendMessage("§c✦ Tu amigo secreto no está online.");
+            dador.sendMessage("");
+            dador.sendMessage("§c✦ Tu amigo secreto no está conectado ahora.");
+            dador.sendMessage("§7Tu amigo secreto es: §e" + (Bukkit.getOfflinePlayer(receptorUUID).getName()));
+            dador.sendMessage("§7Espera a que se conecte para entregarle tu regalo.");
+            dador.sendMessage("");
+            int entregados = regalosEntregados.getOrDefault(dadorUUID, 0);
+            int cantidadRequerida = config.getInt("amigo_secreto.regalos_requeridos", 2);
+            dador.sendMessage("§7Progreso: §e" + entregados + "§7/§e" + cantidadRequerida + " regalos entregados");
+            dador.sendMessage("");
             return;
         }
         
         // Verificar distancia (deben estar cerca)
-        if (dador.getLocation().distance(receptor.getLocation()) > 10) {
-            dador.sendMessage("§c✦ Debes estar cerca de §e" + receptor.getName() + " §cpara entregarle el regalo.");
+        double distancia = dador.getLocation().distance(receptor.getLocation());
+        if (distancia > 10) {
+            dador.sendMessage("");
+            dador.sendMessage("§c✦ Estás muy lejos de §e" + receptor.getName());
+            dador.sendMessage("§7Distancia actual: §c" + String.format("%.1f", distancia) + " bloques");
+            dador.sendMessage("§7Acércate a menos de §e10 bloques §7para entregar el regalo.");
+            dador.sendMessage("");
             return;
         }
         
         // Obtener item de la mano del jugador
         ItemStack regalo = dador.getInventory().getItemInMainHand();
         if (regalo == null || regalo.getType() == Material.AIR) {
-            dador.sendMessage("§c✦ Debes tener un item en tu mano principal.");
-            dador.sendMessage("§7Pon el regalo que quieres dar en tu mano.");
+            dador.sendMessage("");
+            dador.sendMessage("§c✦ No tienes nada en tu mano principal.");
+            dador.sendMessage("");
+            dador.sendMessage("§e§l▸ INSTRUCCIONES:");
+            dador.sendMessage("§71. §fPon tu regalo en la §emano principal §f(mano derecha)");
+            dador.sendMessage("§72. §fAcércate a §e" + receptor.getName());
+            dador.sendMessage("§73. §fEscribe: §a/avo navidad entregar");
+            dador.sendMessage("");
             return;
         }
         
@@ -2311,6 +2389,79 @@ public class NavidadEvent extends EventBase {
         }
         
         plugin.getLogger().info("[Navidad] ¡Todos completaron el intercambio de amigo secreto!");
+    }
+    
+    /**
+     * Muestra al jugador quién es su amigo secreto asignado
+     */
+    public void mostrarAmigoSecreto(Player jugador) {
+        if (!eventoActivo) {
+            jugador.sendMessage("");
+            jugador.sendMessage("§c✦ El evento de Navidad no está activo.");
+            jugador.sendMessage("");
+            return;
+        }
+        
+        if (!amigoSecretoActivo) {
+            jugador.sendMessage("");
+            jugador.sendMessage("§c✦ El amigo secreto aún no ha iniciado.");
+            jugador.sendMessage("§7Espera a que se active el sorteo.");
+            jugador.sendMessage("");
+            return;
+        }
+        
+        UUID jugadorUUID = jugador.getUniqueId();
+        if (!asignacionesAmigoSecreto.containsKey(jugadorUUID)) {
+            jugador.sendMessage("");
+            jugador.sendMessage("§c✦ No estás participando en el amigo secreto.");
+            jugador.sendMessage("§7No estabas online cuando se hizo el sorteo.");
+            jugador.sendMessage("");
+            return;
+        }
+        
+        UUID receptorUUID = asignacionesAmigoSecreto.get(jugadorUUID);
+        Player receptor = Bukkit.getPlayer(receptorUUID);
+        String nombreReceptor = receptor != null ? receptor.getName() : Bukkit.getOfflinePlayer(receptorUUID).getName();
+        
+        int entregados = regalosEntregados.getOrDefault(jugadorUUID, 0);
+        int cantidadRequerida = config.getInt("amigo_secreto.regalos_requeridos", 2);
+        
+        jugador.sendMessage("");
+        jugador.sendMessage("§8§m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        jugador.sendMessage("§c§l🎄 TU AMIGO SECRETO 🎄");
+        jugador.sendMessage("§8§m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        jugador.sendMessage("");
+        jugador.sendMessage("§7Tu amigo secreto es: §e§l" + nombreReceptor);
+        jugador.sendMessage("");
+        jugador.sendMessage("§7Progreso: " + (entregados >= cantidadRequerida ? "§a✓" : "§e") + " " + entregados + "§7/§e" + cantidadRequerida + " regalos entregados");
+        
+        if (entregados < cantidadRequerida) {
+            int faltan = cantidadRequerida - entregados;
+            jugador.sendMessage("");
+            jugador.sendMessage("§cTe falta" + (faltan > 1 ? "n " + faltan + " regalos" : " 1 regalo"));
+            jugador.sendMessage("");
+            jugador.sendMessage("§e§l▸ CÓMO ENTREGAR:");
+            jugador.sendMessage("§71. §fAcércate a §e" + nombreReceptor);
+            jugador.sendMessage("§72. §fPon el regalo en tu §emano principal");
+            jugador.sendMessage("§73. §fEscribe: §a/avo navidad entregar");
+        } else {
+            jugador.sendMessage("");
+            jugador.sendMessage("§a✓ ¡Ya completaste el mínimo requerido!");
+            jugador.sendMessage("§7Pero puedes seguir dando si quieres...");
+        }
+        
+        jugador.sendMessage("");
+        
+        if (receptor != null && receptor.isOnline()) {
+            double distancia = jugador.getLocation().distance(receptor.getLocation());
+            jugador.sendMessage("§7Estado: §aOnline §8(distancia: §7" + String.format("%.1f", distancia) + " bloques§8)");
+        } else {
+            jugador.sendMessage("§7Estado: §cOffline");
+        }
+        
+        jugador.sendMessage("");
+        jugador.sendMessage("§8§m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        jugador.sendMessage("");
     }
     
     /**

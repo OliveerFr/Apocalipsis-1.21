@@ -60,21 +60,19 @@ public class CartasManager {
             meta.setDisplayName("§e§lCómo enviar tu carta");
             meta.setLore(Arrays.asList(
                 "",
-                "§71. Escribe un libro con tu carta",
-                "§72. Ponlo aquí en el menú",
+                "§71. Escribe y firma un libro",
+                "§72. Arrastra el libro al §eslot vacío",
                 "§73. Cierra el menú para enviar",
                 "",
-                "§c❤ §7Santa leerá todas las cartas"
+                "§c❤ §7Santa leerá todas las cartas",
+                "",
+                "§8(El slot vacío está a la izquierda)"
             ));
         });
         menu.setItem(13, info);
         
-        // Slot 11: Área para poner el libro
-        ItemStack slot = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
-        slot.editMeta(meta -> {
-            meta.setDisplayName("§7Pon tu carta aquí");
-        });
-        menu.setItem(11, slot);
+        // Slot 11: Área para poner el libro (dejar vacío para que puedan poner el libro)
+        // No poner nada aquí para que sea un slot vacío donde colocar el libro
         
         // Decoración
         ItemStack deco = new ItemStack(Material.RED_STAINED_GLASS_PANE);

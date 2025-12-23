@@ -2471,6 +2471,7 @@ public class ApocalipsisCommand implements CommandExecutor {
             sender.sendMessage("");
             sender.sendMessage("§e▸ Amigo Secreto:");
             sender.sendMessage("  §f/avo navidad amigo-secreto §7- Iniciar sorteo");
+            sender.sendMessage("  §f/avo navidad miamigo §7- Ver tu amigo secreto asignado");
             sender.sendMessage("  §f/avo navidad entregar [mensaje] §7- Dar a tu amigo secreto");
             sender.sendMessage("  §f/avo navidad regalar <jugador> [mensaje] §7- Dar a quien quieras");
             sender.sendMessage("    §8Ejemplo: /avo navidad entregar ¡Feliz Navidad!");
@@ -2814,6 +2815,22 @@ public class ApocalipsisCommand implements CommandExecutor {
                 sender.sendMessage("§7Se han asignado los amigos secretos aleatoriamente.");
                 sender.sendMessage("§7Cada jugador recibirá un mensaje privado con su asignación.");
                 plugin.getLogger().info(String.format("[Navidad] Amigo Secreto iniciado por %s", sender.getName()));
+                break;
+                
+            case "miamigo":
+            case "mi-amigo":
+            case "veramigo":
+                if (!(sender instanceof Player player)) {
+                    sender.sendMessage("§cSolo jugadores pueden ver su amigo secreto.");
+                    return;
+                }
+                
+                if (navidadEvent == null) {
+                    sender.sendMessage("§cEl evento Navidad no está activo.");
+                    return;
+                }
+                
+                navidadEvent.mostrarAmigoSecreto(player);
                 break;
                 
             case "entregar":

@@ -173,40 +173,26 @@ kit_inicio:
     - "give %player% minecraft:iron_leggings{Enchantments:[{id:\"minecraft:protection\",lvl:2},{id:\"minecraft:unbreaking\",lvl:3}]} 1"
     - "give %player% minecraft:iron_boots{Enchantments:[{id:\"minecraft:protection\",lvl:2},{id:\"minecraft:unbreaking\",lvl:3}]} 1"
     
-    # Herramientas de HIERRO ENCANTADAS
-    - "give %player% minecraft:iron_pickaxe{Enchantments:[{id:\"minecraft:efficiency\",lvl:3},{id:\"minecraft:unbreaking\",lvl:3}]} 1"
-    - "give %player% minecraft:iron_axe{Enchantments:[{id:\"minecraft:efficiency\",lvl:3},{id:\"minecraft:unbreaking\",lvl:3}]} 1"
-    - "give %player% minecraft:iron_sword{Enchantments:[{id:\"minecraft:sharpness\",lvl:2},{id:\"minecraft:unbreaking\",lvl:3}]} 1"
-    - "give %player% minecraft:iron_shovel{Enchantments:[{id:\"minecraft:efficiency\",lvl:3},{id:\"minecraft:unbreaking\",lvl:3}]} 1"
+    # Herramientas básicas para refugio
+    - "give %player% minecraft:iron_pickaxe{Enchantments:[{id:\"minecraft:efficiency\",lvl:2},{id:\"minecraft:unbreaking\",lvl:2}]} 1"
+    - "give %player% minecraft:iron_sword{Enchantments:[{id:\"minecraft:sharpness\",lvl:1},{id:\"minecraft:unbreaking\",lvl:2}]} 1"
     
-    # Supervivencia básica MEJORADA
-    - "give %player% minecraft:cooked_beef 32"
-    - "give %player% minecraft:bread 32"
-    - "give %player% minecraft:golden_apple 4"
-    - "give %player% minecraft:water_bucket 2"
-    - "give %player% minecraft:lava_bucket 1"
+    # Comida básica
+    - "give %player% minecraft:cooked_beef 16"
+    - "give %player% minecraft:golden_apple 2"
     
-    # Recursos de construcción
-    - "give %player% minecraft:oak_log 64"
-    - "give %player% minecraft:cobblestone 128"
-    - "give %player% minecraft:torch 64"
+    # Supervivencia contra desastres (AGUA ESENCIAL)
+    - "give %player% minecraft:water_bucket 3"
+    - "give %player% minecraft:ender_pearl 2"
     
-    # Items útiles
-    - "give %player% minecraft:bed 1"
-    - "give %player% minecraft:crafting_table 2"
-    - "give %player% minecraft:chest 4"
-    
-    # Materiales de construcción
-    - "give %player% minecraft:cobblestone 128"
-    - "give %player% minecraft:dirt 64"
+    # Refugio de emergencia
+    - "give %player% minecraft:cobblestone 64"
     - "give %player% minecraft:torch 32"
-    - "give %player% minecraft:oak_planks 64"
-    
-    # Extras
     - "give %player% minecraft:bed 1"
+    
+    # Básicos para crafteo
     - "give %player% minecraft:crafting_table 1"
-    - "give %player% minecraft:furnace 1"
-    - "give %player% minecraft:bucket 2"
+    - "give %player% minecraft:chest 1"
     
   mensaje_entrega:
     mostrar_titulo: true

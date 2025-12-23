@@ -180,7 +180,7 @@ public class AvoTabCompleter implements TabCompleter {
                 
                 case "navidad":
                     // Sugerir subcomandos de navidad
-                    return Arrays.asList("start", "stop", "status", "reset", "ambiente", "arbol", "santa", "regalos", "fragmentos", "cliffhanger", "amigo-secreto", "entregar", "regalar").stream()
+                    return Arrays.asList("start", "stop", "status", "reset", "ambiente", "arbol", "santa", "regalos", "fragmentos", "cliffhanger", "amigo-secreto", "miamigo", "entregar", "regalar").stream()
                         .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
                         .collect(Collectors.toList());
             }
