@@ -8,6 +8,8 @@ import org.bukkit.block.Block;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.*;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.BoundingBox;
 
@@ -61,6 +63,20 @@ public class NavidadEvent extends EventBase {
     // ═══════════════════════════════════════════════════════════════════
     
     private Set<UUID> jugadoresConRegalo = new HashSet<>();
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // SISTEMA DE AMIGO SECRETO
+    // ═══════════════════════════════════════════════════════════════════
+    
+    private boolean amigoSecretoActivo = false;
+    private Map<UUID, UUID> asignacionesAmigoSecreto = new HashMap<>();  // Quien da -> Quien recibe
+    private Map<UUID, Integer> regalosEntregados = new HashMap<>();      // Cuántos regalos ha entregado cada uno
+    private Map<UUID, Integer> regalosRecibidos = new HashMap<>();       // Cuántos regalos ha recibido cada uno
+    private Map<UUID, Double> valorTotalRegalos = new HashMap<>();       // Valor total de regalos dados
+    private Map<UUID, Integer> recompensasXPPendientes = new HashMap<>();    // XP pendiente por entregar al final
+    private Map<UUID, Integer> recompensasFragmentosPendientes = new HashMap<>(); // Fragmentos pendientes
+    private BukkitTask recordatorioTask;
+    private int contadorRecordatorios = 0;
     
     // ═══════════════════════════════════════════════════════════════════
     // SISTEMA DE FRAGMENTOS
@@ -310,12 +326,8 @@ public class NavidadEvent extends EventBase {
         // FASE 2: LA CALMA DESCIENDE (5-15 seg)
         // ═══════════════════════════════════════════════════════════════
         
-        // T=5s - Mensaje del Observador
+        // T=5s - Efectos visuales
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            messageBus.broadcast("", "navidad-fase2");
-            messageBus.broadcast("§8§o...Incluso los mundos rotos necesitan un respiro...", "navidad-fase2");
-            messageBus.broadcast("", "navidad-fase2");
-            
             for (Player player : Bukkit.getOnlinePlayers()) {
                 player.playSound(player.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_CHIME, 0.4f, 0.8f);
                 
@@ -357,12 +369,8 @@ public class NavidadEvent extends EventBase {
             }
         }, 160L); // 8 segundos
         
-        // T=12s - Mensaje poético
+        // T=12s - Efectos visuales
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            messageBus.broadcast("§7El mundo entra en un momento de calma.", "navidad-fase2b");
-            messageBus.broadcast("§7Las tormentas cesan. Los ecos descansan.", "navidad-fase2b");
-            messageBus.broadcast("§7Por ahora... solo paz.", "navidad-fase2b");
-            
             for (Player player : Bukkit.getOnlinePlayers()) {
                 player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME, 0.5f, 1.0f);
                 
@@ -406,18 +414,8 @@ public class NavidadEvent extends EventBase {
             }
         }, 320L); // 16 segundos
         
-        // T=20s - Mensaje del evento
+        // T=20s - Efectos de sonido
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            messageBus.broadcast("", "navidad-inicio");
-            messageBus.broadcast("§c§l✦ §f§lEVENTO NAVIDAD §c§l✦", "navidad-inicio");
-            messageBus.broadcast("", "navidad-inicio");
-            messageBus.broadcast("§7Un momento de paz desciende sobre el mundo.", "navidad-inicio");
-            messageBus.broadcast("§7No hay enemigos. No hay batallas. Solo calma.", "navidad-inicio");
-            messageBus.broadcast("", "navidad-inicio");
-            messageBus.broadcast("§7Reúnanse. Compartan. Descansen.", "navidad-inicio");
-            messageBus.broadcast("§7Los fragmentos de recuerdo esperan...", "navidad-inicio");
-            messageBus.broadcast("", "navidad-inicio");
-            
             for (Player player : Bukkit.getOnlinePlayers()) {
                 player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BELL, 1.0f, 1.0f);
             }
@@ -488,17 +486,17 @@ public class NavidadEvent extends EventBase {
     @Override
     public void onStop() {
         eventoActivo = false;
-        plugin.getLogger().info("[Navidad] Evento detenido");
+        plugin.getLogger().info("[Navidad] Evento detenido - Iniciando cinemática final");
         
-        // Mensaje global
-        String mensajeFin = config != null ?
-            config.getString("mensajes.fin", "§7El mundo vuelve a la normalidad.") :
-            "§7El mundo vuelve a la normalidad.";
+        // Entregar recompensas pendientes del amigo secreto ANTES de la cinemática
+        if (amigoSecretoActivo) {
+            entregarRecompensasPendientes();
+        }
         
-        messageBus.broadcast(mensajeFin, "navidad-fin");
+        // Iniciar cinemática final feliz ANTES de limpiar
+        iniciarCinematicaFinal();
         
-        // Limpiar todo
-        cleanup();
+        // Cleanup se ejecutará al final de la cinemática (después de 40 segundos)
     }
     
     @Override
@@ -1274,27 +1272,382 @@ public class NavidadEvent extends EventBase {
     // ═══════════════════════════════════════════════════════════════════
     
     private void iniciarObservador() {
-        if (config == null) return;
+        // Pensamientos del Observador desactivados
+        // El admin pondrá mensajes manualmente durante el evento
+        // Método mantenido para compatibilidad pero sin funcionalidad
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // CINEMÁTICA FINAL - Finalización feliz del evento
+    // ═══════════════════════════════════════════════════════════════════
+    
+    /**
+     * Cinemática final feliz del evento de Navidad
+     * Incluye efectos visuales, sonoros, mensajes emotivos y entrega de recompensas
+     * Duración: ~45 segundos (mejorado para más dinamismo)
+     */
+    private void iniciarCinematicaFinal() {
+        plugin.getLogger().info("[Navidad] Iniciando cinemática final feliz");
         
-        int intervaloMin = config.getInt("observador.intervalo_min_seg", 300);
-        double probabilidad = config.getDouble("observador.probabilidad", 0.3);
-        List<String> pensamientos = config.getStringList("observador.pensamientos");
+        // ═══════════════════════════════════════════════════════════════
+        // FASE 1: DESPEDIDA Y AGRADECIMIENTO (0-10s)
+        // ═══════════════════════════════════════════════════════════════
         
-        if (pensamientos.isEmpty()) return;
+        // T=0s - Anuncio inicial con efectos mejorados
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            player.sendTitle("§c§l✦ §f§lNAVIDAD §c§l✦", "§7Llega a su fin...", 10, 60, 20);
+            player.playSound(player.getLocation(), Sound.BLOCK_BELL_USE, 1.0f, 0.8f);
+            
+            Location loc = player.getLocation();
+            // Nieve suave cayendo + partículas festivas
+            loc.getWorld().spawnParticle(Particle.SNOWFLAKE, 
+                loc.clone().add(0, 5, 0), 80, 5, 3, 5, 0.05);
+            loc.getWorld().spawnParticle(Particle.HAPPY_VILLAGER,
+                loc.clone().add(0, 2, 0), 20, 3, 2, 3, 0);
+        }
         
-        observadorTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
-            if (!eventoActivo) return;
+        messageBus.broadcast("", "navidad-final");
+        messageBus.broadcast("§c§l✦ §f§lEL EVENTO DE NAVIDAD TERMINA §c§l✦", "navidad-final");
+        messageBus.broadcast("", "navidad-final");
+        
+        // T=3s - Mensaje emotivo con efectos de luz
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            messageBus.broadcast("§7La calma desciende una última vez...", "navidad-final-msg");
+            messageBus.broadcast("§7Los recuerdos permanecen. §e✦", "navidad-final-msg");
+            messageBus.broadcast("", "navidad-final-msg");
             
-            // Probabilidad de mostrar pensamiento
-            if (random.nextDouble() > probabilidad) return;
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                player.playSound(player.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_CHIME, 0.6f, 0.9f);
+                Location loc = player.getLocation();
+                // Luces doradas girando
+                for (int i = 0; i < 20; i++) {
+                    double angle = Math.toRadians(i * 18);
+                    double x = Math.cos(angle) * 3;
+                    double z = Math.sin(angle) * 3;
+                    loc.getWorld().spawnParticle(Particle.END_ROD,
+                        loc.clone().add(x, 2, z), 1, 0, 0, 0, 0.01);
+                }
+            }
+        }, 60L);
+        
+        // T=7s - Agradecimiento con fuegos artificiales
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            messageBus.broadcast("§e✦ §lGracias por participar en este momento de paz §e✦", "navidad-thanks");
+            messageBus.broadcast("§7Tu presencia hizo este evento especial", "navidad-thanks");
+            messageBus.broadcast("", "navidad-thanks");
             
-            // Seleccionar pensamiento aleatorio
-            String pensamiento = pensamientos.get(random.nextInt(pensamientos.size()));
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 0.5f, 1.2f);
+                Location loc = player.getLocation();
+                
+                // Explosión de felicidad
+                loc.getWorld().spawnParticle(Particle.HAPPY_VILLAGER,
+                    loc.clone().add(0, 2, 0), 50, 2, 1, 2, 0);
+                loc.getWorld().spawnParticle(Particle.FIREWORK,
+                    loc.clone().add(0, 3, 0), 30, 2, 1, 2, 0.15);
+            }
+        }, 140L);
+        
+        // ═══════════════════════════════════════════════════════════════
+        // FASE 2: ENTREGA DE RECOMPENSAS (10-30s) - MEJORADA
+        // ═══════════════════════════════════════════════════════════════
+        
+        // T=10s - Anuncio de recompensas con efectos épicos
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                player.sendTitle(
+                    "§6§l✦ RECOMPENSAS ✦",
+                    "§e¡Por tu participación!",
+                    10, 70, 20
+                );
+                player.playSound(player.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
+                
+                Location loc = player.getLocation();
+                // Explosión épica de partículas doradas
+                loc.getWorld().spawnParticle(Particle.END_ROD,
+                    loc.clone().add(0, 2, 0), 80, 3, 2, 3, 0.12);
+                loc.getWorld().spawnParticle(Particle.FIREWORK,
+                    loc.clone().add(0, 1, 0), 50, 2, 1, 2, 0.18);
+                loc.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING,
+                    loc.clone().add(0, 2, 0), 40, 2, 2, 2, 0.1);
+            }
             
-            // Broadcast sutil
-            messageBus.broadcast(pensamiento, "navidad-observador");
+            messageBus.broadcast("", "navidad-rewards");
+            messageBus.broadcast("§6§l✦ ENTREGANDO RECOMPENSAS NAVIDEÑAS ✦", "navidad-rewards");
+            messageBus.broadcast("§eHerramientas, armadura y materiales únicos...", "navidad-rewards");
+            messageBus.broadcast("", "navidad-rewards");
+        }, 200L); // 10 segundos
+        
+        // T=13s - Entregar recompensas a todos los jugadores
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            entregarRecompensasNavidad();
+        }, 260L); // 13 segundos
+        
+        // T=18s - Efectos de celebración intensificados
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            messageBus.broadcast("§a§l✦ §e¡Las recompensas han sido entregadas! §a§l✦", "navidad-claim");
+            messageBus.broadcast("§7Usa §e/recompensas §7para reclamarlas", "navidad-claim");
             
-        }, intervaloMin * 20L, intervaloMin * 20L);
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                Location loc = player.getLocation();
+                
+                // Secuencia de fuegos artificiales más dinámica
+                for (int i = 0; i < 12; i++) {
+                    int delay = i * 3;
+                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                        // Fuegos artificiales en círculo
+                        double angle = Math.toRadians(delay * 30);
+                        double x = Math.cos(angle) * 5;
+                        double z = Math.sin(angle) * 5;
+                        
+                        loc.getWorld().spawnParticle(Particle.FIREWORK,
+                            loc.clone().add(x, 5 + random.nextDouble() * 3, z), 
+                            20, 1, 1, 1, 0.2);
+                        
+                        // Variedad de sonidos festivos
+                        if (delay % 2 == 0) {
+                            player.playSound(loc, Sound.ENTITY_FIREWORK_ROCKET_BLAST, 0.7f, 1.0f + random.nextFloat() * 0.5f);
+                        } else {
+                            player.playSound(loc, Sound.ENTITY_FIREWORK_ROCKET_LARGE_BLAST, 0.6f, 1.2f);
+                        }
+                    }, delay);
+                }
+                
+                // Campanas celebratorias
+                player.playSound(loc, Sound.BLOCK_BELL_USE, 1.0f, 1.2f);
+            }
+        }, 360L); // 18 segundos
+        
+        // T=25s - Efectos adicionales de celebración
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                Location loc = player.getLocation();
+                
+                // Espiral ascendente de partículas de colores
+                for (int i = 0; i < 30; i++) {
+                    int delay = i * 2;
+                    double height = i * 0.3;
+                    double radius = 2 - (i * 0.05);
+                    
+                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                        double angle = Math.toRadians(delay * 20);
+                        double x = Math.cos(angle) * radius;
+                        double z = Math.sin(angle) * radius;
+                        
+                        loc.getWorld().spawnParticle(Particle.HAPPY_VILLAGER,
+                            loc.clone().add(x, height, z), 3, 0.1, 0.1, 0.1, 0);
+                        loc.getWorld().spawnParticle(Particle.END_ROD,
+                            loc.clone().add(x, height, z), 2, 0.05, 0.05, 0.05, 0.01);
+                    }, delay);
+                }
+            }
+        }, 500L); // 25 segundos
+        
+        // ═══════════════════════════════════════════════════════════════
+        // FASE 3: CELEBRACIÓN Y MENSAJE FINAL (30-45s) - MÁS DINÁMICA
+        // ═══════════════════════════════════════════════════════════════
+        
+        // T=30s - Mensaje final emotivo
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            messageBus.broadcast("", "navidad-final2");
+            messageBus.broadcast("§7El invierno seguirá su curso...", "navidad-final2");
+            messageBus.broadcast("§7Pero los recuerdos de esta Navidad permanecerán.", "navidad-final2");
+            messageBus.broadcast("§7Las herramientas y armadura te acompañarán en tu aventura.", "navidad-final2");
+            messageBus.broadcast("", "navidad-final2");
+            
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME, 1.0f, 1.0f);
+            }
+        }, 600L); // 30 segundos
+        
+        // T=35s - Título final FELIZ con efectos épicos
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            messageBus.broadcast("§c§l🎄 §e§l¡FELIZ NAVIDAD A TODOS! §c§l🎄", "navidad-feliz");
+            messageBus.broadcast("§6¡Nos vemos en el próximo evento!", "navidad-feliz");
+            messageBus.broadcast("", "navidad-feliz");
+            
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                player.sendTitle(
+                    "§c§l🎄 §f§lFELIZ NAVIDAD §c§l🎄",
+                    "§e¡Gracias por participar!",
+                    10, 80, 20
+                );
+                
+                Location loc = player.getLocation();
+                
+                // EXPLOSIÓN FINAL ÉPICA de partículas navideñas
+                loc.getWorld().spawnParticle(Particle.SNOWFLAKE,
+                    loc.clone().add(0, 3, 0), 150, 4, 3, 4, 0.1);
+                loc.getWorld().spawnParticle(Particle.END_ROD,
+                    loc.clone().add(0, 2, 0), 80, 3, 2, 3, 0.1);
+                loc.getWorld().spawnParticle(Particle.FIREWORK,
+                    loc.clone().add(0, 1, 0), 60, 3, 2, 3, 0.2);
+                loc.getWorld().spawnParticle(Particle.HAPPY_VILLAGER,
+                    loc.clone().add(0, 1, 0), 50, 2, 1, 2, 0);
+                loc.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING,
+                    loc.clone().add(0, 2, 0), 40, 2, 2, 2, 0.05);
+                
+                // Sonidos finales festivos ÉPICOS
+                player.playSound(loc, Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.5f);
+                player.playSound(loc, Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 2.0f);
+                player.playSound(loc, Sound.BLOCK_BELL_USE, 1.0f, 1.0f);
+                player.playSound(loc, Sound.ENTITY_FIREWORK_ROCKET_LARGE_BLAST, 0.8f, 1.2f);
+                
+                // Secuencia de notas musicales navideñas mejorada
+                float[] notas = {1.0f, 1.2f, 1.5f, 1.8f, 2.0f};
+                for (int i = 0; i < notas.length; i++) {
+                    int delay = i * 5;
+                    float nota = notas[i];
+                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                        player.playSound(loc, Sound.BLOCK_NOTE_BLOCK_BELL, 0.8f, nota);
+                        player.playSound(loc, Sound.BLOCK_NOTE_BLOCK_CHIME, 0.6f, nota);
+                    }, delay);
+                }
+            }
+        }, 700L); // 35 segundos
+        
+        // T=40s - Efectos finales continuados
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                Location loc = player.getLocation();
+                
+                // Lluvia de estrellas final
+                for (int i = 0; i < 20; i++) {
+                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                        loc.getWorld().spawnParticle(Particle.END_ROD,
+                            loc.clone().add(
+                                random.nextDouble() * 8 - 4,
+                                8,
+                                random.nextDouble() * 8 - 4
+                            ), 1, 0, -2, 0, 0.1);
+                    }, i * 2L);
+                }
+            }
+        }, 800L); // 40 segundos
+        
+        // T=45s - Cleanup final y mensaje de despedida
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            String mensajeFin = config != null ?
+                config.getString("mensajes.fin", "§7El mundo vuelve a la normalidad.") :
+                "§7El mundo vuelve a la normalidad.";
+            
+            messageBus.broadcast(mensajeFin, "navidad-fin");
+            messageBus.broadcast("§7¡Que las recompensas te acompañen en tu aventura!", "navidad-fin");
+            messageBus.broadcast("", "navidad-fin");
+            
+            // Limpiar todo después de la cinemática
+            cleanup();
+            
+            plugin.getLogger().info("[Navidad] Cinemática final completada - Evento finalizado");
+        }, 900L); // 45 segundos
+    }
+    
+    /**
+     * Entrega las recompensas navideñas a todos los jugadores online
+     * usando el sistema RewardClaimSystem
+     * Incluye: Herramientas únicas, Armadura de Santa, Materiales y XP de Rango
+     */
+    private void entregarRecompensasNavidad() {
+        plugin.getLogger().info("[Navidad] Entregando recompensas navideñas a jugadores");
+        
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            try {
+                // ═══════════════════════════════════════════════════════════
+                // XP DE RANGO - 1000 XP (aumentado de 500)
+                // ═══════════════════════════════════════════════════════════
+                if (plugin.getExperienceService() != null) {
+                    plugin.getExperienceService().addXP(player, 1000, "evento_navidad", false);
+                    player.sendMessage("§a§l✦ §e+1000 XP de Rango recibidos");
+                }
+                
+                // ═══════════════════════════════════════════════════════════
+                // RECOMPENSAS TEMÁTICAS - Herramientas y Armadura
+                // ═══════════════════════════════════════════════════════════
+                if (plugin.getRewardClaimSystem() != null) {
+                    // Obtener todas las recompensas temáticas desde NavidadRewards
+                    List<org.bukkit.inventory.ItemStack> allRewards = NavidadRewards.obtenerTodasLasRecompensas();
+                    
+                    // Añadir paquete de recompensas al sistema
+                    plugin.getRewardClaimSystem().addRewards(
+                        player.getUniqueId(),
+                        "navidad",
+                        "§c§l✦ Recompensas Navideñas §c§l✦",
+                        allRewards,
+                        60, // 60 minutos = 1 hora para reclamar
+                        "SPECIAL",
+                        0
+                    );
+                    
+                    // Mensaje detallado de recompensas
+                    player.sendMessage("");
+                    player.sendMessage("§8§m═══════════════════════════════════════════");
+                    player.sendMessage("");
+                    player.sendMessage("     §c§l🎄 §f§lRECOMPENSAS NAVIDEÑAS §c§l🎄");
+                    player.sendMessage("");
+                    player.sendMessage("§7Has recibido recompensas especiales:");
+                    player.sendMessage("");
+                    player.sendMessage("§b§l⚒ HERRAMIENTAS DEL INVIERNO:");
+                    player.sendMessage("  §8▪ §b❄ Pico de Escarcha §7(Eficiencia V, Fortuna III)");
+                    player.sendMessage("  §8▪ §c🎄 Hacha de Santa §7(Eficiencia V, Filo V)");
+                    player.sendMessage("  §8▪ §6⭐ Pala del Regalo §7(Eficiencia V, Fortuna III)");
+                    player.sendMessage("  §8▪ §f❄ Espada del Invierno Eterno §7(Filo V)");
+                    player.sendMessage("");
+                    player.sendMessage("§c§l⚔ ARMADURA DE SANTA:");
+                    player.sendMessage("  §8▪ §c🎅 Gorro de Santa §7(Protección IV)");
+                    player.sendMessage("  §8▪ §c🎁 Traje de Santa §7(Protección IV, Espinas III)");
+                    player.sendMessage("  §8▪ §c🎄 Pantalones de Santa §7(Protección IV)");
+                    player.sendMessage("  §8▪ §c❄ Botas de Santa §7(Protección IV, Caída IV)");
+                    player.sendMessage("");
+                    player.sendMessage("§e§l💎 MATERIALES ÚTILES:");
+                    player.sendMessage("  §8▪ §b16 Diamantes, 12 Esmeraldas, 1 Netherite");
+                    player.sendMessage("  §8▪ §610 Manzanas Doradas, 3 Manzanas Encantadas");
+                    player.sendMessage("  §8▪ §d2 Tótems de Inmortalidad");
+                    player.sendMessage("  §8▪ §f32 Perlas de Ender, 32 Botellas de XP");
+                    player.sendMessage("  §8▪ §7Bloques decorativos y comida temática");
+                    player.sendMessage("");
+                    player.sendMessage("§7Reclama tus recompensas con §e/recompensas");
+                    player.sendMessage("§7§oTienes §e1 hora §7§opara reclamarlas");
+                    player.sendMessage("");
+                    player.sendMessage("§a§l✦ §eÚsalas sabiamente en el próximo evento");
+                    player.sendMessage("");
+                    player.sendMessage("§8§m═══════════════════════════════════════════");
+                    player.sendMessage("");
+                }
+                
+                // ═══════════════════════════════════════════════════════════
+                // EFECTOS VISUALES Y SONOROS
+                // ═══════════════════════════════════════════════════════════
+                Location loc = player.getLocation();
+                
+                // Partículas celebratorias intensas
+                loc.getWorld().spawnParticle(Particle.FIREWORK,
+                    loc.clone().add(0, 1, 0), 50, 2, 2, 2, 0.2);
+                loc.getWorld().spawnParticle(Particle.HAPPY_VILLAGER,
+                    loc.clone().add(0, 2, 0), 40, 1, 1, 1, 0);
+                loc.getWorld().spawnParticle(Particle.END_ROD,
+                    loc.clone().add(0, 2, 0), 30, 1.5, 1.5, 1.5, 0.1);
+                loc.getWorld().spawnParticle(Particle.SNOWFLAKE,
+                    loc.clone().add(0, 3, 0), 60, 2, 2, 2, 0.05);
+                
+                // Sonidos festivos
+                player.playSound(loc, Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
+                player.playSound(loc, Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.2f);
+                player.playSound(loc, Sound.BLOCK_BELL_USE, 0.8f, 1.5f);
+                
+                // Título en pantalla
+                player.sendTitle(
+                    "§c§l🎁 §f§lRECOMPENSAS §c§l🎁",
+                    "§eRecibidas exitosamente",
+                    10, 60, 20
+                );
+                
+            } catch (Exception e) {
+                plugin.getLogger().severe("[Navidad] Error entregando recompensas a " + player.getName() + ": " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
+        
+        plugin.getLogger().info("[Navidad] Recompensas entregadas a " + Bukkit.getOnlinePlayers().size() + " jugadores");
     }
     
     // ═══════════════════════════════════════════════════════════════════
@@ -1444,4 +1797,615 @@ public class NavidadEvent extends EventBase {
     public boolean isSantaSpawneado() {
         return santaPlayer != null && santaPlayer.isOnline();
     }
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // SISTEMA DE AMIGO SECRETO - Intercambio de Regalos
+    // ═══════════════════════════════════════════════════════════════════
+    
+    /**
+     * Inicia el sorteo de amigo secreto
+     * Asigna a cada jugador online otro jugador aleatorio para darle regalos
+     */
+    public void iniciarAmigoSecreto() {
+        if (amigoSecretoActivo) {
+            plugin.getLogger().warning("[Navidad] El amigo secreto ya está activo");
+            return;
+        }
+        
+        List<Player> jugadores = new ArrayList<>(Bukkit.getOnlinePlayers());
+        
+        // Verificar mínimo de jugadores
+        int minJugadores = config != null ? config.getInt("amigo_secreto.jugadores_minimos", 2) : 2;
+        if (jugadores.size() < minJugadores) {
+            messageBus.broadcast("§c✦ Se necesitan al menos " + minJugadores + " jugadores para el amigo secreto.", "navidad-amigo-secreto");
+            return;
+        }
+        
+        // Limpiar datos anteriores
+        asignacionesAmigoSecreto.clear();
+        regalosEntregados.clear();
+        regalosRecibidos.clear();
+        contadorRecordatorios = 0;
+        
+        // Crear lista de receptores (shuffle)
+        List<Player> receptores = new ArrayList<>(jugadores);
+        Collections.shuffle(receptores);
+        
+        // Asignar cada jugador a otro (asegurando que nadie se tenga a sí mismo)
+        for (int i = 0; i < jugadores.size(); i++) {
+            Player dador = jugadores.get(i);
+            Player receptor = receptores.get(i);
+            
+            // Si alguien se asignó a sí mismo, intercambiar con el siguiente
+            if (dador.equals(receptor)) {
+                int nextIndex = (i + 1) % jugadores.size();
+                Player temp = receptores.get(nextIndex);
+                receptores.set(nextIndex, receptor);
+                receptor = temp;
+            }
+            
+            asignacionesAmigoSecreto.put(dador.getUniqueId(), receptor.getUniqueId());
+            regalosEntregados.put(dador.getUniqueId(), 0);
+            regalosRecibidos.put(receptor.getUniqueId(), 0);
+        }
+        
+        amigoSecretoActivo = true;
+        
+        // Anuncio público
+        String mensajeSorteo = config != null ? 
+            config.getString("amigo_secreto.mensajes.sorteo_iniciado", "§c§l🎄 AMIGO SECRETO NAVIDEÑO §c§l🎄") : 
+            "§c§l🎄 AMIGO SECRETO NAVIDEÑO §c§l🎄";
+        String mensajeDesc = config != null ?
+            config.getString("amigo_secreto.mensajes.sorteo_descripcion", "§7Se ha realizado el sorteo. ¡Revisa tu chat!") :
+            "§7Se ha realizado el sorteo. ¡Revisa tu chat!";
+            
+        messageBus.broadcast("", "navidad-sorteo");
+        messageBus.broadcast(mensajeSorteo, "navidad-sorteo");
+        messageBus.broadcast(mensajeDesc, "navidad-sorteo");
+        messageBus.broadcast("", "navidad-sorteo");
+        
+        // Notificación privada a cada jugador
+        int cantidadRegalos = config != null ? config.getInt("amigo_secreto.regalos_requeridos", 2) : 2;
+        
+        for (Player dador : jugadores) {
+            UUID receptorUUID = asignacionesAmigoSecreto.get(dador.getUniqueId());
+            Player receptor = Bukkit.getPlayer(receptorUUID);
+            
+            if (receptor != null) {
+                String mensajePrivado = config != null ?
+                    config.getString("amigo_secreto.mensajes.asignacion_privada", "")
+                        .replace("{jugador}", receptor.getName())
+                        .replace("{cantidad}", String.valueOf(cantidadRegalos)) :
+                    "§c§lTu amigo secreto es: §e§l" + receptor.getName();
+                
+                dador.sendMessage("");
+                dador.sendMessage(mensajePrivado);
+                dador.sendMessage("");
+                
+                // Instrucciones claras
+                dador.sendMessage("§e§l▸ INSTRUCCIONES:");
+                dador.sendMessage("§71. §fAcércate a §e" + receptor.getName());
+                dador.sendMessage("§72. §fPon el item en tu §emano principal");
+                dador.sendMessage("§73. §fUsa: §a/avo navidad entregar");
+                dador.sendMessage("");
+                
+                // Efectos
+                dador.playSound(dador.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.5f);
+                dador.playSound(dador.getLocation(), Sound.BLOCK_NOTE_BLOCK_BELL, 0.8f, 1.2f);
+                
+                Location loc = dador.getLocation();
+                loc.getWorld().spawnParticle(Particle.HEART, loc.clone().add(0, 2, 0), 10, 0.5, 0.5, 0.5, 0);
+            }
+        }
+        
+        // Iniciar recordatorios
+        iniciarRecordatorios();
+        
+        plugin.getLogger().info("[Navidad] Amigo secreto iniciado con " + jugadores.size() + " participantes");
+    }
+    
+    /**
+     * Sistema de recordatorios para entregar regalos
+     */
+    private void iniciarRecordatorios() {
+        if (!config.getBoolean("amigo_secreto.recordatorios.enabled", true)) return;
+        
+        int intervaloMin = config.getInt("amigo_secreto.recordatorios.intervalo_minutos", 10);
+        int maxRecordatorios = config.getInt("amigo_secreto.recordatorios.max_recordatorios", 3);
+        
+        recordatorioTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            if (!amigoSecretoActivo || contadorRecordatorios >= maxRecordatorios) {
+                if (recordatorioTask != null) recordatorioTask.cancel();
+                return;
+            }
+            
+            int cantidadRequerida = config.getInt("amigo_secreto.regalos_requeridos", 2);
+            
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                UUID uuid = player.getUniqueId();
+                if (!asignacionesAmigoSecreto.containsKey(uuid)) continue;
+                
+                int entregados = regalosEntregados.getOrDefault(uuid, 0);
+                if (entregados >= cantidadRequerida) continue; // Ya completó
+                
+                UUID receptorUUID = asignacionesAmigoSecreto.get(uuid);
+                Player receptor = Bukkit.getPlayer(receptorUUID);
+                
+                if (receptor != null) {
+                    // Mensaje más cálido del config
+                    String recordatorio = config.getString("amigo_secreto.mensajes.recordatorio", 
+                        "§e§l✦ Recordatorio Navideño ✦\n\nTu amigo secreto aún espera tu gesto.\nNo olvides compartir un poco de ti.");
+                    
+                    player.sendMessage("");
+                    player.sendMessage(recordatorio);
+                    player.sendMessage("");
+                    player.sendMessage("§7(Comando: §a/avo navidad entregar§7)");
+                    player.sendMessage("");
+                    player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME, 0.5f, 1.0f);
+                }
+            }
+            
+            contadorRecordatorios++;
+        }, intervaloMin * 60 * 20L, intervaloMin * 60 * 20L);
+    }
+    
+    /**
+     * Regala un item a cualquier jugador (no necesariamente el amigo secreto)
+     * Generosidad extra voluntaria
+     */
+    public void regalarAJugador(Player dador, Player receptor, String mensajePersonal) {
+        if (!eventoActivo) {
+            dador.sendMessage("§c✦ El evento de Navidad no está activo.");
+            return;
+        }
+        
+        if (dador.equals(receptor)) {
+            dador.sendMessage("§c✦ No puedes regalarte a ti mismo.");
+            return;
+        }
+        
+        // Verificar distancia (deben estar cerca)
+        if (dador.getLocation().distance(receptor.getLocation()) > 10) {
+            dador.sendMessage("§c✦ Debes estar cerca de §e" + receptor.getName() + " §cpara entregarle el regalo.");
+            return;
+        }
+        
+        // Obtener item de la mano del jugador
+        ItemStack regalo = dador.getInventory().getItemInMainHand();
+        if (regalo == null || regalo.getType() == Material.AIR) {
+            dador.sendMessage("§c✦ Debes tener un item en tu mano principal.");
+            dador.sendMessage("§7Pon el regalo que quieres dar en tu mano.");
+            return;
+        }
+        
+        // Clonar el item para el receptor
+        ItemStack regaloClonado = regalo.clone();
+        
+        // Calcular valor del regalo (suma al total si amigo secreto está activo)
+        double valorRegalo = calcularValorItem(regalo);
+        
+        // Remover item de la mano del dador
+        dador.getInventory().setItemInMainHand(null);
+        
+        // Dar el regalo al receptor
+        receptor.getInventory().addItem(regaloClonado);
+        
+        // Si el amigo secreto está activo, sumar al valor total
+        UUID dadorUUID = dador.getUniqueId();
+        if (amigoSecretoActivo) {
+            double valorTotal = valorTotalRegalos.getOrDefault(dadorUUID, 0.0) + valorRegalo;
+            valorTotalRegalos.put(dadorUUID, valorTotal);
+            
+            // Actualizar recompensas pendientes
+            double multiplicador = calcularMultiplicadorRecompensa(valorTotal);
+            int xpBase = config.getInt("amigo_secreto.recompensas.base.xp", 150);
+            int fragmentosBase = config.getInt("amigo_secreto.recompensas.base.fragmentos", 2);
+            
+            int xpFinal = (int)(xpBase * multiplicador);
+            int fragmentosFinal = (int)(fragmentosBase * multiplicador);
+            
+            recompensasXPPendientes.put(dadorUUID, xpFinal);
+            recompensasFragmentosPendientes.put(dadorUUID, fragmentosFinal);
+        }
+        
+        // Mensajes discretos
+        String itemName = regalo.hasItemMeta() && regalo.getItemMeta().hasDisplayName() 
+            ? regalo.getItemMeta().getDisplayName() 
+            : "§f" + regalo.getType().name().toLowerCase().replace("_", " ");
+        
+        dador.sendMessage("");
+        dador.sendMessage("§a§l✦ Regalo Entregado ✦");
+        dador.sendMessage("");
+        dador.sendMessage("§7Has compartido tu regalo con §e" + receptor.getName());
+        dador.sendMessage("§7Un gesto de generosidad voluntaria.");
+        dador.sendMessage("");
+        
+        receptor.sendMessage("");
+        receptor.sendMessage("§d§l✦ ¡Has recibido un regalo! ✦");
+        receptor.sendMessage("");
+        if (mensajePersonal != null && !mensajePersonal.trim().isEmpty()) {
+            receptor.sendMessage("§e" + dador.getName() + " §7te ha dado:");
+            receptor.sendMessage("§7" + itemName);
+            receptor.sendMessage("§8Mensaje: §f\"" + mensajePersonal + "\"");
+        } else {
+            receptor.sendMessage("§e" + dador.getName() + " §7te ha dado:");
+            receptor.sendMessage("§7" + itemName);
+        }
+        receptor.sendMessage("");
+        receptor.sendMessage("§c❤ §7Qué gesto tan hermoso");
+        receptor.sendMessage("");
+        
+        // Efectos visuales
+        Location locDador = dador.getLocation();
+        Location locReceptor = receptor.getLocation();
+        
+        locDador.getWorld().spawnParticle(Particle.HEART, locDador.clone().add(0, 2, 0), 15, 0.5, 0.5, 0.5, 0);
+        locReceptor.getWorld().spawnParticle(Particle.HAPPY_VILLAGER, locReceptor.clone().add(0, 2, 0), 20, 0.5, 0.5, 0.5, 0);
+        
+        dador.playSound(locDador, Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.2f);
+        receptor.playSound(locReceptor, Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.5f);
+        
+        plugin.getLogger().info("[Navidad] " + dador.getName() + " regaló a " + receptor.getName() + " (voluntario)");
+    }
+    
+    /**
+     * Entrega un regalo al amigo secreto asignado
+     */
+    public void entregarRegaloAmigoSecreto(Player dador) {
+        entregarRegaloAmigoSecreto(dador, null);
+    }
+    
+    /**
+     * Entrega un regalo al amigo secreto asignado con mensaje opcional
+     */
+    public void entregarRegaloAmigoSecreto(Player dador, String mensajePersonal) {
+        if (!amigoSecretoActivo) {
+            dador.sendMessage("§c✦ El amigo secreto no está activo.");
+            return;
+        }
+        
+        UUID dadorUUID = dador.getUniqueId();
+        if (!asignacionesAmigoSecreto.containsKey(dadorUUID)) {
+            dador.sendMessage("§c✦ No estás participando en el amigo secreto.");
+            return;
+        }
+        
+        int cantidadRequerida = config.getInt("amigo_secreto.regalos_requeridos", 2);
+        int entregados = regalosEntregados.getOrDefault(dadorUUID, 0);
+        
+        // Permitir dar más de lo requerido (generosidad extra)
+        // No hay límite, solo informar si ya cumplieron el mínimo
+        if (entregados >= cantidadRequerida) {
+            dador.sendMessage("§e✦ Ya completaste el mínimo requerido.");
+            dador.sendMessage("§7Pero puedes seguir dando si tu corazón lo desea...");
+            dador.sendMessage("");
+        }
+        
+        UUID receptorUUID = asignacionesAmigoSecreto.get(dadorUUID);
+        Player receptor = Bukkit.getPlayer(receptorUUID);
+        
+        if (receptor == null || !receptor.isOnline()) {
+            dador.sendMessage("§c✦ Tu amigo secreto no está online.");
+            return;
+        }
+        
+        // Verificar distancia (deben estar cerca)
+        if (dador.getLocation().distance(receptor.getLocation()) > 10) {
+            dador.sendMessage("§c✦ Debes estar cerca de §e" + receptor.getName() + " §cpara entregarle el regalo.");
+            return;
+        }
+        
+        // Obtener item de la mano del jugador
+        ItemStack regalo = dador.getInventory().getItemInMainHand();
+        if (regalo == null || regalo.getType() == Material.AIR) {
+            dador.sendMessage("§c✦ Debes tener un item en tu mano principal.");
+            dador.sendMessage("§7Pon el regalo que quieres dar en tu mano.");
+            return;
+        }
+        
+        // Clonar el item para el receptor
+        ItemStack regaloClonado = regalo.clone();
+        
+        // Calcular valor del regalo
+        double valorRegalo = calcularValorItem(regalo);
+        
+        // Remover item de la mano del dador
+        dador.getInventory().setItemInMainHand(null);
+        
+        // Dar el regalo al receptor
+        receptor.getInventory().addItem(regaloClonado);
+        
+        // Actualizar contadores
+        entregados++;
+        regalosEntregados.put(dadorUUID, entregados);
+        int recibidos = regalosRecibidos.getOrDefault(receptorUUID, 0) + 1;
+        regalosRecibidos.put(receptorUUID, recibidos);
+        
+        // Actualizar valor total (silenciosamente)
+        double valorTotal = valorTotalRegalos.getOrDefault(dadorUUID, 0.0) + valorRegalo;
+        valorTotalRegalos.put(dadorUUID, valorTotal);
+        
+        // Mensajes discretos sin mostrar valores
+        String itemName = regalo.hasItemMeta() && regalo.getItemMeta().hasDisplayName() 
+            ? regalo.getItemMeta().getDisplayName() 
+            : "§f" + regalo.getType().name().toLowerCase().replace("_", " ");
+        
+        dador.sendMessage("");
+        dador.sendMessage("§a§l✦ Regalo Entregado ✦");
+        dador.sendMessage("");
+        dador.sendMessage("§7Has entregado tu regalo con el corazón.");
+        dador.sendMessage("§e" + receptor.getName() + " §7lo apreciará mucho.");
+        if (entregados < cantidadRequerida) {
+            int faltan = cantidadRequerida - entregados;
+            dador.sendMessage("");
+            dador.sendMessage("§7Aún te falta" + (faltan > 1 ? "n §c" + faltan + " regalos" : " §c1 regalo") + "§7.");
+        } else if (entregados == cantidadRequerida) {
+            dador.sendMessage("");
+            dador.sendMessage("§a✓ Has completado tu intercambio.");
+            dador.sendMessage("§7Santa te recompensará al finalizar el evento.");
+        }
+        dador.sendMessage("");
+        
+        receptor.sendMessage("");
+        receptor.sendMessage("§d§l✦ ¡Has recibido un regalo! ✦");
+        receptor.sendMessage("");
+        if (mensajePersonal != null && !mensajePersonal.trim().isEmpty()) {
+            receptor.sendMessage("§7" + itemName);
+            receptor.sendMessage("§8Mensaje: §f\"" + mensajePersonal + "\"");
+        } else {
+            receptor.sendMessage("§7Alguien te ha dado: " + itemName);
+        }
+        receptor.sendMessage("");
+        receptor.sendMessage("§c❤ §7Qué gesto tan hermoso");
+        receptor.sendMessage("");
+        
+        // Efectos visuales
+        Location locDador = dador.getLocation();
+        Location locReceptor = receptor.getLocation();
+        
+        locDador.getWorld().spawnParticle(Particle.HEART, locDador.clone().add(0, 2, 0), 15, 0.5, 0.5, 0.5, 0);
+        locReceptor.getWorld().spawnParticle(Particle.HAPPY_VILLAGER, locReceptor.clone().add(0, 2, 0), 20, 0.5, 0.5, 0.5, 0);
+        
+        dador.playSound(locDador, Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.2f);
+        receptor.playSound(locReceptor, Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.5f);
+        
+        // Actualizar recompensas pendientes para el final
+        double multiplicador = calcularMultiplicadorRecompensa(valorTotal);
+        int xpBase = config.getInt("amigo_secreto.recompensas.base.xp", 150);
+        int fragmentosBase = config.getInt("amigo_secreto.recompensas.base.fragmentos", 2);
+        
+        int xpFinal = (int)(xpBase * multiplicador);
+        int fragmentosFinal = (int)(fragmentosBase * multiplicador);
+        
+        // Guardar para entregar al final del evento
+        recompensasXPPendientes.put(dadorUUID, xpFinal);
+        recompensasFragmentosPendientes.put(dadorUUID, fragmentosFinal);
+        
+        // Si completó el mínimo requerido, verificar completación global
+        if (entregados == cantidadRequerida) {
+            verificarCompletacionTotal();
+        }
+        
+        plugin.getLogger().info("[Navidad] " + dador.getName() + " entregó regalo " + entregados + "/" + cantidadRequerida + " a " + receptor.getName());
+    }
+    
+    /**
+     * Calcula el valor de un item para el sistema de regalos
+     */
+    private double calcularValorItem(ItemStack item) {
+        if (item == null || item.getType() == Material.AIR) return 0.0;
+        
+        Material material = item.getType();
+        int cantidad = item.getAmount();
+        double valorUnitario = 1.0;
+        
+        // Obtener valores desde config o usar defaults
+        ConfigurationSection valoresConfig = config.getConfigurationSection("amigo_secreto.valores_items");
+        
+        // Materiales preciosos
+        if (material == Material.NETHERITE_INGOT) valorUnitario = 100.0;
+        else if (material == Material.DIAMOND) valorUnitario = 50.0;
+        else if (material == Material.EMERALD) valorUnitario = 40.0;
+        else if (material == Material.GOLD_INGOT) valorUnitario = 25.0;
+        else if (material == Material.IRON_INGOT) valorUnitario = 10.0;
+        
+        // Items encantados tienen bonus
+        else if (material.name().contains("DIAMOND_") && material.name().contains("_")) valorUnitario = 45.0;
+        else if (material.name().contains("NETHERITE_") && material.name().contains("_")) valorUnitario = 95.0;
+        else if (material.name().contains("GOLDEN_")) valorUnitario = 20.0;
+        else if (material.name().contains("IRON_")) valorUnitario = 8.0;
+        
+        // Bloques especiales
+        else if (material == Material.BEACON) valorUnitario = 200.0;
+        else if (material == Material.ANCIENT_DEBRIS) valorUnitario = 150.0;
+        else if (material == Material.NETHERITE_BLOCK) valorUnitario = 900.0;
+        else if (material == Material.DIAMOND_BLOCK) valorUnitario = 450.0;
+        else if (material == Material.EMERALD_BLOCK) valorUnitario = 360.0;
+        else if (material == Material.GOLD_BLOCK) valorUnitario = 225.0;
+        
+        // Comida valiosa
+        else if (material == Material.GOLDEN_APPLE) valorUnitario = 30.0;
+        else if (material == Material.ENCHANTED_GOLDEN_APPLE) valorUnitario = 100.0;
+        
+        // Pociones y experiencia
+        else if (material == Material.EXPERIENCE_BOTTLE) valorUnitario = 15.0;
+        else if (material.name().contains("POTION")) valorUnitario = 12.0;
+        
+        // Items comunes
+        else if (material.name().contains("_SWORD") || material.name().contains("_AXE") 
+                || material.name().contains("_PICKAXE") || material.name().contains("_SHOVEL")) valorUnitario = 5.0;
+        else if (material.isEdible()) valorUnitario = 2.0;
+        
+        // Bonus por encantamientos
+        if (item.hasItemMeta() && item.getItemMeta().hasEnchants()) {
+            int nivelEncantamientos = item.getItemMeta().getEnchants().values().stream()
+                .mapToInt(Integer::intValue).sum();
+            valorUnitario *= (1.0 + (nivelEncantamientos * 0.2));
+        }
+        
+        // Aplicar cantidad
+        return valorUnitario * cantidad;
+    }
+    
+    /**
+     * Obtiene la categoría del regalo basado en su valor
+     */
+    private String obtenerCategoriaRegalo(double valor) {
+        if (valor >= 100.0) return "§6§l✦✦✦ LEGENDARIO";
+        if (valor >= 50.0) return "§5§l✦✦ ÉPICO";
+        if (valor >= 20.0) return "§b§l✦ RARO";
+        if (valor >= 5.0) return "§a§l✦ POCO COMÚN";
+        return "§f✦ COMÚN";
+    }
+    
+    /**
+     * Calcula el multiplicador de recompensa según valor total
+     */
+    private double calcularMultiplicadorRecompensa(double valorTotal) {
+        if (valorTotal >= 200.0) return 3.0;  // x3 recompensas
+        if (valorTotal >= 100.0) return 2.5;  // x2.5
+        if (valorTotal >= 50.0) return 2.0;   // x2
+        if (valorTotal >= 20.0) return 1.5;   // x1.5
+        if (valorTotal >= 10.0) return 1.2;   // x1.2
+        return 1.0;                           // x1 (base)
+    }
+    
+    /**
+     * Obtiene el tier de recompensa según valor total
+     */
+    private String obtenerTierRecompensa(double valorTotal) {
+        if (valorTotal >= 200.0) return "§6§l✦✦✦ BENEFACTOR LEGENDARIO";
+        if (valorTotal >= 100.0) return "§5§l✦✦ GENEROSO ÉPICO";
+        if (valorTotal >= 50.0) return "§b§l✦ AMIGO GENEROSO";
+        if (valorTotal >= 20.0) return "§a✦ BUEN COMPAÑERO";
+        if (valorTotal >= 10.0) return "§f✦ PARTICIPANTE";
+        return "§7✦ MODESTO";
+    }
+    
+    /**
+     * Verifica si todos los jugadores completaron el intercambio
+     */
+    private void verificarCompletacionTotal() {
+        int cantidadRequerida = config.getInt("amigo_secreto.regalos_requeridos", 2);
+        
+        for (UUID uuid : asignacionesAmigoSecreto.keySet()) {
+            int entregados = regalosEntregados.getOrDefault(uuid, 0);
+            if (entregados < cantidadRequerida) {
+                return; // Alguien aún no completó
+            }
+        }
+        
+        // ¡Todos completaron!
+        String mensajeTodos = config.getString("amigo_secreto.mensajes.todos_completaron", "");
+        messageBus.broadcast("", "navidad-amigo-secreto-completo");
+        messageBus.broadcast(mensajeTodos, "navidad-amigo-secreto-completo");
+        messageBus.broadcast("", "navidad-amigo-secreto-completo");
+        
+        // Efectos épicos para todos
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            Location loc = player.getLocation();
+            loc.getWorld().spawnParticle(Particle.FIREWORK, loc.clone().add(0, 2, 0), 50, 2, 2, 2, 0.2);
+            loc.getWorld().spawnParticle(Particle.HEART, loc.clone().add(0, 2, 0), 30, 1, 1, 1, 0);
+            player.playSound(loc, Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
+            player.playSound(loc, Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 2.0f);
+        }
+        
+        plugin.getLogger().info("[Navidad] ¡Todos completaron el intercambio de amigo secreto!");
+    }
+    
+    /**
+     * Detiene el sistema de amigo secreto y entrega recompensas pendientes
+     */
+    public void detenerAmigoSecreto() {
+        entregarRecompensasPendientes();
+        
+        amigoSecretoActivo = false;
+        if (recordatorioTask != null) {
+            recordatorioTask.cancel();
+            recordatorioTask = null;
+        }
+        
+        // Limpiar datos
+        asignacionesAmigoSecreto.clear();
+        regalosEntregados.clear();
+        regalosRecibidos.clear();
+        valorTotalRegalos.clear();
+        recompensasXPPendientes.clear();
+        recompensasFragmentosPendientes.clear();
+        contadorRecordatorios = 0;
+        
+        plugin.getLogger().info("[Navidad] Amigo secreto detenido");
+    }
+    
+    /**
+     * Entrega todas las recompensas pendientes del amigo secreto
+     * Se llama cuando el evento termina
+     */
+    public void entregarRecompensasPendientes() {
+        if (recompensasXPPendientes.isEmpty() && recompensasFragmentosPendientes.isEmpty()) {
+            return; // No hay recompensas pendientes
+        }
+        
+        // Mensaje global de Santa - Apoyo espiritual y unión
+        messageBus.broadcast("", "navidad-recompensas");
+        messageBus.broadcast("§c§l✦ ═══════════════════════════ ✦", "navidad-recompensas");
+        messageBus.broadcast("§f§l        SANTA CLAUS", "navidad-recompensas");
+        messageBus.broadcast("§c§l✦ ═══════════════════════════ ✦", "navidad-recompensas");
+        messageBus.broadcast("", "navidad-recompensas");
+        
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            for (Map.Entry<UUID, Integer> entry : recompensasXPPendientes.entrySet()) {
+                UUID uuid = entry.getKey();
+                Player player = Bukkit.getPlayer(uuid);
+                
+                if (player != null && player.isOnline()) {
+                    int xp = entry.getValue();
+                    int fragmentos = recompensasFragmentosPendientes.getOrDefault(uuid, 0);
+                    double valorTotal = valorTotalRegalos.getOrDefault(uuid, 0.0);
+                    
+                    // Dar recompensas
+                    if (plugin.getExperienceService() != null) {
+                        plugin.getExperienceService().addXP(player, xp, "amigo_secreto", false);
+                    }
+                    if (fragmentos > 0) {
+                        darFragmentos(player, fragmentos);
+                    }
+                    
+                    // Mensaje personal cálido y esperanzador
+                    player.sendMessage("");
+                    player.sendMessage("§c§l✦ Un regalo de Santa ✦");
+                    player.sendMessage("");
+                    player.sendMessage("§7" + player.getName() + ", he visto tu generosidad.");
+                    player.sendMessage("§7Sigue siendo capaz de superarte.");
+                    player.sendMessage("§7Alcanzarás tus metas.");
+                    player.sendMessage("");
+                    player.sendMessage("§7  • §b+" + xp + " XP");
+                    player.sendMessage("§7  • §d+" + fragmentos + " Fragmentos");
+                    player.sendMessage("");
+                    player.sendMessage("§c❤ §7Este es el camino. Juntos.");
+                    player.sendMessage("");
+                    
+                    // Efectos especiales para los más generosos
+                    double multiplicador = calcularMultiplicadorRecompensa(valorTotal);
+                    if (multiplicador >= 2.0) {
+                        player.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING, player.getLocation().add(0, 1, 0), 50, 0.5, 0.5, 0.5, 0.1);
+                        player.playSound(player.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
+                    }
+                    
+                    player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.5f);
+                }
+            }
+            
+            plugin.getLogger().info("[Navidad] Recompensas de amigo secreto entregadas a " + recompensasXPPendientes.size() + " jugadores");
+        }, 60L); // 3 segundos después del mensaje
+    }
+    
+    public boolean isAmigoSecretoActivo() {
+        return amigoSecretoActivo;
+    }
+    
+    public Map<UUID, UUID> getAsignacionesAmigoSecreto() {
+        return new HashMap<>(asignacionesAmigoSecreto);
+    }
 }
+

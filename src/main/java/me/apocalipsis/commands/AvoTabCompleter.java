@@ -180,7 +180,7 @@ public class AvoTabCompleter implements TabCompleter {
                 
                 case "navidad":
                     // Sugerir subcomandos de navidad
-                    return Arrays.asList("start", "stop", "status", "reset", "ambiente", "arbol", "santa", "regalos", "fragmentos", "cliffhanger").stream()
+                    return Arrays.asList("start", "stop", "status", "reset", "ambiente", "arbol", "santa", "regalos", "fragmentos", "cliffhanger", "amigo-secreto", "entregar", "regalar").stream()
                         .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
                         .collect(Collectors.toList());
             }
@@ -189,7 +189,7 @@ public class AvoTabCompleter implements TabCompleter {
         if (args.length == 3) {
             String subCmd = args[0].toLowerCase();
             
-            // /avo navidad ambiente|arbol|santa|regalos|fragmentos
+            // /avo navidad ambiente|arbol|santa|regalos|fragmentos|regalar
             if (subCmd.equals("navidad")) {
                 String navidadSubCmd = args[1].toLowerCase();
                 switch (navidadSubCmd) {
@@ -212,6 +212,12 @@ public class AvoTabCompleter implements TabCompleter {
                     case "fragmentos":
                     case "fragmento":
                         return Arrays.asList("give", "giveall", "info").stream()
+                            .filter(s -> s.toLowerCase().startsWith(args[2].toLowerCase()))
+                            .collect(Collectors.toList());
+                    case "regalar":
+                        // Sugerir jugadores online
+                        return plugin.getServer().getOnlinePlayers().stream()
+                            .map(Player::getName)
                             .filter(s -> s.toLowerCase().startsWith(args[2].toLowerCase()))
                             .collect(Collectors.toList());
                 }

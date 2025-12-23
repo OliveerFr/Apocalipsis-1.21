@@ -48,6 +48,14 @@ commands:
     description: Invoca una entidad aliada
     usage: /invocar <entidad>
     aliases: [invoke, invocacion]
+  carta:
+    description: Envía una carta escrita a Santa Claus
+    usage: /carta
+    aliases: [letter]
+  cartas:
+    description: Ver todas las cartas enviadas (solo admins)
+    usage: /cartas
+    aliases: [letters]
   menu:
     description: Abre el menú principal de Apocalipsis
     usage: /menu

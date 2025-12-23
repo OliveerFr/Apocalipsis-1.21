@@ -1,6 +1,7 @@
 package me.apocalipsis.commands;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
@@ -2467,6 +2468,13 @@ public class ApocalipsisCommand implements CommandExecutor {
             sender.sendMessage("");
             sender.sendMessage("§e▸ Especial:");
             sender.sendMessage("  §f/avo navidad cliffhanger §7- Secuencia de cierre");
+            sender.sendMessage("");
+            sender.sendMessage("§e▸ Amigo Secreto:");
+            sender.sendMessage("  §f/avo navidad amigo-secreto §7- Iniciar sorteo");
+            sender.sendMessage("  §f/avo navidad entregar [mensaje] §7- Dar a tu amigo secreto");
+            sender.sendMessage("  §f/avo navidad regalar <jugador> [mensaje] §7- Dar a quien quieras");
+            sender.sendMessage("    §8Ejemplo: /avo navidad entregar ¡Feliz Navidad!");
+            sender.sendMessage("    §8Ejemplo: /avo navidad regalar Steve Esto es para ti");
             return;
         }
         
@@ -2792,6 +2800,72 @@ public class ApocalipsisCommand implements CommandExecutor {
                 navidadEvent.activarCliffhanger();
                 sender.sendMessage("§8§o...activando secuencia de cierre...");
                 plugin.getLogger().info(String.format("[Navidad] Cliffhanger activado por %s", sender.getName()));
+                break;
+                
+            case "amigo-secreto":
+            case "sorteo":
+                if (navidadEvent == null) {
+                    sender.sendMessage("§cEl evento Navidad no está activo.");
+                    return;
+                }
+                
+                navidadEvent.iniciarAmigoSecreto();
+                sender.sendMessage("§a§l✦ Amigo Secreto iniciado");
+                sender.sendMessage("§7Se han asignado los amigos secretos aleatoriamente.");
+                sender.sendMessage("§7Cada jugador recibirá un mensaje privado con su asignación.");
+                plugin.getLogger().info(String.format("[Navidad] Amigo Secreto iniciado por %s", sender.getName()));
+                break;
+                
+            case "entregar":
+                if (!(sender instanceof Player player)) {
+                    sender.sendMessage("§cSolo jugadores pueden entregar regalos.");
+                    return;
+                }
+                
+                if (navidadEvent == null) {
+                    sender.sendMessage("§cEl evento Navidad no está activo.");
+                    return;
+                }
+                
+                // Obtener mensaje opcional (todo después de "entregar")
+                String mensajePersonal = null;
+                if (args.length > 2) {
+                    // Unir todos los argumentos después de "entregar" como mensaje
+                    mensajePersonal = String.join(" ", Arrays.copyOfRange(args, 2, args.length));
+                }
+                
+                navidadEvent.entregarRegaloAmigoSecreto(player, mensajePersonal);
+                break;
+                
+            case "regalar":
+                if (!(sender instanceof Player playerRegala)) {
+                    sender.sendMessage("§cSolo jugadores pueden dar regalos.");
+                    return;
+                }
+                
+                if (navidadEvent == null) {
+                    sender.sendMessage("§cEl evento Navidad no está activo.");
+                    return;
+                }
+                
+                if (args.length < 3) {
+                    sender.sendMessage("§cUso: §e/avo navidad regalar <jugador> [mensaje]");
+                    return;
+                }
+                
+                Player receptor = Bukkit.getPlayer(args[2]);
+                if (receptor == null || !receptor.isOnline()) {
+                    sender.sendMessage("§cEl jugador §e" + args[2] + " §cno está conectado.");
+                    return;
+                }
+                
+                // Obtener mensaje opcional (todo después del nombre del jugador)
+                String mensajeRegalo = null;
+                if (args.length > 3) {
+                    mensajeRegalo = String.join(" ", Arrays.copyOfRange(args, 3, args.length));
+                }
+                
+                navidadEvent.regalarAJugador(playerRegala, receptor, mensajeRegalo);
                 break;
                 
             default:

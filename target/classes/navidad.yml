@@ -41,12 +41,110 @@ navidad:
       intervalo_seg: 30
   
   # ═══════════════════════════════════════════════════════════════
+  # SISTEMA DE AMIGO SECRETO - Intercambio de Regalos
+  # ═══════════════════════════════════════════════════════════════
+  amigo_secreto:
+    enabled: true
+    
+    # Configuración del sorteo
+    jugadores_minimos: 2          # Mínimo de jugadores para iniciar
+    regalos_requeridos: 2         # Cantidad de regalos que debe dar cada jugador
+    
+    # Mensajes del sistema
+    mensajes:
+      sorteo_iniciado: "§c§l🎄 AMIGO SECRETO NAVIDEÑO §c§l🎄"
+      sorteo_descripcion: "§7Se ha realizado el sorteo. ¡Revisa tu chat!"
+      asignacion_privada: |
+        §8§m═══════════════════════════════════════════
+        §c§l🎁 TU AMIGO SECRETO ES: §e§l{jugador}
+        §8§m═══════════════════════════════════════════
+        
+        §7Debes darle §c{cantidad} regalos §7especiales.
+        
+        §7§o¡Hazlo con el corazón! Es un momento de
+        §7§ocompartir y celebrar juntos esta Navidad.
+        
+        §8§m═══════════════════════════════════════════
+      
+      regalo_enviado: |
+        §a§l✦ REGALO ENTREGADO ✦
+        
+        §7Has entregado §a{actual}§7/§a{total} §7regalos a §e{receptor}
+        §7¡Qué gesto tan hermoso! §c❤
+      
+      regalo_completado: |
+        §a§l✦ ¡MISIÓN CUMPLIDA! ✦
+        
+        §7Has completado tu intercambio navideño.
+        §7Santa te recompensará al final del evento.
+        §e¡Gracias por participar!
+      
+      regalo_recibido: |
+        §6§l✦ ¡RECIBISTE UN REGALO! ✦
+        
+        §7Tu amigo secreto te ha dado un regalo.
+        §7§o({actual}/{total} recibidos)
+        
+        §7Abre tu inventario para verlo. §c❤
+      
+      todos_completaron: |
+        §c§l🎄 ¡TODOS COMPLETARON EL INTERCAMBIO! 🎄
+        
+        §7La comunidad ha demostrado su generosidad.
+        §7Este es el verdadero espíritu navideño.
+        §e¡Felicidades a todos!
+      
+      recordatorio: |
+        §e§l✦ Recordatorio Navideño ✦
+        
+        Tu amigo secreto aún espera tu gesto.
+        No olvides compartir un poco de ti.
+        
+        §7(Puedes agregar un mensaje personal)
+        §7Ejemplo: §a/avo navidad entregar ¡Feliz Navidad!
+      
+    # Recompensas ESCALABLES según valor total de regalos dados
+    # Los jugadores pueden dar CUALQUIER item de su inventario
+    # Entre más valioso el regalo, mejores recompensas
+    recompensas:
+      base:
+        xp: 150                       # XP base (se multiplica por tier)
+        fragmentos: 2                 # Fragmentos base (se multiplica por tier)
+      
+      # Multiplicadores automáticos según valor total:
+      # Valor >= 200: x3.0 (⭐⭐⭐ BENEFACTOR LEGENDARIO)
+      # Valor >= 100: x2.5 (⭐⭐ GENEROSO ÉPICO)
+      # Valor >= 50:  x2.0 (⭐ AMIGO GENEROSO)
+      # Valor >= 20:  x1.5 (✦ BUEN COMPAÑERO)
+      # Valor >= 10:  x1.2 (✦ PARTICIPANTE)
+      # Valor < 10:   x1.0 (· MODESTO)
+      
+      # EJEMPLOS DE VALORES:
+      # - 1 Netherite Ingot = 100 pts
+      # - 1 Diamond = 50 pts
+      # - 1 Emerald = 40 pts
+      # - 1 Gold Ingot = 25 pts
+      # - Items encantados tienen bonus
+      # - Bloques valiosos (Diamond Block = 450 pts)
+    
+    # Recordatorios automáticos
+    recordatorios:
+      enabled: true
+      intervalo_minutos: 10       # Recordar cada 10 minutos
+      max_recordatorios: 3        # Máximo 3 recordatorios
+  
+  # ═══════════════════════════════════════════════════════════════
   # SISTEMA DE SANTA
   # ═══════════════════════════════════════════════════════════════
   santa:
     frases:
-      - "..."
-      - "Cuídenlos. No todos los mundos llegan tan lejos."
+      - "Ustedes han creado algo especial aquí... una familia."
+      - "No importa cuán duro sea el camino, lo recorren juntos."
+      - "Esta comunidad es su mayor tesoro. Cuídenla."
+      - "He visto muchos mundos... pocos tienen el calor que ustedes comparten."
+      - "La Navidad no son solo regalos... es estar juntos."
+      - "Cada acto de bondad hace este mundo más cálido."
+      - "En los momentos más oscuros, la luz de la amistad brilla más fuerte."
     spawn_offset: 5  # Bloques desde el árbol
     nombre: "§c§l✦ Santa §c§l✦"
   
@@ -102,3 +200,73 @@ navidad:
     temblor_intensidad: 0.3
     mensaje_final: "§8§o...y las puertas no se abren solas."
     duracion_seg: 10  # Duración de la secuencia
+  
+  # ═══════════════════════════════════════════════════════════════
+  # CINEMÁTICA FINAL - Despedida feliz del evento
+  # ═══════════════════════════════════════════════════════════════
+  cinematica_final:
+    duracion_segundos: 45      # Duración total de la cinemática final (aumentado para más dinamismo)
+    
+    # Mensajes de despedida
+    mensajes:
+      agradecimiento: "§e✦ §lGracias por participar en este momento de paz §e✦"
+      despedida: "§7El invierno seguirá su curso..."
+      recuerdos: "§7Pero los recuerdos de esta Navidad permanecerán."
+      herramientas: "§7Las herramientas y armadura te acompañarán en tu aventura."
+      felicitacion: "§c§l🎄 §e§l¡FELIZ NAVIDAD A TODOS! §c§l🎄"
+    
+    # Recompensas mejoradas
+    recompensas:
+      xp_rango: 1000             # XP de rango otorgado (aumentado de 500 a 1000)
+      tiempo_expiracion_h: 1     # Horas para reclamar las recompensas
+      
+      # Recompensas únicas temáticas
+      herramientas_unicas:
+        enabled: true
+        items:
+          - "Pico de Escarcha - Pico de diamante encantado"
+          - "Hacha de Santa - Hacha de diamante encantada"
+          - "Pala del Regalo - Pala de diamante encantada"
+          - "Espada del Invierno Eterno - Espada de diamante encantada"
+      
+      armadura_santa:
+        enabled: true
+        items:
+          - "Gorro de Santa - Casco de diamante encantado"
+          - "Traje de Santa - Pechera de diamante encantada"
+          - "Pantalones de Santa - Pantalones de diamante encantados"
+          - "Botas de Santa - Botas de diamante encantadas"
+      
+      materiales_utiles:
+        enabled: true
+        diamantes: 16           # Cantidad de diamantes
+        esmeraldas: 12          # Cantidad de esmeraldas
+        netherite: 1            # Lingotes de netherite
+        ancient_debris: 5       # Ancient debris
+        manzanas_doradas: 10    # Manzanas doradas
+        manzanas_encantadas: 3  # Manzanas encantadas
+        totems: 2               # Tótems de inmortalidad
+        perlas_ender: 32        # Perlas de ender
+        xp_bottles: 32          # Botellas de experiencia
+        
+      bloques_decorativos:
+        enabled: true
+        nieve: 64               # Bloques de nieve
+        hielo_azul: 32          # Hielo azul
+        linternas_mar: 24       # Linternas de mar
+        glowstone: 48           # Piedra luminosa
+        
+      comida_tematica:
+        enabled: true
+        pasteles: 8             # Pasteles
+        galletas: 64            # Galletas
+        calabazas_pastel: 32    # Pasteles de calabaza
+      
+    # Efectos especiales mejorados
+    efectos:
+      fuegos_artificiales: 12    # Cantidad de fuegos artificiales por jugador (aumentado de 8 a 12)
+      particulas_finales: true   # Explosión de partículas al final
+      particulas_intensas: true  # Usar más partículas para mayor espectacularidad
+      sonidos_festivos: true     # Secuencia de campanas navideñas
+      lluvia_estrellas: true     # Lluvia de estrellas final
+      espiral_colores: true      # Espiral ascendente de colores

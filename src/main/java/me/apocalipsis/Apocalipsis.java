@@ -96,6 +96,9 @@ public final class Apocalipsis extends JavaPlugin {
     private TablistManager tablistManager;
     private RewardClaimSystem rewardClaimSystem;
     private MainMenuManager mainMenuManager;
+    
+    // Sistema de cartas
+    private me.apocalipsis.ui.CartasManager cartasManager;
 
     // Listeners
     private MissionListener missionListener;
@@ -223,6 +226,9 @@ public final class Apocalipsis extends JavaPlugin {
         
         // Inicializar menú principal
         mainMenuManager = new MainMenuManager(this);
+        
+        // Sistema de cartas
+        cartasManager = new me.apocalipsis.ui.CartasManager(getDataFolder(), getLogger());
 
         // Registrar desastres (ahora con PerformanceAdapter)
         disasterRegistry.registerDefaults(this, messageBus, soundUtil, timeService, performanceAdapter);
@@ -247,6 +253,33 @@ public final class Apocalipsis extends JavaPlugin {
         getCommand("avo").setExecutor(avoCommand);
         getCommand("avo").setTabCompleter(new AvoTabCompleter(this));
         getCommand("recompensa").setExecutor(new RecompensaCommand(this));
+        
+        // Sistema de cartas
+        cartasManager = new me.apocalipsis.ui.CartasManager(getDataFolder(), getLogger());
+        
+        // Comando /carta para enviar cartas a Santa
+        getCommand("carta").setExecutor((sender, cmd, label, args) -> {
+            if (sender instanceof org.bukkit.entity.Player player) {
+                cartasManager.abrirMenuCarta(player);
+            } else {
+                sender.sendMessage("§cEste comando solo puede ser usado por jugadores.");
+            }
+            return true;
+        });
+        
+        // Comando /cartas para admins ver todas las cartas
+        getCommand("cartas").setExecutor((sender, cmd, label, args) -> {
+            if (sender instanceof org.bukkit.entity.Player player) {
+                if (!player.hasPermission("apocalipsis.admin")) {
+                    player.sendMessage("§cNo tienes permiso para ver las cartas.");
+                    return true;
+                }
+                cartasManager.abrirMenuCartasAdmin(player);
+            } else {
+                sender.sendMessage("§cEste comando solo puede ser usado por jugadores.");
+            }
+            return true;
+        });
         
         // Comandos directos para jugadores
         getCommand("habilidades").setExecutor((sender, cmd, label, args) -> {
@@ -467,6 +500,10 @@ public final class Apocalipsis extends JavaPlugin {
         // Registrar listener de tutorial
         getServer().getPluginManager().registerEvents(new me.apocalipsis.tutorial.TutorialListener(this, tutorialManager), this);
         getLogger().info("[Tutorial] ✓ Listener de tutorial registrado");
+        
+        // Registrar listener de cartas
+        getServer().getPluginManager().registerEvents(new me.apocalipsis.listeners.CartasListener(this, cartasManager), this);
+        getLogger().info("[Cartas] ✓ Sistema de cartas a Santa activado");
 
         // Cargar estado
         stateManager.loadState();

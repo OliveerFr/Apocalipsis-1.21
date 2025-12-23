@@ -1080,3 +1080,135 @@ habilidades_config:
 # Jugadores activos tardarán ~100 días (3.3 meses).
 # Jugadores casuales tardarán 5+ meses, pero seguirán progresando.
 # ═══════════════════════════════════════════════════════════════
+
+# ═══════════════════════════════════════════════════════════════
+# 🎄 RECOMPENSAS DEL EVENTO NAVIDAD 🎄
+# Recompensas únicas y especiales por completar el evento
+# Estas recompensas tienen temática navideña y son útiles
+# para el siguiente evento del servidor
+# ═══════════════════════════════════════════════════════════════
+
+recompensas_evento_navidad:
+  enabled: true
+  
+  # ═══════════════════════════════════════════════════════════════
+  # RECOMPENSAS BASE - Todos los jugadores que participen
+  # ═══════════════════════════════════════════════════════════════
+  recompensas_base:
+    titulo: "§c§l✦ §f§lRECOMPENSAS NAVIDEÑAS §c§l✦"
+    descripcion: "§7Recompensas por participar en el evento de Navidad"
+    xp_rango: 500                 # XP de rango como recompensa
+    comandos:
+      # Materiales preciosos (temática invernal)
+      - "give %player% minecraft:diamond 12"
+      - "give %player% minecraft:emerald 8"
+      - "give %player% minecraft:gold_ingot 16"
+      - "give %player% minecraft:iron_ingot 32"
+      
+      # Recursos especiales
+      - "give %player% minecraft:ancient_debris 3"
+      - "give %player% minecraft:netherite_scrap 2"
+      
+      # Comida festiva
+      - "give %player% minecraft:golden_apple 6"
+      - "give %player% minecraft:enchanted_golden_apple 2"
+      - "give %player% minecraft:cake 5"
+      - "give %player% minecraft:cookie 64"
+      
+      # Items mágicos
+      - "give %player% minecraft:experience_bottle 20"
+      - "give %player% minecraft:ender_pearl 16"
+      - "give %player% minecraft:totem_of_undying 1"
+    mensaje: "§a§l✦ §eHas recibido las recompensas base de Navidad"
+  
+  # ═══════════════════════════════════════════════════════════════
+  # HERRAMIENTAS NAVIDEÑAS - Set completo temático
+  # ═══════════════════════════════════════════════════════════════
+  herramientas_navidenas:
+    titulo: "§b§l⛏ Herramientas del Invierno"
+    descripcion: "§7Set de herramientas encantadas con temática navideña"
+    comandos:
+      # Pico "Rompe-Hielo" - Eficiencia V, Fortune III, Unbreaking III
+      - "give %player% minecraft:diamond_pickaxe[enchantments={levels:{\"minecraft:efficiency\":5,\"minecraft:fortune\":3,\"minecraft:unbreaking\":3},show_in_tooltip:true},item_name='[{\"text\":\"⛏ Rompe-Hielo ⛏\",\"color\":\"aqua\",\"bold\":true,\"italic\":false}]',lore=['[{\"text\":\"Herramienta Navideña\",\"color\":\"gray\",\"italic\":false}]','[{\"text\":\"\",\"italic\":false}]','[{\"text\":\"El hielo tiembla ante su filo.\",\"color\":\"dark_aqua\",\"italic\":true}]']] 1"
+      
+      # Hacha "Tala-Pinos" - Eficiencia V, Unbreaking III, Mending
+      - "give %player% minecraft:diamond_axe[enchantments={levels:{\"minecraft:efficiency\":5,\"minecraft:unbreaking\":3,\"minecraft:mending\":1},show_in_tooltip:true},item_name='[{\"text\":\"🪓 Tala-Pinos 🪓\",\"color\":\"green\",\"bold\":true,\"italic\":false}]',lore=['[{\"text\":\"Herramienta Navideña\",\"color\":\"gray\",\"italic\":false}]','[{\"text\":\"\",\"italic\":false}]','[{\"text\":\"Los árboles navideños caen con facilidad.\",\"color\":\"dark_green\",\"italic\":true}]']] 1"
+      
+      # Pala "Quita-Nieves" - Eficiencia V, Unbreaking III, Silk Touch
+      - "give %player% minecraft:diamond_shovel[enchantments={levels:{\"minecraft:efficiency\":5,\"minecraft:unbreaking\":3,\"minecraft:silk_touch\":1},show_in_tooltip:true},item_name='[{\"text\":\"🪣 Quita-Nieves 🪣\",\"color\":\"white\",\"bold\":true,\"italic\":false}]',lore=['[{\"text\":\"Herramienta Navideña\",\"color\":\"gray\",\"italic\":false}]','[{\"text\":\"\",\"italic\":false}]','[{\"text\":\"La nieve desaparece a su paso.\",\"color\":\"gray\",\"italic\":true}]']] 1"
+      
+      # Espada "Guardián Invernal" - Sharpness V, Looting III, Unbreaking III
+      - "give %player% minecraft:diamond_sword[enchantments={levels:{\"minecraft:sharpness\":5,\"minecraft:looting\":3,\"minecraft:unbreaking\":3},show_in_tooltip:true},item_name='[{\"text\":\"⚔ Guardián Invernal ⚔\",\"color\":\"blue\",\"bold\":true,\"italic\":false}]',lore=['[{\"text\":\"Arma Navideña\",\"color\":\"gray\",\"italic\":false}]','[{\"text\":\"\",\"italic\":false}]','[{\"text\":\"Protege la paz del invierno.\",\"color\":\"dark_blue\",\"italic\":true}]']] 1"
+      
+      # Azada especial navideña
+      - "give %player% minecraft:diamond_hoe[enchantments={levels:{\"minecraft:efficiency\":5,\"minecraft:unbreaking\":3},show_in_tooltip:true},item_name='[{\"text\":\"🌱 Azada Festiva 🌱\",\"color\":\"yellow\",\"bold\":true,\"italic\":false}]',lore=['[{\"text\":\"Herramienta Navideña\",\"color\":\"gray\",\"italic\":false}]','[{\"text\":\"\",\"italic\":false}]','[{\"text\":\"Cultiva la esperanza del invierno.\",\"color\":\"gold\",\"italic\":true}]']] 1"
+    mensaje: "§b§l✦ §eHas recibido las Herramientas del Invierno"
+  
+  # ═══════════════════════════════════════════════════════════════
+  # ARMADURA NAVIDEÑA - Set completo temático
+  # ═══════════════════════════════════════════════════════════════
+  armadura_navidena:
+    titulo: "§c§l🛡 Armadura de Santa"
+    descripcion: "§7Set de armadura encantada con temática navideña"
+    comandos:
+      # Casco "Corona de Acebo" - Protection IV, Unbreaking III, Respiration III
+      - "give %player% minecraft:diamond_helmet[enchantments={levels:{\"minecraft:protection\":4,\"minecraft:unbreaking\":3,\"minecraft:respiration\":3},show_in_tooltip:true},item_name='[{\"text\":\"👑 Corona de Acebo 👑\",\"color\":\"red\",\"bold\":true,\"italic\":false}]',lore=['[{\"text\":\"Armadura Navideña\",\"color\":\"gray\",\"italic\":false}]','[{\"text\":\"\",\"italic\":false}]','[{\"text\":\"La sabiduría del invierno te protege.\",\"color\":\"dark_red\",\"italic\":true}]']] 1"
+      
+      # Peto "Manto Festivo" - Protection IV, Unbreaking III, Thorns II
+      - "give %player% minecraft:diamond_chestplate[enchantments={levels:{\"minecraft:protection\":4,\"minecraft:unbreaking\":3,\"minecraft:thorns\":2},show_in_tooltip:true},item_name='[{\"text\":\"🎁 Manto Festivo 🎁\",\"color\":\"red\",\"bold\":true,\"italic\":false}]',lore=['[{\"text\":\"Armadura Navideña\",\"color\":\"gray\",\"italic\":false}]','[{\"text\":\"\",\"italic\":false}]','[{\"text\":\"El espíritu navideño te envuelve.\",\"color\":\"dark_red\",\"italic\":true}]']] 1"
+      
+      # Pantalones "Leggings Invernales" - Protection IV, Unbreaking III
+      - "give %player% minecraft:diamond_leggings[enchantments={levels:{\"minecraft:protection\":4,\"minecraft:unbreaking\":3},show_in_tooltip:true},item_name='[{\"text\":\"❄ Leggings Invernales ❄\",\"color\":\"aqua\",\"bold\":true,\"italic\":false}]',lore=['[{\"text\":\"Armadura Navideña\",\"color\":\"gray\",\"italic\":false}]','[{\"text\":\"\",\"italic\":false}]','[{\"text\":\"El frío no te afecta.\",\"color\":\"dark_aqua\",\"italic\":true}]']] 1"
+      
+      # Botas "Pasos Silenciosos" - Protection IV, Unbreaking III, Feather Falling IV, Soul Speed III
+      - "give %player% minecraft:diamond_boots[enchantments={levels:{\"minecraft:protection\":4,\"minecraft:unbreaking\":3,\"minecraft:feather_falling\":4,\"minecraft:soul_speed\":3},show_in_tooltip:true},item_name='[{\"text\":\"🥾 Pasos Silenciosos 🥾\",\"color\":\"white\",\"bold\":true,\"italic\":false}]',lore=['[{\"text\":\"Armadura Navideña\",\"color\":\"gray\",\"italic\":false}]','[{\"text\":\"\",\"italic\":false}]','[{\"text\":\"Caminas sobre nieve sin dejar rastro.\",\"color\":\"gray\",\"italic\":true}]']] 1"
+    mensaje: "§c§l✦ §eHas recibido la Armadura de Santa"
+  
+  # ═══════════════════════════════════════════════════════════════
+  # ITEMS ESPECIALES NAVIDEÑOS
+  # ═══════════════════════════════════════════════════════════════
+  items_especiales:
+    titulo: "§d§l✨ Tesoros Navideños"
+    descripcion: "§7Items únicos y especiales del evento"
+    comandos:
+      # Arco especial navideño
+      - "give %player% minecraft:bow[enchantments={levels:{\"minecraft:power\":5,\"minecraft:infinity\":1,\"minecraft:unbreaking\":3,\"minecraft:flame\":1},show_in_tooltip:true},item_name='[{\"text\":\"🏹 Arco del Solsticio 🏹\",\"color\":\"light_purple\",\"bold\":true,\"italic\":false}]',lore=['[{\"text\":\"Arma Navideña Especial\",\"color\":\"gray\",\"italic\":false}]','[{\"text\":\"\",\"italic\":false}]','[{\"text\":\"Sus flechas brillan como estrellas.\",\"color\":\"dark_purple\",\"italic\":true}]']] 1"
+      
+      # Tridente especial
+      - "give %player% minecraft:trident[enchantments={levels:{\"minecraft:loyalty\":3,\"minecraft:channeling\":1,\"minecraft:unbreaking\":3},show_in_tooltip:true},item_name='[{\"text\":\"🔱 Tridente del Norte 🔱\",\"color\":\"dark_aqua\",\"bold\":true,\"italic\":false}]',lore=['[{\"text\":\"Arma Navideña Legendaria\",\"color\":\"gray\",\"italic\":false}]','[{\"text\":\"\",\"italic\":false}]','[{\"text\":\"Invoca tormentas de nieve.\",\"color\":\"blue\",\"italic\":true}]']] 1"
+      
+      # Escudo decorativo
+      - "give %player% minecraft:shield[item_name='[{\"text\":\"🛡 Escudo Festivo 🛡\",\"color\":\"gold\",\"bold\":true,\"italic\":false}]',lore=['[{\"text\":\"Escudo Navideño\",\"color\":\"gray\",\"italic\":false}]','[{\"text\":\"\",\"italic\":false}]','[{\"text\":\"Protege la alegría navideña.\",\"color\":\"yellow\",\"italic\":true}]']] 1"
+      
+      # Élitros con diseño especial
+      - "give %player% minecraft:elytra[enchantments={levels:{\"minecraft:unbreaking\":3,\"minecraft:mending\":1},show_in_tooltip:true},item_name='[{\"text\":\"✨ Alas del Espíritu Navideño ✨\",\"color\":\"white\",\"bold\":true,\"italic\":false}]',lore=['[{\"text\":\"Élitros Especiales\",\"color\":\"gray\",\"italic\":false}]','[{\"text\":\"\",\"italic\":false}]','[{\"text\":\"Vuela como los copos de nieve.\",\"color\":\"aqua\",\"italic\":true}]']] 1"
+      
+      # Libro de encantamientos navideño
+      - "give %player% minecraft:enchanted_book[stored_enchantments={levels:{\"minecraft:mending\":1},show_in_tooltip:true},item_name='[{\"text\":\"📖 Grimorio Invernal 📖\",\"color\":\"aqua\",\"bold\":true,\"italic\":false}]',lore=['[{\"text\":\"Libro Navideño\",\"color\":\"gray\",\"italic\":false}]','[{\"text\":\"\",\"italic\":false}]','[{\"text\":\"Contiene: Mending\",\"color\":\"green\",\"italic\":false}]','[{\"text\":\"La magia del invierno repara todo.\",\"color\":\"dark_aqua\",\"italic\":true}]']] 3"
+      
+      # Bloques decorativos navideños
+      - "give %player% minecraft:snow_block 64"
+      - "give %player% minecraft:ice 32"
+      - "give %player% minecraft:packed_ice 32"
+      - "give %player% minecraft:blue_ice 16"
+      
+      # Linterna del mar (decoración)
+      - "give %player% minecraft:sea_lantern 16"
+      - "give %player% minecraft:glowstone 32"
+      
+    mensaje: "§d§l✦ §eHas recibido los Tesoros Navideños"
+  
+  # ═══════════════════════════════════════════════════════════════
+  # MENSAJE FINAL Y CONFIGURACIÓN
+  # ═══════════════════════════════════════════════════════════════
+  mensaje_completo: "§c§l✦ §f§lEVENTO NAVIDAD COMPLETADO §c§l✦\n§eHas recibido todas las recompensas navideñas.\n§7¡Úsalas sabiamente en el próximo evento!"
+  
+  # Efectos especiales al recibir
+  efectos:
+    fuegos_artificiales: 10     # Cantidad de fuegos artificiales
+    particulas: true            # Partículas épicas
+    sonidos: true               # Sonidos festivos
+    titulo_final:
+      enabled: true
+      titulo: "§c§l🎄 NAVIDAD COMPLETADA 🎄"
+      subtitulo: "§e¡Felices Fiestas!"
