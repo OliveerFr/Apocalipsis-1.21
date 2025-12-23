@@ -2149,8 +2149,6 @@ public class NavidadEvent extends EventBase {
             dador.sendMessage("§7Tu amigo secreto es: §e" + (Bukkit.getOfflinePlayer(receptorUUID).getName()));
             dador.sendMessage("§7Espera a que se conecte para entregarle tu regalo.");
             dador.sendMessage("");
-            int entregados = regalosEntregados.getOrDefault(dadorUUID, 0);
-            int cantidadRequerida = config.getInt("amigo_secreto.regalos_requeridos", 2);
             dador.sendMessage("§7Progreso: §e" + entregados + "§7/§e" + cantidadRequerida + " regalos entregados");
             dador.sendMessage("");
             return;
