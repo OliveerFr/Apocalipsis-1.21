@@ -91,10 +91,10 @@ public class CartasListener implements Listener {
                 ItemStack cursor = event.getCursor();
                 ItemStack current = event.getCurrentItem();
                 
-                // Si está poniendo algo, verificar que sea libro escrito
+                // Si está poniendo algo, verificar que sea un libro
                 if (cursor != null && cursor.getType() != Material.AIR) {
-                    if (cursor.getType() != Material.WRITTEN_BOOK) {
-                        player.sendMessage("§c✦ Solo puedes poner libros escritos aquí.");
+                    if (cursor.getType() != Material.WRITTEN_BOOK && cursor.getType() != Material.WRITABLE_BOOK) {
+                        player.sendMessage("§c✦ Solo puedes poner libros aquí (escritos o firmados).");
                         event.setCancelled(true);
                         return;
                     }

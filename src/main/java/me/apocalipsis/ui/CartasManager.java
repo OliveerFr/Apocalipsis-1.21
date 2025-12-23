@@ -107,11 +107,11 @@ public class CartasManager {
             }
         }
         
-        // Buscar libro escrito en el inventario
+        // Buscar libro en el inventario (puede estar firmado o sin firmar)
         ItemStack libro = inventory.getItem(11);
-        if (libro == null || libro.getType() != Material.WRITTEN_BOOK) {
-            player.sendMessage("§c✦ No pusiste ninguna carta escrita.");
-            player.sendMessage("§7Debes escribir un libro y firmarlo.");
+        if (libro == null || (libro.getType() != Material.WRITTEN_BOOK && libro.getType() != Material.WRITABLE_BOOK)) {
+            player.sendMessage("§c✦ No pusiste ningún libro.");
+            player.sendMessage("§7Debes escribir un libro (puede estar firmado o sin firmar).");
             return;
         }
         
