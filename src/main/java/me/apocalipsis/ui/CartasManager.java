@@ -140,9 +140,6 @@ public class CartasManager {
             player.sendMessage("§7Debes escribir un libro (puede estar firmado o sin firmar).");
             return;
         }
-            player.sendMessage("§7Debes escribir un libro (puede estar firmado o sin firmar).");
-            return;
-        }
         
         BookMeta bookMeta = (BookMeta) libro.getItemMeta();
         if (bookMeta == null || !bookMeta.hasPages()) {
@@ -164,11 +161,6 @@ public class CartasManager {
                 tieneContenido = true;
                 break;
             }
-        }
-        
-        if (!tieneContenido) {
-            player.sendMessage("§c✦ Tu carta está vacía. Escribe tus deseos.");
-            return;
         }
         
         if (!tieneContenido) {
