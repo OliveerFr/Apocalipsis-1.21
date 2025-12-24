@@ -60,24 +60,41 @@ public class CartasManager {
             meta.setDisplayName("§e§lCómo enviar tu carta");
             meta.setLore(Arrays.asList(
                 "",
-                "§71. Escribe y firma un libro",
-                "§72. Arrastra el libro al §eslot vacío",
-                "§73. Cierra el menú para enviar",
+                "§71. Escribe un libro (con Book & Quill)",
+                "§72. Puedes firmarlo o dejarlo sin firmar",
+                "§73. Arrastra el libro a cualquier §eslot verde",
+                "§74. Cierra el menú para enviar",
                 "",
                 "§c❤ §7Santa leerá todas las cartas",
                 "",
-                "§8(El slot vacío está a la izquierda)"
+                "§aSlots verdes = Donde poner tu libro"
             ));
         });
         menu.setItem(13, info);
         
-        // Slot 11: Área para poner el libro (dejar vacío para que puedan poner el libro)
-        // No poner nada aquí para que sea un slot vacío donde colocar el libro
+        // Slots 10, 11, 12, 14, 15, 16: Indicadores de slots disponibles
+        ItemStack slotIndicador = new ItemStack(Material.LIME_STAINED_GLASS_PANE);
+        slotIndicador.editMeta(meta -> {
+            meta.setDisplayName("§a§l✓ Coloca tu libro aquí");
+            meta.setLore(Arrays.asList(
+                "",
+                "§7Arrastra tu libro escrito",
+                "§7a este slot para enviarlo"
+            ));
+        });
         
-        // Decoración
+        // Poner indicadores en los slots disponibles
+        menu.setItem(10, slotIndicador);
+        menu.setItem(11, slotIndicador);
+        menu.setItem(12, slotIndicador);
+        menu.setItem(14, slotIndicador);
+        menu.setItem(15, slotIndicador);
+        menu.setItem(16, slotIndicador);
+        
+        // Decoración (bordes rojos)
         ItemStack deco = new ItemStack(Material.RED_STAINED_GLASS_PANE);
         deco.editMeta(meta -> meta.setDisplayName(" "));
-        for (int i : new int[]{0, 1, 2, 3, 5, 6, 7, 8, 9, 17, 18, 19, 20, 21, 23, 24, 25, 26}) {
+        for (int i : new int[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26}) {
             menu.setItem(i, deco);
         }
         
@@ -107,10 +124,22 @@ public class CartasManager {
             }
         }
         
-        // Buscar libro en el inventario (puede estar firmado o sin firmar)
-        ItemStack libro = inventory.getItem(11);
-        if (libro == null || (libro.getType() != Material.WRITTEN_BOOK && libro.getType() != Material.WRITABLE_BOOK)) {
+        // Buscar libro en cualquiera de los slots permitidos (10, 11, 12, 14, 15, 16)
+        ItemStack libro = null;
+        int[] slotsPermitidos = {10, 11, 12, 14, 15, 16};
+        for (int slot : slotsPermitidos) {
+            ItemStack item = inventory.getItem(slot);
+            if (item != null && (item.getType() == Material.WRITTEN_BOOK || item.getType() == Material.WRITABLE_BOOK)) {
+                libro = item;
+                break; // Encontramos el libro, salir del bucle
+            }
+        }
+        
+        if (libro == null) {
             player.sendMessage("§c✦ No pusiste ningún libro.");
+            player.sendMessage("§7Debes escribir un libro (puede estar firmado o sin firmar).");
+            return;
+        }
             player.sendMessage("§7Debes escribir un libro (puede estar firmado o sin firmar).");
             return;
         }
