@@ -72,24 +72,8 @@ public class CartasManager {
         });
         menu.setItem(13, info);
         
-        // Slots 10, 11, 12, 14, 15, 16: Indicadores de slots disponibles
-        ItemStack slotIndicador = new ItemStack(Material.LIME_STAINED_GLASS_PANE);
-        slotIndicador.editMeta(meta -> {
-            meta.setDisplayName("§a§l✓ Coloca tu libro aquí");
-            meta.setLore(Arrays.asList(
-                "",
-                "§7Arrastra tu libro escrito",
-                "§7a este slot para enviarlo"
-            ));
-        });
-        
-        // Poner indicadores en los slots disponibles
-        menu.setItem(10, slotIndicador);
-        menu.setItem(11, slotIndicador);
-        menu.setItem(12, slotIndicador);
-        menu.setItem(14, slotIndicador);
-        menu.setItem(15, slotIndicador);
-        menu.setItem(16, slotIndicador);
+        // Slots 10, 11, 12, 14, 15, 16: Quedan vacíos para colocar libros
+        // (No ponemos nada para que el jugador pueda arrastrar su libro)
         
         // Decoración (bordes rojos)
         ItemStack deco = new ItemStack(Material.RED_STAINED_GLASS_PANE);

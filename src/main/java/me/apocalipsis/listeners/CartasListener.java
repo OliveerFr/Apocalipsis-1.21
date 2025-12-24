@@ -99,22 +99,14 @@ public class CartasListener implements Listener {
             if (esSlotPermitido) {
                 // Permitir poner/sacar items de estos slots
                 ItemStack cursor = event.getCursor();
-                ItemStack current = event.getCurrentItem();
                 
                 // Si está poniendo algo, verificar que sea un libro
                 if (cursor != null && cursor.getType() != Material.AIR) {
-                    // Si ya es un indicador verde, permitir reemplazar
                     if (cursor.getType() != Material.WRITTEN_BOOK && cursor.getType() != Material.WRITABLE_BOOK) {
                         player.sendMessage("§c✦ Solo puedes poner libros aquí (escritos o firmados).");
                         event.setCancelled(true);
                         return;
                     }
-                }
-                
-                // Si está sacando el indicador verde, cancelar
-                if (current != null && current.getType() == Material.LIME_STAINED_GLASS_PANE) {
-                    event.setCancelled(true);
-                    return;
                 }
                 
                 // Permitir la acción
