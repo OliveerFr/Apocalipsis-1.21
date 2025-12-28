@@ -41,10 +41,23 @@ public class ProgressiveDifficultySystem {
     // Cache de fases para evitar recalcular constantemente
     private final Map<UUID, DifficultyPhase> phaseCache;
     private final Map<UUID, Long> phaseCacheTimestamp;
-    private static final long CACHE_DURATION_MS = 30000; // 30 segundos
     
     private boolean enabled;
     private boolean verboseLogging;
+    
+    /**
+     * Obtiene duración de cache adaptativa según la fase
+     * Fases tempranas cambian más rápido, necesitan cache más corto
+     */
+    private long getAdaptiveCacheDuration(DifficultyPhase phase) {
+        if (phase == null || phase.getPhaseNumber() <= 2) {
+            return 15000; // 15 segundos para fases tempranas
+        } else if (phase.getPhaseNumber() <= 4) {
+            return 30000; // 30 segundos para fases intermedias
+        } else {
+            return 60000; // 1 minuto para fase final (ya no cambia)
+        }
+    }
     
     /**
      * Representa una fase de dificultad con sus multiplicadores
@@ -170,11 +183,14 @@ public class ProgressiveDifficultySystem {
         
         UUID uuid = player.getUniqueId();
         
-        // Verificar cache
+        // Verificar cache con duración adaptativa
         if (phaseCache.containsKey(uuid)) {
             long cacheTime = phaseCacheTimestamp.getOrDefault(uuid, 0L);
-            if (System.currentTimeMillis() - cacheTime < CACHE_DURATION_MS) {
-                return phaseCache.get(uuid);
+            DifficultyPhase cachedPhase = phaseCache.get(uuid);
+            long cacheDuration = getAdaptiveCacheDuration(cachedPhase);
+            
+            if (System.currentTimeMillis() - cacheTime < cacheDuration) {
+                return cachedPhase;
             }
         }
         

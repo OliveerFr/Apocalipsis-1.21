@@ -43,6 +43,11 @@ public class TutorialListener implements Listener {
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
         
+        // Verificar si es reconexión de tutorial en progreso
+        if (handleReconnection(player)) {
+            return; // Ya se manejó la reconexión
+        }
+        
         // Leer configuración
         int maxTiempoMinutos = config.getInt("tutorial.max_tiempo_jugado_minutos", 60);
         boolean soloNovato = config.getBoolean("tutorial.solo_rango_novato", true);
@@ -95,6 +100,35 @@ public class TutorialListener implements Listener {
                 player.getName(), motivo
             ));
         }
+    }
+    
+    /**
+     * Maneja la reconexión inteligente para jugadores en tutorial
+     */
+    private boolean handleReconnection(Player player) {
+        TutorialManager.TutorialState state = tutorialManager.getTutorialState(player.getUniqueId());
+        
+        if (state != null && !state.isCompleted() && state.isTutorialStarted()) {
+            // Dar tiempo para que cargue
+            org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                player.sendMessage(org.bukkit.ChatColor.translateAlternateColorCodes('&', ""));
+                player.sendMessage(org.bukkit.ChatColor.translateAlternateColorCodes('&', "&8&m━━━━━━━━━━━━━━━━━━━━━━━━"));
+                player.sendMessage(org.bukkit.ChatColor.translateAlternateColorCodes('&', "&e¡Bienvenido de vuelta!"));
+                player.sendMessage(org.bukkit.ChatColor.translateAlternateColorCodes('&', 
+                    "&7Continúas en tutorial: &aEtapa " + state.getCurrentStage() + "/7"));
+                player.sendMessage(org.bukkit.ChatColor.translateAlternateColorCodes('&', 
+                    "&7Usa &f/tutorial progreso &7para ver tu estado completo"));
+                player.sendMessage(org.bukkit.ChatColor.translateAlternateColorCodes('&', "&8&m━━━━━━━━━━━━━━━━━━━━━━━━"));
+                player.sendMessage(org.bukkit.ChatColor.translateAlternateColorCodes('&', ""));
+                
+                // Restaurar buffs
+                tutorialManager.updateTutorialBuffs(player);
+            }, 40L);
+            
+            return true;
+        }
+        
+        return false;
     }
     
     /**

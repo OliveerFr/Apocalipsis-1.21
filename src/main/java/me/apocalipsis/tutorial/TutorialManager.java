@@ -42,6 +42,9 @@ public class TutorialManager {
     private final FileConfiguration config;
     private final ProgressiveDifficultySystem difficultySystem;
     private final MessageBus messageBus;
+    private final TutorialDataPersistence dataPersistence;
+    private final TutorialMetrics metrics;
+    private final TutorialAchievements achievements;
     
     // Trackeo de estado del tutorial
     private final Map<UUID, TutorialState> tutorialStates;
@@ -52,6 +55,9 @@ public class TutorialManager {
     
     // Demo de rangos
     private final Map<UUID, BukkitTask> rankDemoTasks;
+    
+    // Verificación de cambios de fase
+    private final Map<UUID, BukkitTask> phaseCheckTasks;
     
     private boolean enabled;
     private boolean verboseLogging;
@@ -112,6 +118,9 @@ public class TutorialManager {
         this.config = tutorialConfig;
         this.difficultySystem = difficultySystem;
         this.messageBus = messageBus;
+        this.dataPersistence = new TutorialDataPersistence(plugin);
+        this.metrics = new TutorialMetrics(plugin);
+        this.achievements = new TutorialAchievements(plugin);
         
         this.tutorialStates = new HashMap<>();
         this.scheduledTutorials = new HashMap<>();
@@ -119,8 +128,10 @@ public class TutorialManager {
         this.lastTipIndex = new HashMap<>();
         this.actionBarTasks = new HashMap<>();
         this.rankDemoTasks = new HashMap<>();
+        this.phaseCheckTasks = new HashMap<>();
         
         loadConfig();
+        startAutoSaveTask();
     }
     
     private void loadConfig() {
@@ -146,8 +157,21 @@ public class TutorialManager {
         // Esto se hará cuando el tutorial termine exitosamente
         // Si lo hacemos ahora, hasPlayerData() devuelve true y cancela el tutorial
         
-        // Crear estado del tutorial
-        tutorialStates.put(uuid, new TutorialState());
+        // Intentar cargar datos guardados
+        TutorialState loadedState = dataPersistence.loadTutorialState(uuid);
+        Long loadedTime = dataPersistence.loadFirstJoinTime(uuid);
+        
+        // Crear o usar estado cargado
+        if (loadedState != null && loadedTime != null) {
+            tutorialStates.put(uuid, loadedState);
+            plugin.getLogger().info(String.format(
+                "[Tutorial] Datos cargados para %s (Etapa %d)",
+                player.getName(), loadedState.getCurrentStage()
+            ));
+        } else {
+            tutorialStates.put(uuid, new TutorialState());
+            metrics.recordTutorialStarted();
+        }
         
         // ═══════════════════════════════════════════════════════════
         // ENTREGAR KIT INMEDIATAMENTE (antes de morir)
@@ -155,9 +179,10 @@ public class TutorialManager {
         giveStarterKit(player);
         
         // ═══════════════════════════════════════════════════════════
-        // APLICAR BUFF DE REGENERACIÓN ALTA (baja a medida que progresa)
+        // APLICAR BUFF DE REGENERACIÓN INICIAL Y MONITORIZAR CAMBIOS
         // ═══════════════════════════════════════════════════════════
-        applyTutorialBuff(player, 0); // Fase 0 = regeneración máxima
+        updateTutorialBuffs(player); // Aplicar buffs según fase actual
+        startPhaseMonitoring(player); // Iniciar monitorización de cambios de fase
         
         // Mensaje de bienvenida inmediato (no invasivo)
         showWelcomeMessage(player);
@@ -280,38 +305,143 @@ public class TutorialManager {
     }
     
     /**
-     * Aplica buff de regeneración según la fase del tutorial
-     * Fase 0 (inicio): Regeneration V (muy alto)
-     * Fase 1 (25% progreso): Regeneration IV
-     * Fase 2 (50% progreso): Regeneration III
-     * Fase 3 (75% progreso): Regeneration II
-     * Fase 4 (completo): Se quita el buff
+     * Actualiza los buffs del tutorial basándose en la fase actual de dificultad.
+     * Sincroniza con tutorial.yml para aplicar/quitar regeneración según configuración.
+     * Método público para uso por TutorialCommand y TutorialListener.
      */
-    private void applyTutorialBuff(Player player, int phase) {
+    public void updateTutorialBuffs(Player player) {
+        DifficultyPhase phase = difficultySystem.getPlayerPhase(player);
+        
         // Quitar buff anterior
         player.removePotionEffect(PotionEffectType.REGENERATION);
         
-        if (phase >= 4) {
-            // Tutorial completado, quitar buff
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&',
-                "&a[Tutorial] &7Buff de regeneración removido. ¡Ya estás listo!"));
-            return;
+        // Si la fase tiene regeneración pasiva habilitada, aplicarla
+        if (phase.hasPassiveRegeneration()) {
+            // Determinar nivel de regeneración según fase
+            // Fase 1: Regeneration II (fuerte)
+            // Fase 2: Regeneration I (moderado)
+            int level = phase.getPhaseNumber() == 1 ? 1 : 0; // Level 0-based (1=II, 0=I)
+            int duration = Integer.MAX_VALUE;
+            
+            player.addPotionEffect(new PotionEffect(
+                PotionEffectType.REGENERATION,
+                duration,
+                level,
+                false, // Sin partículas ambiente
+                false  // Sin partículas
+            ));
+            
+            if (verboseLogging) {
+                plugin.getLogger().info(String.format(
+                    "[Tutorial] %s: Regeneración %s aplicada (Fase %d)",
+                    player.getName(), (level == 1 ? "II" : "I"), phase.getPhaseNumber()
+                ));
+            }
+        } else {
+            // Sin regeneración pasiva
+            if (verboseLogging && !phase.isGlobalDifficulty()) {
+                plugin.getLogger().info(String.format(
+                    "[Tutorial] %s: Regeneración removida (Fase %d)",
+                    player.getName(), phase.getPhaseNumber()
+                ));
+            }
+        }
+    }
+    
+    /**
+     * Inicia la monitorización periódica de cambios de fase para actualizar buffs automáticamente.
+     * Verifica cada 30 segundos si el jugador cambió de fase.
+     */
+    private void startPhaseMonitoring(Player player) {
+        UUID uuid = player.getUniqueId();
+        
+        // Cancelar tarea anterior si existe
+        if (phaseCheckTasks.containsKey(uuid)) {
+            phaseCheckTasks.get(uuid).cancel();
         }
         
-        // Aplicar nuevo nivel según fase
-        int level = 5 - phase; // 5, 4, 3, 2
-        int duration = Integer.MAX_VALUE; // Infinito hasta que cambie de fase
+        // Obtener fase inicial
+        TutorialState state = tutorialStates.get(uuid);
+        if (state != null) {
+            DifficultyPhase currentPhase = difficultySystem.getPlayerPhase(player);
+            state.setLastPhaseNumber(currentPhase.getPhaseNumber());
+        }
         
-        player.addPotionEffect(new PotionEffect(
-            PotionEffectType.REGENERATION,
-            duration,
-            level - 1, // Level 0-based
-            false, // Sin partículas ambiente
-            false  // Sin partículas
-        ));
+        // Verificar cada 30 segundos (600 ticks)
+        BukkitTask task = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            if (!player.isOnline()) {
+                return;
+            }
+            
+            TutorialState playerState = tutorialStates.get(uuid);
+            if (playerState == null) {
+                return;
+            }
+            
+            DifficultyPhase currentPhase = difficultySystem.getPlayerPhase(player);
+            int lastPhase = playerState.getLastPhaseNumber();
+            
+            // Si cambió de fase, actualizar buffs y notificar
+            if (currentPhase.getPhaseNumber() != lastPhase) {
+                if (verboseLogging) {
+                    plugin.getLogger().info(String.format(
+                        "[Tutorial] %s cambió de fase %d a %d",
+                        player.getName(), lastPhase, currentPhase.getPhaseNumber()
+                    ));
+                }
+                
+                // Actualizar buffs según nueva fase
+                updateTutorialBuffs(player);
+                
+                // Notificar cambio si es relevante
+                if (currentPhase.getPhaseNumber() > lastPhase) {
+                    notifyBuffChange(player, currentPhase);
+                    
+                    // Verificar logros por fase
+                    if (currentPhase.getPhaseNumber() == 3) {
+                        achievements.unlockAchievement(player, "alcanzar_fase_3");
+                    }
+                    
+                    // Guardar progreso
+                    savePlayerProgress(player);
+                }
+                
+                playerState.setLastPhaseNumber(currentPhase.getPhaseNumber());
+            }
+            
+            // Verificar logro de 30 minutos
+            long playedMinutes = difficultySystem.getPlayedTimeMinutes(player);
+            if (playedMinutes >= 30 && !achievements.hasAchievement(uuid, "treinta_minutos_supervivencia")) {
+                achievements.unlockAchievement(player, "treinta_minutos_supervivencia");
+            }
+            
+            // Si alcanzó dificultad global, detener monitorización
+            if (currentPhase.isGlobalDifficulty()) {
+                if (phaseCheckTasks.containsKey(uuid)) {
+                    phaseCheckTasks.get(uuid).cancel();
+                    phaseCheckTasks.remove(uuid);
+                }
+            }
+        }, 600L, 600L); // Cada 30 segundos
         
-        player.sendMessage(ChatColor.translateAlternateColorCodes('&',
-            "&a[Tutorial] &7Regeneración &e" + level + " &7aplicada mientras aprendes."));
+        phaseCheckTasks.put(uuid, task);
+    }
+    
+    /**
+     * Notifica al jugador sobre cambios en sus buffs de tutorial.
+     */
+    private void notifyBuffChange(Player player, DifficultyPhase newPhase) {
+        if (newPhase.hasPassiveRegeneration()) {
+            int level = newPhase.getPhaseNumber() == 1 ? 2 : 1;
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&',
+                "&a[Tutorial] &7Regeneración &e" + level + " &7activa. &8(&e" + 
+                newPhase.getName() + "&8)"));
+        } else if (!newPhase.isGlobalDifficulty()) {
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&',
+                "&a[Tutorial] &7Regeneración removida. &8(&e" + newPhase.getName() + "&8)"));
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&',
+                "&7¡Ya estás más preparado para sobrevivir por tu cuenta!"));
+        }
     }
     
     /**
@@ -698,8 +828,21 @@ public class TutorialManager {
         // Fuegos artificiales
         int fireworks = globalMsg.getInt("fuegos_artificiales", 0);
         if (fireworks > 0) {
-            // TODO: Spawner fuegos artificiales
+            spawnFireworks(player, fireworks);
         }
+        
+        // Logro de tutorial completado
+        achievements.unlockAchievement(player, "tutorial_completado");
+        
+        // Marcar como completado en estado
+        TutorialState state = tutorialStates.get(player.getUniqueId());
+        if (state != null) {
+            state.setCompleted(true);
+            dataPersistence.saveTutorialState(player.getUniqueId(), state, 
+                difficultySystem.getPlayedTimeMinutes(player));
+        }
+        
+        metrics.recordTutorialCompleted();
         
         // Mensaje en chat
         String chatMessage = globalMsg.getString("mensaje_chat", "");
@@ -753,6 +896,11 @@ public class TutorialManager {
             rankDemoTasks.remove(uuid);
         }
         
+        if (phaseCheckTasks.containsKey(uuid)) {
+            phaseCheckTasks.get(uuid).cancel();
+            phaseCheckTasks.remove(uuid);
+        }
+        
         // Mantener estado del tutorial en memoria (se puede guardar a DB)
         // tutorialStates.remove(uuid);
         
@@ -781,6 +929,11 @@ public class TutorialManager {
             rankDemoTasks.remove(uuid);
         }
         
+        if (phaseCheckTasks.containsKey(uuid)) {
+            phaseCheckTasks.get(uuid).cancel();
+            phaseCheckTasks.remove(uuid);
+        }
+        
         difficultySystem.resetPlayer(uuid);
         
         if (verboseLogging) {
@@ -801,5 +954,97 @@ public class TutorialManager {
     
     public void reload() {
         loadConfig();
+    }
+    
+    /**
+     * Spawner fuegos artificiales para celebración
+     */
+    private void spawnFireworks(Player player, int count) {
+        for (int i = 0; i < count; i++) {
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                try {
+                    org.bukkit.FireworkEffect effect = org.bukkit.FireworkEffect.builder()
+                        .with(org.bukkit.FireworkEffect.Type.BALL_LARGE)
+                        .withColor(org.bukkit.Color.RED, org.bukkit.Color.ORANGE, org.bukkit.Color.YELLOW)
+                        .withFade(org.bukkit.Color.WHITE)
+                        .trail(true)
+                        .build();
+                    
+                    org.bukkit.entity.Firework fw = player.getWorld().spawn(
+                        player.getLocation().add(0, 1, 0), 
+                        org.bukkit.entity.Firework.class
+                    );
+                    
+                    org.bukkit.inventory.meta.FireworkMeta meta = fw.getFireworkMeta();
+                    meta.addEffect(effect);
+                    meta.setPower(1);
+                    fw.setFireworkMeta(meta);
+                } catch (Exception e) {
+                    plugin.getLogger().warning("[Tutorial] Error spawneando fuegos artificiales: " + e.getMessage());
+                }
+            }, i * 10L);
+        }
+    }
+    
+    /**
+     * Guarda el progreso de un jugador
+     */
+    private void savePlayerProgress(Player player) {
+        UUID uuid = player.getUniqueId();
+        TutorialState state = tutorialStates.get(uuid);
+        
+        if (state != null) {
+            Long firstJoinTime = difficultySystem.hasPlayerData(player) 
+                ? System.currentTimeMillis() - (difficultySystem.getPlayedTimeMinutes(player) * 60000)
+                : System.currentTimeMillis();
+            
+            dataPersistence.saveTutorialState(uuid, state, firstJoinTime);
+        }
+    }
+    
+    /**
+     * Inicia tarea de guardado automático cada 5 minutos
+     */
+    private void startAutoSaveTask() {
+        Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, () -> {
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                if (tutorialStates.containsKey(player.getUniqueId())) {
+                    savePlayerProgress(player);
+                }
+            }
+            
+            if (verboseLogging) {
+                plugin.getLogger().info("[Tutorial] Guardado automático completado");
+            }
+        }, 6000L, 6000L); // Cada 5 minutos
+    }
+    
+    /**
+     * Verifica si un jugador está en tutorial activo
+     */
+    public boolean isInTutorial(Player player) {
+        TutorialState state = tutorialStates.get(player.getUniqueId());
+        return state != null && !state.isCompleted();
+    }
+    
+    /**
+     * Obtiene el tiempo jugado en minutos
+     */
+    public long getPlayedTimeMinutes(Player player) {
+        return difficultySystem.getPlayedTimeMinutes(player);
+    }
+    
+    /**
+     * Obtiene referencia al sistema de métricas
+     */
+    public TutorialMetrics getMetrics() {
+        return metrics;
+    }
+    
+    /**
+     * Obtiene referencia al sistema de logros
+     */
+    public TutorialAchievements getAchievements() {
+        return achievements;
     }
 }

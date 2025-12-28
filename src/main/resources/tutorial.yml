@@ -287,6 +287,11 @@ tips_progresivos:
   mostrar_en_actionbar: true        # Menos intrusivo que chat
   sonido: "BLOCK_NOTE_BLOCK_PLING"
   
+  # NUEVO: Evitar spam y repetición
+  evitar_repeticion_sesion: true    # No mostrar el mismo tip dos veces en una sesión
+  ignorar_afk: true                 # No mostrar tips si el jugador está AFK
+  tiempo_afk_minutos: 5             # Considerar AFK después de 5 minutos sin movimiento
+  
   # Tips contextuales según tiempo jugado
   tips:
     # Primeros 30 minutos (Fase 1)
@@ -408,20 +413,122 @@ etapas_tutorial:
 # ═══════════════════════════════════════════════════════════════
 
 avanzado:
-  # Almacenar progreso del tutorial en base de datos
+  # Almacenar progreso del tutorial en archivos YAML
   guardar_progreso: true
+  intervalo_guardado_minutos: 5     # Guardar cada 5 minutos automáticamente
   
   # Permitir que jugadores salten el tutorial
   permitir_saltar_tutorial: false
   
   # Comandos para administradores
   comandos_admin:
+    - "/tutorial progreso"            # Ver progreso del tutorial
     - "/tutorial reset <jugador>"     # Reiniciar tutorial de un jugador
-    - "/tutorial skip <jugador>"      # Saltar tutorial de un jugador
     - "/tutorial fase <jugador> <1-5>" # Cambiar fase manualmente
+    - "/tutorial stats"               # Ver métricas globales
     
   # Métricas y análisis
   metricas:
+    enabled: true                     # Sistema de tracking activado
     trackear_completado: true
     trackear_tiempo_por_etapa: true
     trackear_muertes_durante_tutorial: true
+    generar_reporte_cada_horas: 24   # Reporte automático cada 24 horas
+
+# ═══════════════════════════════════════════════════════════════
+# SISTEMA DE LOGROS DEL TUTORIAL
+# ═══════════════════════════════════════════════════════════════
+
+logros_tutorial:
+  enabled: true
+  
+  # Logros automáticos
+  logros:
+    primer_desastre_evadido:
+      titulo: "&a✓ Primera Evasión"
+      descripcion: "Evadiste tu primer desastre"
+      # Recompensa se da automáticamente por el sistema de evasión
+      
+    primera_mision_completada:
+      titulo: "&a✓ Misionero Novato"
+      descripcion: "Completaste tu primera misión"
+      # Recompensa se da automáticamente por el sistema de misiones
+      
+    treinta_minutos_supervivencia:
+      titulo: "&a✓ Sobreviviente"
+      descripcion: "Sobreviviste 30 minutos"
+      recompensa:
+        items:
+          - "give %player% minecraft:golden_apple 3"
+        mensaje: "&a+3 Manzanas Doradas"
+      
+    alcanzar_fase_3:
+      titulo: "&6✓ Veterano en Entrenamiento"
+      descripcion: "Alcanzaste la Fase 3"
+      recompensa:
+        xp_bonus: 200
+        mensaje: "&a+200 XP"
+      
+    tutorial_completado:
+      titulo: "&6&l✓ TUTORIAL COMPLETADO"
+      descripcion: "¡Completaste el tutorial completo!"
+      recompensa:
+        items:
+          - "give %player% minecraft:diamond 8"
+          - "give %player% minecraft:golden_apple 5"
+        xp_bonus: 500
+        mensaje: |
+          &a¡Recompensas del Tutorial!
+          &7• 8 Diamantes 💎
+          &7• 5 Manzanas Doradas 🍎
+          &7• 500 XP ⭐
+
+# ═══════════════════════════════════════════════════════════════
+# PROTECCIÓN DURANTE TUTORIAL
+# ═══════════════════════════════════════════════════════════════
+
+proteccion_tutorial:
+  enabled: true
+  
+  # Proteger items al morir (primeros minutos)
+  proteger_items_minutos: 15        # Proteger items primeros 15 minutos
+  mantener_nivel: true              # No perder niveles al morir
+  
+  # Mensajes contextuales según muerte
+  mensajes_muerte_contextuales:
+    enabled: true
+    interactivos: true              # Mensajes clickeables que ejecutan comandos
+    
+    caida:
+      mensaje: "&e💡 TIP: &7Durante desastres, evita lugares altos y ten agua preparada."
+      comando: "/avo menu"
+      
+    fuego:
+      mensaje: "&e💡 TIP: &7Usa cubos de agua contra la Lluvia de Fuego. &aClick para más info →"
+      comando: "/avo menu"
+      
+    sofocacion:
+      mensaje: "&e💡 TIP: &7Durante Terremotos, sal de espacios cerrados y evita el epicentro."
+      comando: "/avo menu"
+      
+    mobs:
+      mensaje: "&e💡 TIP: &7Construye un refugio seguro. Los desastres son más peligrosos."
+      comando: "/avo menu"
+
+# ═══════════════════════════════════════════════════════════════
+# RECONEXIÓN INTELIGENTE
+# ═══════════════════════════════════════════════════════════════
+
+reconexion:
+  enabled: true
+  
+  # Mensaje al reconectar durante tutorial
+  mensaje_bienvenida:
+    enabled: true
+    titulo: "&e¡Bienvenido de vuelta!"
+    subtitulo: "&7Continuando tutorial..."
+    delay_ticks: 40                 # Esperar 2 segundos antes de mostrar
+    
+  # Restaurar estado automáticamente
+  restaurar_buffs: true             # Re-aplicar buffs de regeneración
+  recordar_etapa: true              # Continuar desde la etapa actual

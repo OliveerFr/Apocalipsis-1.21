@@ -43,6 +43,7 @@ import me.apocalipsis.skills.SkillTreeGUI;
 import me.apocalipsis.state.StateManager;
 import me.apocalipsis.state.TimeService;
 import me.apocalipsis.tutorial.ProgressiveDifficultySystem;
+import me.apocalipsis.tutorial.TutorialListener;
 import me.apocalipsis.tutorial.TutorialManager;
 import me.apocalipsis.ui.MainMenuManager;
 import me.apocalipsis.ui.MessageBus;
@@ -206,6 +207,17 @@ public final class Apocalipsis extends JavaPlugin {
         tutorialManager = new TutorialManager(this, tutorialConfig, progressiveDifficultySystem, messageBus);
         getLogger().info("[Tutorial] ✓ Sistema de tutorial para nuevos jugadores iniciado");
         
+        // Registrar listener de tutorial
+        TutorialListener tutorialListener = new TutorialListener(this, tutorialManager);
+        getServer().getPluginManager().registerEvents(tutorialListener, this);
+        
+        // Registrar listener de muertes en tutorial
+        me.apocalipsis.tutorial.TutorialDeathListener tutorialDeathListener = 
+            new me.apocalipsis.tutorial.TutorialDeathListener(this, tutorialManager);
+        getServer().getPluginManager().registerEvents(tutorialDeathListener, this);
+        
+        getLogger().info("[Tutorial] ✓ Listeners de tutorial registrados");
+        
         // Inicializar disaster system (ahora con dificultad progresiva)
         disasterRegistry = new DisasterRegistry();
         disasterController = new DisasterController(this, stateManager, timeService, disasterRegistry, messageBus, soundUtil, progressiveDifficultySystem);
@@ -253,6 +265,13 @@ public final class Apocalipsis extends JavaPlugin {
         getCommand("avo").setExecutor(avoCommand);
         getCommand("avo").setTabCompleter(new AvoTabCompleter(this));
         getCommand("recompensa").setExecutor(new RecompensaCommand(this));
+        
+        // Comando de tutorial
+        me.apocalipsis.tutorial.TutorialCommand tutorialCommand = 
+            new me.apocalipsis.tutorial.TutorialCommand(this, tutorialManager, progressiveDifficultySystem, tutorialManager.getMetrics());
+        getCommand("tutorial").setExecutor(tutorialCommand);
+        getCommand("tutorial").setTabCompleter(tutorialCommand);
+        getLogger().info("[Tutorial] ✓ Comando /tutorial registrado");
         
         // Sistema de cartas
         cartasManager = new me.apocalipsis.ui.CartasManager(getDataFolder(), getLogger());
@@ -496,10 +515,6 @@ public final class Apocalipsis extends JavaPlugin {
         // Registrar protección de tokens (bloquea uso en crafting, anvil, etc)
         getServer().getPluginManager().registerEvents(new me.apocalipsis.listeners.TokenProtectionListener(this), this);
         getLogger().info("[TokenProtection] ✓ Protección de tokens activada");
-        
-        // Registrar listener de tutorial
-        getServer().getPluginManager().registerEvents(new me.apocalipsis.tutorial.TutorialListener(this, tutorialManager), this);
-        getLogger().info("[Tutorial] ✓ Listener de tutorial registrado");
         
         // Registrar listener de cartas
         getServer().getPluginManager().registerEvents(new me.apocalipsis.listeners.CartasListener(this, cartasManager), this);

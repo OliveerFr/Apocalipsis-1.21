@@ -1,5 +1,5 @@
 name: Apocalipsis
-version: '1.22.35'
+version: '1.22.36'
 main: me.apocalipsis.Apocalipsis
 api-version: 1.21
 author: OliveerF
@@ -60,6 +60,10 @@ commands:
     description: Abre el menú principal de Apocalipsis
     usage: /menu
     aliases: [gui, m]
+  tutorial:
+    description: Sistema de tutorial para nuevos jugadores
+    usage: /tutorial [progreso|reset|fase|stats]
+    aliases: [tut, guia]
 
 permissions:
   avo.admin:
@@ -67,4 +71,10 @@ permissions:
     default: op
   avo.user:
     description: Acceso a comandos básicos
+    default: true
+  apocalipsis.tutorial.admin:
+    description: Permite administrar el sistema de tutorial
+    default: op
+  apocalipsis.tutorial.user:
+    description: Permite usar comandos básicos del tutorial
     default: true
