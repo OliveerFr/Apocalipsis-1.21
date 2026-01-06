@@ -31,7 +31,8 @@ public class AvoTabCompleter implements TabCompleter {
                 "newday", "endday", "status", "setxp", "mission",
                 "tps", "stats", "backup", "cooldown", "debug", "test", "test-alert",
                 "reload", "admin", "escanear", "protecciones", "eco", "eco_sombras",
-                "evento3", "susurro", "xp", "experience", "nivel", "level", "evasion", "evasiones",
+                "evento3", "susurro", "evento4", "caminoend", "caminoalend",
+                "xp", "experience", "nivel", "level", "evasion", "evasiones",
                 "autotest", "habilidad", "habilidades", "skill", "skills",
                 "blockinfo", "bloque", "blockstats", "skillstats",
                 "newrank", "setpermrank", "removepermrank", "listpermranks",
@@ -108,6 +109,14 @@ public class AvoTabCompleter implements TabCompleter {
                 case "susurro":
                     // Sugerir subcomandos de evento3 (El Susurro en la Piedra Rota)
                     return Arrays.asList("start", "stop", "acto", "next", "info", "fragmento", "grieta").stream()
+                        .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
+                        .collect(Collectors.toList());
+                
+                case "evento4":
+                case "caminoend":
+                case "caminoalend":
+                    // Sugerir subcomandos de evento4 (El Camino al End)
+                    return Arrays.asList("start", "stop", "info", "fase", "next", "fragmentos", "anomalia", "portal").stream()
                         .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
                         .collect(Collectors.toList());
                 

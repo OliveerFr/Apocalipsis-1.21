@@ -25,6 +25,7 @@ import me.apocalipsis.events.EcoSombrasEvent;
 import me.apocalipsis.events.EventController;
 import me.apocalipsis.events.NavidadEvent;
 import me.apocalipsis.events.SusurroPiedraRotaEvent;
+import me.apocalipsis.events.CaminoEndEvent;
 import me.apocalipsis.events.testing.EventAutoTestingSystem;
 import me.apocalipsis.experience.AbilityService;
 import me.apocalipsis.experience.ExperienceService;
@@ -258,7 +259,10 @@ public final class Apocalipsis extends JavaPlugin {
         NavidadEvent navidadEvent = new NavidadEvent(this, messageBus, soundUtil);
         eventController.registerEvent(navidadEvent);
         
-        getLogger().info("[EventController] ✓ Eventos narrativos registrados (Eco de Brasas, Eco de Sombras, Susurro Piedra Rota, Navidad)");
+        CaminoEndEvent caminoEndEvent = new CaminoEndEvent(this, messageBus, soundUtil);
+        eventController.registerEvent(caminoEndEvent);
+        
+        getLogger().info("[EventController] ✓ Eventos narrativos registrados (Eco de Brasas, Eco de Sombras, Susurro Piedra Rota, Navidad, Camino al End)");
 
         // Registrar comandos y tab completer
         ApocalipsisCommand avoCommand = new ApocalipsisCommand(this, stateManager, disasterController, eventController, missionService, timeService, messageBus);

@@ -61,6 +61,12 @@ public class DisasterEvasionTracker {
     // UUID -> tiempo en que se desconectó (para detectar reconexiones rápidas)
     private final Map<UUID, Long> lastDisconnectTime = new HashMap<>();
     
+    // UUID -> razón de desconexión (para detectar tipo: timeout, kick del servidor, etc.)
+    private final Map<UUID, String> disconnectReason = new HashMap<>();
+    
+    // UUID -> si fue desconexión potencial por servidor (TPS bajo, excepciones, etc.)
+    private final Map<UUID, Boolean> serverDisconnectFlag = new HashMap<>();
+    
     // Timestamp de cuando empezó el desastre actual (para detectar late-joiners)
     private long currentDisasterStartTime = 0L;
     
@@ -296,6 +302,7 @@ public class DisasterEvasionTracker {
     /**
      * Registra que un jugador está saliendo del servidor durante un desastre.
      * Evalúa si es evasión y aplica penalizaciones.
+     * Mejora: Detecta desconexiones legítimas (internet, timeout del servidor).
      * 
      * @return true si fue evasión, false si salida legítima
      */
@@ -349,14 +356,84 @@ public class DisasterEvasionTracker {
             return false;
         }
         
+        // ============ MEJORADO: Detectar desconexiones legítimas ============
+        
+        // 0. Verificar si fue una desconexión marcada como del servidor
+        if (isServerDisconnect(uuid)) {
+            if (plugin.getConfigManager().isEvasionDebug()) {
+                plugin.getLogger().info("[EvasionTracker] " + player.getName() + 
+                    " desconectado por servidor (" + getDisconnectReason(uuid) + 
+                    ") - NO es evasión, permitiendo reconexión");
+            }
+            playerJoinTime.remove(uuid);
+            
+            // Extender ventana de gracia
+            long extendedWindow = graceReconnectWindowMs * 3; // 3x la ventana normal
+            lastDisconnectTime.put(uuid, now);
+            
+            org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                Long reconnectCheck = lastDisconnectTime.get(uuid);
+                if (reconnectCheck != null && reconnectCheck.equals(now)) {
+                    // No reconectó después de desconexión del servidor - no penalizar
+                    playerJoinTime.remove(uuid);
+                    lastDisconnectTime.remove(uuid);
+                    serverDisconnectFlag.remove(uuid);
+                    disconnectReason.remove(uuid);
+                }
+            }, extendedWindow / 50);
+            
+            return false;
+        }
+        
+        // 1. Verificar si es desconexión por timeout (ping muy alto)
+        if (player.getPing() > 5000) {
+            if (plugin.getConfigManager().isEvasionDebug()) {
+                plugin.getLogger().info("[EvasionTracker] " + player.getName() + 
+                    " desconectado por timeout (ping: " + player.getPing() + "ms) - NO es evasión");
+            }
+            playerJoinTime.remove(uuid);
+            lastDisconnectTime.put(uuid, now);
+            return false; // NO contar como evasión
+        }
+        
+        // 2. Verificar si el servidor está bajo (TPS bajo = problemas de red probable)
+        if (plugin.getPerformanceAdapter() != null) {
+            double tps = plugin.getPerformanceAdapter().getLastTPS();
+            if (tps < 10.0) {
+                if (plugin.getConfigManager().isEvasionDebug()) {
+                    plugin.getLogger().info("[EvasionTracker] " + player.getName() + 
+                        " desconectado con TPS bajo (" + String.format("%.1f", tps) + ") - posible problema de servidor/red");
+                }
+                // Dar ventana de gracia más larga (60s en vez de 30s)
+                lastDisconnectTime.put(uuid, now);
+                
+                org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    Long reconnectCheck = lastDisconnectTime.get(uuid);
+                    if (reconnectCheck != null && reconnectCheck.equals(now)) {
+                        // No reconectó pero TPS bajo = No penalizar
+                        if (plugin.getConfigManager().isEvasionDebug()) {
+                            plugin.getLogger().info("[EvasionTracker] " + player.getName() + 
+                                " NO reconectó pero TPS estaba bajo - NO se aplica evasión (problema de servidor)");
+                        }
+                        playerJoinTime.remove(uuid);
+                        lastDisconnectTime.remove(uuid);
+                    }
+                }, (graceReconnectWindowMs * 2) / 50); // Doble ventana de gracia
+                
+                return false;
+            }
+        }
+        
+        // ============ Fin de detección de desconexiones legítimas ============
+        
         // Registrar tiempo de desconexión para ventana de gracia
         lastDisconnectTime.put(uuid, now);
         
-        // POSIBLE EVASIÓN - dar ventana de gracia de 30s para reconexión
+        // POSIBLE EVASIÓN - dar ventana de gracia para reconexión
         if (plugin.getConfigManager().isEvasionDebug()) {
             plugin.getLogger().warning("[EvasionTracker] " + player.getName() + 
                 " se desconectó temprano (" + (timeInDisaster/1000) + "s / " + (requiredTime/1000) + 
-                "s) - ventana de gracia de 30s para reconexión");
+                "s) - ventana de gracia para reconexión");
         }
         
         // Programar verificación de evasión después de la ventana de gracia
@@ -367,10 +444,10 @@ public class DisasterEvasionTracker {
             // Verificar si el jugador reconectó dentro de la ventana de gracia
             Long reconnectCheck = lastDisconnectTime.get(uuid);
             if (reconnectCheck != null && reconnectCheck.equals(now)) {
-                // No reconectó - aplicar penalización
+                // No reconectó dentro de la ventana - aplicar penalización
                 if (plugin.getConfigManager().isEvasionDebug()) {
                     plugin.getLogger().warning("[EvasionTracker] " + player.getName() + 
-                        " NO reconectó en 30s - EVASIÓN CONFIRMADA");
+                        " NO reconectó - EVASIÓN CONFIRMADA (desconexión voluntaria)");
                 }
                 
                 // Aplicar penalización (offline)
@@ -379,11 +456,11 @@ public class DisasterEvasionTracker {
                 // Limpiar registros
                 playerJoinTime.remove(uuid);
                 lastDisconnectTime.remove(uuid);
-            } else {
+            } else if (reconnectCheck != null) {
                 // Reconectó - no es evasión
                 if (plugin.getConfigManager().isEvasionDebug()) {
                     plugin.getLogger().info("[EvasionTracker] " + player.getName() + 
-                        " reconectó dentro de la ventana de gracia - NO es evasión");
+                        " reconectó dentro de la ventana de gracia - NO es evasión (fue desconexión involuntaria)");
                 }
                 lastDisconnectTime.remove(uuid);
             }
@@ -1388,5 +1465,43 @@ public class DisasterEvasionTracker {
         plugin.getLogger().info("[EvasionTracker] Reducidas " + toReduce + " evasiones de UUID: " + uuid);
         
         return toReduce;
+    }
+    
+    /**
+     * Registra una desconexión causada por el servidor (timeout, kick, excepciones, etc.)
+     * Esto previene que se marque como evasión si es una desconexión involuntaria.
+     * 
+     * MEJORA: Llama a este método desde PlayerListener cuando el servidor lo expulsa
+     * @param player Jugador desconectado
+     * @param reason Razón de la desconexión (timeout, server_kick, exception, etc.)
+     */
+    public void flagServerDisconnect(Player player, String reason) {
+        UUID uuid = player.getUniqueId();
+        
+        // Marcar como desconexión del servidor
+        serverDisconnectFlag.put(uuid, true);
+        disconnectReason.put(uuid, reason);
+        
+        // Extender la ventana de gracia
+        lastDisconnectTime.put(uuid, System.currentTimeMillis());
+        
+        if (plugin.getConfigManager().isEvasionDebug()) {
+            plugin.getLogger().info("[EvasionTracker] Marcado como desconexión del servidor: " + player.getName() + 
+                " (razón: " + reason + ")");
+        }
+    }
+    
+    /**
+     * Verifica si una desconexión fue marcada como del servidor
+     */
+    public boolean isServerDisconnect(UUID uuid) {
+        return serverDisconnectFlag.getOrDefault(uuid, false);
+    }
+    
+    /**
+     * Obtiene la razón de desconexión registrada
+     */
+    public String getDisconnectReason(UUID uuid) {
+        return disconnectReason.getOrDefault(uuid, "desconocida");
     }
 }

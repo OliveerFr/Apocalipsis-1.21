@@ -157,6 +157,12 @@ public class ApocalipsisCommand implements CommandExecutor {
             case "susurro":
                 cmdEvento3(sender, args);
                 break;
+            case "evento4":
+            case "caminoend":
+            case "caminoalend":
+            case "camino":
+                cmdEvento4(sender, args);
+                break;
             case "navidad":
                 cmdNavidad(sender, args);
                 break;
@@ -2421,6 +2427,275 @@ public class ApocalipsisCommand implements CommandExecutor {
             default:
                 sender.sendMessage("§cSubcomando desconocido: §f" + subCmd);
                 sender.sendMessage("§7Usa §e/avo evento3 §7para ver comandos disponibles.");
+                break;
+        }
+    }
+
+    /**
+     * Comandos para el Evento El Camino al End
+     * /avo evento4 <subcomando>
+     */
+    private void cmdEvento4(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("avo.admin")) {
+            sender.sendMessage("§cNo tienes permisos.");
+            return;
+        }
+        
+        if (args.length < 2) {
+            sender.sendMessage("§5§l⚡ ═══ EL CAMINO AL END ═══ ⚡");
+            sender.sendMessage("§7Anomalías dimensionales aparecen...");
+            sender.sendMessage("");
+            sender.sendMessage("§e▸ Control Principal:");
+            sender.sendMessage("  §f/avo evento4 start §7- Inicia el evento");
+            sender.sendMessage("  §f/avo evento4 stop §7- Finaliza el evento");
+            sender.sendMessage("  §f/avo evento4 info §7- Estado del evento");
+            sender.sendMessage("");
+            sender.sendMessage("§e▸ Gestión de Fases:");
+            sender.sendMessage("  §f/avo evento4 fase <1-3> §7- Fuerza fase");
+            sender.sendMessage("  §f/avo evento4 next §7- Siguiente fase");
+            sender.sendMessage("");
+            sender.sendMessage("§e▸ Utilidades:");
+            sender.sendMessage("  §f/avo evento4 fragmentos <jugador> [cant] §7- Dar fragmentos");
+            sender.sendMessage("  §f/avo evento4 anomalia spawn §7- Spawn anomalía");
+            sender.sendMessage("  §f/avo evento4 portal spawn §7- Ver info portal");
+            sender.sendMessage("  §f/avo evento4 tp <portal|anomalia> §7- Teleportarse");
+            sender.sendMessage("");
+            sender.sendMessage("§7Aliases: §fcaminoend, caminoalend, camino");
+            return;
+        }
+        
+        String subCmd = args[1].toLowerCase();
+        
+        // Obtener instancia del evento
+        me.apocalipsis.events.CaminoEndEvent evento4 = null;
+        if (eventController.hasActiveEvent() && 
+            eventController.getActiveEvent() instanceof me.apocalipsis.events.CaminoEndEvent) {
+            evento4 = (me.apocalipsis.events.CaminoEndEvent) eventController.getActiveEvent();
+        }
+        
+        switch (subCmd) {
+            case "start":
+            case "iniciar":
+                // Verificar si hay desastre activo
+                if (disasterController.hasActiveDisaster()) {
+                    sender.sendMessage("§cYa hay un desastre activo. Usa §e/avo stop §cprimero.");
+                    return;
+                }
+                
+                // Verificar si ya hay evento activo
+                if (eventController.hasActiveEvent()) {
+                    String eventoActivo = eventController.getActiveEvent().getEventId();
+                    sender.sendMessage("§cYa hay un evento activo: §f" + eventoActivo);
+                    return;
+                }
+                
+                // Verificar SAFE_MODE
+                if (stateManager.isSafeModeActive()) {
+                    sender.sendMessage("§cNo se puede iniciar en SAFE_MODE (TPS bajo).");
+                    return;
+                }
+                
+                // Iniciar evento
+                if (eventController.startEvent("camino_end")) {
+                    sender.sendMessage("§a✓ Evento §5§l⚡ El Camino al End §ainiciado");
+                    sender.sendMessage("§7El Observador percibe algo extraño...");
+                    plugin.getLogger().info(String.format("[CaminoEnd] Iniciado por %s", sender.getName()));
+                } else {
+                    sender.sendMessage("§cNo se pudo iniciar el evento. Verifica la consola.");
+                }
+                break;
+                
+            case "stop":
+            case "detener":
+                if (evento4 == null) {
+                    sender.sendMessage("§cEl evento no está activo.");
+                    return;
+                }
+                
+                eventController.stopActiveEvent();
+                sender.sendMessage("§7✓ Evento §5El Camino al End §7detenido");
+                plugin.getLogger().info(String.format("[CaminoEnd] Detenido por %s", sender.getName()));
+                break;
+                
+            case "info":
+            case "status":
+                if (evento4 == null) {
+                    sender.sendMessage("§5§l⚡ EL CAMINO AL END - INFO");
+                    sender.sendMessage("§7Estado: §cInactivo");
+                    sender.sendMessage("§7Usa §e/avo evento4 start §7para iniciarlo.");
+                    return;
+                }
+                
+                sender.sendMessage("§5§l⚡ ═══ EL CAMINO AL END ═══ ⚡");
+                sender.sendMessage("§7Estado: §aActivo");
+                sender.sendMessage("§7Fase actual: §e" + evento4.getFaseActual());
+                sender.sendMessage("§7Fragmentos recolectados: §e" + evento4.getFragmentosRecolectados() + "§7/§e40");
+                sender.sendMessage("§7Anomalías activas: §e" + evento4.getAnomaliasActivas().size());
+                sender.sendMessage("§7Portal generado: " + (evento4.getFaseActual() == me.apocalipsis.events.CaminoEndEvent.Fase.REVELACION ? "§aŚí" : "§7No"));
+                break;
+                
+            case "fase":
+            case "phase":
+                if (evento4 == null) {
+                    sender.sendMessage("§cEl evento no está activo.");
+                    return;
+                }
+                
+                if (args.length < 3) {
+                    sender.sendMessage("§cUso: /avo evento4 fase <1-3>");
+                    sender.sendMessage("§7  1 = ANOMALIAS (spawn anomalías)");
+                    sender.sendMessage("§7  2 = ECOS (recolección fragmentos)");
+                    sender.sendMessage("§7  3 = REVELACION (portal incompleto)");
+                    return;
+                }
+                
+                sender.sendMessage("§e⚠ Este evento tiene transiciones automáticas.");
+                sender.sendMessage("§7Usa §e/avo evento4 fragmentos §7para forzar progreso.");
+                break;
+                
+            case "next":
+            case "siguiente":
+                if (evento4 == null) {
+                    sender.sendMessage("§cEl evento no está activo.");
+                    return;
+                }
+                
+                sender.sendMessage("§e⚠ Las fases avanzan automáticamente.");
+                sender.sendMessage("§7Fase 1→2: Después de 30-45 minutos");
+                sender.sendMessage("§7Fase 2→3: Al recolectar 40 fragmentos");
+                break;
+                
+            case "fragmentos":
+                if (evento4 == null) {
+                    sender.sendMessage("§cEl evento no está activo.");
+                    return;
+                }
+                
+                if (args.length < 3) {
+                    sender.sendMessage("§cUso: /avo evento4 fragmentos <jugador> [cantidad]");
+                    sender.sendMessage("§7Ejemplo: §e/avo evento4 fragmentos Steve 5");
+                    return;
+                }
+                
+                Player target = plugin.getServer().getPlayer(args[2]);
+                if (target == null) {
+                    sender.sendMessage("§cJugador no encontrado: " + args[2]);
+                    return;
+                }
+                
+                int cantidad = 1;
+                if (args.length >= 4) {
+                    try {
+                        cantidad = Integer.parseInt(args[3]);
+                        if (cantidad < 1 || cantidad > 10) {
+                            sender.sendMessage("§cCantidad inválida (1-10).");
+                            return;
+                        }
+                    } catch (NumberFormatException e) {
+                        sender.sendMessage("§cCantidad inválida: " + args[3]);
+                        return;
+                    }
+                }
+                
+                // Dar fragmentos
+                for (int i = 0; i < cantidad; i++) {
+                    target.getInventory().addItem(evento4.getItems().crearFragmentoDelVacio());
+                }
+                
+                sender.sendMessage("§a✓ Dados §e" + cantidad + " §afragmentos a §e" + target.getName());
+                target.sendMessage("§5§l⚡ Has recibido §e" + cantidad + " §5§lFragmento(s) del Vacío");
+                break;
+                
+            case "anomalia":
+                if (evento4 == null) {
+                    sender.sendMessage("§cEl evento no está activo.");
+                    return;
+                }
+                
+                if (args.length < 3 || !args[2].equalsIgnoreCase("spawn")) {
+                    sender.sendMessage("§cUso: /avo evento4 anomalia spawn");
+                    return;
+                }
+                
+                sender.sendMessage("§a✓ Las anomalías se spawnean automáticamente cada 10 segundos.");
+                sender.sendMessage("§7Máximo simultáneas: §e8");
+                break;
+                
+            case "portal":
+                if (evento4 == null) {
+                    sender.sendMessage("§cEl evento no está activo.");
+                    return;
+                }
+                
+                if (args.length < 3 || !args[2].equalsIgnoreCase("spawn")) {
+                    sender.sendMessage("§cUso: /avo evento4 portal spawn");
+                    return;
+                }
+                
+                if (evento4.getFaseActual() != me.apocalipsis.events.CaminoEndEvent.Fase.REVELACION) {
+                    sender.sendMessage("§e⚠ El portal se genera automáticamente al alcanzar 40 fragmentos.");
+                } else {
+                    sender.sendMessage("§a✓ El portal ya está generado.");
+                }
+                break;
+            
+            case "tp":
+            case "teleport":
+                if (evento4 == null) {
+                    sender.sendMessage("§cEl evento no está activo.");
+                    return;
+                }
+                
+                if (!(sender instanceof Player)) {
+                    sender.sendMessage("§cSolo jugadores pueden usar este comando.");
+                    return;
+                }
+                
+                if (args.length < 3) {
+                    sender.sendMessage("§cUso: /avo evento4 tp <portal|anomalia>");
+                    return;
+                }
+                
+                Player jugador = (Player) sender;
+                String destino = args[2].toLowerCase();
+                
+                if (destino.equals("portal")) {
+                    if (evento4.getFaseActual() != me.apocalipsis.events.CaminoEndEvent.Fase.REVELACION) {
+                        sender.sendMessage("§cEl portal aún no ha sido revelado.");
+                        return;
+                    }
+                    
+                    // Obtener ubicación del portal desde evento
+                    Location portalLoc = null;
+                    if (portalLoc == null) {
+                        sender.sendMessage("§cNo se pudo encontrar el portal.");
+                        return;
+                    }
+                    
+                    jugador.teleport(portalLoc.clone().add(0, 2, 0));
+                    sender.sendMessage("§a✓ Teletransportado al §5Portal Incompleto");
+                    
+                } else if (destino.equals("anomalia")) {
+                    if (evento4.getAnomaliasActivas().isEmpty()) {
+                        sender.sendMessage("§cNo hay anomalías activas.");
+                        return;
+                    }
+                    
+                    // TP a anomalía aleatoria
+                    List<Location> anomalias = new ArrayList<>(evento4.getAnomaliasActivas().keySet());
+                    Location anomalia = anomalias.get(evento4.getRandom().nextInt(anomalias.size()));
+                    
+                    jugador.teleport(anomalia.clone().add(0, 2, 0));
+                    sender.sendMessage("§a✓ Teletransportado a una §5Anomalía §7(" + 
+                        evento4.getAnomaliasActivas().get(anomalia).tipo.getNombre() + "§7)");
+                } else {
+                    sender.sendMessage("§cDestino desconocido: §f" + destino);
+                }
+                break;
+                
+            default:
+                sender.sendMessage("§cSubcomando desconocido: §f" + subCmd);
+                sender.sendMessage("§7Usa §e/avo evento4 §7para ver comandos disponibles.");
                 break;
         }
     }

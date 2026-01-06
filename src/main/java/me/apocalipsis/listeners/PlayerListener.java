@@ -245,6 +245,32 @@ public class PlayerListener implements Listener {
         // [RECONSTRUCCIÓN] Remover jugador del BossBar único del DisasterController
         plugin.getDisasterController().removePlayerFromBossBar(player);
         
+        // ============ MEJORADO: Detectar tipo de desconexión ============
+        
+        // 1. Detectar si fue expulsado por timeout del servidor (conexión perdida)
+        boolean timeout = player.getPing() > 5000;
+        
+        // 2. Detectar si el servidor está bajo
+        boolean serverLow = plugin.getPerformanceAdapter() != null && 
+                           plugin.getPerformanceAdapter().getLastTPS() < 10.0;
+        
+        // 3. Marcar como desconexión involuntaria si hay problemas
+        if (timeout) {
+            plugin.getDisasterEvasionTracker().flagServerDisconnect(player, "timeout_conexion");
+            if (plugin.getConfigManager().isDebugCiclo()) {
+                plugin.getLogger().info("[PlayerListener] " + player.getName() + 
+                    " desconectado por timeout (ping alto)");
+            }
+        } else if (serverLow) {
+            plugin.getDisasterEvasionTracker().flagServerDisconnect(player, "servidor_bajo_tps");
+            if (plugin.getConfigManager().isDebugCiclo()) {
+                plugin.getLogger().info("[PlayerListener] " + player.getName() + 
+                    " desconectado con TPS bajo - no contar como evasión");
+            }
+        }
+        
+        // ============ Fin de mejoras de detección ============
+        
         // [EVASIÓN] Detectar si el jugador se desconecta durante un desastre activo
         ServerState currentState = plugin.getStateManager().getCurrentState();
         if (currentState == ServerState.ACTIVO) {

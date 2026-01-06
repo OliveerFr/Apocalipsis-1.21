@@ -1,0 +1,288 @@
+# ═══════════════════════════════════════════════════════════════════
+# EL CAMINO AL END - Mini-evento de Exploración
+# ═══════════════════════════════════════════════════════════════════
+# Evento de exploración y descubrimiento de 2-3 horas
+# Inicio manual con: /avo evento4 start o /avo caminoend start
+# ═══════════════════════════════════════════════════════════════════
+
+metadata:
+  event_id: "camino_end"
+  nombre_display: "§5§lEl Camino al End"
+  version: "1.0.0"
+  enabled: true
+  duracion_total_seg: 9000  # 2.5 horas máximo (150 minutos)
+  jugadores_minimos: 1
+  jugadores_maximos: 20
+  descripcion: "Anomalías dimensionales aparecen en el mundo. El Observador percibe la resonancia de una dimensión lejana."
+
+# ═══════════════════════════════════════════════════════════════════
+# INFORMACIÓN DEL EVENTO
+# ═══════════════════════════════════════════════════════════════════
+evento:
+  nombre_display: "§5§lEl Camino al End"
+  descripcion: "Anomalías dimensionales aparecen en el mundo..."
+  tipo: "exploracion"
+  combate: false
+  colaborativo: true
+
+# ═══════════════════════════════════════════════════════════════════
+# SISTEMA DE FASES - 3 Fases Progresivas
+# ═══════════════════════════════════════════════════════════════════
+fases:
+  anomalias:
+    nombre: "Anomalías Dimensionales"
+    duracion_min_ticks: 36000      # 30 minutos mínimo
+    duracion_max_ticks: 54000      # 45 minutos máximo
+    
+    anomalia_spawn:
+      intervalo_ticks: 200         # Cada 10 segundos intento de spawn
+      max_simultaneas: 8
+      distancia_minima_spawn: 150  # Distancia mínima entre anomalías
+      radio_jugador_min: 100       # Radio mínimo desde jugador
+      radio_jugador_max: 300       # Radio máximo desde jugador
+    
+    efectos_visuales:
+      particulas_espiral:
+        tipo: "END_ROD"
+        cantidad: 3
+        radio: 0.5
+        frecuencia_ticks: 2
+      
+      particulas_base:
+        tipo: "PORTAL"
+        cantidad: 5
+        radio: 0.3
+        frecuencia_ticks: 2
+    
+    efectos_sonoros:
+      beacon_ambient:
+        sound: "BLOCK_BEACON_AMBIENT"
+        volumen: 0.3
+        pitch: 0.8
+        intervalo_ticks: 100        # Cada 5 segundos
+      
+      portal_ambient:
+        sound: "BLOCK_PORTAL_AMBIENT"
+        volumen: 0.2
+        pitch: 1.2
+        intervalo_ticks: 100
+    
+    timeout_segundos: 300           # Anomalías desaparecen tras 5 minutos sin interacción
+  
+  resonancia:
+    nombre: "La Resonancia"
+    transicion: "automatica"        # Transición automática tras duración de anomalías
+    
+    fragmentos:
+      objetivo_global: 40           # Total de fragmentos a recolectar
+      radio_recoleccion: 3.0        # Distancia para recolectar (bloques)
+      una_vez_por_anomalia: true    # Solo 1 fragmento por anomalía
+    
+    progreso:
+      anuncio_cada: 5               # Anunciar cada 5 fragmentos
+      anuncio_global: true
+      formato: "§7[§5✦§7] §fFragmento recolectado: §e%actual%§7/§e%total% §7(§a%porcentaje%%§7)"
+  
+  revelacion:
+    nombre: "La Revelación"
+    trigger: "fragmentos_objetivo"  # Inicia al alcanzar 40 fragmentos
+    duracion_max_ticks: 36000      # Máximo 30 minutos en revelación
+    
+    portal:
+      auto_generar: true
+      ubicacion:
+        # Ubicación predefinida (opcional, si no se define usa spawn del mundo)
+        world: "world"
+        x: 0
+        y: 100
+        z: 0
+      
+      estructura:
+        tipo: "incompleto"
+        bloques_totales: 12
+        bloques_colocados: 8        # 8 de 12 bloques (66% completo)
+        material_frame: "END_PORTAL_FRAME"
+        material_base: "END_STONE_BRICKS"
+      
+      efectos:
+        particulas_portal:
+          tipo: "PORTAL"
+          cantidad: 20
+          radio: 1.5
+          frecuencia_ticks: 2
+        
+        particulas_espiral:
+          tipo: "END_ROD"
+          cantidad: 8
+          radio: 2.0
+          altura_max: 5.0
+          frecuencia_ticks: 2
+
+# ═══════════════════════════════════════════════════════════════════
+# MENSAJES DEL EVENTO
+# ═══════════════════════════════════════════════════════════════════
+mensajes:
+  inicio:
+    titulo: "§5§l⚡ EL CAMINO AL END"
+    subtitulo: "§7Anomalías dimensionales detectadas..."
+    
+    mensajes:
+      - "§8§m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      - "§5§l⚡ EL OBSERVADOR:"
+      - "§7§o\"Algo... se acerca al mundo...\""
+      - "§7§o\"Siento... la resonancia de una dimensión lejana...\""
+      - ""
+      - "§7Anomalías dimensionales han aparecido."
+      - "§7Explora el mundo para investigarlas."
+      - "§8§m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    
+    delay_entre_mensajes: 20        # Ticks entre cada mensaje (1 segundo)
+  
+  fase_resonancia:
+    observador: "§5§l⚡ EL OBSERVADOR:"
+    mensaje: "§7§o\"Las barreras... se debilitan...\""
+    mensaje2: "§7§o\"Ahora... puedo sentir los fragmentos...\""
+    sound: "BLOCK_SCULK_SENSOR_CLICKING"
+    volumen: 0.5
+    pitch: 1.0
+  
+  fase_revelacion:
+    observador: "§5§l⚡ EL OBSERVADOR:"
+    mensaje: "§7§o\"Suficiente... la puerta se abre... incompleta...\""
+    
+    titulo: "§5§l⚡ REVELACIÓN"
+    subtitulo: "§7Un portal incompleto se revela..."
+    
+    sound: "ENTITY_ENDER_DRAGON_GROWL"
+    volumen: 1.0
+    pitch: 0.5
+  
+  finalizacion:
+    observador: "§5§l⚡ EL OBSERVADOR:"
+    mensajes:
+      - "§7§o\"El camino... aún no está completo...\""
+      - "§7§o\"Pero ahora sabemos... que existe.\""
+  
+  fragmento_recolectado:
+    jugador:
+      - "§5§l⚡ EL OBSERVADOR:"
+      - "§7§o\"Un fragmento... resuena en tus manos...\""
+    
+    global: "§7[§5✦§7] §fFragmento recolectado: §e%actual%§7/§e%total% §7(§a%porcentaje%%§7)"
+    
+    sound: "BLOCK_SCULK_SENSOR_CLICKING"
+    volumen: 0.5
+    pitch: 1.2
+  
+  portal_interaccion:
+    - "§5§l⚡ EL OBSERVADOR:"
+    - "§7§o\"El portal... incompleto... no lleva a ningún lugar.\""
+    - "§7§o\"Aún faltan piezas... pero ahora sabemos...\""
+    - "§7§o\"...que el camino existe.\""
+
+# ═══════════════════════════════════════════════════════════════════
+# ITEMS DEL EVENTO
+# ═══════════════════════════════════════════════════════════════════
+items:
+  fragmento_vacio:
+    material: "AMETHYST_SHARD"
+    nombre: "§5Fragmento del Vacío"
+    lore:
+      - "§7Un cristal que resuena con"
+      - "§7energía dimensional extraña."
+      - ""
+      - "§7Emite un zumbido suave y"
+      - "§7partículas púrpuras ocasionales."
+      - ""
+      - "§5§o\"Algo llama desde el vacío...\""
+    
+    enchant_glow: true
+    flags:
+      - "HIDE_ENCHANTS"
+      - "HIDE_ATTRIBUTES"
+  
+  marca_observador:
+    material: "NETHER_STAR"
+    nombre: "§5§l⚡ Marca del Observador"
+    lore:
+      - "§7Recompensa del Camino al End"
+      - ""
+      - "§dUna marca dimensional que prueba"
+      - "§dque exploraste lo desconocido."
+      - ""
+      - "§7El Observador reconoce tu valentía"
+      - "§7al acercarte a lo que no debería estar."
+      - ""
+      - "§5§o\"El camino existe... aunque incompleto.\""
+    
+    enchant_glow: true
+    flags:
+      - "HIDE_ENCHANTS"
+      - "HIDE_ATTRIBUTES"
+  
+  brujula_vacio:
+    material: "RECOVERY_COMPASS"
+    nombre: "§5Brújula del Vacío"
+    lore:
+      - "§7Una brújula que apunta hacia"
+      - "§7las anomalías dimensionales."
+      - ""
+      - "§7Gira erráticamente cuando"
+      - "§7hay una anomalía cerca."
+      - ""
+      - "§5§o\"Busca lo que no pertenece...\""
+    
+    enchant_glow: true
+    flags:
+      - "HIDE_ENCHANTS"
+      - "HIDE_ATTRIBUTES"
+
+# ═══════════════════════════════════════════════════════════════════
+# RECOMPENSAS
+# ═══════════════════════════════════════════════════════════════════
+recompensas:
+  ps_base: 150                      # PS base por participar
+  ps_por_fragmento: 5               # PS adicional por cada fragmento recolectado
+  
+  # Bonos para top 3 recolectores
+  bono_top1: 300                    # Bono adicional para el 1º puesto
+  bono_top2: 200                    # Bono adicional para el 2º puesto
+  bono_top3: 100                    # Bono adicional para el 3º puesto
+  
+  items_especiales:
+    marca_observador:
+      dar_a: "todos_participantes"
+      cantidad: 1
+    
+    fragmentos_extra:
+      dar_a: "top_recolectores"     # Top 3 recolectores
+      cantidad: 10
+  
+  titulo:
+    texto: "§5El Explorador del Vacío"
+    dar_a: "todos_participantes"
+
+# ═══════════════════════════════════════════════════════════════════
+# CONFIGURACIÓN AVANZADA
+# ═══════════════════════════════════════════════════════════════════
+configuracion:
+  debug: false
+  logs_detallados: false
+  
+  performance:
+    max_anomalias_render: 8         # Máximo de anomalías renderizando partículas
+    reducir_particulas_tps_bajo: true
+    tps_umbral: 18.0
+  
+  mundo:
+    mundos_permitidos:
+      - "world"
+    
+    biomas_excluidos:              # No spawnear anomalías en estos biomas
+      - "OCEAN"
+      - "DEEP_OCEAN"
+      - "RIVER"
+  
+  proteccion:
+    portal_indestructible: true
+    anomalias_indestructibles: true
