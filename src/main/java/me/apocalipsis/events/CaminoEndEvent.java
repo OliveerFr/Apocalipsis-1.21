@@ -80,6 +80,10 @@ public class CaminoEndEvent extends EventBase {
     private int ticksSinFragmento = 0;
     private int ultimoMensajePista = 0;
     
+    // Tracking de anomalías visitadas por jugador
+    private Map<UUID, Set<Location>> anomaliasVisitadasPorJugador = new HashMap<>();
+    private Map<UUID, Location> anomaliaActualPorJugador = new HashMap<>();
+    
     // Sistema de brújula funcional
     private BukkitTask brujulaTask;
     
@@ -190,6 +194,10 @@ public class CaminoEndEvent extends EventBase {
         // Limpiar anomalías
         anomaliasActivas.clear();
         
+        // Limpiar tracking de visitas
+        anomaliasVisitadasPorJugador.clear();
+        anomaliaActualPorJugador.clear();
+        
         // Remover BossBar
         if (bossBar != null) {
             bossBar.removeAll();
@@ -231,6 +239,11 @@ public class CaminoEndEvent extends EventBase {
         if (ticksTotales % 20 == 0 && (faseActual == Fase.ANOMALIAS || faseActual == Fase.RESONANCIA)) {
             actualizarBrujulas();
             mostrarGuiaAnomalias(); // Guía para TODOS los jugadores
+        }
+        
+        // Guía hacia el portal incompleto durante REVELACION
+        if (ticksTotales % 20 == 0 && faseActual == Fase.REVELACION && portalLocation != null) {
+            mostrarGuiaPortal();
         }
         
         // Actualizar anomalías existentes
@@ -286,6 +299,15 @@ public class CaminoEndEvent extends EventBase {
         
         // Cambiar clima atmosférico
         cambiarClimaFase(nuevaFase);
+        
+        // Limpiar tracking de anomalías visitadas al cambiar de fase
+        if (nuevaFase == Fase.RESONANCIA) {
+            // Reset parcial: mantener historial pero permitir revisitar
+            for (UUID uuid : anomaliasVisitadasPorJugador.keySet()) {
+                anomaliasVisitadasPorJugador.get(uuid).clear();
+            }
+            anomaliaActualPorJugador.clear();
+        }
         
         switch (nuevaFase) {
             case RESONANCIA:
@@ -526,6 +548,11 @@ public class CaminoEndEvent extends EventBase {
     
     private void despawnearAnomalia(Location ubicacion) {
         anomaliasActivas.remove(ubicacion);
+        
+        // Limpiar tracking de visitas para esta anomalía
+        for (Set<Location> visitadas : anomaliasVisitadasPorJugador.values()) {
+            visitadas.remove(ubicacion);
+        }
         
         BukkitTask particleTask = anomaliaParticleTasks.remove(ubicacion);
         if (particleTask != null) particleTask.cancel();
@@ -1158,6 +1185,26 @@ public class CaminoEndEvent extends EventBase {
         return random;
     }
     
+    /**
+     * Fuerza transición a la siguiente fase (para comando admin)
+     */
+    public void forzarSiguienteFase() {
+        switch (faseActual) {
+            case ANOMALIAS:
+                transicionarAFase(Fase.RESONANCIA);
+                plugin.getLogger().info("[CaminoEnd] Fase forzada: ANOMALIAS → RESONANCIA");
+                break;
+            case RESONANCIA:
+                transicionarAFase(Fase.REVELACION);
+                plugin.getLogger().info("[CaminoEnd] Fase forzada: RESONANCIA → REVELACION");
+                break;
+            case REVELACION:
+                finalizarEvento();
+                plugin.getLogger().info("[CaminoEnd] Evento finalizado desde REVELACION");
+                break;
+        }
+    }
+    
     // ═══════════════════════════════════════════════════════════════════
     // SISTEMA DE BRÚJULA FUNCIONAL
     // ═══════════════════════════════════════════════════════════════════
@@ -1202,34 +1249,205 @@ public class CaminoEndEvent extends EventBase {
         }
         
         for (Player jugador : plugin.getServer().getOnlinePlayers()) {
-            // Buscar anomalía más cercana
-            Location anomaliaCercana = encontrarAnomaliaMasCercana(jugador.getLocation());
+            UUID uuid = jugador.getUniqueId();
             
-            if (anomaliaCercana == null) continue;
+            // Buscar anomalía más cercana (excluyendo las ya visitadas)
+            Location anomaliaCercana = encontrarAnomaliaMasCercanaNoVisitada(jugador);
+            
+            if (anomaliaCercana == null) {
+                // Si todas fueron visitadas, mostrar mensaje especial
+                int visitadas = anomaliasVisitadasPorJugador.getOrDefault(uuid, new HashSet<>()).size();
+                if (visitadas > 0) {
+                    jugador.sendActionBar("§a✓ §7Has explorado §e" + visitadas + " §7anomalías. §8Esperando más...");
+                } else {
+                    jugador.sendActionBar("§5§l⚡ §7Esperando nuevas anomalías...");
+                }
+                continue;
+            }
             
             AnomaliaData data = anomaliasActivas.get(anomaliaCercana);
             double distancia = jugador.getLocation().distance(anomaliaCercana);
             String flecha = obtenerFlechaDireccional(jugador, anomaliaCercana);
             
-            // Mostrar mensaje según distancia
-            String mensaje;
-            if (distancia < 15) {
-                mensaje = String.format("§5§l⚡ ANOMALÍA MUY CERCA %s §e%.0fm §7%s",
-                    flecha, distancia, data.tipo.getNombre());
-            } else if (distancia < 50) {
-                mensaje = String.format("§5§l⚡ Anomalía %s §e%.0fm §7%s",
-                    flecha, distancia, data.tipo.getNombre());
-            } else {
-                mensaje = String.format("§5§l⚡ %s §e%.0fm §7(%s)",
-                    flecha, distancia, data.tipo.getNombre());
+            // Verificar si el jugador llegó a la anomalía
+            if (distancia < 8) {
+                marcarAnomaliaComoVisitada(jugador, anomaliaCercana);
             }
             
-            // Agregar info de cantidad si hay múltiples
-            if (anomaliasActivas.size() > 1) {
-                mensaje += " §8[" + anomaliasActivas.size() + " activas]";
-            }
+            // Mensaje de progresión dinámico según distancia
+            String mensaje = obtenerMensajeProgresion(distancia, flecha, data, jugador);
             
             jugador.sendActionBar(mensaje);
+        }
+    }
+    
+    /**
+     * Obtiene mensaje de progresión dinámico según distancia y tipo de anomalía
+     */
+    private String obtenerMensajeProgresion(double distancia, String flecha, AnomaliaData data, Player jugador) {
+        UUID uuid = jugador.getUniqueId();
+        int visitadas = anomaliasVisitadasPorJugador.getOrDefault(uuid, new HashSet<>()).size();
+        String tipoNombre = data.tipo.getNombre();
+        TipoAnomalia tipo = data.tipo;
+        
+        // Muy cerca (< 8m) - Llegaste - Mensajes únicos por tipo
+        if (distancia < 8) {
+            if (tipo == TipoAnomalia.ANTIGUA) {
+                String[] mensajes = {
+                    "§d✦ §5§lANOMALÍA ANTIGUA §d✦ §8[§a✓ " + (visitadas + 1) + "§8]",
+                    "§5§l⚡ PRESENCIA ANCESTRAL §d✦ §7" + tipoNombre,
+                    "§d§l✦ ECO DEL PASADO LEJANO §d✦ §8[Explorada]"
+                };
+                return mensajes[random.nextInt(mensajes.length)];
+            } else if (tipo == TipoAnomalia.INESTABLE) {
+                String[] mensajes = {
+                    "§e⚡ §l§lANOMALÍA INESTABLE §e⚡ §8[§a✓ " + (visitadas + 1) + "§8]",
+                    "§e§l⚡ ENERGÍA CAÓTICA ALCANZADA §d✦",
+                    "§c§l⚠ ZONA INESTABLE §e⚡ §8[Peligro]"
+                };
+                return mensajes[random.nextInt(mensajes.length)];
+            } else {
+                String[] mensajes = {
+                    "§d✦ §5§lLLEGASTE §d✦ §7" + tipoNombre + " §8[§a✓ " + (visitadas + 1) + "§8]",
+                    "§5§l⚡ ANOMALÍA ALCANZADA §d✦ §7" + tipoNombre,
+                    "§a§l✓ EXPLORADA §d✦ §7" + tipoNombre + " §8[" + (visitadas + 1) + " encontradas§8]"
+                };
+                return mensajes[random.nextInt(mensajes.length)];
+            }
+        }
+        
+        // Cerca (8-20m) - Mensajes por tipo
+        if (distancia < 20) {
+            if (tipo == TipoAnomalia.ANTIGUA) {
+                String[] mensajes = {
+                    "§5§l⚡ ECO ANCESTRAL CERCANO " + flecha + " §e" + String.format("%.0fm", distancia),
+                    "§d§l✦ SIENTES SU EDAD " + flecha + " §e" + String.format("%.0fm", distancia),
+                    "§5§l⚡ PRESENCIA ANTIGUA " + flecha + " §e" + String.format("%.0fm", distancia) + " §8[Más vieja que el tiempo]"
+                };
+                return mensajes[random.nextInt(mensajes.length)];
+            } else if (tipo == TipoAnomalia.INESTABLE) {
+                String[] mensajes = {
+                    "§e§l⚡ ZONA CAÓTICA CERCANA " + flecha + " §e" + String.format("%.0fm", distancia),
+                    "§c§l⚠ ENERGÍA INESTABLE " + flecha + " §e" + String.format("%.0fm", distancia) + " §8[Peligro]",
+                    "§e§l⚡ PULSOS ERRÁTICOS " + flecha + " §e" + String.format("%.0fm", distancia)
+                };
+                return mensajes[random.nextInt(mensajes.length)];
+            } else {
+                String[] mensajes = {
+                    "§5§l⚡ MUY CERCA §d✦ " + flecha + " §e" + String.format("%.0fm", distancia) + " §7" + tipoNombre,
+                    "§d§l⚡ CASI AHÍ " + flecha + " §e" + String.format("%.0fm", distancia) + " §8[" + tipoNombre + "§8]",
+                    "§5§l⚡ LA SIENTES " + flecha + " §e" + String.format("%.0fm", distancia) + " §7" + tipoNombre
+                };
+                return mensajes[random.nextInt(mensajes.length)];
+            }
+        }
+        
+        // Media distancia (20-50m) - Mensajes diferenciados
+        if (distancia < 50) {
+            if (tipo == TipoAnomalia.ANTIGUA) {
+                return String.format("§5§l⚡ Eco Ancestral " + flecha + " §e%.0fm §8[Antigua - %d exploradas]",
+                    distancia, visitadas);
+            } else if (tipo == TipoAnomalia.INESTABLE) {
+                return String.format("§e⚡ Zona Inestable " + flecha + " §e%.0fm §c⚠",
+                    distancia);
+            } else {
+                String[] mensajes = {
+                    "§5§l⚡ Anomalía detectada " + flecha + " §e" + String.format("%.0fm", distancia) + " §7" + tipoNombre,
+                    "§5⚡ " + flecha + " §e" + String.format("%.0fm", distancia) + " §8[" + tipoNombre + "§8]",
+                    "§5§l⚡ Señal " + flecha + " §e" + String.format("%.0fm", distancia) + " §7" + tipoNombre
+                };
+                return mensajes[random.nextInt(mensajes.length)];
+            }
+        }
+        
+        // Lejos (50-100m) - Indicador de tipo
+        if (distancia < 100) {
+            String indicador = tipo == TipoAnomalia.ANTIGUA ? " §5[ANCESTRAL]" :
+                             (tipo == TipoAnomalia.INESTABLE ? " §e[CAÓTICA]" : "");
+            return String.format("§5⚡ %s §e%.0fm §8[%s - %d encontradas]%s",
+                flecha, distancia, tipoNombre, visitadas, indicador);
+        }
+        
+        // Muy lejos (100+m)
+        return String.format("§5⚡ %s §7%.0fm §8(%s)",
+            flecha, distancia, tipoNombre);
+    }
+    
+    /**
+     * Encuentra anomalía más cercana que el jugador NO haya visitado
+     */
+    private Location encontrarAnomaliaMasCercanaNoVisitada(Player jugador) {
+        UUID uuid = jugador.getUniqueId();
+        Set<Location> visitadas = anomaliasVisitadasPorJugador.getOrDefault(uuid, new HashSet<>());
+        
+        Location masCercana = null;
+        double distanciaMinima = Double.MAX_VALUE;
+        
+        for (Location anomalia : anomaliasActivas.keySet()) {
+            if (anomalia.getWorld() == null || !anomalia.getWorld().equals(jugador.getWorld())) {
+                continue;
+            }
+            
+            // Saltar si ya fue visitada
+            if (visitadas.contains(anomalia)) {
+                continue;
+            }
+            
+            double distancia = jugador.getLocation().distance(anomalia);
+            if (distancia < distanciaMinima) {
+                distanciaMinima = distancia;
+                masCercana = anomalia;
+            }
+        }
+        
+        return masCercana;
+    }
+    
+    /**
+     * Marca una anomalía como visitada por el jugador
+     */
+    private void marcarAnomaliaComoVisitada(Player jugador, Location anomalia) {
+        UUID uuid = jugador.getUniqueId();
+        
+        Set<Location> visitadas = anomaliasVisitadasPorJugador.computeIfAbsent(uuid, k -> new HashSet<>());
+        
+        // Si ya estaba visitada, no hacer nada
+        if (visitadas.contains(anomalia)) {
+            return;
+        }
+        
+        // Marcar como visitada
+        visitadas.add(anomalia);
+        anomaliaActualPorJugador.put(uuid, anomalia);
+        
+        // Mensaje de confirmación
+        AnomaliaData data = anomaliasActivas.get(anomalia);
+        if (data != null) {
+            jugador.sendMessage("§5§l⚡ §7Has explorado: §d" + data.tipo.getNombre());
+            jugador.sendMessage("§8   Anomalías exploradas: §e" + visitadas.size() + "§8/§e" + anomaliasActivas.size());
+            
+            // Efecto visual y sonido
+            jugador.playSound(jugador.getLocation(), Sound.BLOCK_BEACON_POWER_SELECT, 1.0f, 1.5f);
+            jugador.getWorld().spawnParticle(
+                Particle.END_ROD,
+                jugador.getLocation().add(0, 1, 0),
+                30, 0.5, 0.5, 0.5, 0.1
+            );
+            
+            // Si exploró todas las anomalías activas
+            if (visitadas.size() >= anomaliasActivas.size() && anomaliasActivas.size() > 0) {
+                new BukkitRunnable() {
+                    @Override
+                    public void run() {
+                        jugador.sendTitle(
+                            "§d✦ §5§lEXPLORADOR §d✦",
+                            "§7Has explorado todas las anomalías activas",
+                            10, 60, 20
+                        );
+                        jugador.playSound(jugador.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.2f);
+                    }
+                }.runTaskLater(plugin, 20L);
+            }
         }
     }
     
@@ -1272,6 +1490,29 @@ public class CaminoEndEvent extends EventBase {
             return "§6← IZQUIERDA";  // Izquierda
         } else {
             return "§e↖ ADELANTE-IZQUIERDA";  // Adelante-Izquierda
+        }
+    }
+    
+    /**
+     * Muestra guía hacia el portal incompleto en action bar
+     */
+    private void mostrarGuiaPortal() {
+        if (portalLocation == null) return;
+        
+        for (Player jugador : plugin.getServer().getOnlinePlayers()) {
+            double distancia = jugador.getLocation().distance(portalLocation);
+            String flecha = obtenerFlechaDireccional(jugador, portalLocation);
+            
+            String mensaje;
+            if (distancia < 10) {
+                mensaje = "§5§l⚡ EL PORTAL ESTÁ AQUÍ §d✦ §e" + String.format("%.0fm", distancia);
+            } else if (distancia < 30) {
+                mensaje = String.format("§5§l⚡ PORTAL INCOMPLETO %s §e%.0fm §d✦", flecha, distancia);
+            } else {
+                mensaje = String.format("§5§l⚡ Portal del End %s §e%.0fm", flecha, distancia);
+            }
+            
+            jugador.sendActionBar(mensaje);
         }
     }
     

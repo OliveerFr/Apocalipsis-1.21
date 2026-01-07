@@ -2560,9 +2560,16 @@ public class ApocalipsisCommand implements CommandExecutor {
                     return;
                 }
                 
-                sender.sendMessage("§e⚠ Las fases avanzan automáticamente.");
-                sender.sendMessage("§7Fase 1→2: Después de 30-45 minutos");
-                sender.sendMessage("§7Fase 2→3: Al recolectar 40 fragmentos");
+                // Obtener fase actual
+                me.apocalipsis.events.CaminoEndEvent.Fase faseAnterior = evento4.getFaseActual();
+                
+                // Forzar siguiente fase
+                evento4.forzarSiguienteFase();
+                
+                sender.sendMessage("§a✓ Forzada siguiente fase");
+                sender.sendMessage("§7De: §e" + faseAnterior + " §7→ §e" + evento4.getFaseActual());
+                plugin.getLogger().info(String.format("[CaminoEnd] %s forzó siguiente fase: %s → %s", 
+                    sender.getName(), faseAnterior, evento4.getFaseActual()));
                 break;
                 
             case "fragmentos":
