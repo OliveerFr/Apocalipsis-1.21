@@ -177,12 +177,12 @@ kit_inicio:
     - "give %player% minecraft:iron_pickaxe{Enchantments:[{id:\"minecraft:efficiency\",lvl:2},{id:\"minecraft:unbreaking\",lvl:2}]} 1"
     - "give %player% minecraft:iron_sword{Enchantments:[{id:\"minecraft:sharpness\",lvl:1},{id:\"minecraft:unbreaking\",lvl:2}]} 1"
     
-    # Comida básica
-    - "give %player% minecraft:cooked_beef 16"
-    - "give %player% minecraft:golden_apple 2"
+    # Comida básica (suficiente para empezar, pero tendrás que buscar más)
+    - "give %player% minecraft:cooked_beef 8"
+    - "give %player% minecraft:golden_apple 1"
     
     # Supervivencia contra desastres (AGUA ESENCIAL)
-    - "give %player% minecraft:water_bucket 3"
+    - "give %player% minecraft:water_bucket 1"
     - "give %player% minecraft:ender_pearl 2"
     
     # Refugio de emergencia

@@ -47,7 +47,6 @@ me\apocalipsis\tutorial\TutorialManager$TutorialState.class
 me\apocalipsis\listeners\TokenProtectionListener.class
 me\apocalipsis\events\gameplay\ProtectionSystem.class
 me\apocalipsis\skills\SkillConfig$SkillCondition.class
-me\apocalipsis\experience\RewardService$1.class
 me\apocalipsis\events\SusurroPiedraRotaEvent$8.class
 me\apocalipsis\events\gameplay\CinematicSystem$ShakeIntensity.class
 me\apocalipsis\events\gameplay\GuardianPhaseSystem$6.class
@@ -115,7 +114,6 @@ me\apocalipsis\utils\BlockOwnershipTracker$2.class
 me\apocalipsis\events\EcoSombrasListener.class
 me\apocalipsis\events\testing\TestResult.class
 me\apocalipsis\events\gameplay\LoreSystem$LoreFragment.class
-me\apocalipsis\skills\SkillTreeGUI$1.class
 me\apocalipsis\ui\MainMenuManager.class
 me\apocalipsis\missions\MissionRenderer.class
 me\apocalipsis\events\gameplay\EnvironmentSystem$2.class
@@ -162,7 +160,6 @@ me\apocalipsis\events\gameplay\TelegraphedAttack$5.class
 me\apocalipsis\events\gameplay\EventLootSystem$Rarity.class
 me\apocalipsis\experience\AbilityService$RankAbility.class
 me\apocalipsis\ui\FeedbackSystem$IndicatorType.class
-camino_end.yml
 me\apocalipsis\events\gameplay\GuardianPhaseSystem$4.class
 me\apocalipsis\disaster\HuracanNew$1.class
 me\apocalipsis\events\testing\scenarios\PartialParticipationScenario.class
@@ -176,7 +173,6 @@ me\apocalipsis\events\gameplay\QTESystem$CooperativeQTE$1.class
 me\apocalipsis\events\SusurroPiedraRotaEvent$Dificultad.class
 me\apocalipsis\missions\TokenDatabase$TokenStats.class
 me\apocalipsis\events\SusurroPiedraRotaEvent$11.class
-me\apocalipsis\skills\SkillService$1.class
 me\apocalipsis\events\EcoSombrasEvent$3.class
 me\apocalipsis\events\gameplay\FeedbackSystem$IndicatorType.class
 me\apocalipsis\events\testing\EventTestBot$BotState.class
@@ -213,7 +209,6 @@ me\apocalipsis\skills\BackpackService$BackpackHolder.class
 me\apocalipsis\skills\SkillEffectListener.class
 me\apocalipsis\disaster\DisasterStatistics.class
 me\apocalipsis\disaster\adapters\PerformanceAdapter$PerformanceState.class
-me\apocalipsis\missions\MissionService$1.class
 me\apocalipsis\listeners\BlockTrackListener$1.class
 me\apocalipsis\missions\MissionRank.class
 me\apocalipsis\ui\UIManager.class
@@ -250,7 +245,6 @@ me\apocalipsis\skills\UpgradePreview.class
 me\apocalipsis\events\gameplay\ParticleEffectSystem.class
 me\apocalipsis\disaster\LluviaFuegoNew$WaterProtection.class
 me\apocalipsis\ui\FeedbackSystem$1.class
-me\apocalipsis\commands\ApocalipsisCommand$1.class
 me\apocalipsis\experience\AbilityService.class
 me\apocalipsis\events\gameplay\GuardianPhaseSystem.class
 me\apocalipsis\listeners\StreamDropListener$KillBurst.class
@@ -314,6 +308,5 @@ me\apocalipsis\events\gameplay\TelegraphedAttack$AttackCallback.class
 me\apocalipsis\missions\MissionCatalog.class
 me\apocalipsis\disaster\DisasterBase.class
 me\apocalipsis\events\gameplay\EnvironmentSystem$FogIntensity.class
-me\apocalipsis\experience\ExperienceService$1.class
 me\apocalipsis\events\testing\scenarios\PlayerDeathScenario.class
 me\apocalipsis\missions\RankService.class

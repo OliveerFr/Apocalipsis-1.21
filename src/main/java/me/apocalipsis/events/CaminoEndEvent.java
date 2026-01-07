@@ -227,9 +227,10 @@ public class CaminoEndEvent extends EventBase {
             aplicarTensionAmbiental();
         }
         
-        // Actualizar brújulas (cada segundo)
+        // Actualizar brújulas y guía de anomalías (cada segundo)
         if (ticksTotales % 20 == 0 && (faseActual == Fase.ANOMALIAS || faseActual == Fase.RESONANCIA)) {
             actualizarBrujulas();
+            mostrarGuiaAnomalias(); // Guía para TODOS los jugadores
         }
         
         // Actualizar anomalías existentes
@@ -736,22 +737,22 @@ public class CaminoEndEvent extends EventBase {
             return;
         }
         
-        // Título
+        // Título cinematográfico con fade largo
         for (Player p : plugin.getServer().getOnlinePlayers()) {
             p.sendTitle(
                 intro.getString("titulo", "§5§l⚡ EL CAMINO AL END"),
                 intro.getString("subtitulo", "§7Anomalías dimensionales detectadas..."),
-                10, 70, 20
+                20, 100, 30
             );
         }
         
-        // Mensajes
+        // Mensajes espaciados para lectura cómoda (3 segundos entre cada uno)
         List<String> mensajes = intro.getStringList("mensajes");
         for (int i = 0; i < mensajes.size(); i++) {
             final int index = i;
             plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
                 messageBus.broadcast(mensajes.get(index), "inicio_" + index);
-            }, 20L * (i + 1));
+            }, 60L * (i + 1)); // 3 segundos entre mensajes
         }
         
         // Sonido
@@ -785,13 +786,13 @@ public class CaminoEndEvent extends EventBase {
             }
         }, 30L);
         
-        // Título dramático (2.5 segundos después)
+        // Título dramático (2.5 segundos después) - Más tiempo para absorber
         plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
             for (Player p : plugin.getServer().getOnlinePlayers()) {
                 p.sendTitle(
                     "§5§l⚡ REVELACIÓN",
                     "§7...incompleta...",
-                    10, 70, 20
+                    20, 90, 25
                 );
             }
         }, 50L);
@@ -808,26 +809,38 @@ public class CaminoEndEvent extends EventBase {
      * Secuencia cinemática final que explica la naturaleza incompleta del portal
      */
     private void anunciarConclusionPortal() {
-        // Fase 1: Realización (0s)
+        // Fase 1: Realización (0s) - Pausa dramática
         messageBus.broadcast("", "conclusión_espacio1");
         messageBus.broadcast("§5§l⚡ EL OBSERVADOR:", "conclusión_observador");
-        messageBus.broadcast("§7§o\"...incompleto.\"", "conclusión_1");
         
-        // Fase 2: Pánico contenido (3s)
+        // Pausa de 2 segundos antes de la revelación
+        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+            messageBus.broadcast("§7§o\"...incompleto.\"", "conclusión_1");
+        }, 40L);
+        
+        // Fase 2: Pánico contenido (5s) - Más tiempo para asimilar
         plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
             messageBus.broadcast("§c§l§o\"No... NO.\"", "conclusión_2");
             soundUtil.playSoundAll(Sound.ENTITY_ENDERMAN_SCREAM, 0.3f, 0.8f);
-        }, 60L);
+        }, 100L);
         
-        // Fase 3: Explicación ominosa (6s)
+        // Fase 3: Explicación ominosa (9s) - Primera línea
         plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
             messageBus.broadcast("§7§o\"Este portal... no debería existir aquí.\"", "conclusión_3");
-            messageBus.broadcast("§7§o\"Está... roto. Fragmentado entre dimensiones.\"", "conclusión_4");
-        }, 120L);
+        }, 180L);
         
-        // Fase 4: Implicaciones (10s)
+        // Segunda línea de explicación (12s)
+        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+            messageBus.broadcast("§7§o\"Está... roto. Fragmentado entre dimensiones.\"", "conclusión_4");
+        }, 240L);
+        
+        // Fase 4: Implicaciones (16s) - Primera revelación
         plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
             messageBus.broadcast("§4§l§o\"Algo lo atravesó desde el otro lado...\"", "conclusión_5");
+        }, 320L);
+        
+        // Segunda revelación más inquietante (19s)
+        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
             messageBus.broadcast("§4§l§o\"...y dejó esto atrás.\"", "conclusión_6");
             
             // Efecto visual global
@@ -839,22 +852,27 @@ public class CaminoEndEvent extends EventBase {
                 );
                 p.playSound(p.getLocation(), Sound.BLOCK_SCULK_SHRIEKER_SHRIEK, 0.4f, 0.5f);
             }
-        }, 200L);
+        }, 380L);
         
-        // Fase 5: Pregunta perturbadora (14s)
+        // Fase 5: Pregunta perturbadora (24s) - Más tiempo para el impacto
         plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-            messageBus.broadcast("§5§l⚡ EL OBSERVADOR:", "conclusión_observador2");
-            messageBus.broadcast("§7§o\"...¿Qué estaba intentando escapar?\"", "conclusión_7");
             messageBus.broadcast("", "conclusión_espacio2");
-        }, 280L);
+            messageBus.broadcast("§5§l⚡ EL OBSERVADOR:", "conclusión_observador2");
+        }, 480L);
         
-        // Fase 6: Título final (17s)
+        // La pregunta final 2 segundos después (26s)
+        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+            messageBus.broadcast("§7§o\"...¿Qué estaba intentando escapar?\"", "conclusión_7");
+            messageBus.broadcast("", "conclusión_espacio3");
+        }, 520L);
+        
+        // Fase 6: Título final (30s) - Cierre cinematográfico
         plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
             for (Player p : plugin.getServer().getOnlinePlayers()) {
                 p.sendTitle(
                     "§5§l§k|||§r §4§lPORTAL INCOMPLETO§r §5§l§k|||",
                     "§7§oLa historia continúa...",
-                    15, 80, 20
+                    20, 100, 30
                 );
                 p.playSound(p.getLocation(), Sound.ENTITY_WITHER_AMBIENT, 0.3f, 0.5f);
             }
@@ -1161,25 +1179,99 @@ public class CaminoEndEvent extends EventBase {
             Location anomaliaCercana = encontrarAnomaliaMasCercana(jugador.getLocation());
             
             if (anomaliaCercana != null) {
-                double distancia = jugador.getLocation().distance(anomaliaCercana);
                 jugador.setCompassTarget(anomaliaCercana);
-                
-                // Mostrar distancia en action bar
-                String direccion = obtenerDireccionCardinal(jugador.getLocation(), anomaliaCercana);
-                jugador.sendActionBar(String.format(
-                    "§5§l⚡ Brújula del Vacío: §7%s §e%.0fm al %s",
-                    anomaliasActivas.get(anomaliaCercana).tipo.getNombre(),
-                    distancia,
-                    direccion
-                ));
                 
                 // Sonido sutil cada 3 segundos
                 if (ticksTotales % 60 == 0) {
                     jugador.playSound(jugador.getLocation(), Sound.BLOCK_BEACON_AMBIENT, 0.1f, 1.5f);
                 }
-            } else {
-                jugador.sendActionBar("§5§l⚡ Brújula del Vacío: §7Sin anomalías detectadas");
             }
+        }
+    }
+    
+    /**
+     * Muestra guía de anomalías en action bar para TODOS los jugadores
+     * Con flechas direccionales y distancia
+     */
+    private void mostrarGuiaAnomalias() {
+        if (anomaliasActivas.isEmpty()) {
+            for (Player p : plugin.getServer().getOnlinePlayers()) {
+                p.sendActionBar("§5§l⚡ §7Esperando nuevas anomalías...");
+            }
+            return;
+        }
+        
+        for (Player jugador : plugin.getServer().getOnlinePlayers()) {
+            // Buscar anomalía más cercana
+            Location anomaliaCercana = encontrarAnomaliaMasCercana(jugador.getLocation());
+            
+            if (anomaliaCercana == null) continue;
+            
+            AnomaliaData data = anomaliasActivas.get(anomaliaCercana);
+            double distancia = jugador.getLocation().distance(anomaliaCercana);
+            String flecha = obtenerFlechaDireccional(jugador, anomaliaCercana);
+            
+            // Mostrar mensaje según distancia
+            String mensaje;
+            if (distancia < 15) {
+                mensaje = String.format("§5§l⚡ ANOMALÍA MUY CERCA %s §e%.0fm §7%s",
+                    flecha, distancia, data.tipo.getNombre());
+            } else if (distancia < 50) {
+                mensaje = String.format("§5§l⚡ Anomalía %s §e%.0fm §7%s",
+                    flecha, distancia, data.tipo.getNombre());
+            } else {
+                mensaje = String.format("§5§l⚡ %s §e%.0fm §7(%s)",
+                    flecha, distancia, data.tipo.getNombre());
+            }
+            
+            // Agregar info de cantidad si hay múltiples
+            if (anomaliasActivas.size() > 1) {
+                mensaje += " §8[" + anomaliasActivas.size() + " activas]";
+            }
+            
+            jugador.sendActionBar(mensaje);
+        }
+    }
+    
+    /**
+     * Obtiene flecha direccional según hacia dónde mira el jugador
+     */
+    private String obtenerFlechaDireccional(Player jugador, Location destino) {
+        // Calcular ángulo entre la dirección del jugador y el destino
+        Location from = jugador.getLocation();
+        
+        // Ángulo del jugador (yaw)
+        float yawJugador = from.getYaw();
+        
+        // Ángulo hacia el destino
+        double dx = destino.getX() - from.getX();
+        double dz = destino.getZ() - from.getZ();
+        double yawDestino = Math.toDegrees(Math.atan2(-dx, dz));
+        
+        // Diferencia angular
+        double diff = yawDestino - yawJugador;
+        
+        // Normalizar a -180 a 180
+        while (diff > 180) diff -= 360;
+        while (diff < -180) diff += 360;
+        
+        // Determinar flecha según ángulo
+        if (diff >= -22.5 && diff < 22.5) {
+            return "§a↑ ADELANTE";  // Adelante
+        } else if (diff >= 22.5 && diff < 67.5) {
+            return "§e↗ ADELANTE-DERECHA";  // Adelante-Derecha
+        } else if (diff >= 67.5 && diff < 112.5) {
+            return "§6→ DERECHA";  // Derecha
+        } else if (diff >= 112.5 && diff < 157.5) {
+            return "§c↘ ATRÁS-DERECHA";  // Atrás-Derecha
+        } else if (diff >= 157.5 || diff < -157.5) {
+            return "§4↓ ATRÁS";  // Atrás
+        } else if (diff >= -157.5 && diff < -112.5) {
+            return "§c↙ ATRÁS-IZQUIERDA";  // Atrás-Izquierda
+        } else if (diff >= -112.5 && diff < -67.5) {
+            return "§6← IZQUIERDA";  // Izquierda
+        } else {
+            return "§e↖ ADELANTE-IZQUIERDA";  // Adelante-Izquierda
         }
     }
     
@@ -1703,21 +1795,33 @@ public class CaminoEndEvent extends EventBase {
         
         // 25 fragmentos: PÁNICO - El Observador pierde la calma
         if (fragmentos == 25) {
+            // Título dramático inicial
             for (Player p : plugin.getServer().getOnlinePlayers()) {
                 p.sendTitle(
                     "§4§l⚠ EL VACÍO ESTÁ DESPERTANDO",
                     "§c§oEl tiempo se agota...",
-                    10, 60, 15
+                    15, 80, 20
                 );
-                p.sendMessage("");
-                p.sendMessage("§5§l⚡ EL OBSERVADOR:");
-                p.sendMessage("§c§l§o\"¡NO, NO, NO! ¡ES DEMASIADO RÁPIDO!\"");
-                p.sendMessage("§7§o\"¡Deben encontrar el resto AHORA!\"");
-                p.sendMessage("");
-                
                 p.playSound(p.getLocation(), Sound.ENTITY_WITHER_SPAWN, 0.3f, 0.5f);
-                p.addPotionEffect(new PotionEffect(PotionEffectType.NAUSEA, 80, 0, false, false));
             }
+            
+            // Mensaje del Observador después de 2 segundos (dar tiempo al título)
+            plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+                for (Player p : plugin.getServer().getOnlinePlayers()) {
+                    p.sendMessage("");
+                    p.sendMessage("§5§l⚡ EL OBSERVADOR:");
+                    p.sendMessage("§c§l§o\"¡NO, NO, NO! ¡ES DEMASIADO RÁPIDO!\"");
+                }
+            }, 40L);
+            
+            // Segundo mensaje 2 segundos después
+            plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+                for (Player p : plugin.getServer().getOnlinePlayers()) {
+                    p.sendMessage("§7§o\"¡Deben encontrar el resto AHORA!\"");
+                    p.sendMessage("");
+                    p.addPotionEffect(new PotionEffect(PotionEffectType.NAUSEA, 80, 0, false, false));
+                }
+            }, 80L);
             
             // Tormenta extrema
             if (world != null) {
@@ -1740,51 +1844,75 @@ public class CaminoEndEvent extends EventBase {
         
         // 35 fragmentos: DISTORSIÓN - La realidad se quiebra
         else if (fragmentos == 35) {
+            // Título inicial de impacto
             for (Player p : plugin.getServer().getOnlinePlayers()) {
                 p.sendTitle(
                     "§5§l§k|||§r §4§lLA BARRERA SE ROMPE §5§l§k|||",
                     "§4§o¿Qué has hecho...?",
-                    10, 70, 15
+                    20, 90, 20
                 );
-                p.sendMessage("");
-                p.sendMessage("§5§l⚡ EL OBSERVADOR:");
-                p.sendMessage("§4§l§o\"SIENTO... ALGO... OBSERVÁNDOME...\"");
-                p.sendMessage("§7§o\"Está... aquí... con nosotros...\"");
-                p.sendMessage("");
-                
-                // Oscuridad temporal
-                p.addPotionEffect(new PotionEffect(PotionEffectType.DARKNESS, 100, 0, false, false));
-                p.addPotionEffect(new PotionEffect(PotionEffectType.NAUSEA, 100, 1, false, false));
-                
                 p.playSound(p.getLocation(), Sound.ENTITY_WARDEN_SONIC_BOOM, 0.5f, 0.5f);
-                p.playSound(p.getLocation(), Sound.BLOCK_SCULK_SHRIEKER_SHRIEK, 1.0f, 0.5f);
-                
-                // Explosión de partículas SCULK_SOUL
-                p.getWorld().spawnParticle(
-                    Particle.SCULK_SOUL,
-                    p.getLocation().add(0, 1, 0),
-                    100, 3, 3, 3, 0.1
-                );
             }
+            
+            // Primera línea del Observador después de 3 segundos
+            plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+                for (Player p : plugin.getServer().getOnlinePlayers()) {
+                    p.sendMessage("");
+                    p.sendMessage("§5§l⚡ EL OBSERVADOR:");
+                    p.sendMessage("§4§l§o\"SIENTO... ALGO... OBSERVÁNDOME...\"");
+                    p.playSound(p.getLocation(), Sound.BLOCK_SCULK_SHRIEKER_SHRIEK, 1.0f, 0.5f);
+                }
+            }, 60L);
+            
+            // Segunda línea más inquietante 2.5 segundos después
+            plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+                for (Player p : plugin.getServer().getOnlinePlayers()) {
+                    p.sendMessage("§7§o\"Está... aquí... con nosotros...\"");
+                    p.sendMessage("");
+                    
+                    // Oscuridad temporal
+                    p.addPotionEffect(new PotionEffect(PotionEffectType.DARKNESS, 100, 0, false, false));
+                    p.addPotionEffect(new PotionEffect(PotionEffectType.NAUSEA, 100, 1, false, false));
+                    
+                    // Explosión de partículas SCULK_SOUL
+                    p.getWorld().spawnParticle(
+                        Particle.SCULK_SOUL,
+                        p.getLocation().add(0, 1, 0),
+                        100, 3, 3, 3, 0.1
+                    );
+                }
+            }, 110L);
         }
         
         // 39 fragmentos: CUENTA REGRESIVA ÉPICA
         else if (fragmentos == 39) {
+            // Título impactante inicial
             for (Player p : plugin.getServer().getOnlinePlayers()) {
                 p.sendTitle(
                     "§5§l§k|||§r §4§lUN FRAGMENTO MÁS §5§l§k|||",
                     "§c§l¡EL PORTAL ESTÁ CASI COMPLETO!",
-                    10, 80, 10
+                    20, 100, 15
                 );
-                p.sendMessage("");
-                p.sendMessage("§5§l⚡ EL OBSERVADOR:");
-                p.sendMessage("§4§l§o\"UN FRAGMENTO MÁS... SOLO UNO MÁS...\"");
-                p.sendMessage("§c§l§o\"¡Y PODREMOS VERLO!\"");
-                p.sendMessage("");
-                
                 p.playSound(p.getLocation(), Sound.ENTITY_WITHER_HURT, 1.0f, 0.5f);
-                p.playSound(p.getLocation(), Sound.BLOCK_END_PORTAL_SPAWN, 0.5f, 1.5f);
             }
+            
+            // Primer mensaje del Observador después de 3.5 segundos
+            plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+                for (Player p : plugin.getServer().getOnlinePlayers()) {
+                    p.sendMessage("");
+                    p.sendMessage("§5§l⚡ EL OBSERVADOR:");
+                    p.sendMessage("§4§l§o\"UN FRAGMENTO MÁS... SOLO UNO MÁS...\"");
+                }
+            }, 70L);
+            
+            // Grito final 2 segundos después
+            plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+                for (Player p : plugin.getServer().getOnlinePlayers()) {
+                    p.sendMessage("§c§l§o\"¡Y PODREMOS VERLO!\"");
+                    p.sendMessage("");
+                    p.playSound(p.getLocation(), Sound.BLOCK_END_PORTAL_SPAWN, 0.5f, 1.5f);
+                }
+            }, 110L);
             
             // Efecto visual global pulsante
             new BukkitRunnable() {
