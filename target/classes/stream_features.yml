@@ -222,6 +222,13 @@ canje_tokens:
       items:
         - "give %player% minecraft:elytra 1"
         - "give %player% minecraft:firework_rocket 64"
+
+    cohetes_elytra:
+      nombre: "&b&lCohetes para Élitras"
+      descripcion: "64 cohetes de fuegos artificiales para volar"
+      costo_tokens: 6
+      items:
+        - "give %player% minecraft:firework_rocket 64"
     
     bloque_proteccion:
       nombre: "&a&lBloque de Protección x3"

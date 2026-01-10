@@ -182,6 +182,11 @@ public abstract class DisasterBase implements Disaster {
     protected abstract void onStart();
     protected abstract void onStop();
     protected abstract void onTick();
+    /**
+     * Aplica efectos del desastre a un jugador.
+     * Debe ser implementado por cada desastre específico.
+     */
+    public abstract void applyEffects(Player player);
 
     protected boolean shouldSkipTick(int interval) {
         return tickCounter % interval != 0;

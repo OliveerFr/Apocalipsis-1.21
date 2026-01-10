@@ -46,6 +46,10 @@ public class TutorialManager {
     private final TutorialMetrics metrics;
     private final TutorialAchievements achievements;
     
+    // NUEVO: Onboarding épico y Buddy system
+    private final OnboardingManager onboardingManager;
+    private final BuddyService buddyService;
+    
     // Trackeo de estado del tutorial
     private final Map<UUID, TutorialState> tutorialStates;
     private final Map<UUID, BukkitTask> scheduledTutorials;
@@ -121,6 +125,8 @@ public class TutorialManager {
         this.dataPersistence = new TutorialDataPersistence(plugin);
         this.metrics = new TutorialMetrics(plugin);
         this.achievements = new TutorialAchievements(plugin);
+        this.onboardingManager = new OnboardingManager(plugin);
+        this.buddyService = new BuddyService(plugin);
         
         this.tutorialStates = new HashMap<>();
         this.scheduledTutorials = new HashMap<>();
@@ -131,6 +137,11 @@ public class TutorialManager {
         this.phaseCheckTasks = new HashMap<>();
         
         loadConfig();
+        
+        // Cargar datos de onboarding y buddy al iniciar
+        onboardingManager.loadFromYaml();
+        buddyService.loadFromYaml();
+        
         startAutoSaveTask();
     }
     
@@ -174,9 +185,17 @@ public class TutorialManager {
         }
         
         // ═══════════════════════════════════════════════════════════
-        // ENTREGAR KIT INMEDIATAMENTE (antes de morir)
+        // SIN KIT DE INICIO - SOLO EFECTOS/BUFEOS
+        // Los jugadores reciben efectos temporales que se van quitando
+        // conforme avanzan en el tutorial
         // ═══════════════════════════════════════════════════════════
-        giveStarterKit(player);
+        // giveStarterKit(player); // DESHABILITADO - Solo efectos
+        
+        // ═══════════════════════════════════════════════════════════
+        // INICIAR SISTEMAS DE ONBOARDING Y BUDDY
+        // ═══════════════════════════════════════════════════════════
+        onboardingManager.startOnboarding(player); // Iniciar logros épicos de onboarding
+        buddyService.tryMatchBuddy(player); // Intentar emparejar con mentor veterano
         
         // ═══════════════════════════════════════════════════════════
         // APLICAR BUFF DE REGENERACIÓN INICIAL Y MONITORIZAR CAMBIOS
@@ -306,42 +325,73 @@ public class TutorialManager {
     
     /**
      * Actualiza los buffs del tutorial basándose en la fase actual de dificultad.
-     * Sincroniza con tutorial.yml para aplicar/quitar regeneración según configuración.
+     * Sin kit de inicio - solo efectos/bufeos que se van quitando conforme avanzan.
      * Método público para uso por TutorialCommand y TutorialListener.
      */
     public void updateTutorialBuffs(Player player) {
         DifficultyPhase phase = difficultySystem.getPlayerPhase(player);
         
-        // Quitar buff anterior
+        // Quitar todos los buffs anteriores
         player.removePotionEffect(PotionEffectType.REGENERATION);
+        player.removePotionEffect(PotionEffectType.SPEED);
+        player.removePotionEffect(PotionEffectType.HASTE);
+        player.removePotionEffect(PotionEffectType.STRENGTH);
+        player.removePotionEffect(PotionEffectType.RESISTANCE);
         
         // Si la fase tiene regeneración pasiva habilitada, aplicarla
         if (phase.hasPassiveRegeneration()) {
-            // Determinar nivel de regeneración según fase
-            // Fase 1: Regeneration II (fuerte)
-            // Fase 2: Regeneration I (moderado)
-            int level = phase.getPhaseNumber() == 1 ? 1 : 0; // Level 0-based (1=II, 0=I)
             int duration = Integer.MAX_VALUE;
             
-            player.addPotionEffect(new PotionEffect(
-                PotionEffectType.REGENERATION,
-                duration,
-                level,
-                false, // Sin partículas ambiente
-                false  // Sin partículas
-            ));
-            
-            if (verboseLogging) {
-                plugin.getLogger().info(String.format(
-                    "[Tutorial] %s: Regeneración %s aplicada (Fase %d)",
-                    player.getName(), (level == 1 ? "II" : "I"), phase.getPhaseNumber()
+            // FASE 1: Máximo apoyo (muy fácil)
+            if (phase.getPhaseNumber() == 1) {
+                // Regeneration II (muy fuerte)
+                player.addPotionEffect(new PotionEffect(
+                    PotionEffectType.REGENERATION, duration, 1,
+                    false, false
                 ));
+                // Speed I (moverse rápido)
+                player.addPotionEffect(new PotionEffect(
+                    PotionEffectType.SPEED, duration, 0,
+                    false, false
+                ));
+                // Haste I (minar rápido)
+                player.addPotionEffect(new PotionEffect(
+                    PotionEffectType.HASTE, duration, 0,
+                    false, false
+                ));
+                
+                if (verboseLogging) {
+                    plugin.getLogger().info(String.format(
+                        "[Tutorial] %s: Buffs MÁXIMOS aplicados (Regeneration II, Speed I, Haste I) - Fase Tutorial",
+                        player.getName()
+                    ));
+                }
+            }
+            // FASE 2: Apoyo moderado (fácil)
+            else if (phase.getPhaseNumber() == 2) {
+                // Regeneration I (moderado)
+                player.addPotionEffect(new PotionEffect(
+                    PotionEffectType.REGENERATION, duration, 0,
+                    false, false
+                ));
+                // Speed I (moverse rápido)
+                player.addPotionEffect(new PotionEffect(
+                    PotionEffectType.SPEED, duration, 0,
+                    false, false
+                ));
+                
+                if (verboseLogging) {
+                    plugin.getLogger().info(String.format(
+                        "[Tutorial] %s: Buffs MODERADOS aplicados (Regeneration I, Speed I) - Fase Adaptación",
+                        player.getName()
+                    ));
+                }
             }
         } else {
-            // Sin regeneración pasiva
+            // Sin regeneración pasiva (fases 3 en adelante)
             if (verboseLogging && !phase.isGlobalDifficulty()) {
                 plugin.getLogger().info(String.format(
-                    "[Tutorial] %s: Regeneración removida (Fase %d)",
+                    "[Tutorial] %s: Todos los buffs removidos (Fase %d)",
                     player.getName(), phase.getPhaseNumber()
                 ));
             }
@@ -432,13 +482,18 @@ public class TutorialManager {
      */
     private void notifyBuffChange(Player player, DifficultyPhase newPhase) {
         if (newPhase.hasPassiveRegeneration()) {
-            int level = newPhase.getPhaseNumber() == 1 ? 2 : 1;
-            player.sendMessage(ChatColor.translateAlternateColorCodes('&',
-                "&a[Tutorial] &7Regeneración &e" + level + " &7activa. &8(&e" + 
-                newPhase.getName() + "&8)"));
+            if (newPhase.getPhaseNumber() == 1) {
+                player.sendMessage(ChatColor.translateAlternateColorCodes('&',
+                    "&a[Tutorial] &7Buffs MÁXIMOS activos: &eRegeneración II, Velocidad, Rapidez&7. &8(&e" + 
+                    newPhase.getName() + "&8)"));
+            } else {
+                player.sendMessage(ChatColor.translateAlternateColorCodes('&',
+                    "&a[Tutorial] &7Buffs MODERADOS activos: &eRegeneración I, Velocidad&7. &8(&e" + 
+                    newPhase.getName() + "&8)"));
+            }
         } else if (!newPhase.isGlobalDifficulty()) {
             player.sendMessage(ChatColor.translateAlternateColorCodes('&',
-                "&a[Tutorial] &7Regeneración removida. &8(&e" + newPhase.getName() + "&8)"));
+                "&e[Tutorial] &7Se quitaron todos tus buffs de protección. &8(&c" + newPhase.getName() + "&8)"));
             player.sendMessage(ChatColor.translateAlternateColorCodes('&',
                 "&7¡Ya estás más preparado para sobrevivir por tu cuenta!"));
         }
@@ -901,6 +956,14 @@ public class TutorialManager {
             phaseCheckTasks.remove(uuid);
         }
         
+        // Guardar progreso de onboarding y buddy antes de desconectar
+        if (onboardingManager != null) {
+            onboardingManager.saveToYaml();
+        }
+        if (buddyService != null) {
+            buddyService.saveToYaml();
+        }
+        
         // Mantener estado del tutorial en memoria (se puede guardar a DB)
         // tutorialStates.remove(uuid);
         
@@ -1039,6 +1102,20 @@ public class TutorialManager {
      */
     public TutorialMetrics getMetrics() {
         return metrics;
+    }
+    
+    /**
+     * Obtiene referencia al sistema de onboarding
+     */
+    public OnboardingManager getOnboardingManager() {
+        return onboardingManager;
+    }
+    
+    /**
+     * Obtiene referencia al servicio de buddy/mentores
+     */
+    public BuddyService getBuddyService() {
+        return buddyService;
     }
     
     /**

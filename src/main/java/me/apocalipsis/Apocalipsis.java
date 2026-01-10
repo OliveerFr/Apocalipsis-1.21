@@ -131,7 +131,6 @@ public final class Apocalipsis extends JavaPlugin {
         // AUTO-UPDATE: Verificar versión de recompensas.yml
         checkAndUpdateConfig("recompensas.yml", getDescription().getVersion());
         
-        saveResource("chat.yml", false);
         saveResource("evasiones.yml", false);
         saveResource("protecciones.yml", false);
         saveResource("skills.yml", false);
@@ -211,6 +210,11 @@ public final class Apocalipsis extends JavaPlugin {
         // Registrar listener de tutorial
         TutorialListener tutorialListener = new TutorialListener(this, tutorialManager);
         getServer().getPluginManager().registerEvents(tutorialListener, this);
+        
+        // Registrar listener de onboarding (logros épicos de primera hora)
+        me.apocalipsis.tutorial.OnboardingListener onboardingListener = 
+            new me.apocalipsis.tutorial.OnboardingListener(tutorialManager.getOnboardingManager());
+        getServer().getPluginManager().registerEvents(onboardingListener, this);
         
         // Registrar listener de muertes en tutorial
         me.apocalipsis.tutorial.TutorialDeathListener tutorialDeathListener = 
@@ -509,7 +513,6 @@ public final class Apocalipsis extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new me.apocalipsis.utils.ExplosionGuard(this), this);
         getServer().getPluginManager().registerEvents(new BlockTrackListener(this), this);
         getServer().getPluginManager().registerEvents(new DisasterEvasionListener(this), this);
-        getServer().getPluginManager().registerEvents(new me.apocalipsis.listeners.ChatListener(this), this);
         getServer().getPluginManager().registerEvents(new me.apocalipsis.events.SusurroPiedraRotaListener(this), this);
         
         // Registrar listener de stream drops
@@ -548,6 +551,7 @@ public final class Apocalipsis extends JavaPlugin {
 
         getLogger().info("§a✓ Apocalipsis activado correctamente");
     }
+
 
     @Override
     public void onDisable() {

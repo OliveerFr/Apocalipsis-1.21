@@ -196,7 +196,9 @@ public class EcoBrasasListener implements Listener {
         
         // Broadcast
         killer.getWorld().playSound(killer.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 2.0f, 0.8f);
-        org.bukkit.Bukkit.broadcastMessage("§4§l[Eco de Brasas] §e" + killer.getName() + " §7derrotó al §cGuardián del Eco");
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            p.sendMessage("§4§l[Eco de Brasas] §e" + killer.getName() + " §7derrotó al §cGuardián del Eco");
+        }
         killer.sendMessage("§c§l[+] §fEspada del Guardián Caído §7(solo tú la obtuviste)");
     }
 }

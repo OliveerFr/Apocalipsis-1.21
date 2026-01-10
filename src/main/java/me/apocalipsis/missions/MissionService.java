@@ -393,6 +393,17 @@ public class MissionService {
     public void assignMissionsToPlayer(Player player, int currentDay) {
         UUID uuid = player.getUniqueId();
         
+        // [ONBOARDING] No asignar misiones hasta que complete los hitos de tutorial
+        if (plugin.getTutorialManager() != null && 
+            plugin.getTutorialManager().getOnboardingManager() != null) {
+            if (!plugin.getTutorialManager().getOnboardingManager().hasCompletedOnboarding(uuid)) {
+                if (plugin.getConfigManager().isDebugCiclo()) {
+                    plugin.getLogger().info("[MISIONES] Jugador " + player.getName() + " aún no completa onboarding, no se asignan misiones");
+                }
+                return;
+            }
+        }
+        
         // [v2.0] Marcar el día actual como activo para este jugador
         // Esto es importante para saber si debe recibir castigo al finalizar el día
         playerLastActiveDay.put(uuid, currentDay);
@@ -585,6 +596,12 @@ public class MissionService {
         playMissionCompleteEffects(player, mission);
         
         messageBus.sendMessage(player, "§a§l✓ Misión completada: §f" + mission.getNombre() + " §7(§e+" + mission.getRecompensaPs() + " PS§7)");
+        
+        // [ONBOARDING SYSTEM] Notificar completación de misión al sistema de onboarding
+        if (plugin.getTutorialManager() != null && plugin.getTutorialManager().getOnboardingManager() != null) {
+            plugin.getTutorialManager().getOnboardingManager().onPlayerCompleteMission(player);
+        }
+        
         savePlayerData();
         
         // [XP SYSTEM] Otorgar experiencia por completar la misión
@@ -607,9 +624,19 @@ public class MissionService {
             // plugin.getConfigManager().onRankUp(uuid, newRank.name(), newRank.getDisplayName());
             playRankUpEffects(player, newRank);
             
+            // [ONBOARDING SYSTEM] Notificar al onboarding sobre rank up
+            if (plugin.getTutorialManager() != null && plugin.getTutorialManager().getOnboardingManager() != null) {
+                plugin.getTutorialManager().getOnboardingManager().onPlayerRankUp(player);
+            }
+            
             // [REWARD SYSTEM] Entregar recompensas de rango
             if (plugin.getRewardService() != null) {
                 plugin.getRewardService().deliverRewards(player, newRank);
+            }
+            
+            // [BUDDY SYSTEM] Recompensar mentor si el aprendiz subió de rango
+            if (plugin.getTutorialManager() != null && plugin.getTutorialManager().getBuddyService() != null) {
+                plugin.getTutorialManager().getBuddyService().rewardMentor(uuid, me.apocalipsis.tutorial.BuddyService.BuddyRewardReason.APPRENTICE_RANK_UP);
             }
         }
         
@@ -619,6 +646,11 @@ public class MissionService {
         }
         if (plugin.getTablistManager() != null) {
             plugin.getTablistManager().updatePlayer(player);
+        }
+        
+        // [BUDDY SYSTEM] Recompensar mentor cuando aprendiz completa misión
+        if (plugin.getTutorialManager() != null && plugin.getTutorialManager().getBuddyService() != null) {
+            plugin.getTutorialManager().getBuddyService().rewardMentor(uuid, me.apocalipsis.tutorial.BuddyService.BuddyRewardReason.APPRENTICE_MISSION_COMPLETED);
         }
         
         // [1.21.8] Chequeo: ¿Este jugador completó TODAS sus misiones del día?

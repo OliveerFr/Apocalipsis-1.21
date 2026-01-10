@@ -30,6 +30,7 @@ import org.bukkit.util.Vector;
 
 import me.apocalipsis.Apocalipsis;
 import me.apocalipsis.disaster.adapters.PerformanceAdapter;
+import me.apocalipsis.state.ServerState;
 import me.apocalipsis.state.TimeService;
 import me.apocalipsis.ui.MessageBus;
 import me.apocalipsis.ui.SoundUtil;
@@ -449,7 +450,7 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
         if (!(event.getEntity() instanceof SmallFireball)) return;
         if (!active) return;
         
-        if (plugin.getStateManager().getCurrentState() != me.apocalipsis.state.ServerState.ACTIVO) {
+        if (plugin.getStateManager().getCurrentState() != ServerState.ACTIVO) {
             return;
         }
         

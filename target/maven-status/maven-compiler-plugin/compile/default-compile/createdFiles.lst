@@ -2,13 +2,12 @@ me\apocalipsis\ui\TablistManager$1.class
 me\apocalipsis\events\SusurroPiedraRotaEvent$14.class
 me\apocalipsis\missions\MissionRenderer$1.class
 me\apocalipsis\experience\RewardService$1.class
-me\apocalipsis\events\CaminoEndListener.class
+me\apocalipsis\events\CaminoEndListener$1.class
 me\apocalipsis\skills\SkillTreeGUI$1.class
 me\apocalipsis\listeners\StreamDropListener$1.class
 me\apocalipsis\skills\SkillService$1.class
 me\apocalipsis\events\EcoSombrasEvent$3.class
 me\apocalipsis\experience\DynamicXPManager$3.class
-me\apocalipsis\events\CaminoEndEvent$AnomaliaData.class
 me\apocalipsis\missions\MissionService$1.class
 me\apocalipsis\listeners\BlockTrackListener$1.class
 me\apocalipsis\skills\SkillEffectListener$1.class

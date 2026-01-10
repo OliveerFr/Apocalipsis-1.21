@@ -11,6 +11,7 @@ import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 
 import me.apocalipsis.Apocalipsis;
+import me.apocalipsis.skills.Skill;
 
 public class AvoTabCompleter implements TabCompleter {
 
@@ -36,7 +37,8 @@ public class AvoTabCompleter implements TabCompleter {
                 "autotest", "habilidad", "habilidades", "skill", "skills",
                 "blockinfo", "bloque", "blockstats", "skillstats",
                 "newrank", "setpermrank", "removepermrank", "listpermranks",
-                "canjear", "redeem", "navidad", "menu"
+                "canjear", "redeem", "navidad", "menu",
+                "onboarding", "buddy", "mentor"
             );
             
             return subcommands.stream()
@@ -167,7 +169,7 @@ public class AvoTabCompleter implements TabCompleter {
                     // Sugerir IDs de recompensas disponibles
                     return Arrays.asList(
                         "kit_diamante", "kit_netherite", "elytra_especial", 
-                        "bloque_proteccion", "mega_pack"
+                        "cohetes_elytra", "bloque_proteccion", "mega_pack"
                     ).stream()
                         .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
                         .collect(Collectors.toList());
@@ -190,6 +192,19 @@ public class AvoTabCompleter implements TabCompleter {
                 case "navidad":
                     // Sugerir subcomandos de navidad
                     return Arrays.asList("start", "stop", "status", "reset", "ambiente", "arbol", "santa", "regalos", "fragmentos", "cliffhanger", "amigo-secreto", "miamigo", "entregar", "regalar").stream()
+                        .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
+                        .collect(Collectors.toList());
+                
+                case "onboarding":
+                    // Sugerir subcomandos de onboarding
+                    return Arrays.asList("check", "reset", "complete", "stats", "milestone").stream()
+                        .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
+                        .collect(Collectors.toList());
+                
+                case "buddy":
+                case "mentor":
+                    // Sugerir subcomandos de buddy/mentor
+                    return Arrays.asList("match", "unmatch", "info", "list", "stats", "rewards").stream()
                         .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
                         .collect(Collectors.toList());
             }
@@ -284,6 +299,35 @@ public class AvoTabCompleter implements TabCompleter {
                     .map(Player::getName)
                     .filter(s -> s.toLowerCase().startsWith(args[2].toLowerCase()))
                     .collect(Collectors.toList());
+            }
+            
+            // /avo onboarding check|reset|complete <jugador>
+            if (subCmd.equals("onboarding")) {
+                String onboardingSubCmd = args[1].toLowerCase();
+                if (onboardingSubCmd.equals("check") || onboardingSubCmd.equals("reset") || onboardingSubCmd.equals("complete")) {
+                    return plugin.getServer().getOnlinePlayers().stream()
+                        .map(Player::getName)
+                        .filter(s -> s.toLowerCase().startsWith(args[2].toLowerCase()))
+                        .collect(Collectors.toList());
+                }
+                if (onboardingSubCmd.equals("milestone")) {
+                    // Sugerir nombres de hitos
+                    return Arrays.asList("walk", "craft", "shelter", "mission", "disaster").stream()
+                        .filter(s -> s.toLowerCase().startsWith(args[2].toLowerCase()))
+                        .collect(Collectors.toList());
+                }
+            }
+            
+            // /avo buddy match|unmatch|info <jugador>
+            // /avo mentor match|unmatch|info <jugador>
+            if (subCmd.equals("buddy") || subCmd.equals("mentor")) {
+                String buddySubCmd = args[1].toLowerCase();
+                if (buddySubCmd.equals("match") || buddySubCmd.equals("unmatch") || buddySubCmd.equals("info")) {
+                    return plugin.getServer().getOnlinePlayers().stream()
+                        .map(Player::getName)
+                        .filter(s -> s.toLowerCase().startsWith(args[2].toLowerCase()))
+                        .collect(Collectors.toList());
+                }
             }
             
             // /avo eco fase <1|2|3>
@@ -406,7 +450,7 @@ public class AvoTabCompleter implements TabCompleter {
                 subCmd.equals("skill") || subCmd.equals("skills")) {
                 String habSubCmd = args[1].toLowerCase();
                 if (habSubCmd.equals("info") || habSubCmd.equals("toggle") || habSubCmd.equals("comprar") || habSubCmd.equals("buy")) {
-                    return Arrays.stream(me.apocalipsis.skills.Skill.values())
+                    return Arrays.stream(Skill.values())
                         .map(s -> s.getId())
                         .filter(s -> s.toLowerCase().startsWith(args[2].toLowerCase()))
                         .collect(Collectors.toList());
@@ -425,6 +469,29 @@ public class AvoTabCompleter implements TabCompleter {
             return Arrays.asList("permanent", "1d", "7d", "30d", "1h", "24h", "60m").stream()
                 .filter(s -> s.toLowerCase().startsWith(args[3].toLowerCase()))
                 .collect(Collectors.toList());
+        }
+        
+        // args.length == 4: /avo buddy match <aprendiz> <mentor>
+        // args.length == 4: /avo mentor match <aprendiz> <mentor>
+        if (args.length == 4 && (args[0].equalsIgnoreCase("buddy") || args[0].equalsIgnoreCase("mentor"))) {
+            if (args[1].equalsIgnoreCase("match")) {
+                // Sugerir jugadores online como mentor (segundo jugador)
+                return plugin.getServer().getOnlinePlayers().stream()
+                    .map(Player::getName)
+                    .filter(s -> s.toLowerCase().startsWith(args[3].toLowerCase()))
+                    .collect(Collectors.toList());
+            }
+        }
+        
+        // args.length == 4: /avo onboarding milestone <milestone> <jugador>
+        if (args.length == 4 && args[0].equalsIgnoreCase("onboarding")) {
+            if (args[1].equalsIgnoreCase("milestone")) {
+                // Sugerir jugadores online
+                return plugin.getServer().getOnlinePlayers().stream()
+                    .map(Player::getName)
+                    .filter(s -> s.toLowerCase().startsWith(args[3].toLowerCase()))
+                    .collect(Collectors.toList());
+            }
         }
         
         // args.length == 4: /avo navidad fragmentos give <player>
@@ -518,7 +585,7 @@ public class AvoTabCompleter implements TabCompleter {
             if (args[1].equalsIgnoreCase("admin")) {
                 String adminSubCmd = args[2].toLowerCase();
                 if (adminSubCmd.equals("give") || adminSubCmd.equals("remove")) {
-                    return Arrays.stream(me.apocalipsis.skills.Skill.values())
+                    return Arrays.stream(Skill.values())
                         .map(s -> s.getId())
                         .filter(s -> s.toLowerCase().startsWith(args[4].toLowerCase()))
                         .collect(Collectors.toList());

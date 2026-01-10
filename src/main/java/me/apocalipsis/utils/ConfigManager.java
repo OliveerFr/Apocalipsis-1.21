@@ -16,7 +16,6 @@ public class ConfigManager {
     private FileConfiguration misionesConfig;
     private FileConfiguration rangosConfig;
     private FileConfiguration recompensasConfig;
-    private FileConfiguration chatConfig;
     private FileConfiguration evasionesConfig;
     private FileConfiguration proteccionesConfig;
     private FileConfiguration tutorialConfig;
@@ -34,7 +33,6 @@ public class ConfigManager {
         this.misionesConfig = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "misiones_new.yml"));
         this.rangosConfig = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "rangos.yml"));
         this.recompensasConfig = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "recompensas.yml"));
-        this.chatConfig = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "chat.yml"));
         this.evasionesConfig = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "evasiones.yml"));
         this.proteccionesConfig = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "protecciones.yml"));
         this.tutorialConfig = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "tutorial.yml"));
@@ -72,9 +70,6 @@ public class ConfigManager {
         return recompensasConfig;
     }
     
-    public FileConfiguration getChatConfig() {
-        return chatConfig;
-    }
     
     public FileConfiguration getEvasionesConfig() {
         return evasionesConfig;

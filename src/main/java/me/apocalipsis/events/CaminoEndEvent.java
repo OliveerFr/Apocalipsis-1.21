@@ -87,6 +87,21 @@ public class CaminoEndEvent extends EventBase {
     // Sistema de brújula funcional
     private BukkitTask brujulaTask;
     
+    // Sistema de mini-eventos aleatorios
+    private int ticksDesdeUltimoMiniEvento = 0;
+    private static final int MIN_TICKS_ENTRE_MINIEVENTO = 9600;  // 8 minutos
+    private static final int MAX_TICKS_ENTRE_MINIEVENTO = 14400; // 12 minutos
+    private int proximoMiniEventoEn = 0;
+    
+    // Sistema de desafío "Caza de Anomalías"
+    private boolean desafioCazaActivo = false;
+    private boolean desafioCazaOfrecido = false;
+    private int ticksDesafioCaza = 0;
+    private static final int DURACION_DESAFIO_CAZA_TICKS = 6000; // 5 minutos
+    private int anomaliasEncontradasDesafio = 0;
+    private static final int ANOMALIAS_REQUERIDAS_DESAFIO = 3;
+    private Set<UUID> participantesDesafio = new HashSet<>();
+    
     // Configuración del evento
     private FileConfiguration config;
     
@@ -171,6 +186,10 @@ public class CaminoEndEvent extends EventBase {
         // Registrar listener
         plugin.getServer().getPluginManager().registerEvents(listener, plugin);
         
+        // Inicializar sistema de mini-eventos
+        ticksDesdeUltimoMiniEvento = 0;
+        proximoMiniEventoEn = MIN_TICKS_ENTRE_MINIEVENTO + random.nextInt(MAX_TICKS_ENTRE_MINIEVENTO - MIN_TICKS_ENTRE_MINIEVENTO);
+        
         plugin.getLogger().info("[CaminoEndEvent] Evento iniciado - Fase: " + faseActual);
     }
     
@@ -235,10 +254,15 @@ public class CaminoEndEvent extends EventBase {
             aplicarTensionAmbiental();
         }
         
-        // Actualizar brújulas y guía de anomalías (cada segundo)
-        if (ticksTotales % 20 == 0 && (faseActual == Fase.ANOMALIAS || faseActual == Fase.RESONANCIA)) {
-            actualizarBrujulas();
-            mostrarGuiaAnomalias(); // Guía para TODOS los jugadores
+        // Actualizar brújulas y guía en action bar (cada segundo)
+        if (ticksTotales % 20 == 0) {
+            if (faseActual == Fase.ANOMALIAS) {
+                actualizarBrujulas();
+                mostrarGuiaAnomalias(); // Guía hacia anomalías en Fase I
+            } else if (faseActual == Fase.RESONANCIA) {
+                actualizarBrujulas();
+                mostrarGuiaFragmentos(); // Guía hacia fragmentos en Fase II
+            }
         }
         
         // Guía hacia el portal incompleto durante REVELACION
@@ -248,6 +272,44 @@ public class CaminoEndEvent extends EventBase {
         
         // Actualizar anomalías existentes
         actualizarAnomalias();
+        
+        // Sistema de mini-eventos aleatorios (solo en fases activas)
+        if (faseActual == Fase.ANOMALIAS || faseActual == Fase.RESONANCIA) {
+            ticksDesdeUltimoMiniEvento++;
+            if (ticksDesdeUltimoMiniEvento >= proximoMiniEventoEn) {
+                activarMiniEventoAleatorio();
+                ticksDesdeUltimoMiniEvento = 0;
+                proximoMiniEventoEn = MIN_TICKS_ENTRE_MINIEVENTO + random.nextInt(MAX_TICKS_ENTRE_MINIEVENTO - MIN_TICKS_ENTRE_MINIEVENTO);
+            }
+        }
+        
+        // Sistema de desafío Caza de Anomalías
+        if (desafioCazaActivo) {
+            ticksDesafioCaza++;
+            
+            // Actualizar action bar cada segundo
+            if (ticksDesafioCaza % 20 == 0) {
+                int segundosRestantes = (DURACION_DESAFIO_CAZA_TICKS - ticksDesafioCaza) / 20;
+                int minutosRestantes = segundosRestantes / 60;
+                int segundos = segundosRestantes % 60;
+                String tiempoRestante = String.format("%d:%02d", minutosRestantes, segundos);
+                
+                for (Player p : plugin.getServer().getOnlinePlayers()) {
+                    p.sendActionBar("§e§l⚡ DESAFÍO: §7" + anomaliasEncontradasDesafio + "/" + ANOMALIAS_REQUERIDAS_DESAFIO + 
+                        " anomalías §8| §c⏱ " + tiempoRestante);
+                }
+            }
+            
+            // Verificar timeout
+            if (ticksDesafioCaza >= DURACION_DESAFIO_CAZA_TICKS) {
+                fallarDesafioCaza();
+            }
+            
+            // Verificar éxito
+            if (anomaliasEncontradasDesafio >= ANOMALIAS_REQUERIDAS_DESAFIO) {
+                completarDesafioCaza();
+            }
+        }
         
         // Verificar transiciones de fase
         verificarTransicionesFase();
@@ -302,6 +364,14 @@ public class CaminoEndEvent extends EventBase {
         
         // Limpiar tracking de anomalías visitadas al cambiar de fase
         if (nuevaFase == Fase.RESONANCIA) {
+            // Al entrar en RESONANCIA, limpiar anomalías activas para evitar guías desfasadas
+            if (!anomaliasActivas.isEmpty()) {
+                List<Location> actuales = new ArrayList<>(anomaliasActivas.keySet());
+                for (Location loc : actuales) {
+                    despawnearAnomalia(loc);
+                }
+                anomaliasActivas.clear();
+            }
             // Reset parcial: mantener historial pero permitir revisitar
             for (UUID uuid : anomaliasVisitadasPorJugador.keySet()) {
                 anomaliasVisitadasPorJugador.get(uuid).clear();
@@ -310,6 +380,10 @@ public class CaminoEndEvent extends EventBase {
         }
         
         switch (nuevaFase) {
+            case ANOMALIAS:
+                // Ya está en fase de anomalías, no hacer nada adicional
+                break;
+                
             case RESONANCIA:
                 anunciarFaseResonancia();
                 break;
@@ -392,13 +466,95 @@ public class CaminoEndEvent extends EventBase {
         AnomaliaData anomalia = new AnomaliaData(ubicacion, System.currentTimeMillis(), tipo);
         anomaliasActivas.put(ubicacion, anomalia);
         
-        // Mensaje especial para anomalías raras
+        // Mensajes especiales según tipo
         if (tipo == TipoAnomalia.ANTIGUA) {
             messageBus.broadcast("§5§l⚡ EL OBSERVADOR:", "observador");
             messageBus.broadcast("§5§o\"...esto es diferente... MÁS VIEJO...\"", "anomalia_antigua");
+            
+            // Título y sonido para todos los jugadores
+            for (Player p : plugin.getServer().getOnlinePlayers()) {
+                p.sendTitle("§5§l⚡ ANOMALÍA ANTIGUA ⚡", "§5§o...más vieja que el tiempo...", 10, 50, 15);
+                p.playSound(p.getLocation(), Sound.ENTITY_ELDER_GUARDIAN_CURSE, 0.7f, 0.6f);
+                p.playSound(p.getLocation(), Sound.BLOCK_SCULK_SHRIEKER_SHRIEK, 0.4f, 0.5f);
+            }
         } else if (tipo == TipoAnomalia.INESTABLE) {
             if (random.nextInt(3) == 0) { // 33% chance
                 messageBus.broadcast("§e§o\"Una anomalía inestable... ten cuidado...\"", "anomalia_inestable");
+            }
+            
+            // Spawn Enderman hostil que desaparece en 30 segundos
+            World world = ubicacion.getWorld();
+            if (world != null && faseActual == Fase.RESONANCIA) {
+                plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+                    if (!anomaliasActivas.containsKey(ubicacion)) return;
+                    
+                    Enderman enderman = (Enderman) world.spawnEntity(ubicacion.clone().add(0, 0.5, 0), EntityType.ENDERMAN);
+                    enderman.setCustomName("§e§lGuardián Inestable");
+                    enderman.setCustomNameVisible(true);
+                    enderman.setRemoveWhenFarAway(false);
+                    
+                    // Metadata para tracking de bonus
+                    final long tiempoSpawn = System.currentTimeMillis();
+                    
+                    // Despawn automático en 30 segundos
+                    BukkitTask despawnTask = plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+                        if (!enderman.isDead()) {
+                            enderman.getWorld().spawnParticle(Particle.PORTAL, enderman.getLocation(), 50, 0.5, 1, 0.5, 0.5);
+                            enderman.getWorld().playSound(enderman.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 0.7f);
+                            enderman.remove();
+                        }
+                    }, 600L); // 30 segundos
+                    
+                    // Listener de muerte para bonus
+                    plugin.getServer().getScheduler().runTaskTimer(plugin, new BukkitRunnable() {
+                        @Override
+                        public void run() {
+                            if (enderman.isDead()) {
+                                long tiempoMuerte = System.currentTimeMillis();
+                                long tiempoTranscurrido = (tiempoMuerte - tiempoSpawn) / 1000; // en segundos
+                                
+                                Player asesino = enderman.getKiller();
+                                if (asesino != null) {
+                                    if (tiempoTranscurrido <= 15) {
+                                        // Bonus por rapidez
+                                        asesino.sendMessage("§a§l✓ BONUS DE VELOCIDAD");
+                                        asesino.sendMessage("§7Derrotado en §e" + tiempoTranscurrido + "s §7- Fragmentos adicionales");
+                                        
+                                        ItemStack fragmentoBonus = items.crearFragmentoDelVacio();
+                                        fragmentoBonus.setAmount(2);
+                                        asesino.getInventory().addItem(fragmentoBonus);
+                                        
+                                        asesino.playSound(asesino.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 0.7f, 1.5f);
+                                    } else {
+                                        // Recompensa base
+                                        asesino.sendMessage("§7Guardián derrotado - Fragmentos obtenidos");
+                                        asesino.getInventory().addItem(items.crearFragmentoDelVacio());
+                                    }
+                                }
+                                
+                                despawnTask.cancel();
+                                this.cancel();
+                            } else if (!anomaliasActivas.containsKey(ubicacion)) {
+                                // Anomalía desaparecida, cancelar
+                                despawnTask.cancel();
+                                this.cancel();
+                            }
+                        }
+                    }, 10L, 10L);
+                    
+                }, 20L); // Spawn 1 segundo después de la anomalía
+            }
+        } else if (tipo.esEco()) {
+            // Mensaje del Observador para anomalías de eco (25% probabilidad)
+            if (random.nextInt(4) == 0 && tipo.mensajeObservador != null) {
+                messageBus.broadcast("§5§l⚡ EL OBSERVADOR:", "observador");
+                messageBus.broadcast(tipo.mensajeObservador, "anomalia_eco");
+            }
+        } else if (tipo == TipoAnomalia.OCULTA) {
+            // Las anomalías ocultas no se anuncian - son secretas
+            // Solo un susurro muy bajo
+            if (random.nextInt(5) == 0) {
+                messageBus.broadcast("§8§o\"...algo se oculta...\"", "anomalia_oculta");
             }
         }
         
@@ -421,22 +577,24 @@ public class CaminoEndEvent extends EventBase {
             World world = ubicacion.getWorld();
             if (world == null) return;
             
-            // Haz de luz vertical (visible desde lejos)
-            if (ticksTotales % 5 == 0) { // Cada 5 ticks
+            // Haz de luz vertical (visible desde lejos) - NO para anomalías ocultas
+            if (ticksTotales % 5 == 0 && tipo != TipoAnomalia.OCULTA) { // Cada 5 ticks
                 for (int altura = 0; altura < 30; altura += 2) {
                     Location hazLoc = ubicacion.clone().add(0, altura, 0);
-                    Particle particleHaz = tipo == TipoAnomalia.ANTIGUA ? Particle.DRAGON_BREATH :
-                                          (tipo == TipoAnomalia.INESTABLE ? Particle.SOUL_FIRE_FLAME : Particle.END_ROD);
-                    world.spawnParticle(particleHaz, hazLoc, 1, 0.1, 0, 0.1, 0);
-                }
-            }
-            
-            // Haz de luz vertical (visible desde lejos)
-            if (ticksTotales % 5 == 0) { // Cada 5 ticks
-                for (int altura = 0; altura < 30; altura += 2) {
-                    Location hazLoc = ubicacion.clone().add(0, altura, 0);
-                    Particle particleHaz = tipo == TipoAnomalia.ANTIGUA ? Particle.DRAGON_BREATH :
-                                          (tipo == TipoAnomalia.INESTABLE ? Particle.SOUL_FIRE_FLAME : Particle.END_ROD);
+                    Particle particleHaz;
+                    if (tipo == TipoAnomalia.ANTIGUA) {
+                        particleHaz = Particle.DRAGON_BREATH;
+                    } else if (tipo == TipoAnomalia.INESTABLE) {
+                        particleHaz = Particle.SOUL_FIRE_FLAME;
+                    } else if (tipo == TipoAnomalia.ECO_BRASAS) {
+                        particleHaz = Particle.FLAME;
+                    } else if (tipo == TipoAnomalia.ECO_SOMBRAS) {
+                        particleHaz = Particle.SQUID_INK;
+                    } else if (tipo == TipoAnomalia.ECO_PIEDRA) {
+                        particleHaz = Particle.ASH;
+                    } else {
+                        particleHaz = Particle.END_ROD;
+                    }
                     world.spawnParticle(particleHaz, hazLoc, 1, 0.1, 0, 0.1, 0);
                 }
             }
@@ -466,6 +624,28 @@ public class CaminoEndEvent extends EventBase {
                 if (random.nextInt(50) == 0) {
                     world.spawnParticle(Particle.EXPLOSION, ubicacion.clone().add(0, 1, 0), 10, 0.5, 0.5, 0.5, 0.1);
                 }
+                
+            } else if (tipo == TipoAnomalia.ECO_BRASAS) {
+                world.spawnParticle(Particle.FLAME, ubicacion, 10, 0.3, 0.5, 0.3, 0.02);
+                world.spawnParticle(Particle.LAVA, ubicacion.clone().add(0, 0.5, 0), 2, 0.2, 0.2, 0.2, 0);
+                world.spawnParticle(Particle.PORTAL, ubicacion, 3, 0.3, 0.3, 0.3, 0.01);
+                
+            } else if (tipo == TipoAnomalia.ECO_SOMBRAS) {
+                world.spawnParticle(Particle.SQUID_INK, ubicacion, 8, 0.4, 0.5, 0.4, 0.01);
+                world.spawnParticle(Particle.SMOKE, ubicacion, 5, 0.3, 0.5, 0.3, 0.01);
+                world.spawnParticle(Particle.PORTAL, ubicacion, 3, 0.3, 0.3, 0.3, 0.01);
+                
+            } else if (tipo == TipoAnomalia.ECO_PIEDRA) {
+                world.spawnParticle(Particle.ASH, ubicacion, 10, 0.4, 0.5, 0.4, 0.01);
+                world.spawnParticle(Particle.CLOUD, ubicacion, 3, 0.2, 0.3, 0.2, 0);
+                world.spawnParticle(Particle.PORTAL, ubicacion, 3, 0.3, 0.3, 0.3, 0.01);
+                
+            } else if (tipo == TipoAnomalia.OCULTA) {
+                // Anomalía oculta: partículas MUY sutiles, casi invisibles
+                if (random.nextInt(3) == 0) { // Solo 33% del tiempo
+                    world.spawnParticle(Particle.END_ROD, ubicacion, 1, 0.1, 0.1, 0.1, 0.01);
+                }
+                // Sin haz de luz para hacerla difícil de ver
                 
             } else if (tipo == TipoAnomalia.ANTIGUA) {
                 world.spawnParticle(Particle.DRAGON_BREATH, ubicacion, 12, 0.4, 0.7, 0.4, 0.01);
@@ -594,9 +774,21 @@ public class CaminoEndEvent extends EventBase {
         if (tipo == TipoAnomalia.ANTIGUA) {
             jugador.sendMessage("§5§l⚡ EL OBSERVADOR:");
             jugador.sendMessage("§5§o\"...este fragmento... DIFERENTE... más viejo que el tiempo...\"");
+            
+            // Título y sonido especial
+            jugador.sendTitle("§5§l⚡ FRAGMENTO ANCESTRAL ⚡", "§5§o...eco del pasado lejano...", 10, 60, 15);
+            jugador.playSound(jugador.getLocation(), Sound.BLOCK_RESPAWN_ANCHOR_CHARGE, 1.0f, 0.7f);
+            jugador.playSound(jugador.getLocation(), Sound.ENTITY_ELDER_GUARDIAN_CURSE, 0.5f, 1.0f);
+            
         } else if (tipo == TipoAnomalia.INESTABLE) {
             jugador.sendMessage("§5§l⚡ EL OBSERVADOR:");
             jugador.sendMessage("§e§o\"...cuidado... este fragmento pulsa con poder...\"");
+            
+            // Título y sonido especial
+            jugador.sendTitle("§e§l⚠ FRAGMENTO INESTABLE ⚠", "§e§o...energía caótica...", 10, 50, 10);
+            jugador.playSound(jugador.getLocation(), Sound.BLOCK_SCULK_CATALYST_BLOOM, 1.0f, 0.8f);
+            jugador.playSound(jugador.getLocation(), Sound.ENTITY_WARDEN_HEARTBEAT, 0.6f, 1.2f);
+            
         } else {
             // Mensajes progresivos del Observador según cantidad de fragmentos (solo para normales)
             jugador.sendMessage("§5§l⚡ EL OBSERVADOR:");
@@ -625,10 +817,38 @@ public class CaminoEndEvent extends EventBase {
         // Hitos épicos especiales
         aplicarHitosEspeciales(fragmentosRecolectadosGlobalmente);
         
+        // Ofrecer desafío "Caza de Anomalías" a los 15 fragmentos
+        if (fragmentosRecolectadosGlobalmente == 15 && !desafioCazaOfrecido) {
+            ofrecerDesafioCaza();
+            desafioCazaOfrecido = true;
+        }
+        
+        // Si el desafío está activo, contar la anomalía
+        if (desafioCazaActivo) {
+            anomaliasEncontradasDesafio++;
+            participantesDesafio.add(jugador.getUniqueId());
+            
+            // Feedback inmediato
+            jugador.sendTitle(
+                "§a§l✓ ANOMALÍA ENCONTRADA",
+                "§7" + anomaliasEncontradasDesafio + "/" + ANOMALIAS_REQUERIDAS_DESAFIO,
+                5, 30, 10
+            );
+            jugador.playSound(jugador.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 0.7f, 1.5f);
+        }
+        
         // Sistema de tensión: Countdown cuando quedan 5 fragmentos
         int fragmentosFaltantes = FRAGMENTOS_OBJETIVO - fragmentosRecolectadosGlobalmente;
         if (fragmentosFaltantes <= 5 && fragmentosFaltantes > 0) {
             aplicarCountdownTension(fragmentosFaltantes);
+        }
+        
+        // Enviar mensaje narrativo dinámico
+        listener.enviarMensajeProgreso(fragmentosRecolectadosGlobalmente);
+        
+        // Enviar mensaje al encontrar anomalía rara
+        if (tipo == TipoAnomalia.ANTIGUA || tipo == TipoAnomalia.OCULTA || tipo.esEco()) {
+            listener.enviarMensajeAnomaliaRara(tipo);
         }
         
         // Anuncio global de progreso (con indicador de tipo raro)
@@ -787,17 +1007,59 @@ public class CaminoEndEvent extends EventBase {
     }
     
     private void anunciarFaseResonancia() {
-        messageBus.broadcast("§5§l⚡ EL OBSERVADOR:", "observador");
-        messageBus.broadcast("§7§o\"Las barreras... se debilitan...\"", "fase_resonancia");
-        messageBus.broadcast("§7§o\"Ahora... puedo sentir los fragmentos...\"", "fase_resonancia2");
-        soundUtil.playSoundAll(Sound.BLOCK_SCULK_SENSOR_CLICKING, 0.5f, 1.0f);
+        ConfigurationSection res = config.getConfigurationSection("mensajes.fase_resonancia");
+        String observador = res != null ? res.getString("observador", "§5§l⚡ EL OBSERVADOR:") : "§5§l⚡ EL OBSERVADOR:";
+        String msg1 = res != null ? res.getString("mensaje", "§7§o\"Las barreras... se debilitan...\"") : "§7§o\"Las barreras... se debilitan...\"";
+        String msg2 = res != null ? res.getString("mensaje2", "§7§o\"Ahora... puedo sentir los fragmentos...\"") : "§7§o\"Ahora... puedo sentir los fragmentos...\"";
+        java.util.List<String> extras = res != null ? res.getStringList("mensajes_extra") : java.util.Collections.emptyList();
+
+        messageBus.broadcast(observador, "observador");
+        messageBus.broadcast(msg1, "fase_resonancia");
+        for (String extra : extras) {
+            messageBus.broadcast(extra, "fase_resonancia_extra");
+        }
+        messageBus.broadcast(msg2, "fase_resonancia2");
+
+        String titulo = res != null ? res.getString("titulo", "§d§l⚡ FASE II: RESONANCIA ⚡") : "§d§l⚡ FASE II: RESONANCIA ⚡";
+        String subtitulo = res != null ? res.getString("subtitulo", "§7§oRecolecten los fragmentos del vacío") : "§7§oRecolecten los fragmentos del vacío";
+        String soundName = res != null ? res.getString("sound", "BLOCK_SCULK_SENSOR_CLICKING") : "BLOCK_SCULK_SENSOR_CLICKING";
+        float vol = res != null ? (float) res.getDouble("volumen", 0.5) : 0.5f;
+        float pitch = res != null ? (float) res.getDouble("pitch", 1.0) : 1.0f;
+        Sound soundTemp;
+        try { soundTemp = Sound.valueOf(soundName); } catch (Exception e) { soundTemp = Sound.BLOCK_SCULK_SENSOR_CLICKING; }
+        final Sound s = soundTemp;
+
+        // Título y sonido para todos
+        for (Player p : plugin.getServer().getOnlinePlayers()) {
+            p.sendTitle(titulo, subtitulo, 10, 70, 20);
+            p.playSound(p.getLocation(), Sound.BLOCK_BEACON_ACTIVATE, 1.0f, 1.2f);
+            p.playSound(p.getLocation(), s, vol, pitch);
+        }
     }
     
     private void anunciarFaseRevelacion() {
+        ConfigurationSection rev = config.getConfigurationSection("mensajes.fase_revelacion");
+        String observador = rev != null ? rev.getString("observador", "§5§l⚡ EL OBSERVADOR:") : "§5§l⚡ EL OBSERVADOR:";
+        String mensaje = rev != null ? rev.getString("mensaje", "§7§o\"Suficiente... la puerta se abre...\"") : "§7§o\"Suficiente... la puerta se abre...\"";
+        String titulo = rev != null ? rev.getString("titulo", "§5§l⚡ LA PUERTA SE ABRE... ⚡") : "§5§l⚡ LA PUERTA SE ABRE... ⚡";
+        String subtitulo = rev != null ? rev.getString("subtitulo", "§7§o...suficiente...") : "§7§o...suficiente...";
+        String soundName = rev != null ? rev.getString("sound", "ENTITY_ENDER_DRAGON_GROWL") : "ENTITY_ENDER_DRAGON_GROWL";
+        float vol = rev != null ? (float) rev.getDouble("volumen", 0.6) : 0.6f;
+        float pitch = rev != null ? (float) rev.getDouble("pitch", 0.6) : 0.6f;
+        Sound soundTemp;
+        try { soundTemp = Sound.valueOf(soundName); } catch (Exception e) { soundTemp = Sound.ENTITY_ENDER_DRAGON_GROWL; }
+        final Sound s = soundTemp;
+
         // Momento cinemático: Silencio inicial
         plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-            messageBus.broadcast("§5§l⚡ EL OBSERVADOR:", "observador");
-            messageBus.broadcast("§7§o\"Suficiente... la puerta se abre...\"", "fase_revelacion");
+            messageBus.broadcast(observador, "observador");
+            messageBus.broadcast(mensaje, "fase_revelacion");
+            
+            // Título inicial dramático
+            for (Player p : plugin.getServer().getOnlinePlayers()) {
+                p.sendTitle(titulo, subtitulo, 10, 50, 15);
+                p.playSound(p.getLocation(), s, vol, pitch);
+            }
         }, 20L);
         
         // Slow motion + efectos visuales (1.5 segundos después)
@@ -849,6 +1111,12 @@ public class CaminoEndEvent extends EventBase {
         plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
             messageBus.broadcast("§c§l§o\"No... NO.\"", "conclusión_2");
             soundUtil.playSoundAll(Sound.ENTITY_ENDERMAN_SCREAM, 0.3f, 0.8f);
+            
+            // Título de pánico
+            for (Player p : plugin.getServer().getOnlinePlayers()) {
+                p.sendTitle("§c§l✗ NO... NO ✗", "§7§oAlgo está mal...", 10, 40, 10);
+                p.playSound(p.getLocation(), Sound.ENTITY_ENDERMAN_SCREAM, 0.5f, 0.6f);
+            }
         }, 100L);
         
         // Fase 3: Explicación ominosa (9s) - Primera línea
@@ -864,6 +1132,12 @@ public class CaminoEndEvent extends EventBase {
         // Fase 4: Implicaciones (16s) - Primera revelación
         plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
             messageBus.broadcast("§4§l§o\"Algo lo atravesó desde el otro lado...\"", "conclusión_5");
+            
+            // Título de terror
+            for (Player p : plugin.getServer().getOnlinePlayers()) {
+                p.sendTitle("§4§l⚠ ALGO LO ATRAVESÓ ⚠", "§7§o...desde el otro lado...", 10, 50, 15);
+                p.playSound(p.getLocation(), Sound.ENTITY_WITHER_AMBIENT, 0.4f, 0.5f);
+            }
         }, 320L);
         
         // Segunda revelación más inquietante (19s)
@@ -891,6 +1165,12 @@ public class CaminoEndEvent extends EventBase {
         plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
             messageBus.broadcast("§7§o\"...¿Qué estaba intentando escapar?\"", "conclusión_7");
             messageBus.broadcast("", "conclusión_espacio3");
+            
+            // Título final inquietante
+            for (Player p : plugin.getServer().getOnlinePlayers()) {
+                p.sendTitle("§8§l§k||§r §4§l¿QUÉ ESCAPABA?§r §8§l§k||", "§7§o...la pregunta sin respuesta...", 15, 80, 25);
+                p.playSound(p.getLocation(), Sound.ENTITY_ELDER_GUARDIAN_CURSE, 0.6f, 0.5f);
+            }
         }, 520L);
         
         // Fase 6: Título final (30s) - Cierre cinematográfico
@@ -907,9 +1187,19 @@ public class CaminoEndEvent extends EventBase {
     }
     
     private void anunciarFinalizacion() {
-        messageBus.broadcast("§5§l⚡ EL OBSERVADOR:", "observador");
-        messageBus.broadcast("§7§o\"El camino... aún no está completo...\"", "finalizacion");
-        messageBus.broadcast("§7§o\"Pero ahora sabemos... que existe.\"", "finalizacion2");
+        ConfigurationSection fin = config.getConfigurationSection("mensajes.finalizacion");
+        if (fin == null) {
+            messageBus.broadcast("§5§l⚡ EL OBSERVADOR:", "observador");
+            messageBus.broadcast("§7§o\"El camino... aún no está completo...\"", "finalizacion");
+            messageBus.broadcast("§7§o\"Pero ahora sabemos... que existe.\"", "finalizacion2");
+            return;
+        }
+        String observador = fin.getString("observador", "§5§l⚡ EL OBSERVADOR:");
+        java.util.List<String> mensajes = fin.getStringList("mensajes");
+        messageBus.broadcast(observador, "observador");
+        for (String m : mensajes) {
+            messageBus.broadcast(m, "finalizacion");
+        }
     }
     
     private void finalizarEvento() {
@@ -1280,6 +1570,72 @@ public class CaminoEndEvent extends EventBase {
             jugador.sendActionBar(mensaje);
         }
     }
+
+    /**
+     * Muestra guía hacia fragmentos durante la fase RESONANCIA.
+     * Reutiliza las ubicaciones de anomalías pero ajusta el texto
+     * para centrar al jugador en recolectar fragmentos.
+     */
+    private void mostrarGuiaFragmentos() {
+        if (anomaliasActivas.isEmpty()) {
+            for (Player p : plugin.getServer().getOnlinePlayers()) {
+                p.sendActionBar("§5§l⚡ §7Buscando señales de fragmentos...");
+            }
+            return;
+        }
+
+        for (Player jugador : plugin.getServer().getOnlinePlayers()) {
+            UUID uuid = jugador.getUniqueId();
+
+            // Encontrar anomalía más cercana que NO esté visitada y no haya dado fragmento
+            Location objetivo = null;
+            double distanciaMin = Double.MAX_VALUE;
+            Set<Location> visitadas = anomaliasVisitadasPorJugador.getOrDefault(uuid, new HashSet<>());
+
+            for (Map.Entry<Location, AnomaliaData> entry : anomaliasActivas.entrySet()) {
+                Location loc = entry.getKey();
+                AnomaliaData data = entry.getValue();
+                if (visitadas.contains(loc)) continue;
+                if (data.fragmentoObtenido) continue;
+                if (loc.getWorld() == null || !loc.getWorld().equals(jugador.getWorld())) continue;
+                double d = jugador.getLocation().distance(loc);
+                if (d < distanciaMin) {
+                    distanciaMin = d;
+                    objetivo = loc;
+                }
+            }
+
+            if (objetivo == null) {
+                int recolectadas = fragmentosPorJugador.getOrDefault(uuid, 0);
+                jugador.sendActionBar("§a✓ §7Fragmentos propios: §e" + recolectadas + " §8Esperando nuevos ecos...");
+                continue;
+            }
+
+            AnomaliaData data = anomaliasActivas.get(objetivo);
+            String flecha = obtenerFlechaDireccional(jugador, objetivo);
+            double distancia = jugador.getLocation().distance(objetivo);
+
+            // Marcar como visitada si está muy cerca para ayudar al avance
+            if (distancia < 8) {
+                marcarAnomaliaComoVisitada(jugador, objetivo);
+            }
+
+            // Mensajes centrados en fragmentos según distancia
+            String tipoNombre = data != null ? data.tipo.getNombre() : "§7Desconocida";
+            String mensaje;
+            if (distancia < 5) {
+                mensaje = "§d✦ §5§lFRAGMENTO CERCANO §d✦ §8[" + tipoNombre + "]";
+            } else if (distancia < 20) {
+                mensaje = String.format("§5§l⚡ FRAGMENTO %s §e%.0fm §8[%s]", flecha, distancia, tipoNombre);
+            } else if (distancia < 50) {
+                mensaje = String.format("§5⚡ Sigue el eco %s §e%.0fm §8[%s]", flecha, distancia, tipoNombre);
+            } else {
+                mensaje = String.format("§5⚡ %s §7%.0fm §8(Fragmento)", flecha, distancia);
+            }
+
+            jugador.sendActionBar(mensaje);
+        }
+    }
     
     /**
      * Obtiene mensaje de progresión dinámico según distancia y tipo de anomalía
@@ -1598,6 +1954,9 @@ public class CaminoEndEvent extends EventBase {
                     world.setStorm(true);
                     world.setWeatherDuration(72000); // 1 hora
                     world.setThundering(false);
+                    
+                    // FASE 1: DÍA (exploración luminosa)
+                    world.setTime(1000); // Día
                     break;
                     
                 case RESONANCIA:
@@ -1605,6 +1964,19 @@ public class CaminoEndEvent extends EventBase {
                     world.setStorm(true);
                     world.setThundering(true);
                     world.setWeatherDuration(72000);
+                    
+                    // FASE 2: ATARDECER (tensión creciente)
+                    world.setTime(12000); // Atardecer
+                    
+                    // Efectos de entorno progresivos
+                    plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+                        if (faseActual == Fase.RESONANCIA) {
+                            for (Player p : plugin.getServer().getOnlinePlayers()) {
+                                p.sendMessage("§7§o[El aire se vuelve más denso...]");
+                                p.addPotionEffect(new PotionEffect(PotionEffectType.MINING_FATIGUE, 200, 0, false, false));
+                            }
+                        }
+                    }, 100L);
                     break;
                     
                 case REVELACION:
@@ -1612,6 +1984,33 @@ public class CaminoEndEvent extends EventBase {
                     world.setStorm(false);
                     world.setThundering(false);
                     world.setWeatherDuration(36000);
+                    
+                    // FASE 3: NOCHE (culminación dramática)
+                    world.setTime(18000); // Noche
+                    
+                    // Efectos avanzados de entorno
+                    for (Player p : plugin.getServer().getOnlinePlayers()) {
+                        p.sendMessage("§d§o[La realidad se quiebra...]");
+                        
+                        // Slow falling periódico (efecto anti-gravedad)
+                        BukkitRunnable slowFallingTask = new BukkitRunnable() {
+                            @Override
+                            public void run() {
+                                if (faseActual != Fase.REVELACION) {
+                                    this.cancel();
+                                    return;
+                                }
+                                
+                                for (Player player : plugin.getServer().getOnlinePlayers()) {
+                                    player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING, 200, 0, false, false));
+                                    if (random.nextInt(3) == 0) {
+                                        player.sendActionBar("§d§o[Sientes la gravedad cambiar...]");
+                                    }
+                                }
+                            }
+                        };
+                        slowFallingTask.runTaskTimer(plugin, 100L, 1200L); // Cada minuto
+                    }
                     break;
             }
         }
@@ -2011,6 +2410,406 @@ public class CaminoEndEvent extends EventBase {
     }
     
     // ═══════════════════════════════════════════════════════════════════
+    // SISTEMA DE MINI-EVENTOS ALEATORIOS
+    // ═══════════════════════════════════════════════════════════════════
+    
+    public enum MiniEvento {
+        ECO_BRASAS(30, "§c§o\"El fuego... aún arde bajo tierra...\""),
+        ECO_SOMBRAS(30, "§8§o\"Las sombras recuerdan...\""),
+        ECO_PIEDRA(20, "§7§o\"Fragmentos de un mundo roto...\""),
+        RESONANCIA(15, "§d§l✦ RESONANCIA"),
+        OBSERVACION(35, "§5§l⚡ EL OBSERVADOR:");
+        
+        public final int probabilidad;
+        public final String mensaje;
+        
+        MiniEvento(int probabilidad, String mensaje) {
+            this.probabilidad = probabilidad;
+            this.mensaje = mensaje;
+        }
+        
+        public static MiniEvento obtenerAleatorio() {
+            int total = 0;
+            for (MiniEvento tipo : values()) {
+                total += tipo.probabilidad;
+            }
+            
+            int rand = new Random().nextInt(total);
+            int acumulado = 0;
+            
+            for (MiniEvento tipo : values()) {
+                acumulado += tipo.probabilidad;
+                if (rand < acumulado) {
+                    return tipo;
+                }
+            }
+            return OBSERVACION;
+        }
+    }
+    
+    private void activarMiniEventoAleatorio() {
+        MiniEvento evento = MiniEvento.obtenerAleatorio();
+        
+        switch (evento) {
+            case ECO_BRASAS:
+                miniEventoEcoBrasas();
+                break;
+            case ECO_SOMBRAS:
+                miniEventoEcoSombras();
+                break;
+            case ECO_PIEDRA:
+                miniEventoEcoPiedra();
+                break;
+            case RESONANCIA:
+                miniEventoResonancia();
+                break;
+            case OBSERVACION:
+                miniEventoObservacion();
+                break;
+        }
+    }
+    
+    private void miniEventoEcoBrasas() {
+        List<Player> jugadores = new ArrayList<>(plugin.getServer().getOnlinePlayers());
+        if (jugadores.isEmpty()) return;
+        
+        // Anuncio
+        for (Player p : jugadores) {
+            p.sendMessage("");
+            p.sendMessage("§c§l✦ ECO DE BRASAS");
+            p.sendMessage("§c§o\"El fuego... aún arde bajo tierra...\"");
+            p.sendMessage("");
+            p.playSound(p.getLocation(), Sound.BLOCK_LAVA_POP, 0.5f, 0.8f);
+        }
+        
+        // Efecto: Lava aparece brevemente en el cielo
+        BukkitTask task = plugin.getServer().getScheduler().runTaskTimer(plugin, new Runnable() {
+            int ticks = 0;
+            
+            @Override
+            public void run() {
+                for (Player p : plugin.getServer().getOnlinePlayers()) {
+                    Location loc = p.getLocation().add(0, 15, 0);
+                    p.getWorld().spawnParticle(Particle.FLAME, loc, 30, 5, 2, 5, 0.1);
+                    p.getWorld().spawnParticle(Particle.LAVA, loc, 10, 5, 2, 5, 0);
+                }
+                
+                ticks++;
+                if (ticks >= 15) { // 15 segundos
+                    // Spawn fragmento bonus cerca de un jugador aleatorio
+                    if (!jugadores.isEmpty()) {
+                        Player jugadorAleatorio = jugadores.get(random.nextInt(jugadores.size()));
+                        Location spawnLoc = jugadorAleatorio.getLocation().add(
+                            (random.nextDouble() - 0.5) * 30,
+                            0,
+                            (random.nextDouble() - 0.5) * 30
+                        );
+                        spawnLoc.setY(spawnLoc.getWorld().getHighestBlockYAt(spawnLoc) + 1);
+                        spawnearAnomalia(spawnLoc);
+                        
+                        for (Player p : plugin.getServer().getOnlinePlayers()) {
+                            p.sendMessage("§7§o[El eco se desvanece... dejando algo atrás]");
+                        }
+                    }
+                }
+            }
+        }, 0L, 20L);
+        
+        plugin.getServer().getScheduler().runTaskLater(plugin, task::cancel, 300L);
+    }
+    
+    private void miniEventoEcoSombras() {
+        List<Player> jugadores = new ArrayList<>(plugin.getServer().getOnlinePlayers());
+        if (jugadores.isEmpty()) return;
+        
+        // Anuncio
+        for (Player p : jugadores) {
+            p.sendMessage("");
+            p.sendMessage("§8§l✦ ECO DE SOMBRAS");
+            p.sendMessage("§8§o\"Las sombras recuerdan...\"");
+            p.sendMessage("");
+            p.playSound(p.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 0.5f, 0.6f);
+        }
+        
+        // Efecto: Oscuridad total durante 20 segundos
+        for (Player p : jugadores) {
+            p.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 400, 1, false, false));
+            p.addPotionEffect(new PotionEffect(PotionEffectType.NIGHT_VISION, 400, 0, false, false)); // Para que no sea frustrante
+        }
+        
+        // Partículas de sombra
+        BukkitTask task = plugin.getServer().getScheduler().runTaskTimer(plugin, new Runnable() {
+            int ticks = 0;
+            
+            @Override
+            public void run() {
+                for (Player p : plugin.getServer().getOnlinePlayers()) {
+                    Location loc = p.getLocation().add(0, 1, 0);
+                    p.getWorld().spawnParticle(Particle.SQUID_INK, loc, 20, 3, 1, 3, 0.05);
+                    p.getWorld().spawnParticle(Particle.SMOKE, loc, 15, 3, 1, 3, 0.1);
+                }
+                
+                ticks++;
+                if (ticks >= 20) { // 20 segundos
+                    if (!jugadores.isEmpty()) {
+                        Player jugadorAleatorio = jugadores.get(random.nextInt(jugadores.size()));
+                        Location spawnLoc = jugadorAleatorio.getLocation().add(
+                            (random.nextDouble() - 0.5) * 25,
+                            0,
+                            (random.nextDouble() - 0.5) * 25
+                        );
+                        spawnLoc.setY(spawnLoc.getWorld().getHighestBlockYAt(spawnLoc) + 1);
+                        spawnearAnomalia(spawnLoc);
+                        
+                        for (Player p : plugin.getServer().getOnlinePlayers()) {
+                            p.sendMessage("§8§o[Las sombras retroceden...]");
+                        }
+                    }
+                }
+            }
+        }, 0L, 20L);
+        
+        plugin.getServer().getScheduler().runTaskLater(plugin, task::cancel, 400L);
+    }
+    
+    private void miniEventoEcoPiedra() {
+        List<Player> jugadores = new ArrayList<>(plugin.getServer().getOnlinePlayers());
+        if (jugadores.isEmpty()) return;
+        
+        // Anuncio
+        for (Player p : jugadores) {
+            p.sendMessage("");
+            p.sendMessage("§7§l✦ ECO DE PIEDRA ROTA");
+            p.sendMessage("§7§o\"Fragmentos de un mundo roto...\"");
+            p.sendMessage("");
+            p.playSound(p.getLocation(), Sound.BLOCK_STONE_BREAK, 0.5f, 0.5f);
+        }
+        
+        // Efecto: Bloques flotan brevemente
+        BukkitTask task = plugin.getServer().getScheduler().runTaskTimer(plugin, new Runnable() {
+            int ticks = 0;
+            
+            @Override
+            public void run() {
+                for (Player p : plugin.getServer().getOnlinePlayers()) {
+                    Location loc = p.getLocation().add(0, 3, 0);
+                    p.getWorld().spawnParticle(Particle.ASH, loc, 40, 4, 2, 4, 0.05);
+                    p.getWorld().spawnParticle(Particle.CLOUD, loc, 20, 4, 2, 4, 0.02);
+                    p.getWorld().spawnParticle(Particle.BLOCK, loc, 15, 3, 2, 3, 0, Material.DEEPSLATE.createBlockData());
+                }
+                
+                ticks++;
+                if (ticks >= 10) { // 10 segundos
+                    if (!jugadores.isEmpty()) {
+                        Player jugadorAleatorio = jugadores.get(random.nextInt(jugadores.size()));
+                        Location spawnLoc = jugadorAleatorio.getLocation().add(
+                            (random.nextDouble() - 0.5) * 20,
+                            0,
+                            (random.nextDouble() - 0.5) * 20
+                        );
+                        spawnLoc.setY(spawnLoc.getWorld().getHighestBlockYAt(spawnLoc) + 1);
+                        spawnearAnomalia(spawnLoc);
+                        
+                        for (Player p : plugin.getServer().getOnlinePlayers()) {
+                            p.sendMessage("§7§o[Los fragmentos caen... uno permanece]");
+                        }
+                    }
+                }
+            }
+        }, 0L, 20L);
+        
+        plugin.getServer().getScheduler().runTaskLater(plugin, task::cancel, 200L);
+    }
+    
+    private void miniEventoResonancia() {
+        List<Player> jugadores = new ArrayList<>(plugin.getServer().getOnlinePlayers());
+        if (jugadores.isEmpty()) return;
+        
+        // Anuncio
+        for (Player p : jugadores) {
+            p.sendTitle(
+                "§d§l✦ RESONANCIA ✦",
+                "§7§oLas anomalías resuenan...",
+                10, 60, 15
+            );
+            p.playSound(p.getLocation(), Sound.BLOCK_BEACON_ACTIVATE, 1.0f, 1.5f);
+        }
+        
+        // Efecto: Todas las anomalías brillan durante 10 segundos
+        List<Location> anomaliasParaResaltar = new ArrayList<>(anomaliasActivas.keySet());
+        
+        BukkitTask task = plugin.getServer().getScheduler().runTaskTimer(plugin, new Runnable() {
+            int ticks = 0;
+            
+            @Override
+            public void run() {
+                for (Location anomalia : anomaliasParaResaltar) {
+                    if (!anomaliasActivas.containsKey(anomalia)) continue;
+                    
+                    World world = anomalia.getWorld();
+                    if (world == null) continue;
+                    
+                    // Partículas brillantes intensas
+                    world.spawnParticle(Particle.GLOW, anomalia.clone().add(0, 2, 0), 50, 0.5, 1.5, 0.5, 0.1);
+                    world.spawnParticle(Particle.END_ROD, anomalia.clone().add(0, 3, 0), 30, 0.3, 1, 0.3, 0.05);
+                    world.spawnParticle(Particle.ELECTRIC_SPARK, anomalia.clone().add(0, 2.5, 0), 20, 0.4, 1.2, 0.4, 0.02);
+                    
+                    // Sonido sutil
+                    if (ticks % 10 == 0) {
+                        world.playSound(anomalia, Sound.BLOCK_BEACON_AMBIENT, 0.3f, 1.8f);
+                    }
+                }
+                
+                ticks++;
+            }
+        }, 0L, 5L); // Cada 0.25 segundos para efecto intenso
+        
+        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+            task.cancel();
+            for (Player p : plugin.getServer().getOnlinePlayers()) {
+                p.sendMessage("§7§o[La resonancia se desvanece...]");
+            }
+        }, 200L); // 10 segundos
+    }
+    
+    private void miniEventoObservacion() {
+        List<Player> jugadores = new ArrayList<>(plugin.getServer().getOnlinePlayers());
+        if (jugadores.isEmpty()) return;
+        
+        // Mensajes aleatorios del Observador
+        String[] mensajes = {
+            "§7§o\"Llevan... ¿cuánto tiempo? ¿Minutos? ¿Horas?\"",
+            "§7§o\"El tiempo se distorsiona cerca del vacío.\"",
+            "§8§o\"Veo sus movimientos... como sombras.\"",
+            "§7§o\"Cada fragmento que recogen... me acerca.\"",
+            "§8§o\"¿A qué? No lo sé. Aún.\"",
+            "§7§o\"Puedo sentir... curiosidad. ¿Es eso lo que sienten?\"",
+            "§8§o\"Este mundo... es diferente a los anteriores.\"",
+            "§7§o\"Los veo buscar. Explorar. Como yo una vez.\"",
+            "§8§o\"¿Recuerdo haber sido... como ustedes?\"",
+            "§7§o\"No. Eso fue en otro tiempo. Otro lugar.\""
+        };
+        
+        String mensajeSeleccionado = mensajes[random.nextInt(mensajes.length)];
+        
+        for (Player p : jugadores) {
+            p.sendMessage("");
+            p.sendMessage("§5§l⚡ EL OBSERVADOR:");
+            p.sendMessage(mensajeSeleccionado);
+            p.sendMessage("");
+            p.playSound(p.getLocation(), Sound.ENTITY_ENDERMAN_STARE, 0.4f, 0.7f);
+        }
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // SISTEMA DE DESAFÍO "CAZA DE ANOMALÍAS"
+    // ═══════════════════════════════════════════════════════════════════
+    
+    private void ofrecerDesafioCaza() {
+        // Anuncio dramático
+        plugin.getServer().getScheduler().runTask(plugin, () -> {
+            for (Player p : plugin.getServer().getOnlinePlayers()) {
+                p.sendMessage("");
+                p.sendMessage("§5§l⚡ EL OBSERVADOR:");
+                p.sendMessage("§7§o\"Puedo... sentir anomalías cercanas.\"");
+                p.sendMessage("§7§o\"Si las encuentran rápido... daré una recompensa.\"");
+                p.sendMessage("");
+                p.sendMessage("§6§l[DESAFÍO INICIADO]");
+                p.sendMessage("§7Encuentra §d3 anomalías§7 en §e5 minutos");
+                p.sendMessage("");
+                
+                p.sendTitle(
+                    "§e§l⚡ DESAFÍO ACTIVADO ⚡",
+                    "§7Encuentra 3 anomalías en 5 minutos",
+                    10, 70, 20
+                );
+                
+                p.playSound(p.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 0.5f, 1.2f);
+                p.playSound(p.getLocation(), Sound.BLOCK_BEACON_ACTIVATE, 0.7f, 1.5f);
+            }
+        });
+        
+        // Iniciar desafío después de 3 segundos
+        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+            desafioCazaActivo = true;
+            ticksDesafioCaza = 0;
+            anomaliasEncontradasDesafio = 0;
+            participantesDesafio.clear();
+            
+            plugin.getLogger().info("[CaminoEndEvent] Desafío 'Caza de Anomalías' iniciado");
+        }, 60L);
+    }
+    
+    private void completarDesafioCaza() {
+        desafioCazaActivo = false;
+        
+        // Anuncio de éxito
+        for (Player p : plugin.getServer().getOnlinePlayers()) {
+            p.sendMessage("");
+            p.sendMessage("§a§l✓ DESAFÍO COMPLETADO");
+            p.sendMessage("§5§l⚡ EL OBSERVADOR:");
+            p.sendMessage("§7§o\"Impresionante... su velocidad... su coordinación...\"");
+            p.sendMessage("§a§o\"Tomen esto. Lo han ganado.\"");
+            p.sendMessage("");
+            
+            p.sendTitle(
+                "§a§l✓ DESAFÍO COMPLETADO ✓",
+                "§7El Observador está... satisfecho.",
+                10, 60, 20
+            );
+            
+            p.playSound(p.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
+            p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 0.8f, 1.2f);
+        }
+        
+        // Dar recompensas a los participantes
+        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+            for (UUID uuid : participantesDesafio) {
+                Player jugador = plugin.getServer().getPlayer(uuid);
+                if (jugador != null && jugador.isOnline()) {
+                    // 10 fragmentos bonus
+                    ItemStack fragmento = items.crearFragmentoDelVacio();
+                    fragmento.setAmount(10);
+                    jugador.getInventory().addItem(fragmento);
+                    
+                    // 30 PS bonus (usando el sistema de experiencia si está disponible)
+                    jugador.sendMessage("§a+ 10 Fragmentos del Vacío");
+                    jugador.sendMessage("§a+ 30 PS");
+                    
+                    // Efectos visuales
+                    jugador.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING, 
+                        jugador.getLocation().add(0, 1, 0), 50, 0.5, 1, 0.5, 0.1);
+                    jugador.playSound(jugador.getLocation(), Sound.ENTITY_EVOKER_CELEBRATE, 1.0f, 1.0f);
+                }
+            }
+            
+            fragmentosRecolectadosGlobalmente += 10; // Añadir al contador global
+            
+        }, 40L);
+        
+        plugin.getLogger().info("[CaminoEndEvent] Desafío 'Caza de Anomalías' completado - Participantes: " + participantesDesafio.size());
+    }
+    
+    private void fallarDesafioCaza() {
+        desafioCazaActivo = false;
+        
+        // Mensaje suave (no penalizar)
+        for (Player p : plugin.getServer().getOnlinePlayers()) {
+            p.sendMessage("");
+            p.sendMessage("§7§l⏱ Tiempo agotado");
+            p.sendMessage("§5§l⚡ EL OBSERVADOR:");
+            p.sendMessage("§7§o\"No importa... había otras.\"");
+            p.sendMessage("§8§o\"El tiempo es... relativo aquí.\"");
+            p.sendMessage("");
+            
+            p.playSound(p.getLocation(), Sound.BLOCK_BEACON_DEACTIVATE, 0.5f, 0.8f);
+        }
+        
+        plugin.getLogger().info("[CaminoEndEvent] Desafío 'Caza de Anomalías' fallado - Encontradas: " + 
+            anomaliasEncontradasDesafio + "/" + ANOMALIAS_REQUERIDAS_DESAFIO);
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════
     // CLASE INTERNA: DATOS DE ANOMALÍA
     // ═══════════════════════════════════════════════════════════════════
     
@@ -2181,34 +2980,57 @@ public class CaminoEndEvent extends EventBase {
     
     /**
      * Tipos de anomalías con características únicas
+     * 
+     * NORMAL (40%): Anomalía estándar, fácil de recolectar
+     * INESTABLE (25%): Spawna Enderman hostil, más fragmentos si se derrota rápido
+     * ECO_* (20% total): Referencias a eventos pasados (Brasas/Sombras/Piedra)
+     * OCULTA (10%): Invisible, requiere Brújula del Vacío para detectar
+     * ANTIGUA (5%): Muy rara, puzzle especial con gran recompensa
      */
     public enum TipoAnomalia {
-        NORMAL(1.0, "§7Normal", Particle.PORTAL, Sound.BLOCK_PORTAL_AMBIENT),
-        INESTABLE(1.5, "§e§lInestable", Particle.SOUL_FIRE_FLAME, Sound.BLOCK_SCULK_SHRIEKER_SHRIEK),
-        ANTIGUA(2.0, "§5§l§kA§r §5§lAntigua§r §5§l§kA", Particle.DRAGON_BREATH, Sound.ENTITY_ENDER_DRAGON_AMBIENT);
+        NORMAL(1.0, "§7Normal", Particle.PORTAL, Sound.BLOCK_PORTAL_AMBIENT, null),
+        INESTABLE(1.5, "§e§lInestable", Particle.SOUL_FIRE_FLAME, Sound.BLOCK_SCULK_SHRIEKER_SHRIEK, null),
+        ECO_BRASAS(1.3, "§c§lEco de Brasas", Particle.FLAME, Sound.BLOCK_LAVA_POP, "§c§o\"Fuego que nunca murió...\""),
+        ECO_SOMBRAS(1.3, "§8§lEco de Sombras", Particle.SQUID_INK, Sound.ENTITY_ENDERMAN_TELEPORT, "§8§o\"Se mueven... como lo hice yo...\""),
+        ECO_PIEDRA(1.3, "§7§lEco de Piedra", Particle.ASH, Sound.BLOCK_STONE_BREAK, "§7§o\"Memorias rotas...\""),
+        OCULTA(1.6, "§d§lOculta", Particle.END_ROD, Sound.BLOCK_AMETHYST_BLOCK_CHIME, null),
+        ANTIGUA(2.0, "§5§l§kA§r §5§lAntigua§r §5§l§kA", Particle.DRAGON_BREATH, Sound.ENTITY_ENDER_DRAGON_AMBIENT, null);
         
         public final double multiplicadorPS;  // Multiplicador de recompensa
         public final String nombre;
         public final Particle particula;
         public final Sound sonido;
+        public final String mensajeObservador; // Mensaje del Observador al encontrarla
         
-        TipoAnomalia(double multiplicadorPS, String nombre, Particle particula, Sound sonido) {
+        TipoAnomalia(double multiplicadorPS, String nombre, Particle particula, Sound sonido, String mensajeObservador) {
             this.multiplicadorPS = multiplicadorPS;
             this.nombre = nombre;
             this.particula = particula;
             this.sonido = sonido;
+            this.mensajeObservador = mensajeObservador;
         }
         
         public String getNombre() {
             return nombre;
         }
         
+        public boolean esEco() {
+            return this == ECO_BRASAS || this == ECO_SOMBRAS || this == ECO_PIEDRA;
+        }
+        
         public static TipoAnomalia obtenerAleatorio(Random random) {
             int valor = random.nextInt(100);
             
-            if (valor < 70) return NORMAL;       // 70% normal
-            if (valor < 95) return INESTABLE;    // 25% inestable
-            return ANTIGUA;                       // 5% antigua (rara)
+            if (valor < 40) return NORMAL;           // 40% normal
+            if (valor < 65) return INESTABLE;        // 25% inestable
+            if (valor < 85) {                        // 20% ecos (distribuido)
+                int eco = random.nextInt(3);
+                if (eco == 0) return ECO_BRASAS;
+                if (eco == 1) return ECO_SOMBRAS;
+                return ECO_PIEDRA;
+            }
+            if (valor < 95) return OCULTA;           // 10% oculta
+            return ANTIGUA;                           // 5% antigua (rara)
         }
     }
 }

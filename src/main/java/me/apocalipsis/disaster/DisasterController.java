@@ -16,6 +16,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitTask;
 
 import me.apocalipsis.Apocalipsis;
+import me.apocalipsis.disaster.Disaster;
 import me.apocalipsis.state.ServerState;
 import me.apocalipsis.state.StateManager;
 import me.apocalipsis.state.TimeService;
@@ -558,6 +559,23 @@ public class DisasterController {
             
             // [EVASION] Notificar fin del desastre (limpia registros)
             plugin.getDisasterEvasionTracker().onDisasterEnd();
+            
+            // [ONBOARDING] Notificar a jugadores activos que sobrevivieron al desastre
+            if (plugin.getTutorialManager() != null) {
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    // Los jugadores online que no están en excepciones sobrevivieron
+                    if (!plugin.getConfigManager().getExcepciones().contains(player.getUniqueId())) {
+                        // Notificar milestone de onboarding (primer desastre sobrevivido)
+                        if (plugin.getTutorialManager().getOnboardingManager() != null) {
+                            plugin.getTutorialManager().getOnboardingManager().onPlayerSurviveDisaster(player);
+                        }
+                        // Recompensar al mentor si el aprendiz sobrevivió junto a él
+                        if (plugin.getTutorialManager().getBuddyService() != null) {
+                            plugin.getTutorialManager().getBuddyService().rewardMentor(player.getUniqueId(), me.apocalipsis.tutorial.BuddyService.BuddyRewardReason.BOTH_SURVIVED_DISASTER);
+                        }
+                    }
+                }
+            }
             
             // [COUNTDOWN] Resetear flags de alertas
             resetCountdownFlags();

@@ -14,7 +14,6 @@ import me.apocalipsis.Apocalipsis;
 import me.apocalipsis.ui.MessageBus;
 import me.apocalipsis.ui.SoundUtil;
 import me.apocalipsis.experience.ExperienceService;
-import me.apocalipsis.missions.MissionRank;
 
 /**
  * Eco de Brasas - Evento narrativo cooperativo con 3 fases
@@ -24,7 +23,7 @@ import me.apocalipsis.missions.MissionRank;
  * El Observador siente grietas que aparecen al azar, como si el mundo exhalara fuego para no colapsar.
  * Tu tarea no es apagarlo, sino aprender a controlarlo.
  * 
- * "El fuego busca forma... no enemigos." — El Observador
+ * "El fuego busca forma... no enemigos." - El Observador
  * 
  * Fases del evento:
  * 1. RECOLECCIÓN (25 min): Grietas aparecen lejos de jugadores, deben ir y cerrarlas

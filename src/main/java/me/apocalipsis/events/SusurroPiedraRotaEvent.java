@@ -24,7 +24,6 @@ import me.apocalipsis.Apocalipsis;
 import me.apocalipsis.ui.MessageBus;
 import me.apocalipsis.ui.SoundUtil;
 import me.apocalipsis.events.gameplay.EnvironmentSystem;
-import me.apocalipsis.events.gameplay.EnvironmentSystem.WeatherType;
 import me.apocalipsis.events.gameplay.EnvironmentSystem.FogIntensity;
 import me.apocalipsis.events.gameplay.EnvironmentSystem.AtmosphericEffect;
 

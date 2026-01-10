@@ -15,9 +15,11 @@ Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\skills\S
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\experience\RewardService.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\missions\MissionRenderer.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\tutorial\ProgressiveDifficultySystem.java
+Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\utils\ChatModerationManager.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\utils\ConfigManager.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\events\testing\scenarios\PlayerDeathScenario.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\listeners\ChatListener.java
+Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\tutorial\BuddyService.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\Apocalipsis.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\events\SusurroPiedraRotaListener.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\events\gameplay\GuardianPhaseSystem.java
@@ -57,6 +59,7 @@ Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\experien
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\missions\PermRankManager.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\events\gameplay\EventLootSystem.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\events\SusurroPiedraRotaItems.java
+Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\commands\ChatCommand.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\disaster\DisasterStatistics.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\RewardClaimSystem.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\skills\SkillEffectListener.java
@@ -78,6 +81,7 @@ Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\events\t
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\events\testing\EventTestBot.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\missions\MissionAssignment.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\tutorial\TutorialCommand.java
+Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\tutorial\OnboardingListener.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\tutorial\TutorialListener.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\experience\AbilityService.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\commands\RecompensaCommand.java
@@ -88,6 +92,7 @@ Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\events\g
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\missions\MissionService.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\utils\OnlinePlayersCache.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\listeners\PlayerListener.java
+Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\tutorial\OnboardingManager.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\events\EventBase.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\events\CaminoEndEvent.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\utils\DisasterDamage.java

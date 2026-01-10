@@ -24,10 +24,13 @@ import me.apocalipsis.disaster.DisasterController;
 import me.apocalipsis.events.EventController;
 import me.apocalipsis.missions.MissionService;
 import me.apocalipsis.missions.MissionType;
+import me.apocalipsis.missions.MissionAssignment;
 import me.apocalipsis.state.ServerState;
 import me.apocalipsis.state.StateManager;
 import me.apocalipsis.state.TimeService;
 import me.apocalipsis.ui.MessageBus;
+import me.apocalipsis.events.testing.TestResult;
+import me.apocalipsis.skills.Skill;
 
 public class ApocalipsisCommand implements CommandExecutor {
 
@@ -218,6 +221,13 @@ public class ApocalipsisCommand implements CommandExecutor {
             case "canjear":
             case "redeem":
                 cmdCanjear(sender, args);
+                break;
+            case "onboarding":
+                cmdOnboarding(sender, args);
+                break;
+            case "buddy":
+            case "mentor":
+                cmdBuddy(sender, args);
                 break;
             default:
                 sender.sendMessage("§cSubcomando desconocido. Usa /avo para ver ayuda.");
@@ -655,7 +665,7 @@ public class ApocalipsisCommand implements CommandExecutor {
             target = (Player) sender;
         }
 
-        var assignments = missionService.getActiveAssignments(target);
+        java.util.List<MissionAssignment> assignments = missionService.getActiveAssignments(target);
         if (assignments.isEmpty()) {
             sender.sendMessage("§7" + target.getName() + " no tiene misiones activas.");
             return;
@@ -729,7 +739,7 @@ public class ApocalipsisCommand implements CommandExecutor {
             sender.sendMessage("§c[NOTA] Tipos EXPLORAR y ALTURA están deshabilitados");
             
             for (Player player : plugin.getServer().getOnlinePlayers()) {
-                var assignments = missionService.getActiveAssignments(player);
+                java.util.List<MissionAssignment> assignments = missionService.getActiveAssignments(player);
                 sender.sendMessage("§e" + player.getName() + " §7tiene §f" + assignments.size() + " §7misiones.");
             }
             return;
@@ -2499,6 +2509,14 @@ public class ApocalipsisCommand implements CommandExecutor {
                 if (eventController.startEvent("camino_end")) {
                     sender.sendMessage("§a✓ Evento §5§l⚡ El Camino al End §ainiciado");
                     sender.sendMessage("§7El Observador percibe algo extraño...");
+                    
+                    // Título y sonido para todos
+                    for (Player p : plugin.getServer().getOnlinePlayers()) {
+                        p.sendTitle("§5§l⚡ EL CAMINO AL END ⚡", "§7Las anomalías despiertan...", 10, 60, 20);
+                        p.playSound(p.getLocation(), Sound.ENTITY_ENDERMAN_SCREAM, 1.0f, 0.6f);
+                        p.playSound(p.getLocation(), Sound.BLOCK_PORTAL_TRIGGER, 0.8f, 0.8f);
+                    }
+                    
                     plugin.getLogger().info(String.format("[CaminoEnd] Iniciado por %s", sender.getName()));
                 } else {
                     sender.sendMessage("§cNo se pudo iniciar el evento. Verifica la consola.");
@@ -2510,6 +2528,12 @@ public class ApocalipsisCommand implements CommandExecutor {
                 if (evento4 == null) {
                     sender.sendMessage("§cEl evento no está activo.");
                     return;
+                }
+                
+                // Título y sonido para todos
+                for (Player p : plugin.getServer().getOnlinePlayers()) {
+                    p.sendTitle("§8§l⚡ EVENTO FINALIZADO ⚡", "§7El camino se cierra...", 10, 50, 20);
+                    p.playSound(p.getLocation(), Sound.ENTITY_ENDERMAN_DEATH, 1.0f, 0.7f);
                 }
                 
                 eventController.stopActiveEvent();
@@ -2544,7 +2568,7 @@ public class ApocalipsisCommand implements CommandExecutor {
                 if (args.length < 3) {
                     sender.sendMessage("§cUso: /avo evento4 fase <1-3>");
                     sender.sendMessage("§7  1 = ANOMALIAS (spawn anomalías)");
-                    sender.sendMessage("§7  2 = ECOS (recolección fragmentos)");
+                    sender.sendMessage("§7  2 = RESONANCIA (recolección fragmentos)");
                     sender.sendMessage("§7  3 = REVELACION (portal incompleto)");
                     return;
                 }
@@ -2565,6 +2589,39 @@ public class ApocalipsisCommand implements CommandExecutor {
                 
                 // Forzar siguiente fase
                 evento4.forzarSiguienteFase();
+                
+                // Título y sonido según la nueva fase
+                String titulo = "";
+                String subtitulo = "";
+                Sound sonido = Sound.BLOCK_END_PORTAL_FRAME_FILL;
+                float pitch = 1.0f;
+                
+                switch (evento4.getFaseActual()) {
+                    case ANOMALIAS:
+                        titulo = "§9§l⚡ FASE I: ANOMALÍAS ⚡";
+                        subtitulo = "§7Rastrea y estabiliza las anomalías...";
+                        sonido = Sound.BLOCK_AMETHYST_BLOCK_CHIME;
+                        pitch = 1.0f;
+                        break;
+                    case RESONANCIA:
+                        titulo = "§d§l⚡ FASE II: RESONANCIA ⚡";
+                        subtitulo = "§7Los fragmentos resuenan...";
+                        sonido = Sound.BLOCK_BEACON_ACTIVATE;
+                        pitch = 1.2f;
+                        break;
+                    case REVELACION:
+                        titulo = "§5§l⚡ FASE III: REVELACIÓN ⚡";
+                        subtitulo = "§7El portal incompleto se manifiesta...";
+                        sonido = Sound.ENTITY_ENDER_DRAGON_GROWL;
+                        pitch = 0.8f;
+                        break;
+                }
+                
+                for (Player p : plugin.getServer().getOnlinePlayers()) {
+                    p.sendTitle(titulo, subtitulo, 10, 70, 20);
+                    p.playSound(p.getLocation(), sonido, 1.0f, pitch);
+                    p.playSound(p.getLocation(), Sound.ENTITY_ENDERMAN_AMBIENT, 0.6f, 0.6f);
+                }
                 
                 sender.sendMessage("§a✓ Forzada siguiente fase");
                 sender.sendMessage("§7De: §e" + faseAnterior + " §7→ §e" + evento4.getFaseActual());
@@ -2608,6 +2665,12 @@ public class ApocalipsisCommand implements CommandExecutor {
                 for (int i = 0; i < cantidad; i++) {
                     target.getInventory().addItem(evento4.getItems().crearFragmentoDelVacio());
                 }
+                
+                // Título y sonido para el jugador
+                target.sendTitle("§5§l⚡ FRAGMENTO DEL VACÍO ⚡", "§7+" + cantidad + " fragmento" + (cantidad > 1 ? "s" : ""), 10, 40, 10);
+                target.playSound(target.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.5f);
+                target.playSound(target.getLocation(), Sound.BLOCK_BEACON_POWER_SELECT, 0.8f, 1.2f);
+                target.spawnParticle(Particle.DRAGON_BREATH, target.getLocation().add(0, 1, 0), 30, 0.3, 0.5, 0.3, 0.05);
                 
                 sender.sendMessage("§a✓ Dados §e" + cantidad + " §afragmentos a §e" + target.getName());
                 target.sendMessage("§5§l⚡ Has recibido §e" + cantidad + " §5§lFragmento(s) del Vacío");
@@ -2693,6 +2756,9 @@ public class ApocalipsisCommand implements CommandExecutor {
                     Location anomalia = anomalias.get(evento4.getRandom().nextInt(anomalias.size()));
                     
                     jugador.teleport(anomalia.clone().add(0, 2, 0));
+                    jugador.playSound(jugador.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 0.8f);
+                    jugador.spawnParticle(Particle.PORTAL, jugador.getLocation(), 50, 0.5, 1.0, 0.5, 0.5);
+                    
                     sender.sendMessage("§a✓ Teletransportado a una §5Anomalía §7(" + 
                         evento4.getAnomaliasActivas().get(anomalia).tipo.getNombre() + "§7)");
                 } else {
@@ -4174,7 +4240,7 @@ public class ApocalipsisCommand implements CommandExecutor {
                 break;
                 
             case "report":
-                var results = autoTestSystem.getTestResults();
+                java.util.List<TestResult> results = autoTestSystem.getTestResults();
                 if (results.isEmpty()) {
                     sender.sendMessage("§cNo hay resultados de tests disponibles.");
                     sender.sendMessage("§7Ejecuta algunos escenarios primero.");
@@ -4472,7 +4538,7 @@ public class ApocalipsisCommand implements CommandExecutor {
     
     private void cmdHabilidadesMis(Player player) {
         var skillService = plugin.getSkillService();
-        var skills = skillService.getUnlockedSkills(player);
+        java.util.Set<Skill> skills = skillService.getUnlockedSkills(player);
         
         if (skills.isEmpty()) {
             player.sendMessage("§cNo tienes habilidades desbloqueadas.");
@@ -4509,7 +4575,7 @@ public class ApocalipsisCommand implements CommandExecutor {
     
     private void cmdHabilidadesToggles(Player player) {
         var skillService = plugin.getSkillService();
-        var toggleables = skillService.getToggleableSkills(player);
+        java.util.List<Skill> toggleables = skillService.getToggleableSkills(player);
         
         if (toggleables.isEmpty()) {
             player.sendMessage("§cNo tienes habilidades toggleables desbloqueadas.");
@@ -5162,4 +5228,291 @@ public class ApocalipsisCommand implements CommandExecutor {
             player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
         }
     }
+    
+    /**
+     * Comando /avo onboarding - Gestión del sistema de onboarding
+     * Uso: /avo onboarding <check|reset|complete|stats|milestone> [jugador] [...]
+     */
+    private void cmdOnboarding(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("avo.admin")) {
+            sender.sendMessage("§cNo tienes permisos.");
+            return;
+        }
+        
+        if (args.length < 2) {
+            sender.sendMessage("§6Uso: /avo onboarding <check|reset|complete|stats|milestone> [jugador]");
+            return;
+        }
+        
+        if (plugin.getTutorialManager() == null || plugin.getTutorialManager().getOnboardingManager() == null) {
+            sender.sendMessage("§cSistema de onboarding no disponible.");
+            return;
+        }
+        
+        me.apocalipsis.tutorial.OnboardingManager onboarding = plugin.getTutorialManager().getOnboardingManager();
+        String subCmd = args[1].toLowerCase();
+        
+        switch (subCmd) {
+            case "check":
+                if (args.length < 3) {
+                    sender.sendMessage("§6Uso: /avo onboarding check <jugador>");
+                    return;
+                }
+                cmdOnboardingCheck(sender, args[2], onboarding);
+                break;
+            case "reset":
+                if (args.length < 3) {
+                    sender.sendMessage("§6Uso: /avo onboarding reset <jugador>");
+                    return;
+                }
+                cmdOnboardingReset(sender, args[2], onboarding);
+                break;
+            case "complete":
+                if (args.length < 3) {
+                    sender.sendMessage("§6Uso: /avo onboarding complete <jugador>");
+                    return;
+                }
+                cmdOnboardingComplete(sender, args[2], onboarding);
+                break;
+            case "stats":
+                cmdOnboardingStats(sender, onboarding);
+                break;
+            case "milestone":
+                if (args.length < 4) {
+                    sender.sendMessage("§6Uso: /avo onboarding milestone <walk|craft|shelter|mission|disaster> <jugador>");
+                    return;
+                }
+                cmdOnboardingMilestone(sender, args[2], args[3], onboarding);
+                break;
+            default:
+                sender.sendMessage("§cSubcomando desconocido. Usa: check, reset, complete, stats, milestone");
+        }
+    }
+    
+    private void cmdOnboardingCheck(CommandSender sender, String playerName, me.apocalipsis.tutorial.OnboardingManager onboarding) {
+        org.bukkit.OfflinePlayer offlinePlayer = plugin.getServer().getOfflinePlayer(playerName);
+        java.util.UUID uuid = offlinePlayer.getUniqueId();
+        
+        me.apocalipsis.tutorial.OnboardingManager.OnboardingProgress progress = onboarding.getProgress(uuid);
+        
+        if (progress == null) {
+            sender.sendMessage("§e" + playerName + "§7: No tiene onboarding en progreso (ya completado o nunca iniciado)");
+            return;
+        }
+        
+        sender.sendMessage("§6═══════════════════════════════════════");
+        sender.sendMessage("§e§l  Onboarding: " + playerName);
+        sender.sendMessage("§6═══════════════════════════════════════");
+        sender.sendMessage("§7Bloques caminados: §f" + progress.getBlocksWalked() + "§7/100");
+        sender.sendMessage("§7Primer craft: " + (progress.hasCrafted() ? "§a✓" : "§c✗"));
+        sender.sendMessage("§7Bloques colocados: §f" + progress.getBlocksPlaced() + "§7/15");
+        sender.sendMessage("§7Primera misión: " + (progress.hasCompletedMission() ? "§a✓" : "§c✗"));
+        sender.sendMessage("§7Sobrevivió desastre: " + (progress.hasSurvivedDisaster() ? "§a✓" : "§c✗"));
+        sender.sendMessage("§7Estado: " + (progress.isFullyCompleted() ? "§a§lCOMPLETADO" : "§cEN PROGRESO"));
+        sender.sendMessage("§6═══════════════════════════════════════");
+    }
+    
+    private void cmdOnboardingReset(CommandSender sender, String playerName, me.apocalipsis.tutorial.OnboardingManager onboarding) {
+        org.bukkit.OfflinePlayer offlinePlayer = plugin.getServer().getOfflinePlayer(playerName);
+        java.util.UUID uuid = offlinePlayer.getUniqueId();
+        
+        onboarding.removePlayer(uuid);
+        sender.sendMessage("§a✓ Onboarding reiniciado para " + playerName);
+        
+        org.bukkit.entity.Player onlinePlayer = plugin.getServer().getPlayer(uuid);
+        if (onlinePlayer != null) {
+            onboarding.startOnboarding(onlinePlayer);
+            onlinePlayer.sendMessage("§a§l✓ Tu progreso de onboarding ha sido reiniciado.");
+        }
+    }
+    
+    private void cmdOnboardingComplete(CommandSender sender, String playerName, me.apocalipsis.tutorial.OnboardingManager onboarding) {
+        org.bukkit.OfflinePlayer offlinePlayer = plugin.getServer().getOfflinePlayer(playerName);
+        java.util.UUID uuid = offlinePlayer.getUniqueId();
+        
+        me.apocalipsis.tutorial.OnboardingManager.OnboardingProgress progress = onboarding.getProgress(uuid);
+        
+        if (progress == null) {
+            sender.sendMessage("§c" + playerName + " no tiene onboarding activo.");
+            return;
+        }
+        
+        if (progress.isFullyCompleted()) {
+            sender.sendMessage("§e" + playerName + "§7 ya había completado el onboarding.");
+            return;
+        }
+        
+        // Forzar completación de todos los hitos
+        progress.complete(me.apocalipsis.tutorial.OnboardingManager.OnboardingMilestone.WALK_100_BLOCKS);
+        progress.complete(me.apocalipsis.tutorial.OnboardingManager.OnboardingMilestone.CRAFT_FIRST_ITEM);
+        progress.complete(me.apocalipsis.tutorial.OnboardingManager.OnboardingMilestone.BUILD_SHELTER);
+        progress.complete(me.apocalipsis.tutorial.OnboardingManager.OnboardingMilestone.COMPLETE_FIRST_MISSION);
+        progress.complete(me.apocalipsis.tutorial.OnboardingManager.OnboardingMilestone.SURVIVE_TUTORIAL_DISASTER);
+        
+        sender.sendMessage("§a✓ Onboarding completado para " + playerName);
+        
+        org.bukkit.entity.Player onlinePlayer = plugin.getServer().getPlayer(uuid);
+        if (onlinePlayer != null) {
+            onlinePlayer.sendMessage("§a§l✓ Tu onboarding ha sido completado.");
+        }
+    }
+    
+    private void cmdOnboardingStats(CommandSender sender, me.apocalipsis.tutorial.OnboardingManager onboarding) {
+        sender.sendMessage("§6═══════════════════════════════════════");
+        sender.sendMessage("§e§l  Estadísticas de Onboarding");
+        sender.sendMessage("§6═══════════════════════════════════════");
+        sender.sendMessage("§7Nota: Estadísticas en memoria (no persistentes)");
+        sender.sendMessage("§6═══════════════════════════════════════");
+    }
+    
+    private void cmdOnboardingMilestone(CommandSender sender, String milestone, String playerName, me.apocalipsis.tutorial.OnboardingManager onboarding) {
+        org.bukkit.OfflinePlayer offlinePlayer = plugin.getServer().getOfflinePlayer(playerName);
+        java.util.UUID uuid = offlinePlayer.getUniqueId();
+        
+        me.apocalipsis.tutorial.OnboardingManager.OnboardingProgress progress = onboarding.getProgress(uuid);
+        
+        if (progress == null) {
+            sender.sendMessage("§c" + playerName + " no tiene onboarding activo.");
+            return;
+        }
+        
+        me.apocalipsis.tutorial.OnboardingManager.OnboardingMilestone hito;
+        try {
+            hito = me.apocalipsis.tutorial.OnboardingManager.OnboardingMilestone.valueOf(milestone.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            sender.sendMessage("§cHito desconocido: " + milestone);
+            return;
+        }
+        
+        if (!progress.isCompleted(hito)) {
+            progress.complete(hito);
+            sender.sendMessage("§a✓ Hito '" + hito.getDisplayName() + "' completado para " + playerName);
+        } else {
+            sender.sendMessage("§e" + playerName + "§7 ya había completado ese hito.");
+        }
+    }
+    
+    /**
+     * Comando /avo buddy - Gestión del sistema de buddy (mentor/aprendiz)
+     * Uso: /avo buddy <match|unmatch|info|list|stats|rewards> [jugador] [...]
+     */
+    private void cmdBuddy(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("avo.admin")) {
+            sender.sendMessage("§cNo tienes permisos.");
+            return;
+        }
+        
+        if (args.length < 2) {
+            sender.sendMessage("§6Uso: /avo buddy <match|unmatch|info|list|stats|rewards> [jugador]");
+            return;
+        }
+        
+        if (plugin.getTutorialManager() == null || plugin.getTutorialManager().getBuddyService() == null) {
+            sender.sendMessage("§cSistema de buddy no disponible.");
+            return;
+        }
+        
+        me.apocalipsis.tutorial.BuddyService buddy = plugin.getTutorialManager().getBuddyService();
+        String subCmd = args[1].toLowerCase();
+        
+        switch (subCmd) {
+            case "match":
+                if (args.length < 4) {
+                    sender.sendMessage("§6Uso: /avo buddy match <aprendiz> <mentor>");
+                    return;
+                }
+                cmdBuddyMatch(sender, args[2], args[3], buddy);
+                break;
+            case "unmatch":
+                if (args.length < 3) {
+                    sender.sendMessage("§6Uso: /avo buddy unmatch <jugador>");
+                    return;
+                }
+                cmdBuddyUnmatch(sender, args[2], buddy);
+                break;
+            case "info":
+                if (args.length < 3) {
+                    sender.sendMessage("§6Uso: /avo buddy info <jugador>");
+                    return;
+                }
+                cmdBuddyInfo(sender, args[2], buddy);
+                break;
+            case "list":
+                cmdBuddyList(sender, buddy);
+                break;
+            case "stats":
+                cmdBuddyStats(sender, buddy);
+                break;
+            case "rewards":
+                if (args.length < 3) {
+                    sender.sendMessage("§6Uso: /avo buddy rewards <mentor>");
+                    return;
+                }
+                cmdBuddyRewards(sender, args[2], buddy);
+                break;
+            default:
+                sender.sendMessage("§cSubcomando desconocido. Usa: match, unmatch, info, list, stats, rewards");
+        }
+    }
+    
+    private void cmdBuddyMatch(CommandSender sender, String apprenticeName, String mentorName, me.apocalipsis.tutorial.BuddyService buddy) {
+        org.bukkit.OfflinePlayer apprentice = plugin.getServer().getOfflinePlayer(apprenticeName);
+        org.bukkit.OfflinePlayer mentor = plugin.getServer().getOfflinePlayer(mentorName);
+        
+        buddy.matchBuddy(apprentice.getUniqueId(), mentor.getUniqueId());
+        sender.sendMessage("§a✓ " + apprenticeName + " emparejado con mentor " + mentorName);
+        
+        org.bukkit.entity.Player onlineApprentice = plugin.getServer().getPlayer(apprentice.getUniqueId());
+        if (onlineApprentice != null) {
+            onlineApprentice.sendMessage("§a§l✓ §fHas sido emparejado con mentor §e" + mentorName);
+        }
+        
+        org.bukkit.entity.Player onlineMentor = plugin.getServer().getPlayer(mentor.getUniqueId());
+        if (onlineMentor != null) {
+            onlineMentor.sendMessage("§a§l✓ §fTienes un nuevo aprendiz: §e" + apprenticeName);
+        }
+    }
+    
+    private void cmdBuddyUnmatch(CommandSender sender, String playerName, me.apocalipsis.tutorial.BuddyService buddy) {
+        org.bukkit.OfflinePlayer player = plugin.getServer().getOfflinePlayer(playerName);
+        buddy.unmatchBuddy(player.getUniqueId());
+        sender.sendMessage("§a✓ Emparejamiento removido para " + playerName);
+    }
+    
+    private void cmdBuddyInfo(CommandSender sender, String playerName, me.apocalipsis.tutorial.BuddyService buddy) {
+        org.bukkit.OfflinePlayer player = plugin.getServer().getOfflinePlayer(playerName);
+        java.util.UUID uuid = player.getUniqueId();
+        
+        sender.sendMessage("§6═══════════════════════════════════════");
+        sender.sendMessage("§e§l  Info Buddy: " + playerName);
+        sender.sendMessage("§6═══════════════════════════════════════");
+        sender.sendMessage("§7Emparejado: " + (buddy.isBuddyActive(uuid) ? "§a✓" : "§c✗"));
+        sender.sendMessage("§6═══════════════════════════════════════");
+    }
+    
+    private void cmdBuddyList(CommandSender sender, me.apocalipsis.tutorial.BuddyService buddy) {
+        sender.sendMessage("§6═══════════════════════════════════════");
+        sender.sendMessage("§e§l  Emparejamientos Activos");
+        sender.sendMessage("§6═══════════════════════════════════════");
+        sender.sendMessage("§7(Sistema de persistencia pendiente)");
+        sender.sendMessage("§6═══════════════════════════════════════");
+    }
+    
+    private void cmdBuddyStats(CommandSender sender, me.apocalipsis.tutorial.BuddyService buddy) {
+        sender.sendMessage("§6═══════════════════════════════════════");
+        sender.sendMessage("§e§l  Estadísticas Buddy");
+        sender.sendMessage("§6═══════════════════════════════════════");
+        sender.sendMessage("§7(Sistema de persistencia pendiente)");
+        sender.sendMessage("§6═══════════════════════════════════════");
+    }
+    
+    private void cmdBuddyRewards(CommandSender sender, String mentorName, me.apocalipsis.tutorial.BuddyService buddy) {
+        org.bukkit.OfflinePlayer mentor = plugin.getServer().getOfflinePlayer(mentorName);
+        sender.sendMessage("§6═══════════════════════════════════════");
+        sender.sendMessage("§e§l  Recompensas Pendientes: " + mentorName);
+        sender.sendMessage("§6═══════════════════════════════════════");
+        sender.sendMessage("§7(Sistema de persistencia pendiente)");
+        sender.sendMessage("§6═══════════════════════════════════════");
+    }
 }
+

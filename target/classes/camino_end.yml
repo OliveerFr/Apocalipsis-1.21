@@ -124,16 +124,21 @@ fases:
 mensajes:
   inicio:
     titulo: "§5§l⚡ EL CAMINO AL END"
-    subtitulo: "§7Anomalías dimensionales detectadas..."
+    subtitulo: "§7Ecos antiguos resuenan; anomalías vuelven a despertar..."
     
     mensajes:
       - "§8§m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
       - "§5§l⚡ EL OBSERVADOR:"
-      - "§7§o\"Algo... se acerca al mundo...\""
-      - "§7§o\"Siento... la resonancia de una dimensión lejana...\""
+      - "§7§o\"Escuchen... el eco de lo que ya vivimos...\""
+      - "§7§o\"Los brasas susurraron primero... §cEco de Brasas...\""
+      - "§7§o\"Luego, las sombras respondieron... §8Eco de Sombras...\""
+      - "§7§o\"La piedra rota habló... §7Susurro de la Piedra...\""
+      - "§7§o\"Incluso en tiempos de luz... §aNavidad... algo observaba.\""
       - ""
-      - "§7Anomalías dimensionales han aparecido."
-      - "§7Explora el mundo para investigarlas."
+      - "§7Todo eso no terminó. §fContinúa aquí, ahora."
+      - "§7La resonancia del vacío está más cerca que nunca."
+      - "§7Donde aparezcan §dAnomalías, hay §5Fragmentos del Vacío."
+      - "§7Acércate con cuidado; recolecta lo que no debería estar."
       - "§8§m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     
     delay_entre_mensajes: 20        # Ticks entre cada mensaje (1 segundo)
@@ -145,6 +150,11 @@ mensajes:
     sound: "BLOCK_SCULK_SENSOR_CLICKING"
     volumen: 0.5
     pitch: 1.0
+    titulo: "§d§l⚡ FASE II: RESONANCIA ⚡"
+    subtitulo: "§7§oRecolecten los fragmentos del vacío"
+    mensajes_extra:
+      - "§7§o\"Los ecos de Brasas, Sombras y Piedra... convergen.\""
+      - "§7§o\"Cada anomalía... oculta §5fragmentos§7 que no deberían estar...\""
   
   fase_revelacion:
     observador: "§5§l⚡ EL OBSERVADOR:"

@@ -35,6 +35,13 @@ tutorial:
       &7El tutorial comenzará en &e3 minutos&7.
       &7Mientras tanto, puedes explorar libremente.
       
+      &a💡 Sistema de Tutorial:
+      &7• NO recibirás kit de inicio
+      &7• Recibirás BUFEOS temporales según tu progreso:
+      &7  &a📈 Fase 1 (30 min): &fRegeneración II, Velocidad, Rapidez
+      &7  &a📈 Fase 2 (30 min): &fRegeneración I, Velocidad
+      &7  &a📈 Fase 3+: &cSin bufeos, dificultad controlada
+      
       &aUsa &f/avo menu &apara ver todas tus opciones.
       
       &8&m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -47,39 +54,43 @@ dificultad_progresiva:
   enabled: true
   
   # Fase 1: MUY FÁCIL (Primeros 30 minutos)
+  # BUFFS: Regeneración II, Velocidad I, Rapidez I
   fase_1:
     duracion_minutos: 30
     multiplicador_daño: 0.1           # 10% del daño normal
     multiplicador_frecuencia: 0.2     # 80% menos frecuentes
     permitir_knockback: false         # Sin empujones
     xp_bonus: 1.5                     # +50% XP
-    regeneracion_pasiva: true         # Regeneración I permanente
+    regeneracion_pasiva: true         # Regeneración II + Speed I + Haste I
     nombre: "&a🌱 Fase Tutorial"
-    descripcion: "Desastres muy suaves"
+    descripcion: "Desastres muy suaves con máximo apoyo"
     
   # Fase 2: FÁCIL (30-60 minutos)
+  # BUFFS: Regeneración I, Velocidad I
   fase_2:
     duracion_minutos: 30
     multiplicador_daño: 0.25          # 25% del daño
     multiplicador_frecuencia: 0.4     # 60% menos frecuentes
     permitir_knockback: false         # Sin empujones
     xp_bonus: 1.3                     # +30% XP
-    regeneracion_pasiva: true         # Regeneración I permanente
+    regeneracion_pasiva: true         # Regeneración I + Speed I
     nombre: "&e🔰 Fase Adaptación"
-    descripcion: "Desastres suaves"
+    descripcion: "Desastres suaves con apoyo moderado"
     
   # Fase 3: MODERADO (1-2 horas)
+  # BUFFS: NINGUNO - Se quitan todos los efectos
   fase_3:
     duracion_minutos: 60
     multiplicador_daño: 0.5           # 50% del daño
     multiplicador_frecuencia: 0.6     # 40% menos frecuentes
     permitir_knockback: true          # Ya puede empujar
     xp_bonus: 1.2                     # +20% XP
-    regeneracion_pasiva: false        # Sin regeneración
+    regeneracion_pasiva: false        # SIN BUFFS - Solo dificultad controlada
     nombre: "&6⚡ Fase Intermedia"
-    descripcion: "Desastres moderados"
+    descripcion: "Desastres moderados sin protección"
     
   # Fase 4: NORMAL (2-4 horas)
+  # BUFFS: NINGUNO
   fase_4:
     duracion_minutos: 120
     multiplicador_daño: 0.75          # 75% del daño
@@ -88,9 +99,10 @@ dificultad_progresiva:
     xp_bonus: 1.1                     # +10% XP
     regeneracion_pasiva: false        # Sin regeneración
     nombre: "&c⚔️ Fase Avanzada"
-    descripcion: "Desastres fuertes"
+    descripcion: "Desastres fuertes sin protección"
     
   # Después de 240 minutos (4 horas): Dificultad Global (100%)
+  # BUFFS: NINGUNO
   fase_final:
     multiplicador_daño: 1.0           # 100% dificultad global
     multiplicador_frecuencia: 1.0     # Igual que todos
@@ -98,7 +110,7 @@ dificultad_progresiva:
     xp_bonus: 1.0                     # Sin bonus
     regeneracion_pasiva: false        # Sin regeneración
     nombre: "&4💀 Dificultad Global"
-    descripcion: "Sin protección"
+    descripcion: "Dificultad completa, sin protección"
   
   # Notificaciones de cambio de fase
   notificar_cambio_fase:
@@ -162,9 +174,9 @@ dificultad_progresiva:
 # ═══════════════════════════════════════════════════════════════
 
 kit_inicio:
-  enabled: true
-  otorgar_automatico: true
-  dar_inmediatamente: true          # Dar INMEDIATAMENTE al entrar (antes de morir)
+  enabled: false
+  otorgar_automatico: false
+  dar_inmediatamente: false          # KIT DESHABILITADO - Solo efectos/bufeos
   
   items:
     # Armadura de HIERRO ENCANTADA (Protección II, Durabilidad III)
