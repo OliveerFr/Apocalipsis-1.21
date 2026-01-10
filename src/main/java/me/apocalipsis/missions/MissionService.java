@@ -393,17 +393,6 @@ public class MissionService {
     public void assignMissionsToPlayer(Player player, int currentDay) {
         UUID uuid = player.getUniqueId();
         
-        // [ONBOARDING] No asignar misiones hasta que complete los hitos de tutorial
-        if (plugin.getTutorialManager() != null && 
-            plugin.getTutorialManager().getOnboardingManager() != null) {
-            if (!plugin.getTutorialManager().getOnboardingManager().hasCompletedOnboarding(uuid)) {
-                if (plugin.getConfigManager().isDebugCiclo()) {
-                    plugin.getLogger().info("[MISIONES] Jugador " + player.getName() + " aún no completa onboarding, no se asignan misiones");
-                }
-                return;
-            }
-        }
-        
         // [v2.0] Marcar el día actual como activo para este jugador
         // Esto es importante para saber si debe recibir castigo al finalizar el día
         playerLastActiveDay.put(uuid, currentDay);
@@ -421,22 +410,43 @@ public class MissionService {
         int ps = playerPs.getOrDefault(uuid, 0);
         MissionRank rank = MissionRank.fromXp(ps);
         
-        // [RANGOS.YML] Usar misionesDiarias del rango configurado
-        int maxMissions = rank.getMisionesDiarias();
-        if (maxMissions <= 0) {
-            // Fallback a porRango si no está configurado
-            maxMissions = porRango.getOrDefault(rank, 3);
+        // [ONBOARDING] Durante onboarding, asignar solo 1 misión simple (FACIL)
+        final boolean isOnboarding;
+        if (plugin.getTutorialManager() != null && 
+            plugin.getTutorialManager().getOnboardingManager() != null) {
+            if (!plugin.getTutorialManager().getOnboardingManager().hasCompletedOnboarding(uuid)) {
+                isOnboarding = true;
+                if (plugin.getConfigManager().isDebugCiclo()) {
+                    plugin.getLogger().info("[MISIONES] Jugador " + player.getName() + " en onboarding, asignando 1 misión tutorial");
+                }
+            } else {
+                isOnboarding = false;
+            }
+        } else {
+            isOnboarding = false;
         }
         
-        // [CONFIG] Limitar al máximo global configurado en misiones_new.yml
-        if (maxMissions > maxPorDia) {
-            plugin.getLogger().warning("[MISIONES] Rango " + rank + " intenta asignar " + maxMissions + " misiones, limitando a max_por_dia=" + maxPorDia);
-            maxMissions = maxPorDia;
+        // [RANGOS.YML] Usar misionesDiarias del rango configurado
+        int maxMissions;
+        if (isOnboarding) {
+            maxMissions = 1; // Solo 1 misión durante onboarding
+        } else {
+            maxMissions = rank.getMisionesDiarias();
+            if (maxMissions <= 0) {
+                // Fallback a porRango si no está configurado
+                maxMissions = porRango.getOrDefault(rank, 3);
+            }
+            
+            // [CONFIG] Limitar al máximo global configurado en misiones_new.yml
+            if (maxMissions > maxPorDia) {
+                plugin.getLogger().warning("[MISIONES] Rango " + rank + " intenta asignar " + maxMissions + " misiones, limitando a max_por_dia=" + maxPorDia);
+                maxMissions = maxPorDia;
+            }
         }
         
         // Filtrar misiones elegibles (y tipos habilitados)
         List<MissionCatalog> eligible = catalog.stream()
-            .filter(m -> m.isValidForRank(rank))
+            .filter(m -> isOnboarding ? m.getDificultad() == MissionDifficulty.FACIL : m.isValidForRank(rank))
             .filter(m -> m.getTipo().isEnabled())  // [REMOVAL] Excluir tipos deshabilitados
             .collect(Collectors.toList());
         
@@ -600,6 +610,11 @@ public class MissionService {
         // [ONBOARDING SYSTEM] Notificar completación de misión al sistema de onboarding
         if (plugin.getTutorialManager() != null && plugin.getTutorialManager().getOnboardingManager() != null) {
             plugin.getTutorialManager().getOnboardingManager().onPlayerCompleteMission(player);
+        }
+        
+        // [BUDDY SYSTEM] Recompensar mentor cuando aprendiz completa misión
+        if (plugin.getTutorialManager() != null && plugin.getTutorialManager().getBuddyService() != null) {
+            plugin.getTutorialManager().getBuddyService().rewardMentor(uuid, me.apocalipsis.tutorial.BuddyService.BuddyRewardReason.APPRENTICE_MISSION_COMPLETED);
         }
         
         savePlayerData();
@@ -1435,6 +1450,11 @@ public class MissionService {
                     plugin.getRewardService().deliverRewards(player, newRank);
                 }
                 
+                // [BUDDY SYSTEM] Recompensar mentor si el aprendiz subió de rango
+                if (plugin.getTutorialManager() != null && plugin.getTutorialManager().getBuddyService() != null) {
+                    plugin.getTutorialManager().getBuddyService().rewardMentor(uuid, me.apocalipsis.tutorial.BuddyService.BuddyRewardReason.APPRENTICE_RANK_UP);
+                }
+                
                 // Actualizar scoreboard y tablist
                 if (plugin.getScoreboardManager() != null) {
                     plugin.getScoreboardManager().updatePlayer(player);
@@ -1470,6 +1490,11 @@ public class MissionService {
                     plugin.getRewardService().deliverRewards(player, newRank);
                 }
                 
+                // [BUDDY SYSTEM] Recompensar mentor si el aprendiz subió de rango
+                if (plugin.getTutorialManager() != null && plugin.getTutorialManager().getBuddyService() != null) {
+                    plugin.getTutorialManager().getBuddyService().rewardMentor(uuid, me.apocalipsis.tutorial.BuddyService.BuddyRewardReason.APPRENTICE_RANK_UP);
+                }
+                
                 // Actualizar scoreboard y tablist
                 if (plugin.getScoreboardManager() != null) {
                     plugin.getScoreboardManager().updatePlayer(player);
@@ -1503,6 +1528,11 @@ public class MissionService {
                 // Entregar recompensas de rango
                 if (plugin.getRewardService() != null) {
                     plugin.getRewardService().deliverRewards(player, newRank);
+                }
+                
+                // [BUDDY SYSTEM] Recompensar mentor si el aprendiz subió de rango
+                if (plugin.getTutorialManager() != null && plugin.getTutorialManager().getBuddyService() != null) {
+                    plugin.getTutorialManager().getBuddyService().rewardMentor(uuid, me.apocalipsis.tutorial.BuddyService.BuddyRewardReason.APPRENTICE_RANK_UP);
                 }
                 
                 // Actualizar scoreboard y tablist

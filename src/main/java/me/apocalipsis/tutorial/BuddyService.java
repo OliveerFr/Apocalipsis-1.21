@@ -7,14 +7,19 @@
  */
 package me.apocalipsis.tutorial;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.UUID;
+
 import org.bukkit.Bukkit;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 
 import me.apocalipsis.Apocalipsis;
 import me.apocalipsis.missions.MissionRank;
-
-import java.util.*;
 
 /**
  * Gestiona emparejamiento automático de nuevos con veteranos
@@ -34,6 +39,55 @@ public class BuddyService {
     
     // Timestamps de inicio de buddy
     private final Map<UUID, Long> buddyStartTimes;
+    
+    // Tracking de estadísticas por mentor
+    private final Map<UUID, BuddyStats> mentorStats;
+    
+    // Tracking de tiempo jugado juntos hoy (apprentice UUID -> millis)
+    private final Map<UUID, Long> dailyTimeTogetherStart;
+    private final Map<UUID, Long> dailyTimeTogether;
+    
+    // Último día verificado para reset diario
+    private int lastDayChecked;
+    
+    /**
+     * Estadísticas de un mentor
+     */
+    public static class BuddyStats {
+        private int missionsRewarded;
+        private int rankUpsRewarded;
+        private int disastersRewarded;
+        private int dailyTimeRewarded;
+        private int totalPsEarned;
+        private int totalXpEarned;
+        
+        public void recordReward(BuddyRewardReason reason) {
+            switch (reason) {
+                case APPRENTICE_MISSION_COMPLETED:
+                    missionsRewarded++;
+                    break;
+                case APPRENTICE_RANK_UP:
+                    rankUpsRewarded++;
+                    break;
+                case BOTH_SURVIVED_DISASTER:
+                    disastersRewarded++;
+                    break;
+                case DAILY_BUDDY_TIME:
+                    dailyTimeRewarded++;
+                    break;
+            }
+            totalPsEarned += reason.getPsReward();
+            totalXpEarned += reason.getXpReward();
+        }
+        
+        public int getMissionsRewarded() { return missionsRewarded; }
+        public int getRankUpsRewarded() { return rankUpsRewarded; }
+        public int getDisastersRewarded() { return disastersRewarded; }
+        public int getDailyTimeRewarded() { return dailyTimeRewarded; }
+        public int getTotalPsEarned() { return totalPsEarned; }
+        public int getTotalXpEarned() { return totalXpEarned; }
+        public int getTotalRewards() { return missionsRewarded + rankUpsRewarded + disastersRewarded + dailyTimeRewarded; }
+    }
     
     /**
      * Razones de recompensa para el mentor
@@ -64,6 +118,13 @@ public class BuddyService {
         this.activeBuddies = new HashMap<>();
         this.pendingMentorRewards = new HashMap<>();
         this.buddyStartTimes = new HashMap<>();
+        this.mentorStats = new HashMap<>();
+        this.dailyTimeTogetherStart = new HashMap<>();
+        this.dailyTimeTogether = new HashMap<>();
+        this.lastDayChecked = -1;
+        
+        // Iniciar scheduler de tiempo jugado juntos
+        startDailyTimeScheduler();
     }
     
     /**
@@ -86,6 +147,53 @@ public class BuddyService {
         
         // Crear emparejamiento
         createBuddyPair(newPlayer, mentor);
+        return true;
+    }
+    
+    /**
+     * Maneja la conexión de cualquier jugador para auto-asignación de mentor si aplica.
+     * - Si el que entra es un posible mentor y no tiene aprendiz, intenta asignarle
+     *   automáticamente el primer novato elegible online sin mentor.
+     */
+    public void handlePlayerJoin(Player player) {
+        // ¿Es elegible como mentor?
+        if (!isEligibleMentor(player)) {
+            return;
+        }
+        // ¿Ya está mentoreando a alguien? entonces no asignar otro
+        if (isMentoringAnyone(player.getUniqueId())) {
+            return;
+        }
+        // Buscar un novato online sin mentor y con onboarding no completado (si existe el sistema)
+        for (Player candidate : Bukkit.getOnlinePlayers()) {
+            if (candidate.getUniqueId().equals(player.getUniqueId())) continue;
+            if (!isNoviceNeedingMentor(candidate)) continue;
+            // Emparejar directamente con este mentor que acaba de entrar
+            createBuddyPair(candidate, player);
+            break; // Solo un aprendiz por mentor
+        }
+    }
+    
+    private boolean isEligibleMentor(Player p) {
+        MissionRank rank = plugin.getRankService().getRank(p);
+        return rank.ordinal() >= MissionRank.EXPLORADOR.ordinal();
+    }
+    
+    private boolean isNoviceNeedingMentor(Player p) {
+        UUID uuid = p.getUniqueId();
+        // Ya tiene mentor
+        if (activeBuddies.containsKey(uuid)) {
+            return false;
+        }
+        // Si hay sistema de onboarding, usarlo para priorizar novatos reales
+        if (plugin.getTutorialManager() != null && plugin.getTutorialManager().getOnboardingManager() != null) {
+            try {
+                return !plugin.getTutorialManager().getOnboardingManager().hasCompletedOnboarding(uuid);
+            } catch (Throwable t) {
+                // En caso de cualquier excepción, hacer fallback a permitir
+            }
+        }
+        // Fallback: cualquier jugador sin mentor
         return true;
     }
     
@@ -194,6 +302,10 @@ public class BuddyService {
         if (mentor != null && plugin.getExperienceService() != null) {
             plugin.getExperienceService().addXP(mentor, reason.getXpReward(), "Mentor: " + reason.getDescription(), false);
         }
+        
+        // Registrar estadísticas
+        BuddyStats stats = mentorStats.computeIfAbsent(mentorUuid, k -> new BuddyStats());
+        stats.recordReward(reason);
         
         // Notificar
         if (mentor != null) {
@@ -321,6 +433,162 @@ public class BuddyService {
         }
         
         return false;
+    }
+    
+    /**
+     * Inicia scheduler que verifica tiempo jugado juntos
+     */
+    private void startDailyTimeScheduler() {
+        // Verificar cada 5 minutos (6000 ticks)
+        Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            checkDailyTimeTogether();
+        }, 6000L, 6000L);
+    }
+    
+    /**
+     * Verifica y recompensa por tiempo jugado juntos
+     */
+    private void checkDailyTimeTogether() {
+        long currentTime = System.currentTimeMillis();
+        
+        // Reset diario si cambió el día
+        int currentDay = (int) (System.currentTimeMillis() / (24L * 60L * 60L * 1000L));
+        if (lastDayChecked != currentDay) {
+            dailyTimeTogether.clear();
+            dailyTimeTogetherStart.clear();
+            lastDayChecked = currentDay;
+        }
+        
+        for (Map.Entry<UUID, UUID> entry : new HashMap<>(activeBuddies).entrySet()) {
+            UUID apprenticeUuid = entry.getKey();
+            UUID mentorUuid = entry.getValue();
+            
+            Player apprentice = Bukkit.getPlayer(apprenticeUuid);
+            Player mentor = Bukkit.getPlayer(mentorUuid);
+            
+            // Ambos deben estar online
+            if (apprentice == null || mentor == null) {
+                dailyTimeTogetherStart.remove(apprenticeUuid);
+                continue;
+            }
+            
+            // Iniciar contador si no existe
+            if (!dailyTimeTogetherStart.containsKey(apprenticeUuid)) {
+                dailyTimeTogetherStart.put(apprenticeUuid, currentTime);
+            }
+            
+            // Calcular tiempo acumulado
+            long startTime = dailyTimeTogetherStart.get(apprenticeUuid);
+            long sessionTime = currentTime - startTime;
+            long totalTime = dailyTimeTogether.getOrDefault(apprenticeUuid, 0L) + sessionTime;
+            
+            // Si alcanzaron 1 hora (3,600,000 ms), dar recompensa
+            if (totalTime >= 3600000L && dailyTimeTogether.getOrDefault(apprenticeUuid, 0L) < 3600000L) {
+                rewardMentor(apprenticeUuid, BuddyRewardReason.DAILY_BUDDY_TIME);
+                dailyTimeTogether.put(apprenticeUuid, totalTime);
+            } else {
+                dailyTimeTogether.put(apprenticeUuid, totalTime);
+            }
+            
+            // Resetear inicio para próxima verificación
+            dailyTimeTogetherStart.put(apprenticeUuid, currentTime);
+        }
+    }
+    
+    /**
+     * Obtiene información completa de un buddy
+     */
+    public Map<String, Object> getBuddyInfo(UUID uuid) {
+        Map<String, Object> info = new HashMap<>();
+        
+        // Es aprendiz?
+        if (activeBuddies.containsKey(uuid)) {
+            UUID mentorUuid = activeBuddies.get(uuid);
+            Long startTime = buddyStartTimes.get(uuid);
+            
+            info.put("role", "apprentice");
+            info.put("mentorUuid", mentorUuid);
+            info.put("mentorName", Bukkit.getOfflinePlayer(mentorUuid).getName());
+            
+            if (startTime != null) {
+                long elapsed = System.currentTimeMillis() - startTime;
+                long remaining = BUDDY_DURATION - elapsed;
+                info.put("daysRemaining", remaining / (24L * 60L * 60L * 1000L));
+                info.put("startTime", startTime);
+            }
+        }
+        
+        // Es mentor?
+        UUID apprenticeUuid = getApprentice(uuid);
+        if (apprenticeUuid != null) {
+            Long startTime = buddyStartTimes.get(apprenticeUuid);
+            
+            info.put("role", "mentor");
+            info.put("apprenticeUuid", apprenticeUuid);
+            info.put("apprenticeName", Bukkit.getOfflinePlayer(apprenticeUuid).getName());
+            
+            if (startTime != null) {
+                long elapsed = System.currentTimeMillis() - startTime;
+                long remaining = BUDDY_DURATION - elapsed;
+                info.put("daysRemaining", remaining / (24L * 60L * 60L * 1000L));
+                info.put("startTime", startTime);
+            }
+            
+            // Agregar estadísticas
+            BuddyStats stats = mentorStats.get(uuid);
+            if (stats != null) {
+                info.put("stats", stats);
+            }
+        }
+        
+        return info;
+    }
+    
+    /**
+     * Obtiene todos los emparejamientos activos
+     */
+    public Map<UUID, UUID> getAllBuddyPairs() {
+        return new HashMap<>(activeBuddies);
+    }
+    
+    /**
+     * Obtiene estadísticas de un mentor
+     */
+    public BuddyStats getMentorStats(UUID mentorUuid) {
+        return mentorStats.getOrDefault(mentorUuid, new BuddyStats());
+    }
+    
+    /**
+     * Obtiene estadísticas globales del sistema
+     */
+    public Map<String, Integer> getGlobalStats() {
+        Map<String, Integer> stats = new HashMap<>();
+        stats.put("activePairs", activeBuddies.size());
+        
+        int totalMissions = 0;
+        int totalRankUps = 0;
+        int totalDisasters = 0;
+        int totalDailyTime = 0;
+        int totalPs = 0;
+        int totalXp = 0;
+        
+        for (BuddyStats s : mentorStats.values()) {
+            totalMissions += s.getMissionsRewarded();
+            totalRankUps += s.getRankUpsRewarded();
+            totalDisasters += s.getDisastersRewarded();
+            totalDailyTime += s.getDailyTimeRewarded();
+            totalPs += s.getTotalPsEarned();
+            totalXp += s.getTotalXpEarned();
+        }
+        
+        stats.put("totalMissions", totalMissions);
+        stats.put("totalRankUps", totalRankUps);
+        stats.put("totalDisasters", totalDisasters);
+        stats.put("totalDailyTime", totalDailyTime);
+        stats.put("totalPs", totalPs);
+        stats.put("totalXp", totalXp);
+        
+        return stats;
     }
     
     /**

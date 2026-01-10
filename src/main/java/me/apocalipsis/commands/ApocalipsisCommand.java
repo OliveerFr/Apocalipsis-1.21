@@ -5483,35 +5483,128 @@ public class ApocalipsisCommand implements CommandExecutor {
         org.bukkit.OfflinePlayer player = plugin.getServer().getOfflinePlayer(playerName);
         java.util.UUID uuid = player.getUniqueId();
         
+        java.util.Map<String, Object> info = buddy.getBuddyInfo(uuid);
+        
+        if (info.isEmpty()) {
+            sender.sendMessage("§c" + playerName + " no tiene buddy activo");
+            return;
+        }
+        
         sender.sendMessage("§6═══════════════════════════════════════");
         sender.sendMessage("§e§l  Info Buddy: " + playerName);
         sender.sendMessage("§6═══════════════════════════════════════");
-        sender.sendMessage("§7Emparejado: " + (buddy.isBuddyActive(uuid) ? "§a✓" : "§c✗"));
+        
+        String role = (String) info.get("role");
+        if ("apprentice".equals(role)) {
+            sender.sendMessage("§7Rol: §aAprendiz");
+            sender.sendMessage("§7Mentor: §6" + info.get("mentorName"));
+            if (info.containsKey("daysRemaining")) {
+                long days = (Long) info.get("daysRemaining");
+                sender.sendMessage("§7Tiempo restante: §e" + days + " días");
+            }
+        } else if ("mentor".equals(role)) {
+            sender.sendMessage("§7Rol: §6Mentor");
+            sender.sendMessage("§7Aprendiz: §a" + info.get("apprenticeName"));
+            if (info.containsKey("daysRemaining")) {
+                long days = (Long) info.get("daysRemaining");
+                sender.sendMessage("§7Tiempo restante: §e" + days + " días");
+            }
+            
+            if (info.containsKey("stats")) {
+                me.apocalipsis.tutorial.BuddyService.BuddyStats stats = 
+                    (me.apocalipsis.tutorial.BuddyService.BuddyStats) info.get("stats");
+                sender.sendMessage("§6─────────────────────────────────────");
+                sender.sendMessage("§7Recompensas generadas:");
+                sender.sendMessage("  §7Misiones: §f" + stats.getMissionsRewarded());
+                sender.sendMessage("  §7Rank ups: §f" + stats.getRankUpsRewarded());
+                sender.sendMessage("  §7Desastres: §f" + stats.getDisastersRewarded());
+                sender.sendMessage("  §7Tiempo juntos: §f" + stats.getDailyTimeRewarded());
+                sender.sendMessage("  §7Total PS: §e" + stats.getTotalPsEarned());
+                sender.sendMessage("  §7Total XP: §e" + stats.getTotalXpEarned());
+            }
+        }
+        
         sender.sendMessage("§6═══════════════════════════════════════");
     }
     
     private void cmdBuddyList(CommandSender sender, me.apocalipsis.tutorial.BuddyService buddy) {
+        java.util.Map<java.util.UUID, java.util.UUID> pairs = buddy.getAllBuddyPairs();
+        
         sender.sendMessage("§6═══════════════════════════════════════");
-        sender.sendMessage("§e§l  Emparejamientos Activos");
+        sender.sendMessage("§e§l  Emparejamientos Activos (" + pairs.size() + ")");
         sender.sendMessage("§6═══════════════════════════════════════");
-        sender.sendMessage("§7(Sistema de persistencia pendiente)");
+        
+        if (pairs.isEmpty()) {
+            sender.sendMessage("§7No hay pares activos actualmente");
+        } else {
+            for (java.util.Map.Entry<java.util.UUID, java.util.UUID> entry : pairs.entrySet()) {
+                java.util.UUID apprenticeUuid = entry.getKey();
+                java.util.UUID mentorUuid = entry.getValue();
+                
+                String apprenticeName = plugin.getServer().getOfflinePlayer(apprenticeUuid).getName();
+                String mentorName = plugin.getServer().getOfflinePlayer(mentorUuid).getName();
+                
+                java.util.Map<String, Object> info = buddy.getBuddyInfo(apprenticeUuid);
+                String timeLeft = "";
+                if (info.containsKey("daysRemaining")) {
+                    long days = (Long) info.get("daysRemaining");
+                    timeLeft = " §7(" + days + " días)";
+                }
+                
+                sender.sendMessage("  §a" + apprenticeName + " §7→ §6" + mentorName + timeLeft);
+            }
+        }
+        
         sender.sendMessage("§6═══════════════════════════════════════");
     }
     
     private void cmdBuddyStats(CommandSender sender, me.apocalipsis.tutorial.BuddyService buddy) {
+        java.util.Map<String, Integer> stats = buddy.getGlobalStats();
+        
         sender.sendMessage("§6═══════════════════════════════════════");
         sender.sendMessage("§e§l  Estadísticas Buddy");
         sender.sendMessage("§6═══════════════════════════════════════");
-        sender.sendMessage("§7(Sistema de persistencia pendiente)");
+        sender.sendMessage("§7Pares activos: §f" + stats.get("activePairs"));
+        sender.sendMessage("§6─────────────────────────────────────");
+        sender.sendMessage("§7Recompensas totales otorgadas:");
+        sender.sendMessage("  §7Por misiones: §f" + stats.get("totalMissions"));
+        sender.sendMessage("  §7Por rank ups: §f" + stats.get("totalRankUps"));
+        sender.sendMessage("  §7Por desastres: §f" + stats.get("totalDisasters"));
+        sender.sendMessage("  §7Por tiempo juntos: §f" + stats.get("totalDailyTime"));
+        sender.sendMessage("§6─────────────────────────────────────");
+        sender.sendMessage("§7Total PS generado: §e" + stats.get("totalPs"));
+        sender.sendMessage("§7Total XP generado: §e" + stats.get("totalXp"));
         sender.sendMessage("§6═══════════════════════════════════════");
     }
     
     private void cmdBuddyRewards(CommandSender sender, String mentorName, me.apocalipsis.tutorial.BuddyService buddy) {
         org.bukkit.OfflinePlayer mentor = plugin.getServer().getOfflinePlayer(mentorName);
+        java.util.UUID mentorUuid = mentor.getUniqueId();
+        
+        me.apocalipsis.tutorial.BuddyService.BuddyStats stats = buddy.getMentorStats(mentorUuid);
+        
         sender.sendMessage("§6═══════════════════════════════════════");
-        sender.sendMessage("§e§l  Recompensas Pendientes: " + mentorName);
+        sender.sendMessage("§e§l  Recompensas: " + mentorName);
         sender.sendMessage("§6═══════════════════════════════════════");
-        sender.sendMessage("§7(Sistema de persistencia pendiente)");
+        
+        if (stats.getTotalRewards() == 0) {
+            sender.sendMessage("§7No hay recompensas registradas");
+        } else {
+            sender.sendMessage("§7Desglose de recompensas:");
+            sender.sendMessage("  §7Misiones completadas: §f" + stats.getMissionsRewarded() + 
+                " §7(§e" + (stats.getMissionsRewarded() * 25) + " PS§7, §e" + (stats.getMissionsRewarded() * 50) + " XP§7)");
+            sender.sendMessage("  §7Rank ups: §f" + stats.getRankUpsRewarded() + 
+                " §7(§e" + (stats.getRankUpsRewarded() * 100) + " PS§7, §e" + (stats.getRankUpsRewarded() * 100) + " XP§7)");
+            sender.sendMessage("  §7Desastres: §f" + stats.getDisastersRewarded() + 
+                " §7(§e" + (stats.getDisastersRewarded() * 50) + " PS§7, §e" + (stats.getDisastersRewarded() * 50) + " XP§7)");
+            sender.sendMessage("  §7Tiempo juntos: §f" + stats.getDailyTimeRewarded() + 
+                " §7(§e" + (stats.getDailyTimeRewarded() * 25) + " PS§7, §e" + (stats.getDailyTimeRewarded() * 25) + " XP§7)");
+            sender.sendMessage("§6─────────────────────────────────────");
+            sender.sendMessage("§7Total acumulado:");
+            sender.sendMessage("  §7PS: §e" + stats.getTotalPsEarned());
+            sender.sendMessage("  §7XP: §e" + stats.getTotalXpEarned());
+        }
+        
         sender.sendMessage("§6═══════════════════════════════════════");
     }
 }

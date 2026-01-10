@@ -100,6 +100,18 @@ public class TutorialListener implements Listener {
                 player.getName(), motivo
             ));
         }
+
+        // En cualquier caso, notificar al BuddyService para intentar auto-asignación
+        try {
+            if (tutorialManager != null && tutorialManager.getBuddyService() != null) {
+                // 1) Si entra un mentor libre, emparejar con un novato online
+                tutorialManager.getBuddyService().handlePlayerJoin(player);
+                // 2) Si entra un novato sin mentor, intentar asignarle un mentor disponible
+                tutorialManager.getBuddyService().tryMatchBuddy(player);
+            }
+        } catch (Throwable t) {
+            // Ignorar errores para no romper el flujo de join
+        }
     }
     
     /**
