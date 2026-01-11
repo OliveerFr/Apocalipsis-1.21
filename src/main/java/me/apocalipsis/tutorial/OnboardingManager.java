@@ -382,6 +382,25 @@ public class OnboardingManager {
         return playerProgress.get(uuid);
     }
     
+    /**
+     * Obtiene la lista de hitos pendientes de un jugador
+     * @return Lista de nombres de hitos sin completar
+     */
+    public java.util.List<String> getPendingMilestones(UUID uuid) {
+        OnboardingProgress progress = playerProgress.get(uuid);
+        if (progress == null || progress.isFullyCompleted()) {
+            return java.util.Collections.emptyList();
+        }
+        
+        java.util.List<String> pending = new java.util.ArrayList<>();
+        for (OnboardingMilestone milestone : OnboardingMilestone.values()) {
+            if (!progress.isCompleted(milestone)) {
+                pending.add(milestone.name());
+            }
+        }
+        return pending;
+    }
+    
     public void removePlayer(UUID uuid) {
         stopProgressCheck(uuid);
         playerProgress.remove(uuid);

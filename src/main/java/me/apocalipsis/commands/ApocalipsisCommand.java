@@ -5234,13 +5234,8 @@ public class ApocalipsisCommand implements CommandExecutor {
      * Uso: /avo onboarding <check|reset|complete|stats|milestone> [jugador] [...]
      */
     private void cmdOnboarding(CommandSender sender, String[] args) {
-        if (!sender.hasPermission("avo.admin")) {
-            sender.sendMessage("§cNo tienes permisos.");
-            return;
-        }
-        
         if (args.length < 2) {
-            sender.sendMessage("§6Uso: /avo onboarding <check|reset|complete|stats|milestone> [jugador]");
+            sender.sendMessage("§6Uso: /avo onboarding <check|reset|complete|stats|milestone|misiones> [jugador]");
             return;
         }
         
@@ -5253,7 +5248,17 @@ public class ApocalipsisCommand implements CommandExecutor {
         String subCmd = args[1].toLowerCase();
         
         switch (subCmd) {
+            case "misiones":
+            case "hitos":
+                // Comando público para ver hitos propios o de otro jugador
+                String targetName = (args.length >= 3) ? args[2] : sender.getName();
+                cmdOnboardingMisiones(sender, targetName, onboarding);
+                break;
             case "check":
+                if (!sender.hasPermission("avo.admin")) {
+                    sender.sendMessage("§cNo tienes permisos.");
+                    return;
+                }
                 if (args.length < 3) {
                     sender.sendMessage("§6Uso: /avo onboarding check <jugador>");
                     return;
@@ -5261,6 +5266,10 @@ public class ApocalipsisCommand implements CommandExecutor {
                 cmdOnboardingCheck(sender, args[2], onboarding);
                 break;
             case "reset":
+                if (!sender.hasPermission("avo.admin")) {
+                    sender.sendMessage("§cNo tienes permisos.");
+                    return;
+                }
                 if (args.length < 3) {
                     sender.sendMessage("§6Uso: /avo onboarding reset <jugador>");
                     return;
@@ -5268,6 +5277,10 @@ public class ApocalipsisCommand implements CommandExecutor {
                 cmdOnboardingReset(sender, args[2], onboarding);
                 break;
             case "complete":
+                if (!sender.hasPermission("avo.admin")) {
+                    sender.sendMessage("§cNo tienes permisos.");
+                    return;
+                }
                 if (args.length < 3) {
                     sender.sendMessage("§6Uso: /avo onboarding complete <jugador>");
                     return;
@@ -5275,9 +5288,17 @@ public class ApocalipsisCommand implements CommandExecutor {
                 cmdOnboardingComplete(sender, args[2], onboarding);
                 break;
             case "stats":
+                if (!sender.hasPermission("avo.admin")) {
+                    sender.sendMessage("§cNo tienes permisos.");
+                    return;
+                }
                 cmdOnboardingStats(sender, onboarding);
                 break;
             case "milestone":
+                if (!sender.hasPermission("avo.admin")) {
+                    sender.sendMessage("§cNo tienes permisos.");
+                    return;
+                }
                 if (args.length < 4) {
                     sender.sendMessage("§6Uso: /avo onboarding milestone <walk|craft|shelter|mission|disaster> <jugador>");
                     return;
@@ -5285,7 +5306,7 @@ public class ApocalipsisCommand implements CommandExecutor {
                 cmdOnboardingMilestone(sender, args[2], args[3], onboarding);
                 break;
             default:
-                sender.sendMessage("§cSubcomando desconocido. Usa: check, reset, complete, stats, milestone");
+                sender.sendMessage("§cSubcomando desconocido. Usa: misiones, check, reset, complete, stats, milestone");
         }
     }
     
@@ -5363,6 +5384,49 @@ public class ApocalipsisCommand implements CommandExecutor {
         sender.sendMessage("§6═══════════════════════════════════════");
         sender.sendMessage("§7Nota: Estadísticas en memoria (no persistentes)");
         sender.sendMessage("§6═══════════════════════════════════════");
+    }
+    
+    private void cmdOnboardingMisiones(CommandSender sender, String playerName, me.apocalipsis.tutorial.OnboardingManager onboarding) {
+        org.bukkit.OfflinePlayer offlinePlayer = plugin.getServer().getOfflinePlayer(playerName);
+        java.util.UUID uuid = offlinePlayer.getUniqueId();
+        
+        if (onboarding.hasCompletedOnboarding(uuid)) {
+            sender.sendMessage("§a✓ " + playerName + " ya completó el onboarding.");
+            return;
+        }
+        
+        me.apocalipsis.tutorial.OnboardingManager.OnboardingProgress progress = onboarding.getProgress(uuid);
+        if (progress == null) {
+            sender.sendMessage("§c" + playerName + " no tiene onboarding activo.");
+            return;
+        }
+        
+        sender.sendMessage("");
+        sender.sendMessage("§6§l╔═══════════════════════════════════════╗");
+        sender.sendMessage("§6§l║      🎯 HITOS DE TUTORIAL 🎯        ║");
+        sender.sendMessage("§6§l╚═══════════════════════════════════════╝");
+        sender.sendMessage("§7Jugador: §e" + playerName);
+        sender.sendMessage("");
+        
+        // Mostrar progreso de cada hito
+        sender.sendMessage(formatMilestone("Caminar 100 bloques", progress.isCompleted(me.apocalipsis.tutorial.OnboardingManager.OnboardingMilestone.WALK_100_BLOCKS)));
+        sender.sendMessage(formatMilestone("Craftear primer item", progress.isCompleted(me.apocalipsis.tutorial.OnboardingManager.OnboardingMilestone.CRAFT_FIRST_ITEM)));
+        sender.sendMessage(formatMilestone("Construir refugio", progress.isCompleted(me.apocalipsis.tutorial.OnboardingManager.OnboardingMilestone.BUILD_SHELTER)));
+        sender.sendMessage(formatMilestone("Completar primera misión", progress.isCompleted(me.apocalipsis.tutorial.OnboardingManager.OnboardingMilestone.COMPLETE_FIRST_MISSION)));
+        sender.sendMessage(formatMilestone("Sobrevivir desastre", progress.isCompleted(me.apocalipsis.tutorial.OnboardingManager.OnboardingMilestone.SURVIVE_TUTORIAL_DISASTER)));
+        sender.sendMessage("");
+        
+        int completados = progress.getCompletedCount();
+        sender.sendMessage("§7Progreso: §e" + completados + "§7/§f5 hitos completados");
+        sender.sendMessage("");
+    }
+    
+    private String formatMilestone(String name, boolean completed) {
+        if (completed) {
+            return "§a✓ §7" + name + " §8(completado)";
+        } else {
+            return "§c✗ §7" + name + " §8(pendiente)";
+        }
     }
     
     private void cmdOnboardingMilestone(CommandSender sender, String milestone, String playerName, me.apocalipsis.tutorial.OnboardingManager onboarding) {

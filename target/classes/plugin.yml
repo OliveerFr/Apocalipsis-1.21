@@ -1,5 +1,5 @@
 name: Apocalipsis
-version: '1.22.42'
+version: '1.22.43'
 main: me.apocalipsis.Apocalipsis
 api-version: 1.21
 author: OliveerF
@@ -16,6 +16,10 @@ commands:
   apocalipsis:
     description: Alias principal de Apocalipsis
     usage: /apocalipsis <subcommand>
+  misionestuto:
+    description: Ver tus hitos de tutorial y progreso
+    usage: /misionestuto
+    aliases: [tuto, hitostuto]
   recompensa:
     description: Abre el menú de recompensas pendientes
     usage: /recompensa

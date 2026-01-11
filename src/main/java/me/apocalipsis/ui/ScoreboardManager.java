@@ -420,13 +420,39 @@ public class ScoreboardManager {
         if (lastUpdate == null || (now - lastUpdate) >= MISSION_CACHE_DURATION_MS) {
             // Regenerar contenido de misiones
             StringBuilder missionContent = new StringBuilder();
-            missionContent.append("§7").append(ICON_MISSIONS).append(" §e§lMisiones:\n");
+            
+            // [PRIORIDAD] Verificar si hay hitos de onboarding pendientes
+            boolean showOnboardingFirst = false;
+            if (plugin.getTutorialManager() != null && plugin.getTutorialManager().getOnboardingManager() != null) {
+                var onboarding = plugin.getTutorialManager().getOnboardingManager();
+                if (!onboarding.hasCompletedOnboarding(uuid)) {
+                    var pendingMilestones = onboarding.getPendingMilestones(uuid);
+                    if (!pendingMilestones.isEmpty()) {
+                        showOnboardingFirst = true;
+                        missionContent.append("§7").append(ICON_MISSIONS).append(" §6§lHitos Tutorial:\n");
+                        int count = 0;
+                        for (String milestone : pendingMilestones) {
+                            if (count >= 3) break;
+                            String milestoneDisplay = getMilestoneDisplay(milestone);
+                            missionContent.append("§7• §e").append(milestoneDisplay).append("\n");
+                            count++;
+                        }
+                    }
+                }
+            }
+            
+            // Si no mostró hitos o aún hay espacio, mostrar misiones globales
+            if (!showOnboardingFirst) {
+                missionContent.append("§7").append(ICON_MISSIONS).append(" §e§lMisiones:\n");
+            } else {
+                missionContent.append("§7").append(ICON_MISSIONS).append(" §e§lMisiones Globales:\n");
+            }
             
             var assignments = missionService.getActiveAssignments(player);
             var incompletas = assignments.stream()
                 .filter(a -> !a.isCompleted() && !a.isFailed())
                 .filter(a -> a.getMission().getTipo().isEnabled())
-                .limit(3)
+                .limit(showOnboardingFirst ? 2 : 3)
                 .toList();
             
             if (incompletas.isEmpty()) {
@@ -456,6 +482,17 @@ public class ScoreboardManager {
             // Usar caché
             return cachedMissions.getOrDefault(uuid, "§7✎ §e§lMisiones:\n§a§lTodas completadas ✓\n");
         }
+    }
+    
+    private String getMilestoneDisplay(String milestone) {
+        return switch (milestone) {
+            case "WALK_50_BLOCKS" -> "Caminar 50 bloques";
+            case "CRAFT_PICKAXE" -> "Craftear pico";
+            case "PLACE_SHELTER" -> "Construir refugio";
+            case "COMPLETE_MISSION" -> "Completar misión";
+            case "SURVIVE_DISASTER" -> "Sobrevivir desastre";
+            default -> milestone.replace("_", " ");
+        };
     }
 
     // ═══════════════════════════════════════════════════════════════════════

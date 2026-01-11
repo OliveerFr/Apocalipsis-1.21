@@ -197,7 +197,7 @@ public class AvoTabCompleter implements TabCompleter {
                 
                 case "onboarding":
                     // Sugerir subcomandos de onboarding
-                    return Arrays.asList("check", "reset", "complete", "stats", "milestone").stream()
+                    return Arrays.asList("check", "reset", "complete", "stats", "milestone", "misiones", "hitos").stream()
                         .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
                         .collect(Collectors.toList());
                 
@@ -301,10 +301,12 @@ public class AvoTabCompleter implements TabCompleter {
                     .collect(Collectors.toList());
             }
             
-            // /avo onboarding check|reset|complete <jugador>
+            // /avo onboarding check|reset|complete|misiones <jugador>
             if (subCmd.equals("onboarding")) {
                 String onboardingSubCmd = args[1].toLowerCase();
-                if (onboardingSubCmd.equals("check") || onboardingSubCmd.equals("reset") || onboardingSubCmd.equals("complete")) {
+                if (onboardingSubCmd.equals("check") || onboardingSubCmd.equals("reset") || 
+                    onboardingSubCmd.equals("complete") || onboardingSubCmd.equals("misiones") || 
+                    onboardingSubCmd.equals("hitos")) {
                     return plugin.getServer().getOnlinePlayers().stream()
                         .map(Player::getName)
                         .filter(s -> s.toLowerCase().startsWith(args[2].toLowerCase()))

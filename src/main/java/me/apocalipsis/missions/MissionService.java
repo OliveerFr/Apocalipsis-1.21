@@ -410,38 +410,26 @@ public class MissionService {
         int ps = playerPs.getOrDefault(uuid, 0);
         MissionRank rank = MissionRank.fromXp(ps);
         
-        // [ONBOARDING] Durante onboarding, asignar solo 1 misión simple (FACIL)
+        // [ONBOARDING] Marcar si está en onboarding (para priorizar en UI, pero no limitar misiones)
         final boolean isOnboarding;
         if (plugin.getTutorialManager() != null && 
             plugin.getTutorialManager().getOnboardingManager() != null) {
-            if (!plugin.getTutorialManager().getOnboardingManager().hasCompletedOnboarding(uuid)) {
-                isOnboarding = true;
-                if (plugin.getConfigManager().isDebugCiclo()) {
-                    plugin.getLogger().info("[MISIONES] Jugador " + player.getName() + " en onboarding, asignando 1 misión tutorial");
-                }
-            } else {
-                isOnboarding = false;
-            }
+            isOnboarding = !plugin.getTutorialManager().getOnboardingManager().hasCompletedOnboarding(uuid);
         } else {
             isOnboarding = false;
         }
         
-        // [RANGOS.YML] Usar misionesDiarias del rango configurado
-        int maxMissions;
-        if (isOnboarding) {
-            maxMissions = 1; // Solo 1 misión durante onboarding
-        } else {
-            maxMissions = rank.getMisionesDiarias();
-            if (maxMissions <= 0) {
-                // Fallback a porRango si no está configurado
-                maxMissions = porRango.getOrDefault(rank, 3);
-            }
-            
-            // [CONFIG] Limitar al máximo global configurado en misiones_new.yml
-            if (maxMissions > maxPorDia) {
-                plugin.getLogger().warning("[MISIONES] Rango " + rank + " intenta asignar " + maxMissions + " misiones, limitando a max_por_dia=" + maxPorDia);
-                maxMissions = maxPorDia;
-            }
+        // [RANGOS.YML] Usar misionesDiarias del rango configurado (sin restricción por onboarding)
+        int maxMissions = rank.getMisionesDiarias();
+        if (maxMissions <= 0) {
+            // Fallback a porRango si no está configurado
+            maxMissions = porRango.getOrDefault(rank, 3);
+        }
+        
+        // [CONFIG] Limitar al máximo global configurado en misiones_new.yml
+        if (maxMissions > maxPorDia) {
+            plugin.getLogger().warning("[MISIONES] Rango " + rank + " intenta asignar " + maxMissions + " misiones, limitando a max_por_dia=" + maxPorDia);
+            maxMissions = maxPorDia;
         }
         
         // Filtrar misiones elegibles (y tipos habilitados)

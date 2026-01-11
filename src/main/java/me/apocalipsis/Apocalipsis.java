@@ -281,6 +281,12 @@ public final class Apocalipsis extends JavaPlugin {
         getCommand("tutorial").setTabCompleter(tutorialCommand);
         getLogger().info("[Tutorial] ✓ Comando /tutorial registrado");
         
+        // Comando /misionestuto para ver hitos del onboarding
+        me.apocalipsis.commands.OnboardingCommand onboardingCommand = 
+            new me.apocalipsis.commands.OnboardingCommand(this);
+        getCommand("misionestuto").setExecutor(onboardingCommand);
+        getLogger().info("[Onboarding] ✓ Comando /misionestuto registrado (aliases: /tuto, /hitostuto)");
+        
         // Sistema de cartas
         cartasManager = new me.apocalipsis.ui.CartasManager(getDataFolder(), getLogger());
         
