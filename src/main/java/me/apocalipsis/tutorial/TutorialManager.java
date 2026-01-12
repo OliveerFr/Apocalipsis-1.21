@@ -503,52 +503,10 @@ public class TutorialManager {
      * Entrega el kit de inicio al jugador
      */
     private void giveStarterKit(Player player) {
-        ConfigurationSection kitSection = config.getConfigurationSection("kit_inicio");
-        if (kitSection == null || !kitSection.getBoolean("enabled", true)) return;
-        
-        TutorialState state = tutorialStates.get(player.getUniqueId());
-        if (state != null && state.isKitGiven()) return;
-        
-        // Ejecutar comandos de items
-        List<String> items = kitSection.getStringList("items");
-        for (String command : items) {
-            String finalCommand = command.replace("%player%", player.getName());
-            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), finalCommand);
-        }
-        
-        // Mensaje de entrega
-        ConfigurationSection messageSection = kitSection.getConfigurationSection("mensaje_entrega");
-        if (messageSection != null) {
-            // Título
-            if (messageSection.getBoolean("mostrar_titulo", true)) {
-                String title = ChatColor.translateAlternateColorCodes('&',
-                    messageSection.getString("titulo", "&6&l🎁 KIT DE INICIO"));
-                String subtitle = ChatColor.translateAlternateColorCodes('&',
-                    messageSection.getString("subtitulo", "&e¡Comienza tu aventura!"));
-                
-                player.sendTitle(title, subtitle, 10, 70, 20);
-            }
-            
-            // Sonido
-            String soundName = messageSection.getString("sonido", "ENTITY_PLAYER_LEVELUP");
-            try {
-                player.playSound(player.getLocation(), Sound.valueOf(soundName), 1.0f, 1.0f);
-            } catch (IllegalArgumentException e) {
-                // Ignorar si el sonido no existe
-            }
-            
-            // Mensaje en chat
-            String chatMessage = messageSection.getString("mensaje_chat", "");
-            if (!chatMessage.isEmpty()) {
-                for (String line : chatMessage.split("\n")) {
-                    player.sendMessage(ChatColor.translateAlternateColorCodes('&', line));
-                }
-            }
-        }
-        
-        if (state != null) {
-            state.setKitGiven(true);
-        }
+        // [DESHABILITADO PERMANENTEMENTE] Solo se dan EFECTOS, nunca items/armadura
+        // El sistema usa buffs progresivos según fase del tutorial
+        // Ver método updateTutorialBuffs() para la lógica de efectos
+        return;
     }
     
     /**

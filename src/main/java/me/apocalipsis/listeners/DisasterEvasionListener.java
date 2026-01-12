@@ -28,8 +28,11 @@ public class DisasterEvasionListener implements Listener {
     public void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
         
-        // Si NO hay desastre activo, no hay nada que hacer
-        if (!plugin.getDisasterController().hasActiveDisaster()) {
+        DisasterEvasionTracker tracker = plugin.getDisasterEvasionTracker();
+        
+        // Si NO hay desastre activo O el tracking no está activado, no hay nada que hacer
+        // IMPORTANTE: Verificar isDisasterActive() para evitar procesar desconexiones antes del inicio real
+        if (!plugin.getDisasterController().hasActiveDisaster() || !tracker.isDisasterActive()) {
             return;
         }
         
@@ -39,7 +42,6 @@ public class DisasterEvasionListener implements Listener {
         }
         
         // Verificar evasión y aplicar penalizaciones
-        DisasterEvasionTracker tracker = plugin.getDisasterEvasionTracker();
         boolean wasEvasion = tracker.onPlayerQuitDuringDisaster(player);
         
         if (wasEvasion && plugin.getConfigManager().isDebugCiclo()) {

@@ -112,9 +112,13 @@ public class PlayerListener implements Listener {
         // [EVASION PUNISHMENT] Aplicar castigos físicos pendientes
         plugin.getDisasterEvasionTracker().applyReconnectPunishment(player);
         
-        // [EVASION TRACKING] Si hay un desastre activo, registrar entrada del jugador
+        // [EVASION TRACKING] Si hay un desastre activo Y el tracking está activado, registrar entrada del jugador
+        // IMPORTANTE: Verificar disasterActive para evitar tracking prematuro durante preparación
         ServerState currentState = plugin.getStateManager().getCurrentState();
-        if (currentState == ServerState.ACTIVO && !player.hasPermission("apocalipsis.exempt")) {
+        if (currentState == ServerState.ACTIVO && 
+            plugin.getDisasterEvasionTracker().isDisasterActive() && 
+            !player.hasPermission("apocalipsis.exempt")) {
+            
             plugin.getDisasterEvasionTracker().onDisasterStart(player);
             
             if (plugin.getConfigManager().isDebugCiclo()) {

@@ -21,6 +21,7 @@ import org.bukkit.entity.Player;
 
 import me.apocalipsis.Apocalipsis;
 import me.apocalipsis.disaster.DisasterController;
+import me.apocalipsis.disaster.DisasterEvasionTracker;
 import me.apocalipsis.events.EventController;
 import me.apocalipsis.missions.MissionService;
 import me.apocalipsis.missions.MissionType;
@@ -3701,8 +3702,11 @@ public class ApocalipsisCommand implements CommandExecutor {
             sender.sendMessage("§c§lGestión de Evasiones de Desastres");
             sender.sendMessage("§e▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
             sender.sendMessage("§e/avo evasion check <jugador> §7- Ver evasiones de un jugador");
+            sender.sendMessage("§e/avo evasion reputation <jugador> §7- Ver reputación de un jugador");
             sender.sendMessage("§e/avo evasion clear <jugador|all> §7- Limpiar evasiones");
             sender.sendMessage("§e/avo evasion stats §7- Ver estadísticas globales");
+            sender.sendMessage("§e/avo evasion live §7- Estadísticas del desastre actual");
+            sender.sendMessage("§e/avo evasion atrisk §7- Jugadores en riesgo de evasión");
             sender.sendMessage("§e/avo evasion history <jugador> §7- Ver historial de evasiones");
             sender.sendMessage("§e/avo evasion reduce <jugador> [cantidad] §7- Reducir evasiones");
             sender.sendMessage("§e/avo evasion info §7- Ver configuración actual");
@@ -3732,6 +3736,43 @@ public class ApocalipsisCommand implements CommandExecutor {
                 sender.sendMessage("");
                 sender.sendMessage(info);
                 sender.sendMessage("§e▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+                break;
+            
+            case "reputation":
+            case "rep":
+                if (args.length < 3) {
+                    sender.sendMessage("§cUso: /avo evasion reputation <jugador>");
+                    return;
+                }
+                
+                Player targetRep = plugin.getServer().getPlayer(args[2]);
+                if (targetRep == null) {
+                    sender.sendMessage("§cJugador no encontrado.");
+                    return;
+                }
+                
+                String repInfo = plugin.getDisasterEvasionTracker().getReputationInfo(targetRep.getUniqueId());
+                sender.sendMessage(repInfo);
+                break;
+            
+            case "live":
+                String liveStats = plugin.getDisasterEvasionTracker().getCurrentDisasterStats();
+                sender.sendMessage(liveStats);
+                break;
+            
+            case "atrisk":
+            case "risk":
+                java.util.List<String> atRisk = plugin.getDisasterEvasionTracker().getPlayersAtRisk();
+                sender.sendMessage("§e§l━━━ JUGADORES EN RIESGO ━━━");
+                if (atRisk.isEmpty()) {
+                    sender.sendMessage("§a✓ Todos los jugadores están seguros");
+                } else {
+                    sender.sendMessage("§c" + atRisk.size() + " jugadores en riesgo:");
+                    for (String player : atRisk) {
+                        sender.sendMessage("§7  • " + player);
+                    }
+                }
+                sender.sendMessage("§e§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                 break;
                 
             case "clear":
@@ -3800,7 +3841,7 @@ public class ApocalipsisCommand implements CommandExecutor {
                 break;
                 
             default:
-                sender.sendMessage("§cSubcomando desconocido. Usa: check, clear, stats, history, reduce, info o reload");
+                sender.sendMessage("§cSubcomando desconocido. Usa: check, reputation, clear, stats, live, atrisk, history, reduce, info o reload");
                 break;
         }
     }

@@ -117,6 +117,14 @@ public class DisasterEvasionTracker {
     }
     
     /**
+     * Verifica si hay un desastre activo siendo rastreado.
+     * @return true si hay un desastre activo, false en caso contrario
+     */
+    public boolean isDisasterActive() {
+        return disasterActive;
+    }
+    
+    /**
      * Marca el inicio de un desastre para todos los jugadores online.
      * Se llama UNA vez cuando el desastre comienza.
      */
@@ -1503,5 +1511,124 @@ public class DisasterEvasionTracker {
      */
     public String getDisconnectReason(UUID uuid) {
         return disconnectReason.getOrDefault(uuid, "desconocida");
+    }
+    
+    /**
+     * Obtiene jugadores en riesgo de evasión (< 50% del tiempo requerido)
+     */
+    public java.util.List<String> getPlayersAtRisk() {
+        java.util.List<String> atRisk = new java.util.ArrayList<>();
+        long now = System.currentTimeMillis();
+        
+        for (org.bukkit.entity.Player player : org.bukkit.Bukkit.getOnlinePlayers()) {
+            UUID uuid = player.getUniqueId();
+            Long joinTime = playerJoinTime.get(uuid);
+            
+            if (joinTime == null) continue;
+            
+            long timeInDisaster = now - joinTime;
+            long required = getRequiredTimeForPlayer(uuid);
+            
+            if (timeInDisaster < required * 0.5) {
+                long remaining = (required - timeInDisaster) / 1000;
+                atRisk.add(player.getName() + " (§c" + remaining + "s§7)");
+            }
+        }
+        
+        return atRisk;
+    }
+    
+    /**
+     * Obtiene estadísticas del desastre actual
+     */
+    public String getCurrentDisasterStats() {
+        if (!disasterActive) {
+            return "§cNo hay desastre activo";
+        }
+        
+        long now = System.currentTimeMillis();
+        int total = 0;
+        int safe = 0;
+        int atRisk = 0;
+        double avgTimePercent = 0;
+        
+        for (org.bukkit.entity.Player player : org.bukkit.Bukkit.getOnlinePlayers()) {
+            UUID uuid = player.getUniqueId();
+            Long joinTime = playerJoinTime.get(uuid);
+            
+            if (joinTime == null) continue;
+            
+            total++;
+            long timeInDisaster = now - joinTime;
+            long required = getRequiredTimeForPlayer(uuid);
+            double percent = (double) timeInDisaster / required;
+            avgTimePercent += percent;
+            
+            if (percent >= 1.0) safe++;
+            else if (percent < 0.5) atRisk++;
+        }
+        
+        if (total > 0) avgTimePercent /= total;
+        
+        Double serverTPS = plugin.getPerformanceAdapter() != null ? 
+            plugin.getPerformanceAdapter().getLastTPS() : null;
+        
+        StringBuilder sb = new StringBuilder();
+        sb.append("§6§l━━━ ESTADÍSTICAS DEL DESASTRE ━━━\n");
+        sb.append("§7Desastre: §e").append(currentDisasterId != null ? currentDisasterId : "Unknown").append("\n");
+        sb.append("§7Jugadores: §a").append(safe).append(" seguros §7| §c").append(atRisk).append(" en riesgo §7| §e").append(total).append(" total\n");
+        sb.append("§7Progreso promedio: §e").append(String.format("%.1f", avgTimePercent * 100)).append("%\n");
+        
+        if (serverTPS != null) {
+            String tpsColor = serverTPS >= 18 ? "§a" : serverTPS >= 15 ? "§e" : "§c";
+            sb.append("§7TPS del servidor: ").append(tpsColor).append(String.format("%.1f", serverTPS)).append("\n");
+        }
+        
+        sb.append("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        
+        return sb.toString();
+    }
+    
+    /**
+     * Obtiene información de reputación de un jugador
+     */
+    public String getReputationInfo(UUID uuid) {
+        int evasions = evasionCount.getOrDefault(uuid, 0);
+        int completedDisasters = completedDisastersCount.getOrDefault(uuid, 0);
+        
+        // Calculate reputation level based on completed disasters
+        int level = 1;
+        if (completedDisasters >= 100) level = 5;
+        else if (completedDisasters >= 50) level = 4;
+        else if (completedDisasters >= 25) level = 3;
+        else if (completedDisasters >= 10) level = 2;
+        
+        String[] titles = {"", "§7Novato", "§aExperimentado", "§bVeterano", "§dMaestro", "§6Leyenda"};
+        int[] nextLevelPoints = {0, 10, 25, 50, 100, 999999};
+        
+        StringBuilder sb = new StringBuilder();
+        sb.append("§e§l━━━ REPUTACIÓN ━━━\n");
+        sb.append("§7Nivel: ").append(titles[level]).append("\n");
+        sb.append("§7Desastres completados: §e").append(completedDisasters).append("\n");
+        sb.append("§7Evasiones totales: §c").append(evasions).append("\n");
+        
+        if (level < 5) {
+            int toNext = nextLevelPoints[level + 1] - completedDisasters;
+            sb.append("§7Siguiente nivel en: §e").append(toNext).append(" desastres\n");
+        }
+        
+        int reduction = (level - 1) * 10;
+        if (reduction > 0) {
+            sb.append("§7Reducción de tiempo: §a-").append(reduction).append("%\n");
+        }
+        
+        boolean hasPendingPunishment = pendingPunishment.containsKey(uuid);
+        if (hasPendingPunishment) {
+            sb.append("§cCastigo pendiente al reconectar\n");
+        }
+        
+        sb.append("§e§l━━━━━━━━━━━━━━━━━━━━━");
+        
+        return sb.toString();
     }
 }
