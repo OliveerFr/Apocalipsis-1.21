@@ -13,6 +13,8 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.*;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -92,6 +94,22 @@ public class CaminoEndEvent extends EventBase {
     private static final int MIN_TICKS_ENTRE_MINIEVENTO = 9600;  // 8 minutos
     private static final int MAX_TICKS_ENTRE_MINIEVENTO = 14400; // 12 minutos
     private int proximoMiniEventoEn = 0;
+    
+    // Control de cliffhanger (para evitar ejecuciones múltiples)
+    private boolean cliffhangerEjecutado = false;
+    
+    // ══════════════════════════════════════════════════════════════════
+    // SISTEMA DE HORDAS Y WARDEN (FASE RESONANCIA)
+    // ══════════════════════════════════════════════════════════════════
+    private int ticksDesdeUltimaHorda = 0;
+    private static final int INTERVALO_HORDAS_MIN = 6000;  // 5 minutos mínimo
+    private static final int INTERVALO_HORDAS_MAX = 12000; // 10 minutos máximo
+    private int proximaHordaEn = 0;
+    
+    private org.bukkit.entity.Warden wardenActivo = null;
+    private boolean wardenSpawneado = false;
+    private BukkitTask wardenDistanceTask = null;
+    private static final double WARDEN_MAX_DISTANCE = 100.0; // Radio máximo del Warden
     
     // Sistema de desafío "Caza de Anomalías"
     private boolean desafioCazaActivo = false;
@@ -189,6 +207,10 @@ public class CaminoEndEvent extends EventBase {
         // Inicializar sistema de mini-eventos
         ticksDesdeUltimoMiniEvento = 0;
         proximoMiniEventoEn = MIN_TICKS_ENTRE_MINIEVENTO + random.nextInt(MAX_TICKS_ENTRE_MINIEVENTO - MIN_TICKS_ENTRE_MINIEVENTO);
+        
+        // Inicializar sistema de hordas
+        ticksDesdeUltimaHorda = 0;
+        proximaHordaEn = INTERVALO_HORDAS_MIN + random.nextInt(INTERVALO_HORDAS_MAX - INTERVALO_HORDAS_MIN);
         
         plugin.getLogger().info("[CaminoEndEvent] Evento iniciado - Fase: " + faseActual);
     }
@@ -332,7 +354,43 @@ public class CaminoEndEvent extends EventBase {
             case RESONANCIA:
                 // Transición a REVELACION cuando se alcancen 40 fragmentos
                 if (fragmentosRecolectadosGlobalmente >= FRAGMENTOS_OBJETIVO && !portalGenerado) {
-                    transicionarAFase(Fase.REVELACION);
+                    // Verificar si el Warden está vivo para el último fragmento
+                    if (wardenActivo != null && !wardenActivo.isDead()) {
+                        // NO transicionar hasta que maten al Warden
+                        if (ticksEnFase % 100 == 0) { // Cada 5 segundos
+                            messageBus.broadcast("§c§l⚠ EL GUARDIÁN BLOQUEA EL CAMINO ⚠", "warden_obligatorio");
+                            messageBus.broadcast("§7§oEl Guardián de las Profundidades impide el avance...", "warden_obligatorio");
+                            messageBus.broadcast("", "warden_obligatorio");
+                            messageBus.broadcast("§5§l⚡ EL OBSERVADOR:", "warden_obligatorio");
+                            messageBus.broadcast("§8§o\"...No permitirá que avances...\"", "warden_obligatorio");
+                            messageBus.broadcast("§c§o\"...Debe ser derrotado para continuar...\"", "warden_obligatorio");
+                        }
+                    } else {
+                        transicionarAFase(Fase.REVELACION);
+                    }
+                }
+                
+                // ════════════════════════════════════════════════════════════
+                // SISTEMA DE HORDAS DE ENTIDADES
+                // ════════════════════════════════════════════════════════════
+                ticksDesdeUltimaHorda++;
+                if (ticksDesdeUltimaHorda >= proximaHordaEn) {
+                    spawnearHorda();
+                    ticksDesdeUltimaHorda = 0;
+                    proximaHordaEn = INTERVALO_HORDAS_MIN + random.nextInt(INTERVALO_HORDAS_MAX - INTERVALO_HORDAS_MIN);
+                }
+                
+                // ════════════════════════════════════════════════════════════
+                // SPAWN DE WARDEN EN LOS ÚLTIMOS FRAGMENTOS
+                // ════════════════════════════════════════════════════════════
+                if (!wardenSpawneado && fragmentosRecolectadosGlobalmente >= 35) {
+                    // Entre 35-39 fragmentos, spawn del Warden cuando alguien esté cerca de una anomalía
+                    verificarSpawnWarden();
+                }
+                
+                // Efectos visuales progresivos
+                if (ticksEnFase % 200 == 0) { // Cada 10 segundos
+                    aplicarEfectosVisualesResonancia();
                 }
                 
                 // Efectos de corrupción progresiva
@@ -346,7 +404,8 @@ public class CaminoEndEvent extends EventBase {
                 int duracionMaxRevelacion = config.getInt("fases.revelacion.duracion_max_ticks", 36000);
                 if (ticksEnFase >= duracionMaxRevelacion) {
                     // Auto-detener evento después de 30 minutos en revelación
-                    finalizarEvento();
+                    plugin.getLogger().info("[CaminoEnd] Timeout en REVELACION - Ejecutando cliffhanger");
+                    ejecutarCliffhangerYFinalizar();
                 }
                 break;
         }
@@ -466,6 +525,11 @@ public class CaminoEndEvent extends EventBase {
         AnomaliaData anomalia = new AnomaliaData(ubicacion, System.currentTimeMillis(), tipo);
         anomaliasActivas.put(ubicacion, anomalia);
         
+        // ══════════════════════════════════════════════════════════════════
+        // GENERAR ESTRUCTURA DE BLOQUES DEL END
+        // ══════════════════════════════════════════════════════════════════
+        generarEstructuraEnd(ubicacion, tipo);
+        
         // Mensajes especiales según tipo
         if (tipo == TipoAnomalia.ANTIGUA) {
             messageBus.broadcast("§5§l⚡ EL OBSERVADOR:", "observador");
@@ -477,51 +541,145 @@ public class CaminoEndEvent extends EventBase {
                 p.playSound(p.getLocation(), Sound.ENTITY_ELDER_GUARDIAN_CURSE, 0.7f, 0.6f);
                 p.playSound(p.getLocation(), Sound.BLOCK_SCULK_SHRIEKER_SHRIEK, 0.4f, 0.5f);
             }
-        } else if (tipo == TipoAnomalia.INESTABLE) {
-            if (random.nextInt(3) == 0) { // 33% chance
-                messageBus.broadcast("§e§o\"Una anomalía inestable... ten cuidado...\"", "anomalia_inestable");
-            }
+        }
+        
+        // ══════════════════════════════════════════════════════════════════
+        // SPAWN DE GUARDIANES DIMENSIONALES - TODAS LAS ANOMALÍAS
+        // Cantidad y poder según tipo de anomalía
+        // ══════════════════════════════════════════════════════════════════
+        World world = ubicacion.getWorld();
+        if (world != null) {
+            // Determinar cantidad según tipo de anomalía
+            int cantidadEndermans = switch (tipo) {
+                case NORMAL -> 1;                    // 1 enderman
+                case INESTABLE -> 2;                 // 2 endermans
+                case ECO_BRASAS, ECO_SOMBRAS, ECO_PIEDRA -> 2;  // 2 endermans
+                case OCULTA -> 3;                    // 3 endermans
+                case ANTIGUA -> 4;                   // 4 endermans
+            };
             
-            // Spawn Enderman hostil que desaparece en 30 segundos
-            World world = ubicacion.getWorld();
-            if (world != null && faseActual == Fase.RESONANCIA) {
-                plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-                    if (!anomaliasActivas.containsKey(ubicacion)) return;
+            int cantidadEndermites = switch (tipo) {
+                case NORMAL -> 2 + random.nextInt(2);        // 2-3 endermites
+                case INESTABLE -> 3 + random.nextInt(3);     // 3-5 endermites
+                case ECO_BRASAS, ECO_SOMBRAS, ECO_PIEDRA -> 4 + random.nextInt(3);  // 4-6 endermites
+                case OCULTA -> 5 + random.nextInt(4);        // 5-8 endermites
+                case ANTIGUA -> 6 + random.nextInt(5);       // 6-10 endermites
+            };
+            
+            // Spawn inmediato de guardianes
+            plugin.getServer().getScheduler().runTask(plugin, () -> {
+                if (!anomaliasActivas.containsKey(ubicacion)) return;
+                
+                java.util.List<Enderman> endermansSpawneados = new java.util.ArrayList<>();
+                
+                // Spawn múltiples Endermans según tipo
+                for (int e = 0; e < cantidadEndermans; e++) {
+                    Location endermanLoc = ubicacion.clone().add(
+                        (random.nextDouble() - 0.5) * 4,
+                        0.5,
+                        (random.nextDouble() - 0.5) * 4
+                    );
                     
-                    Enderman enderman = (Enderman) world.spawnEntity(ubicacion.clone().add(0, 0.5, 0), EntityType.ENDERMAN);
-                    enderman.setCustomName("§e§lGuardián Inestable");
+                    Enderman enderman = (Enderman) world.spawnEntity(endermanLoc, EntityType.ENDERMAN);
+                    
+                    // Nombres según tipo de anomalía
+                    String nombreEnderman = switch (tipo) {
+                        case ANTIGUA -> "§5§l§k|§r §5§lGuardián Ancestral§r §5§l§k|";
+                        case OCULTA -> "§d§lCustodio Oculto";
+                        case INESTABLE -> "§e§lCentinela Inestable";
+                        case ECO_BRASAS -> "§c§lGuardián de Brasas";
+                        case ECO_SOMBRAS -> "§8§lGuardián de Sombras";
+                        case ECO_PIEDRA -> "§7§lGuardián de Piedra";
+                        default -> "§5§lGuardián del Vacío";
+                    };
+                    
+                    enderman.setCustomName(nombreEnderman);
                     enderman.setCustomNameVisible(true);
                     enderman.setRemoveWhenFarAway(false);
+                    enderman.getPersistentDataContainer().set(
+                        new org.bukkit.NamespacedKey(plugin, "anomalia_guardian"),
+                        org.bukkit.persistence.PersistentDataType.BYTE,
+                        (byte) 1
+                    );
                     
-                    // Metadata para tracking de bonus
-                    final long tiempoSpawn = System.currentTimeMillis();
+                    // Más vida y daño para anomalías poderosas
+                    if (tipo == TipoAnomalia.ANTIGUA) {
+                        enderman.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).setBaseValue(80.0);
+                        enderman.setHealth(80.0);
+                    } else if (tipo == TipoAnomalia.OCULTA) {
+                        enderman.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).setBaseValue(60.0);
+                        enderman.setHealth(60.0);
+                    }
                     
-                    // Despawn automático en 30 segundos
-                    BukkitTask despawnTask = plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-                        if (!enderman.isDead()) {
-                            enderman.getWorld().spawnParticle(Particle.PORTAL, enderman.getLocation(), 50, 0.5, 1, 0.5, 0.5);
-                            enderman.getWorld().playSound(enderman.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 0.7f);
-                            enderman.remove();
+                    endermansSpawneados.add(enderman);
+                }
+                
+                // Spawn Endermites acompañantes
+                for (int i = 0; i < cantidadEndermites; i++) {
+                    Location endermiteLoc = ubicacion.clone().add(
+                        (random.nextDouble() - 0.5) * 5,
+                        0.5,
+                        (random.nextDouble() - 0.5) * 5
+                    );
+                    org.bukkit.entity.Endermite endermite = (org.bukkit.entity.Endermite) world.spawnEntity(
+                        endermiteLoc,
+                        EntityType.ENDERMITE
+                    );
+                    
+                    String nombreEndermite = switch (tipo) {
+                        case ANTIGUA -> "§5§oParásito Ancestral";
+                        case OCULTA -> "§d§oParásito Oculto";
+                        default -> "§7§oParásito del Vacío";
+                    };
+                    
+                    endermite.setCustomName(nombreEndermite);
+                    endermite.setCustomNameVisible(true);
+                    endermite.getPersistentDataContainer().set(
+                        new org.bukkit.NamespacedKey(plugin, "anomalia_endermite"),
+                        org.bukkit.persistence.PersistentDataType.BYTE,
+                        (byte) 1
+                    );
+                }
+                
+                // Mensaje según tipo
+                if (tipo == TipoAnomalia.INESTABLE || tipo == TipoAnomalia.OCULTA || tipo == TipoAnomalia.ANTIGUA) {
+                    messageBus.broadcast("§c§l⚠ Los guardianes despiertan cerca de la anomalía...", "guardianes");
+                }
+                
+                // Metadata para tracking de bonus
+                final long tiempoSpawn = System.currentTimeMillis();
+                
+                // Despawn automático en 45 segundos (más tiempo para anomalías difíciles)
+                int tiempoDespawn = tipo == TipoAnomalia.ANTIGUA ? 900 : (tipo == TipoAnomalia.OCULTA ? 700 : 600);
+                BukkitTask despawnTask = plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+                    for (Enderman end : endermansSpawneados) {
+                        if (!end.isDead()) {
+                            end.getWorld().spawnParticle(Particle.PORTAL, end.getLocation(), 50, 0.5, 1, 0.5, 0.5);
+                            end.getWorld().playSound(end.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 0.7f);
+                            end.remove();
                         }
-                    }, 600L); // 30 segundos
-                    
-                    // Listener de muerte para bonus
+                    }
+                }, tiempoDespawn);
+                
+                // Listener de muerte para bonus (primer enderman)
+                if (!endermansSpawneados.isEmpty()) {
+                    Enderman endermanPrincipal = endermansSpawneados.get(0);
                     plugin.getServer().getScheduler().runTaskTimer(plugin, new BukkitRunnable() {
                         @Override
                         public void run() {
-                            if (enderman.isDead()) {
+                            if (endermanPrincipal.isDead()) {
                                 long tiempoMuerte = System.currentTimeMillis();
-                                long tiempoTranscurrido = (tiempoMuerte - tiempoSpawn) / 1000; // en segundos
+                                long tiempoTranscurrido = (tiempoMuerte - tiempoSpawn) / 1000;
                                 
-                                Player asesino = enderman.getKiller();
+                                Player asesino = endermanPrincipal.getKiller();
                                 if (asesino != null) {
-                                    if (tiempoTranscurrido <= 15) {
+                                    if (tiempoTranscurrido <= 20) {
                                         // Bonus por rapidez
                                         asesino.sendMessage("§a§l✓ BONUS DE VELOCIDAD");
                                         asesino.sendMessage("§7Derrotado en §e" + tiempoTranscurrido + "s §7- Fragmentos adicionales");
                                         
                                         ItemStack fragmentoBonus = items.crearFragmentoDelVacio();
-                                        fragmentoBonus.setAmount(2);
+                                        fragmentoBonus.setAmount(tipo == TipoAnomalia.ANTIGUA ? 3 : 2);
                                         asesino.getInventory().addItem(fragmentoBonus);
                                         
                                         asesino.playSound(asesino.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 0.7f, 1.5f);
@@ -541,10 +699,12 @@ public class CaminoEndEvent extends EventBase {
                             }
                         }
                     }, 10L, 10L);
-                    
-                }, 20L); // Spawn 1 segundo después de la anomalía
-            }
-        } else if (tipo.esEco()) {
+                }
+            });
+        }
+        
+        // Mensajes especiales para ecos
+        if (tipo.esEco()) {
             // Mensaje del Observador para anomalías de eco (25% probabilidad)
             if (random.nextInt(4) == 0 && tipo.mensajeObservador != null) {
                 messageBus.broadcast("§5§l⚡ EL OBSERVADOR:", "observador");
@@ -566,6 +726,250 @@ public class CaminoEndEvent extends EventBase {
         
         plugin.getLogger().info("[CaminoEndEvent] Anomalía " + tipo.name() + " spawneada en: " + 
             ubicacion.getBlockX() + ", " + ubicacion.getBlockY() + ", " + ubicacion.getBlockZ());
+    }
+    
+    /**
+     * Genera estructura de bloques del End alrededor de la anomalía
+     */
+    private void generarEstructuraEnd(Location centro, TipoAnomalia tipo) {
+        World world = centro.getWorld();
+        if (world == null) return;
+        
+        int baseX = centro.getBlockX();
+        int baseY = centro.getBlockY();
+        int baseZ = centro.getBlockZ();
+        
+        // Limpiar área central (espacio para efectos)
+        for (int y = 0; y <= 3; y++) {
+            world.getBlockAt(baseX, baseY + y, baseZ).setType(Material.AIR);
+        }
+        
+        // ════════════════════════════════════════════════════════════
+        // ESTRUCTURAS ÉPICAS SEGÚN TIPO DE ANOMALÍA
+        // ════════════════════════════════════════════════════════════
+        
+        if (tipo == TipoAnomalia.ANTIGUA) {
+            // ═══ ANOMALÍA ANTIGUA: Templo Ancestral Mini (7x7) ═══
+            // Plataforma épica de End Stone Bricks
+            for (int x = -3; x <= 3; x++) {
+                for (int z = -3; z <= 3; z++) {
+                    Location loc = centro.clone().add(x, -1, z);
+                    if (!loc.getBlock().getType().isSolid()) {
+                        // Patrón alternado de End Stone Bricks y Purpur
+                        if ((x + z) % 2 == 0) {
+                            loc.getBlock().setType(Material.END_STONE_BRICKS);
+                        } else {
+                            loc.getBlock().setType(Material.PURPUR_BLOCK);
+                        }
+                    }
+                }
+            }
+            
+            // 4 Pilares monumentales en las esquinas (altura 6-8)
+            construirPilarMonumental(world, baseX - 3, baseY, baseZ - 3, 8, true);  // NO
+            construirPilarMonumental(world, baseX + 3, baseY, baseZ - 3, 7, true);  // NE
+            construirPilarMonumental(world, baseX - 3, baseY, baseZ + 3, 6, true);  // SO
+            construirPilarMonumental(world, baseX + 3, baseY, baseZ + 3, 7, true);  // SE
+            
+            // Arco fragmentado en el centro (2 columnas + dintel)
+            world.getBlockAt(baseX - 1, baseY, baseZ).setType(Material.PURPUR_PILLAR);
+            world.getBlockAt(baseX - 1, baseY + 1, baseZ).setType(Material.PURPUR_PILLAR);
+            world.getBlockAt(baseX - 1, baseY + 2, baseZ).setType(Material.PURPUR_PILLAR);
+            world.getBlockAt(baseX + 1, baseY, baseZ).setType(Material.PURPUR_PILLAR);
+            world.getBlockAt(baseX + 1, baseY + 1, baseZ).setType(Material.PURPUR_PILLAR);
+            world.getBlockAt(baseX + 1, baseY + 2, baseZ).setType(Material.PURPUR_PILLAR);
+            world.getBlockAt(baseX, baseY + 3, baseZ).setType(Material.PURPUR_SLAB);
+            
+            // End Rods místicos flotantes
+            world.getBlockAt(baseX, baseY + 4, baseZ).setType(Material.END_ROD);
+            world.getBlockAt(baseX - 2, baseY + 1, baseZ - 2).setType(Material.END_ROD);
+            world.getBlockAt(baseX + 2, baseY + 1, baseZ + 2).setType(Material.END_ROD);
+            
+            // Bloques flotantes místicos
+            world.getBlockAt(baseX - 1, baseY + 5, baseZ - 1).setType(Material.PURPUR_BLOCK);
+            world.getBlockAt(baseX + 1, baseY + 5, baseZ + 1).setType(Material.PURPUR_BLOCK);
+            
+        } else if (tipo == TipoAnomalia.OCULTA) {
+            // ═══ ANOMALÍA OCULTA: Cámara Secreta Mini (5x5) ═══
+            // Plataforma de End Stone con patrón oculto
+            for (int x = -2; x <= 2; x++) {
+                for (int z = -2; z <= 2; z++) {
+                    Location loc = centro.clone().add(x, -1, z);
+                    if (!loc.getBlock().getType().isSolid()) {
+                        loc.getBlock().setType(Material.END_STONE);
+                    }
+                }
+            }
+            
+            // Pilares bajos y discretos en esquinas (altura 3)
+            construirPilarMonumental(world, baseX - 2, baseY, baseZ - 2, 3, false);
+            construirPilarMonumental(world, baseX + 2, baseY, baseZ - 2, 3, false);
+            construirPilarMonumental(world, baseX - 2, baseY, baseZ + 2, 3, false);
+            construirPilarMonumental(world, baseX + 2, baseY, baseZ + 2, 3, false);
+            
+            // End Rods sutiles
+            world.getBlockAt(baseX, baseY + 2, baseZ).setType(Material.END_ROD);
+            world.getBlockAt(baseX - 1, baseY, baseZ - 1).setType(Material.PURPUR_BLOCK);
+            world.getBlockAt(baseX + 1, baseY, baseZ + 1).setType(Material.PURPUR_BLOCK);
+            
+        } else if (tipo == TipoAnomalia.INESTABLE) {
+            // ═══ ANOMALÍA INESTABLE: Fragmentos Caóticos (5x5 irregular) ═══
+            // Plataforma fragmentada e irregular
+            for (int x = -2; x <= 2; x++) {
+                for (int z = -2; z <= 2; z++) {
+                    Location loc = centro.clone().add(x, -1, z);
+                    if (!loc.getBlock().getType().isSolid() && random.nextDouble() < 0.7) {
+                        // 70% de probabilidad de colocar bloque (irregular)
+                        loc.getBlock().setType(Material.END_STONE);
+                    }
+                }
+            }
+            
+            // Pilares de alturas variables e irregulares (2-5)
+            construirPilarMonumental(world, baseX - 2, baseY, baseZ - 2, 2 + random.nextInt(3), false);
+            construirPilarMonumental(world, baseX + 2, baseY, baseZ - 2, 3 + random.nextInt(3), false);
+            construirPilarMonumental(world, baseX - 2, baseY, baseZ + 2, 2 + random.nextInt(4), false);
+            construirPilarMonumental(world, baseX + 2, baseY, baseZ + 2, 4 + random.nextInt(2), false);
+            
+            // Bloques flotantes caóticos
+            world.getBlockAt(baseX, baseY + 3, baseZ).setType(Material.PURPUR_BLOCK);
+            world.getBlockAt(baseX - 1, baseY + 2, baseZ + 1).setType(Material.END_STONE);
+            world.getBlockAt(baseX + 1, baseY + 4, baseZ - 1).setType(Material.END_STONE_BRICKS);
+            
+            // End Rods en posiciones extrañas
+            world.getBlockAt(baseX + 1, baseY + 1, baseZ).setType(Material.END_ROD);
+            world.getBlockAt(baseX - 1, baseY + 2, baseZ - 1).setType(Material.END_ROD);
+            
+        } else if (tipo == TipoAnomalia.ECO_BRASAS) {
+            // ═══ ECO DE BRASAS: Altar de Fuego (5x5) ═══
+            // Plataforma de End Stone con patrón de fuego
+            for (int x = -2; x <= 2; x++) {
+                for (int z = -2; z <= 2; z++) {
+                    Location loc = centro.clone().add(x, -1, z);
+                    if (!loc.getBlock().getType().isSolid()) {
+                        loc.getBlock().setType(Material.END_STONE);
+                    }
+                }
+            }
+            
+            // Pilares con decoración de Purpur (altura 4)
+            construirPilarMonumental(world, baseX - 2, baseY, baseZ - 2, 4, false);
+            construirPilarMonumental(world, baseX + 2, baseY, baseZ - 2, 4, false);
+            construirPilarMonumental(world, baseX - 2, baseY, baseZ + 2, 4, false);
+            construirPilarMonumental(world, baseX + 2, baseY, baseZ + 2, 4, false);
+            
+            // Tazón de fuego central
+            world.getBlockAt(baseX, baseY, baseZ).setType(Material.NETHERRACK);
+            world.getBlockAt(baseX, baseY + 1, baseZ).setType(Material.FIRE);
+            
+            // Decoración de Purpur alrededor
+            world.getBlockAt(baseX - 1, baseY, baseZ).setType(Material.PURPUR_SLAB);
+            world.getBlockAt(baseX + 1, baseY, baseZ).setType(Material.PURPUR_SLAB);
+            world.getBlockAt(baseX, baseY, baseZ - 1).setType(Material.PURPUR_SLAB);
+            world.getBlockAt(baseX, baseY, baseZ + 1).setType(Material.PURPUR_SLAB);
+            
+        } else if (tipo == TipoAnomalia.ECO_SOMBRAS) {
+            // ═══ ECO DE SOMBRAS: Cámara Oscura (5x5) ═══
+            // Plataforma de End Stone Bricks oscuro
+            for (int x = -2; x <= 2; x++) {
+                for (int z = -2; z <= 2; z++) {
+                    Location loc = centro.clone().add(x, -1, z);
+                    if (!loc.getBlock().getType().isSolid()) {
+                        loc.getBlock().setType(Material.END_STONE_BRICKS);
+                    }
+                }
+            }
+            
+            // Pilares oscuros (altura 3-4)
+            construirPilarMonumental(world, baseX - 2, baseY, baseZ - 2, 4, false);
+            construirPilarMonumental(world, baseX + 2, baseY, baseZ - 2, 3, false);
+            construirPilarMonumental(world, baseX - 2, baseY, baseZ + 2, 3, false);
+            construirPilarMonumental(world, baseX + 2, baseY, baseZ + 2, 4, false);
+            
+            // Altar central oscuro
+            world.getBlockAt(baseX, baseY, baseZ).setType(Material.PURPUR_BLOCK);
+            world.getBlockAt(baseX, baseY + 1, baseZ).setType(Material.END_ROD);
+            
+        } else if (tipo == TipoAnomalia.ECO_PIEDRA) {
+            // ═══ ECO DE PIEDRA: Ruinas Fragmentadas (5x5) ═══
+            // Plataforma parcialmente destruida
+            for (int x = -2; x <= 2; x++) {
+                for (int z = -2; z <= 2; z++) {
+                    Location loc = centro.clone().add(x, -1, z);
+                    if (!loc.getBlock().getType().isSolid() && random.nextDouble() < 0.8) {
+                        // Mezcla de bloques rotos
+                        int rand = random.nextInt(3);
+                        if (rand == 0) {
+                            loc.getBlock().setType(Material.END_STONE_BRICKS);
+                        } else if (rand == 1) {
+                            loc.getBlock().setType(Material.CRACKED_STONE_BRICKS);
+                        } else {
+                            loc.getBlock().setType(Material.END_STONE);
+                        }
+                    }
+                }
+            }
+            
+            // Pilares parcialmente destruidos (alturas variables 1-3)
+            construirPilarMonumental(world, baseX - 2, baseY, baseZ - 2, 1 + random.nextInt(3), false);
+            construirPilarMonumental(world, baseX + 2, baseY, baseZ - 2, 2 + random.nextInt(2), false);
+            construirPilarMonumental(world, baseX - 2, baseY, baseZ + 2, 1 + random.nextInt(3), false);
+            construirPilarMonumental(world, baseX + 2, baseY, baseZ + 2, 2 + random.nextInt(2), false);
+            
+            // Bloques caídos alrededor
+            world.getBlockAt(baseX - 1, baseY, baseZ - 1).setType(Material.CRACKED_STONE_BRICKS);
+            world.getBlockAt(baseX + 1, baseY, baseZ + 1).setType(Material.CRACKED_STONE_BRICKS);
+            
+        } else {
+            // ═══ ANOMALÍA NORMAL: Estructura Estándar (5x5) ═══
+            // Plataforma de End Stone estándar
+            for (int x = -2; x <= 2; x++) {
+                for (int z = -2; z <= 2; z++) {
+                    Location loc = centro.clone().add(x, -1, z);
+                    if (!loc.getBlock().getType().isSolid()) {
+                        loc.getBlock().setType(Material.END_STONE);
+                    }
+                }
+            }
+            
+            // 4 Pilares simples en esquinas (altura 3)
+            construirPilarMonumental(world, baseX - 2, baseY, baseZ - 2, 3, false);
+            construirPilarMonumental(world, baseX + 2, baseY, baseZ - 2, 3, false);
+            construirPilarMonumental(world, baseX - 2, baseY, baseZ + 2, 3, false);
+            construirPilarMonumental(world, baseX + 2, baseY, baseZ + 2, 3, false);
+            
+            // End Rod central
+            world.getBlockAt(baseX, baseY + 2, baseZ).setType(Material.END_ROD);
+        }
+        
+        plugin.getLogger().info("[CaminoEnd] Estructura épica generada para anomalía " + tipo.name());
+    }
+    
+    /**
+     * Construye un pilar monumental con decoración
+     * @param elaborado Si es true, añade coronas y decoración extra
+     */
+    private void construirPilarMonumental(World world, int x, int y, int z, int altura, boolean elaborado) {
+        // Pilar principal
+        for (int i = 0; i < altura; i++) {
+            Material mat = (i % 2 == 0) ? Material.PURPUR_PILLAR : Material.END_STONE_BRICKS;
+            world.getBlockAt(x, y + i, z).setType(mat);
+        }
+        
+        // Si es elaborado, añadir decoración
+        if (elaborado && altura >= 4) {
+            // Corona del pilar
+            world.getBlockAt(x, y + altura, z).setType(Material.PURPUR_BLOCK);
+            world.getBlockAt(x, y + altura + 1, z).setType(Material.PURPUR_SLAB);
+            
+            // Decoración lateral (brazos)
+            if (altura >= 6) {
+                world.getBlockAt(x + 1, y + altura - 2, z).setType(Material.PURPUR_SLAB);
+                world.getBlockAt(x - 1, y + altura - 2, z).setType(Material.PURPUR_SLAB);
+                world.getBlockAt(x, y + altura - 2, z + 1).setType(Material.PURPUR_SLAB);
+                world.getBlockAt(x, y + altura - 2, z - 1).setType(Material.PURPUR_SLAB);
+            }
+        }
     }
     
     private void iniciarEfectosVisualesAnomalia(Location ubicacion, TipoAnomalia tipo) {
@@ -893,7 +1297,9 @@ public class CaminoEndEvent extends EventBase {
         // Si no hay ubicación configurada, usar spawn del mundo
         if (portalLocation == null) {
             World world = plugin.getServer().getWorlds().get(0);
-            portalLocation = world.getSpawnLocation().clone().add(0, 10, 0);
+            // Buscar ubicación en el suelo cercana al spawn
+            Location spawn = world.getSpawnLocation();
+            portalLocation = encontrarSueloSeguro(spawn);
         }
         
         // Construir estructura del portal incompleto
@@ -908,46 +1314,140 @@ public class CaminoEndEvent extends EventBase {
             portalLocation.getBlockX() + ", " + portalLocation.getBlockY() + ", " + portalLocation.getBlockZ());
     }
     
+    /**
+     * Busca una ubicación segura en el suelo cerca de la posición dada
+     */
+    private Location encontrarSueloSeguro(Location origen) {
+        World world = origen.getWorld();
+        if (world == null) return origen;
+        
+        int x = origen.getBlockX();
+        int z = origen.getBlockZ();
+        
+        // Buscar desde Y alto hacia abajo hasta encontrar suelo sólido
+        for (int y = world.getMaxHeight() - 1; y > world.getMinHeight(); y--) {
+            Location loc = new Location(world, x, y, z);
+            if (loc.getBlock().getType().isSolid() && 
+                loc.clone().add(0, 1, 0).getBlock().getType().isAir() &&
+                loc.clone().add(0, 2, 0).getBlock().getType().isAir()) {
+                return loc.clone().add(0, 1, 0); // Retornar 1 bloque arriba del suelo
+            }
+        }
+        
+        return origen.clone().add(0, -origen.getY() + 70, 0); // Fallback a Y=70
+    }
+    
     private void construirPortalIncompleto(Location centro) {
         World world = centro.getWorld();
         if (world == null) return;
-        
-        // Estructura: Marco de End Portal Frame (incompleto - solo 8 de 12 bloques)
-        // Layout en forma de cuadrado 5x5
         
         int baseX = centro.getBlockX();
         int baseY = centro.getBlockY();
         int baseZ = centro.getBlockZ();
         
-        // Lado norte (3 bloques)
-        world.getBlockAt(baseX - 1, baseY, baseZ - 2).setType(Material.END_PORTAL_FRAME);
-        world.getBlockAt(baseX, baseY, baseZ - 2).setType(Material.END_PORTAL_FRAME);
-        world.getBlockAt(baseX + 1, baseY, baseZ - 2).setType(Material.END_PORTAL_FRAME);
-        
-        // Lado este (2 bloques)
-        world.getBlockAt(baseX + 2, baseY, baseZ - 1).setType(Material.END_PORTAL_FRAME);
-        world.getBlockAt(baseX + 2, baseY, baseZ + 1).setType(Material.END_PORTAL_FRAME);
-        
-        // Lado sur (1 bloque) - INCOMPLETO
-        world.getBlockAt(baseX, baseY, baseZ + 2).setType(Material.END_PORTAL_FRAME);
-        
-        // Lado oeste (2 bloques)
-        world.getBlockAt(baseX - 2, baseY, baseZ - 1).setType(Material.END_PORTAL_FRAME);
-        world.getBlockAt(baseX - 2, baseY, baseZ + 1).setType(Material.END_PORTAL_FRAME);
-        
-        // Base decorativa
-        for (int x = -2; x <= 2; x++) {
-            for (int z = -2; z <= 2; z++) {
-                if (x == 0 && z == 0) continue; // Centro vacío
+        // ════════════════════════════════════════════════════════════
+        // PLATAFORMA ÉPICA BASE (11x11)
+        // ════════════════════════════════════════════════════════════
+        for (int x = -5; x <= 5; x++) {
+            for (int z = -5; z <= 5; z++) {
+                // Capa base
                 world.getBlockAt(baseX + x, baseY - 1, baseZ + z).setType(Material.END_STONE_BRICKS);
+                
+                // Borde decorativo con End Stone
+                if (Math.abs(x) == 5 || Math.abs(z) == 5) {
+                    world.getBlockAt(baseX + x, baseY, baseZ + z).setType(Material.END_STONE);
+                }
+                
+                // Esquinas con Purpur Blocks
+                if ((Math.abs(x) == 5 && Math.abs(z) == 5)) {
+                    world.getBlockAt(baseX + x, baseY, baseZ + z).setType(Material.PURPUR_BLOCK);
+                    world.getBlockAt(baseX + x, baseY + 1, baseZ + z).setType(Material.PURPUR_BLOCK);
+                }
             }
         }
         
-        // Partículas permanentes alrededor del portal
-        iniciarEfectosPortal(centro);
+        // ════════════════════════════════════════════════════════════
+        // MARCO DE PORTAL FRAGMENTADO (9x9) - DRAMÁTICAMENTE INCOMPLETO
+        // ════════════════════════════════════════════════════════════
         
-        // Corazón pulsante en el centro
+        // Lado NORTE (5 de 7 bloques) - Mayormente completo
+        world.getBlockAt(baseX - 3, baseY, baseZ - 4).setType(Material.END_PORTAL_FRAME);
+        world.getBlockAt(baseX - 2, baseY, baseZ - 4).setType(Material.END_PORTAL_FRAME);
+        world.getBlockAt(baseX - 1, baseY, baseZ - 4).setType(Material.END_PORTAL_FRAME);
+        // Hueco intencional en baseX, baseZ - 4
+        world.getBlockAt(baseX + 1, baseY, baseZ - 4).setType(Material.END_PORTAL_FRAME);
+        world.getBlockAt(baseX + 2, baseY, baseZ - 4).setType(Material.END_PORTAL_FRAME);
+        // Hueco en baseX + 3, baseZ - 4
+        
+        // Lado ESTE (4 de 7 bloques) - Bastante dañado
+        world.getBlockAt(baseX + 4, baseY, baseZ - 3).setType(Material.END_PORTAL_FRAME);
+        // Hueco en baseX + 4, baseZ - 2
+        world.getBlockAt(baseX + 4, baseY, baseZ - 1).setType(Material.END_PORTAL_FRAME);
+        // Hueco en baseX + 4, baseZ (centro)
+        world.getBlockAt(baseX + 4, baseY, baseZ + 1).setType(Material.END_PORTAL_FRAME);
+        world.getBlockAt(baseX + 4, baseY, baseZ + 2).setType(Material.END_PORTAL_FRAME);
+        // Hueco en baseX + 4, baseZ + 3
+        
+        // Lado SUR (2 de 7 bloques) - MUY INCOMPLETO (crítico)
+        // Solo 2 bloques en los extremos
+        world.getBlockAt(baseX - 3, baseY, baseZ + 4).setType(Material.END_PORTAL_FRAME);
+        // Huecos masivos
+        world.getBlockAt(baseX + 3, baseY, baseZ + 4).setType(Material.END_PORTAL_FRAME);
+        
+        // Lado OESTE (3 de 7 bloques) - Muy dañado
+        // Hueco en baseX - 4, baseZ - 3
+        world.getBlockAt(baseX - 4, baseY, baseZ - 2).setType(Material.END_PORTAL_FRAME);
+        // Hueco en baseX - 4, baseZ - 1
+        // Hueco en baseX - 4, baseZ (centro)
+        world.getBlockAt(baseX - 4, baseY, baseZ + 1).setType(Material.END_PORTAL_FRAME);
+        // Hueco en baseX - 4, baseZ + 2
+        world.getBlockAt(baseX - 4, baseY, baseZ + 3).setType(Material.END_PORTAL_FRAME);
+        
+        // ════════════════════════════════════════════════════════════
+        // PILARES FRAGMENTADOS EN LAS ESQUINAS
+        // ════════════════════════════════════════════════════════════
+        construirPilarFragmentado(world, baseX - 4, baseY, baseZ - 4, 5); // Noroeste
+        construirPilarFragmentado(world, baseX + 4, baseY, baseZ - 4, 4); // Noreste
+        construirPilarFragmentado(world, baseX - 4, baseY, baseZ + 4, 3); // Suroeste
+        construirPilarFragmentado(world, baseX + 4, baseY, baseZ + 4, 6); // Sureste
+        
+        // ════════════════════════════════════════════════════════════
+        // BLOQUES FLOTANTES "ROTOS" CERCA DEL PORTAL
+        // ════════════════════════════════════════════════════════════
+        // Simulan fragmentos del portal flotando cerca
+        world.getBlockAt(baseX - 2, baseY + 2, baseZ - 3).setType(Material.END_STONE);
+        world.getBlockAt(baseX + 3, baseY + 3, baseZ + 2).setType(Material.END_STONE);
+        world.getBlockAt(baseX + 1, baseY + 1, baseZ - 4).setType(Material.PURPUR_BLOCK);
+        world.getBlockAt(baseX - 3, baseY + 2, baseZ + 3).setType(Material.END_STONE_BRICKS);
+        
+        // ════════════════════════════════════════════════════════════
+        // EFECTOS VISUALES PERMANENTES
+        // ════════════════════════════════════════════════════════════
+        iniciarEfectosPortal(centro);
         iniciarCorazonPortal(centro);
+        
+        plugin.getLogger().info("[CaminoEndEvent] Portal épico 9x9 construido - 14 de 28 frames (50% incompleto)");
+    }
+    
+    /**
+     * Construye un pilar decorativo fragmentado con alturas variables
+     */
+    private void construirPilarFragmentado(World world, int x, int y, int z, int altura) {
+        for (int i = 1; i <= altura; i++) {
+            // Alternar entre End Stone Bricks y Purpur
+            Material mat = (i % 2 == 0) ? Material.PURPUR_PILLAR : Material.END_STONE_BRICKS;
+            world.getBlockAt(x, y + i, z).setType(mat);
+            
+            // Algunos pilares tienen bloques rotos (huecos)
+            if (altura >= 5 && i == altura - 1) {
+                world.getBlockAt(x, y + i, z).setType(Material.AIR); // Hueco dramático
+            }
+        }
+        
+        // Corona del pilar (si es alto)
+        if (altura >= 4) {
+            world.getBlockAt(x, y + altura, z).setType(Material.PURPUR_BLOCK);
+        }
     }
     
     private void iniciarEfectosPortal(Location centro) {
@@ -955,19 +1455,60 @@ public class CaminoEndEvent extends EventBase {
             World world = centro.getWorld();
             if (world == null) return;
             
-            // Partículas PORTAL en el centro
-            world.spawnParticle(Particle.PORTAL, centro, 20, 1.5, 0.5, 1.5, 0.05);
+            // ════════════════════════════════════════════════════════════
+            // PARTÍCULAS PORTAL MASIVAS EN EL CENTRO
+            // ════════════════════════════════════════════════════════════
+            world.spawnParticle(Particle.PORTAL, centro, 40, 3.5, 1.0, 3.5, 0.08);
+            world.spawnParticle(Particle.REVERSE_PORTAL, centro, 25, 3.0, 0.8, 3.0, 0.05);
             
-            // Partículas END_ROD en espiral ascendente
-            double radio = 2.0;
-            for (int i = 0; i < 8; i++) {
-                double angulo = (ticksTotales + i * 45) * 0.05;
-                double offsetX = radio * Math.cos(angulo);
-                double offsetZ = radio * Math.sin(angulo);
-                double offsetY = (ticksTotales % 100) * 0.05;
+            // ════════════════════════════════════════════════════════════
+            // ESPIRAL ASCENDENTE ÉPICA (END_ROD)
+            // ════════════════════════════════════════════════════════════
+            double radioEspiral = 4.0; // Radio más amplio
+            for (int i = 0; i < 16; i++) { // Más puntos en la espiral
+                double angulo = (ticksTotales + i * 22.5) * 0.05;
+                double offsetX = radioEspiral * Math.cos(angulo);
+                double offsetZ = radioEspiral * Math.sin(angulo);
+                double offsetY = ((ticksTotales + i * 10) % 120) * 0.1; // Espiral más alta
                 
                 Location particleLoc = centro.clone().add(offsetX, offsetY, offsetZ);
-                world.spawnParticle(Particle.END_ROD, particleLoc, 1, 0, 0, 0, 0);
+                world.spawnParticle(Particle.END_ROD, particleLoc, 2, 0.1, 0.1, 0.1, 0);
+            }
+            
+            // ════════════════════════════════════════════════════════════
+            // ANILLO DE DRAGÓN GIRATORIO
+            // ════════════════════════════════════════════════════════════
+            double radioAnillo = 5.5;
+            int puntosAnillo = 32;
+            for (int i = 0; i < puntosAnillo; i++) {
+                double angulo = (ticksTotales * 0.03) + (i * 2 * Math.PI / puntosAnillo);
+                double offsetX = radioAnillo * Math.cos(angulo);
+                double offsetZ = radioAnillo * Math.sin(angulo);
+                
+                Location anilloLoc = centro.clone().add(offsetX, 0.3, offsetZ);
+                world.spawnParticle(Particle.DRAGON_BREATH, anilloLoc, 1, 0, 0, 0, 0);
+            }
+            
+            // ════════════════════════════════════════════════════════════
+            // RAYOS VERTICALES EN ESQUINAS
+            // ════════════════════════════════════════════════════════════
+            if (ticksTotales % 10 == 0) {
+                for (int offset = -4; offset <= 4; offset += 8) {
+                    for (int offsetZ = -4; offsetZ <= 4; offsetZ += 8) {
+                        for (double y = 0; y < 6; y += 0.5) {
+                            Location rayoLoc = centro.clone().add(offset, y, offsetZ);
+                            world.spawnParticle(Particle.ENCHANT, rayoLoc, 1, 0.1, 0.1, 0.1, 0);
+                        }
+                    }
+                }
+            }
+            
+            // ════════════════════════════════════════════════════════════
+            // PULSOS DE ENERGÍA OCASIONALES
+            // ════════════════════════════════════════════════════════════
+            if (ticksTotales % 80 == 0) {
+                world.spawnParticle(Particle.EXPLOSION, centro, 1, 0, 0, 0, 0);
+                world.spawnParticle(Particle.SOUL, centro, 50, 4.0, 2.0, 4.0, 0.1);
             }
             
         }, 0L, 2L);
@@ -1098,6 +1639,10 @@ public class CaminoEndEvent extends EventBase {
      * Secuencia cinemática final que explica la naturaleza incompleta del portal
      */
     private void anunciarConclusionPortal() {
+        // Marcar que el cliffhanger está siendo ejecutado
+        cliffhangerEjecutado = true;
+        plugin.getLogger().info("[CaminoEnd] Ejecutando secuencia de cliffhanger (anunciarConclusionPortal)");
+        
         // Fase 1: Realización (0s) - Pausa dramática
         messageBus.broadcast("", "conclusión_espacio1");
         messageBus.broadcast("§5§l⚡ EL OBSERVADOR:", "conclusión_observador");
@@ -1207,7 +1752,134 @@ public class CaminoEndEvent extends EventBase {
         distribuirRecompensas();
         
         // Detener evento
+        finalizarEventoSinRecompensas();
+    }
+    
+    /**
+     * Finaliza el evento sin distribuir recompensas (ya fueron distribuidas)
+     */
+    private void finalizarEventoSinRecompensas() {
+        // Mensaje final
+        anunciarFinalizacion();
+        
+        // Detener evento
         stop();
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // ITEMS RESONANTES (RECOMPENSAS FINALES)
+    // ═══════════════════════════════════════════════════════════════════
+    
+    private ItemStack crearEspadaResonante() {
+        ItemStack espada = new ItemStack(Material.DIAMOND_SWORD);
+        ItemMeta meta = espada.getItemMeta();
+        
+        if (meta != null) {
+            meta.displayName(net.kyori.adventure.text.Component.text("§d§lEspada Resonante"));
+            meta.lore(java.util.Arrays.asList(
+                net.kyori.adventure.text.Component.text("§7Recompensa del Camino al End"),
+                net.kyori.adventure.text.Component.text(""),
+                net.kyori.adventure.text.Component.text("§7Una espada imbuida con energía"),
+                net.kyori.adventure.text.Component.text("§7dimensional estable."),
+                net.kyori.adventure.text.Component.text(""),
+                net.kyori.adventure.text.Component.text("§9Filo III"),
+                net.kyori.adventure.text.Component.text("§9Empuje I"),
+                net.kyori.adventure.text.Component.text("§9Irrompibilidad II"),
+                net.kyori.adventure.text.Component.text(""),
+                net.kyori.adventure.text.Component.text("§d§o\"Resuena con el vacío...\"")
+            ));
+            
+            meta.addEnchant(Enchantment.SHARPNESS, 3, true);
+            meta.addEnchant(Enchantment.KNOCKBACK, 1, true);
+            meta.addEnchant(Enchantment.UNBREAKING, 2, true);
+            
+            espada.setItemMeta(meta);
+        }
+        
+        return espada;
+    }
+    
+    private ItemStack crearPicoResonante() {
+        ItemStack pico = new ItemStack(Material.DIAMOND_PICKAXE);
+        ItemMeta meta = pico.getItemMeta();
+        
+        if (meta != null) {
+            meta.displayName(net.kyori.adventure.text.Component.text("§d§lPico Resonante"));
+            meta.lore(java.util.Arrays.asList(
+                net.kyori.adventure.text.Component.text("§7Recompensa del Camino al End"),
+                net.kyori.adventure.text.Component.text(""),
+                net.kyori.adventure.text.Component.text("§7Un pico fortalecido con ecos"),
+                net.kyori.adventure.text.Component.text("§7dimensionales."),
+                net.kyori.adventure.text.Component.text(""),
+                net.kyori.adventure.text.Component.text("§9Eficiencia III"),
+                net.kyori.adventure.text.Component.text("§9Fortuna II"),
+                net.kyori.adventure.text.Component.text("§9Irrompibilidad II"),
+                net.kyori.adventure.text.Component.text(""),
+                net.kyori.adventure.text.Component.text("§d§o\"Extrae lo oculto...\"")
+            ));
+            
+            meta.addEnchant(Enchantment.EFFICIENCY, 3, true);
+            meta.addEnchant(Enchantment.FORTUNE, 2, true);
+            meta.addEnchant(Enchantment.UNBREAKING, 2, true);
+            
+            pico.setItemMeta(meta);
+        }
+        
+        return pico;
+    }
+    
+    private ItemStack crearPetoResonante() {
+        ItemStack peto = new ItemStack(Material.DIAMOND_CHESTPLATE);
+        ItemMeta meta = peto.getItemMeta();
+        
+        if (meta != null) {
+            meta.displayName(net.kyori.adventure.text.Component.text("§d§lPeto Resonante"));
+            meta.lore(java.util.Arrays.asList(
+                net.kyori.adventure.text.Component.text("§7Recompensa del Camino al End"),
+                net.kyori.adventure.text.Component.text(""),
+                net.kyori.adventure.text.Component.text("§7Armadura reforzada con cristales"),
+                net.kyori.adventure.text.Component.text("§7del vacío dimensional."),
+                net.kyori.adventure.text.Component.text(""),
+                net.kyori.adventure.text.Component.text("§9Protección III"),
+                net.kyori.adventure.text.Component.text("§9Irrompibilidad II"),
+                net.kyori.adventure.text.Component.text(""),
+                net.kyori.adventure.text.Component.text("§d§o\"Protección dimensional...\"")
+            ));
+            
+            meta.addEnchant(Enchantment.PROTECTION, 3, true);
+            meta.addEnchant(Enchantment.UNBREAKING, 2, true);
+            
+            peto.setItemMeta(meta);
+        }
+        
+        return peto;
+    }
+    
+    private ItemStack crearPantalonesResonantes() {
+        ItemStack pantalones = new ItemStack(Material.DIAMOND_LEGGINGS);
+        ItemMeta meta = pantalones.getItemMeta();
+        
+        if (meta != null) {
+            meta.displayName(net.kyori.adventure.text.Component.text("§d§lPantalones Resonantes"));
+            meta.lore(java.util.Arrays.asList(
+                net.kyori.adventure.text.Component.text("§7Recompensa del Camino al End"),
+                net.kyori.adventure.text.Component.text(""),
+                net.kyori.adventure.text.Component.text("§7Pantalones imbuidos con energía"),
+                net.kyori.adventure.text.Component.text("§7del eco dimensional."),
+                net.kyori.adventure.text.Component.text(""),
+                net.kyori.adventure.text.Component.text("§9Protección III"),
+                net.kyori.adventure.text.Component.text("§9Irrompibilidad II"),
+                net.kyori.adventure.text.Component.text(""),
+                net.kyori.adventure.text.Component.text("§d§o\"Agilidad del vacío...\"")
+            ));
+            
+            meta.addEnchant(Enchantment.PROTECTION, 3, true);
+            meta.addEnchant(Enchantment.UNBREAKING, 2, true);
+            
+            pantalones.setItemMeta(meta);
+        }
+        
+        return pantalones;
     }
     
     private void distribuirRecompensas() {
@@ -1283,19 +1955,42 @@ public class CaminoEndEvent extends EventBase {
                 recompensasItems.add(new ItemStack(Material.DIAMOND, 16));
                 recompensasItems.add(new ItemStack(Material.ENDER_PEARL, 32));
                 recompensasItems.add(new ItemStack(Material.TOTEM_OF_UNDYING, 1));
+                
+                // Armadura de Diamante encantada (buena pero no tan única como drops del Warden)
+                recompensasItems.add(crearPetoResonante());
+                recompensasItems.add(crearPantalonesResonantes());
+                // Herramientas y armas encantadas
+                recompensasItems.add(crearEspadaResonante());
+                recompensasItems.add(crearPicoResonante());
+                
             } else if (posicion == 2) {
                 // Top 2: Recompensas altas
                 recompensasItems.add(new ItemStack(Material.NETHERITE_INGOT, 1));
                 recompensasItems.add(new ItemStack(Material.DIAMOND, 12));
                 recompensasItems.add(new ItemStack(Material.ENDER_PEARL, 24));
+                
+                // Armadura de Diamante encantada
+                recompensasItems.add(crearPetoResonante());
+                // Herramientas encantadas
+                recompensasItems.add(crearEspadaResonante());
+                recompensasItems.add(crearPicoResonante());
+                
             } else if (posicion == 3) {
                 // Top 3: Recompensas buenas
                 recompensasItems.add(new ItemStack(Material.DIAMOND, 8));
                 recompensasItems.add(new ItemStack(Material.ENDER_PEARL, 16));
+                
+                // Herramientas encantadas
+                recompensasItems.add(crearEspadaResonante());
+                recompensasItems.add(crearPicoResonante());
+                
             } else {
-                // Participantes: Recompensas base
+                // Participantes: Recompensas base + herramientas básicas
                 recompensasItems.add(new ItemStack(Material.DIAMOND, 4));
                 recompensasItems.add(new ItemStack(Material.ENDER_PEARL, 8));
+                
+                // Herramienta básica encantada
+                recompensasItems.add(crearEspadaResonante());
             }
             
             // Recursos comunes para todos
@@ -1476,6 +2171,16 @@ public class CaminoEndEvent extends EventBase {
     }
     
     /**
+     * Resetea el Warden cuando es derrotado (para permitir transición a REVELACION)
+     */
+    public void resetearWarden() {
+        if (wardenActivo != null) {
+            wardenActivo = null;
+            plugin.getLogger().info("[CaminoEnd] Warden derrotado - Transición a REVELACION desbloqueada");
+        }
+    }
+    
+    /**
      * Fuerza transición a la siguiente fase (para comando admin)
      */
     public void forzarSiguienteFase() {
@@ -1489,10 +2194,63 @@ public class CaminoEndEvent extends EventBase {
                 plugin.getLogger().info("[CaminoEnd] Fase forzada: RESONANCIA → REVELACION");
                 break;
             case REVELACION:
-                finalizarEvento();
-                plugin.getLogger().info("[CaminoEnd] Evento finalizado desde REVELACION");
+                // Ejecutar cliffhanger antes de finalizar
+                plugin.getLogger().info("[CaminoEnd] Comando 'next' en REVELACION - Ejecutando cliffhanger");
+                
+                // Notificar a los jugadores que el cliffhanger está comenzando
+                messageBus.broadcast("§8§m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", "cliffhanger_inicio");
+                messageBus.broadcast("§5§l⚡ SECUENCIA FINAL", "cliffhanger_inicio");
+                messageBus.broadcast("§8§m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", "cliffhanger_inicio");
+                
+                ejecutarCliffhangerYFinalizar();
                 break;
         }
+    }
+    
+    /**
+     * Ejecuta la secuencia de cliffhanger completa y luego finaliza el evento
+     */
+    private void ejecutarCliffhangerYFinalizar() {
+        // Evitar ejecuciones múltiples
+        if (cliffhangerEjecutado) {
+            plugin.getLogger().info("[CaminoEnd] Cliffhanger ya ejecutado - Finalizando directamente");
+            finalizarEvento();
+            return;
+        }
+        
+        cliffhangerEjecutado = true;
+        plugin.getLogger().info("[CaminoEnd] Ejecutando secuencia de cliffhanger...");
+        
+        // Anunciar la secuencia de conclusión del portal (cliffhanger)
+        anunciarConclusionPortal();
+        
+        // Programar distribución de recompensas DESPUÉS del cliffhanger (32 segundos)
+        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+            plugin.getLogger().info("[CaminoEnd] Cliffhanger completado - Distribuyendo recompensas");
+            
+            // Mensaje de transición
+            messageBus.broadcast("", "recompensas_inicio");
+            messageBus.broadcast("§8§m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", "recompensas_inicio");
+            messageBus.broadcast("§d§l★ RECOMPENSAS DEL EVENTO ★", "recompensas_inicio");
+            messageBus.broadcast("§8§m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", "recompensas_inicio");
+            messageBus.broadcast("", "recompensas_inicio");
+            
+            // Título para todos los jugadores
+            for (Player p : plugin.getServer().getOnlinePlayers()) {
+                p.sendTitle("§d§l★ RECOMPENSAS ★", "§7El Observador reconoce tu valoría...", 10, 60, 20);
+                p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.2f);
+            }
+            
+            // Distribuir recompensas
+            distribuirRecompensas();
+            
+            // Programar finalización 8 segundos después de las recompensas
+            plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+                plugin.getLogger().info("[CaminoEnd] Recompensas entregadas - Finalizando evento");
+                finalizarEventoSinRecompensas();
+            }, 160L); // 8 segundos después
+            
+        }, 640L); // 32 segundos (cliffhanger completo dura ~30 segundos)
     }
     
     // ═══════════════════════════════════════════════════════════════════
@@ -1950,13 +2708,31 @@ public class CaminoEndEvent extends EventBase {
             
             switch (fase) {
                 case ANOMALIAS:
-                    // Clima misterioso - tormenta ligera
-                    world.setStorm(true);
-                    world.setWeatherDuration(72000); // 1 hora
+                    // Clima del End - SIN LLUVIA, cielo despejado con tinte violeta
+                    world.setStorm(false); // SIN lluvia
                     world.setThundering(false);
+                    world.setWeatherDuration(72000); // 1 hora
                     
-                    // FASE 1: DÍA (exploración luminosa)
-                    world.setTime(1000); // Día
+                    // FASE 1: Atardecer misterioso (luz violeta del End)
+                    world.setTime(13000); // Atardecer temprano (luz violeta)
+                    
+                    // Efectos ambientales del End
+                    plugin.getServer().getScheduler().runTaskTimer(plugin, () -> {
+                        if (faseActual != Fase.ANOMALIAS) return;
+                        
+                        // Partículas violeta del End en el cielo ocasionalmente
+                        if (random.nextInt(5) == 0) {
+                            for (Player p : plugin.getServer().getOnlinePlayers()) {
+                                Location skyLoc = p.getLocation().clone().add(
+                                    (random.nextDouble() - 0.5) * 20,
+                                    40 + random.nextDouble() * 20,
+                                    (random.nextDouble() - 0.5) * 20
+                                );
+                                p.getWorld().spawnParticle(Particle.PORTAL, skyLoc, 3, 0.5, 0.5, 0.5, 0.02);
+                                p.getWorld().spawnParticle(Particle.REVERSE_PORTAL, skyLoc, 2, 0.3, 0.3, 0.3, 0.01);
+                            }
+                        }
+                    }, 100L, 60L); // Cada 3 segundos
                     break;
                     
                 case RESONANCIA:
@@ -2221,6 +2997,359 @@ public class CaminoEndEvent extends EventBase {
     /**
      * Aplica efectos visuales de corrupción progresiva durante RESONANCIA
      */
+    // ════════════════════════════════════════════════════════════
+    // SISTEMA DE HORDAS (FASE RESONANCIA)
+    // ════════════════════════════════════════════════════════════
+    
+    /**
+     * Spawna una horda de entidades peligrosas cerca de los jugadores
+     */
+    private void spawnearHorda() {
+        if (plugin.getServer().getOnlinePlayers().isEmpty()) return;
+        
+        // Elegir tipo de horda aleatoriamente
+        int tipoHorda = random.nextInt(100);
+        String nombreHorda;
+        
+        // Anuncio global dramático
+        messageBus.broadcast("", "horda");
+        messageBus.broadcast("§8§m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", "horda");
+        messageBus.broadcast("§c§l⚠ HORDA DIMENSIONAL ⚠", "horda");
+        
+        // Efectos visuales globales
+        for (Player p : plugin.getServer().getOnlinePlayers()) {
+            p.playSound(p.getLocation(), Sound.ENTITY_WITHER_SPAWN, 0.7f, 0.6f);
+            p.addPotionEffect(new org.bukkit.potion.PotionEffect(
+                org.bukkit.potion.PotionEffectType.DARKNESS, 100, 0, false, false, true));
+        }
+        
+        // Elegir jugador aleatorio como centro
+        Player[] jugadores = plugin.getServer().getOnlinePlayers().toArray(new Player[0]);
+        Player targetPlayer = jugadores[random.nextInt(jugadores.length)];
+        Location spawnCenter = targetPlayer.getLocation();
+        
+        if (tipoHorda < 40) {
+            // 40%: HORDA DE BRUTOS PIGLIN
+            nombreHorda = "§c§oBrutos del Vacío";
+            messageBus.broadcast("§7§o" + nombreHorda + " emergen de las sombras...", "horda");
+            
+            int cantidad = 3 + random.nextInt(3); // 3-5 Brutos
+            for (int i = 0; i < cantidad; i++) {
+                Location spawnLoc = spawnCenter.clone().add(
+                    (random.nextDouble() - 0.5) * 15,
+                    0,
+                    (random.nextDouble() - 0.5) * 15
+                );
+                spawnLoc.setY(spawnLoc.getWorld().getHighestBlockYAt(spawnLoc) + 1);
+                
+                org.bukkit.entity.PiglinBrute bruto = (org.bukkit.entity.PiglinBrute) spawnLoc.getWorld().spawnEntity(
+                    spawnLoc, org.bukkit.entity.EntityType.PIGLIN_BRUTE);
+                bruto.setCustomName("§c§lBruto del Vacío");
+                bruto.setCustomNameVisible(true);
+                bruto.setImmuneToZombification(true);
+                bruto.getPersistentDataContainer().set(
+                    new org.bukkit.NamespacedKey(plugin, "horda_bruto"),
+                    org.bukkit.persistence.PersistentDataType.BYTE, (byte) 1);
+                
+                // Efecto de spawn
+                spawnLoc.getWorld().spawnParticle(Particle.LAVA, spawnLoc, 30, 0.5, 1, 0.5, 0.1);
+            }
+            
+        } else if (tipoHorda < 70) {
+            // 30%: HORDA DE ENDERMAN (Villagers del End)
+            nombreHorda = "§5§oCiudadanos del End";
+            messageBus.broadcast("§7§o" + nombreHorda + " atraviesan el vacío...", "horda");
+            
+            int cantidad = 4 + random.nextInt(4); // 4-7 Enderman
+            for (int i = 0; i < cantidad; i++) {
+                Location spawnLoc = spawnCenter.clone().add(
+                    (random.nextDouble() - 0.5) * 15,
+                    0,
+                    (random.nextDouble() - 0.5) * 15
+                );
+                spawnLoc.setY(spawnLoc.getWorld().getHighestBlockYAt(spawnLoc) + 1);
+                
+                Enderman enderman = (Enderman) spawnLoc.getWorld().spawnEntity(
+                    spawnLoc, EntityType.ENDERMAN);
+                enderman.setCustomName("§5§lCiudadano del End");
+                enderman.setCustomNameVisible(true);
+                enderman.getPersistentDataContainer().set(
+                    new org.bukkit.NamespacedKey(plugin, "horda_enderman"),
+                    org.bukkit.persistence.PersistentDataType.BYTE, (byte) 1);
+                
+                // Efecto de spawn
+                spawnLoc.getWorld().spawnParticle(Particle.PORTAL, spawnLoc, 50, 0.5, 1, 0.5, 0.2);
+                spawnLoc.getWorld().playSound(spawnLoc, Sound.ENTITY_ENDERMAN_TELEPORT, 0.7f, 0.8f);
+            }
+            
+        } else {
+            // 30%: HORDA MIXTA (Brutos + Enderman + Endermites)
+            nombreHorda = "§4§oLegión del Vacío";
+            messageBus.broadcast("§7§o" + nombreHorda + " invade la realidad...", "horda");
+            
+            // 2 Brutos
+            for (int i = 0; i < 2; i++) {
+                Location spawnLoc = spawnCenter.clone().add(
+                    (random.nextDouble() - 0.5) * 12,
+                    0,
+                    (random.nextDouble() - 0.5) * 12
+                );
+                spawnLoc.setY(spawnLoc.getWorld().getHighestBlockYAt(spawnLoc) + 1);
+                
+                org.bukkit.entity.PiglinBrute bruto = (org.bukkit.entity.PiglinBrute) spawnLoc.getWorld().spawnEntity(
+                    spawnLoc, org.bukkit.entity.EntityType.PIGLIN_BRUTE);
+                bruto.setCustomName("§c§lBruto de la Legión");
+                bruto.setCustomNameVisible(true);
+                bruto.setImmuneToZombification(true);
+                bruto.getPersistentDataContainer().set(
+                    new org.bukkit.NamespacedKey(plugin, "horda_bruto"),
+                    org.bukkit.persistence.PersistentDataType.BYTE, (byte) 1);
+                
+                spawnLoc.getWorld().spawnParticle(Particle.LAVA, spawnLoc, 30, 0.5, 1, 0.5, 0.1);
+            }
+            
+            // 3 Enderman
+            for (int i = 0; i < 3; i++) {
+                Location spawnLoc = spawnCenter.clone().add(
+                    (random.nextDouble() - 0.5) * 12,
+                    0,
+                    (random.nextDouble() - 0.5) * 12
+                );
+                spawnLoc.setY(spawnLoc.getWorld().getHighestBlockYAt(spawnLoc) + 1);
+                
+                Enderman enderman = (Enderman) spawnLoc.getWorld().spawnEntity(
+                    spawnLoc, EntityType.ENDERMAN);
+                enderman.setCustomName("§5§lTeleportador de la Legión");
+                enderman.setCustomNameVisible(true);
+                enderman.getPersistentDataContainer().set(
+                    new org.bukkit.NamespacedKey(plugin, "horda_enderman"),
+                    org.bukkit.persistence.PersistentDataType.BYTE, (byte) 1);
+                
+                spawnLoc.getWorld().spawnParticle(Particle.PORTAL, spawnLoc, 50, 0.5, 1, 0.5, 0.2);
+            }
+            
+            // 5-8 Endermites
+            int cantidadMites = 5 + random.nextInt(4);
+            for (int i = 0; i < cantidadMites; i++) {
+                Location spawnLoc = spawnCenter.clone().add(
+                    (random.nextDouble() - 0.5) * 10,
+                    0,
+                    (random.nextDouble() - 0.5) * 10
+                );
+                spawnLoc.setY(spawnLoc.getWorld().getHighestBlockYAt(spawnLoc) + 1);
+                
+                org.bukkit.entity.Endermite mite = (org.bukkit.entity.Endermite) spawnLoc.getWorld().spawnEntity(
+                    spawnLoc, EntityType.ENDERMITE);
+                mite.setCustomName("§7Parásito de la Legión");
+                mite.getPersistentDataContainer().set(
+                    new org.bukkit.NamespacedKey(plugin, "horda_endermite"),
+                    org.bukkit.persistence.PersistentDataType.BYTE, (byte) 1);
+            }
+        }
+        
+        messageBus.broadcast("§8§m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", "horda");
+        messageBus.broadcast("", "horda");
+        
+        // Título para todos
+        for (Player p : plugin.getServer().getOnlinePlayers()) {
+            p.sendTitle("§c§l⚠ HORDA ⚠", "§7" + nombreHorda, 10, 40, 10);
+        }
+        
+        plugin.getLogger().info("[CaminoEnd] Horda spawneada: " + nombreHorda);
+    }
+    
+    // ════════════════════════════════════════════════════════════
+    // SISTEMA DE WARDEN (ÚLTIMOS FRAGMENTOS)
+    // ════════════════════════════════════════════════════════════
+    
+    private void verificarSpawnWarden() {
+        // Solo verificar cada 5 segundos
+        if (ticksTotales % 100 != 0) return;
+        
+        // Verificar si algún jugador está cerca de una anomalía
+        for (Player p : plugin.getServer().getOnlinePlayers()) {
+            for (Location anomaliaLoc : anomaliasActivas.keySet()) {
+                if (p.getLocation().distance(anomaliaLoc) < 20.0) {
+                    spawnearWarden(anomaliaLoc);
+                    return;
+                }
+            }
+        }
+    }
+    
+    private void spawnearWarden(Location cerca) {
+        if (wardenSpawneado) return;
+        
+        wardenSpawneado = true;
+        
+        // Efectos de pre-spawn épicos
+        for (Player p : plugin.getServer().getOnlinePlayers()) {
+            p.addPotionEffect(new org.bukkit.potion.PotionEffect(
+                org.bukkit.potion.PotionEffectType.DARKNESS, 200, 1, false, false, true));
+            p.addPotionEffect(new org.bukkit.potion.PotionEffect(
+                org.bukkit.potion.PotionEffectType.SLOWNESS, 100, 2, false, false, false));
+            p.playSound(p.getLocation(), Sound.ENTITY_WARDEN_EMERGE, 1.0f, 0.5f);
+            p.playSound(p.getLocation(), Sound.BLOCK_SCULK_SHRIEKER_SHRIEK, 1.0f, 0.6f);
+        }
+        
+        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+            Location spawnLoc = cerca.clone().add(
+                (random.nextDouble() - 0.5) * 10,
+                0,
+                (random.nextDouble() - 0.5) * 10
+            );
+            spawnLoc.setY(spawnLoc.getWorld().getHighestBlockYAt(spawnLoc) + 1);
+            
+            // Spawn del Warden
+            wardenActivo = (org.bukkit.entity.Warden) spawnLoc.getWorld().spawnEntity(
+                spawnLoc, EntityType.WARDEN);
+            wardenActivo.setCustomName("§4§l☠ GUARDIÁN DE LAS PROFUNDIDADES ☠");
+            wardenActivo.setCustomNameVisible(true);
+            wardenActivo.setRemoveWhenFarAway(false);
+            
+            // Hacer al Warden MUCHO más resistente
+            wardenActivo.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).setBaseValue(1000.0); // 500 corazones
+            wardenActivo.setHealth(1000.0);
+            wardenActivo.getAttribute(org.bukkit.attribute.Attribute.ATTACK_DAMAGE).setBaseValue(40.0);
+            wardenActivo.getAttribute(org.bukkit.attribute.Attribute.KNOCKBACK_RESISTANCE).setBaseValue(1.0);
+            
+            wardenActivo.getPersistentDataContainer().set(
+                new org.bukkit.NamespacedKey(plugin, "warden_final"),
+                org.bukkit.persistence.PersistentDataType.BYTE, (byte) 1);
+            
+            // Anuncio global DRAMÁTICO con reacción del Observador
+            messageBus.broadcast("", "warden");
+            messageBus.broadcast("", "warden");
+            messageBus.broadcast("§8§m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", "warden");
+            messageBus.broadcast("§4§l☠☠☠ ALGO EMERGE DESDE LO PROFUNDO ☠☠☠", "warden");
+            messageBus.broadcast("", "warden");
+            messageBus.broadcast("§5§l⚡ EL OBSERVADOR §8§o[ALARMADO]:", "warden");
+            messageBus.broadcast("§c§l§o\"...¿QUÉ... QUÉ ES ESO?...\"", "warden");
+            messageBus.broadcast("", "warden");
+            messageBus.broadcast("§7§o\"Eso... eso no es del End...\"", "warden");
+            messageBus.broadcast("§7§o\"No es de NINGÚN mundo que yo conozca...\"", "warden");
+            messageBus.broadcast("", "warden");
+            messageBus.broadcast("§c§l§o\"...Viene desde las PROFUNDIDADES...\"", "warden");
+            messageBus.broadcast("§4§l§o\"...Alguien... o ALGO... lo envió...\"", "warden");
+            messageBus.broadcast("", "warden");
+            messageBus.broadcast("§8§o\"¿Está... protegiendo algo? ¿O es una advertencia?\"", "warden");
+            messageBus.broadcast("§8§o\"Esto... esto va más allá del End...\"", "warden");
+            messageBus.broadcast("", "warden");
+            messageBus.broadcast("§6§l⚠ ADVERTENCIA:", "warden");
+            messageBus.broadcast("§7El Guardián de las Profundidades bloquea el paso.", "warden");
+            messageBus.broadcast("§7Debe ser derrotado para continuar.", "warden");
+            messageBus.broadcast("", "warden");
+            messageBus.broadcast("§5§l§o\"...Hay fuerzas en juego que aún no comprendemos...\"", "warden");
+            messageBus.broadcast("§8§m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", "warden");
+            messageBus.broadcast("", "warden");
+            
+            // Título épico con el misterio del Warden
+            for (Player p : plugin.getServer().getOnlinePlayers()) {
+                p.sendTitle("§4§l☠ GUARDIÁN DE LAS PROFUNDIDADES ☠", "§8§o¿Protector? ¿Advertencia? ¿Heraldo de algo peor?", 20, 100, 25);
+            }
+            
+            // Efectos visuales masivos
+            for (int i = 0; i < 100; i++) {
+                spawnLoc.getWorld().spawnParticle(Particle.SCULK_SOUL, spawnLoc, 1, 
+                    (random.nextDouble() - 0.5) * 5, random.nextDouble() * 3, (random.nextDouble() - 0.5) * 5, 0.1);
+            }
+            spawnLoc.getWorld().spawnParticle(Particle.EXPLOSION, spawnLoc, 20, 2, 1, 2, 0.5);
+            
+            // Iniciar task de monitoreo de distancia
+            iniciarMonitoreoDistanciaWarden();
+            
+        }, 60L); // 3 segundos de tensión
+    }
+    
+    private void iniciarMonitoreoDistanciaWarden() {
+        if (wardenDistanceTask != null) {
+            wardenDistanceTask.cancel();
+        }
+        
+        wardenDistanceTask = plugin.getServer().getScheduler().runTaskTimer(plugin, () -> {
+            if (wardenActivo == null || wardenActivo.isDead()) {
+                if (wardenDistanceTask != null) wardenDistanceTask.cancel();
+                return;
+            }
+            
+            // Verificar si hay algún jugador cerca
+            boolean hayJugadorCerca = false;
+            for (Player p : plugin.getServer().getOnlinePlayers()) {
+                if (p.getLocation().distance(wardenActivo.getLocation()) <= WARDEN_MAX_DISTANCE) {
+                    hayJugadorCerca = true;
+                    break;
+                }
+            }
+            
+            // Si NO alcanzamos 40 fragmentos y no hay jugadores cerca, matar al Warden
+            if (!hayJugadorCerca && fragmentosRecolectadosGlobalmente < 40) {
+                messageBus.broadcast("", "warden_lejos");
+                messageBus.broadcast("§8§m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", "warden_lejos");
+                messageBus.broadcast("§e§l⚠ EL GUARDIÁN RETROCEDE §e§l⚠", "warden_lejos");
+                messageBus.broadcast("", "warden_lejos");
+                messageBus.broadcast("§7Todos los jugadores se alejaron demasiado.", "warden_lejos");
+                messageBus.broadcast("", "warden_lejos");
+                messageBus.broadcast("§5§l⚡ EL OBSERVADOR:", "warden_lejos");
+                messageBus.broadcast("§8§o\"...Regresa a las profundidades...\"", "warden_lejos");
+                messageBus.broadcast("§8§o\"...Su misión aún no está completa...\"", "warden_lejos");
+                messageBus.broadcast("§c§o\"...Volverá cuando te acerques de nuevo...\"", "warden_lejos");
+                messageBus.broadcast("§8§m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", "warden_lejos");
+                messageBus.broadcast("", "warden_lejos");
+                
+                wardenActivo.getWorld().spawnParticle(Particle.PORTAL, wardenActivo.getLocation(), 200, 2, 2, 2, 1.0);
+                wardenActivo.getWorld().spawnParticle(Particle.SCULK_SOUL, wardenActivo.getLocation(), 100, 1, 1, 1, 0.5);
+                wardenActivo.getWorld().playSound(wardenActivo.getLocation(), Sound.ENTITY_WARDEN_DEATH, 1.0f, 0.5f);
+                wardenActivo.getWorld().playSound(wardenActivo.getLocation(), Sound.BLOCK_PORTAL_TRIGGER, 0.8f, 0.6f);
+                
+                wardenActivo.remove();
+                wardenSpawneado = false; // Permitir re-spawn
+                
+                if (wardenDistanceTask != null) {
+                    wardenDistanceTask.cancel();
+                    wardenDistanceTask = null;
+                }
+            }
+            
+            // Si ya alcanzamos 40 fragmentos, el Warden NO se va (es obligatorio matarlo)
+            
+        }, 100L, 100L); // Verificar cada 5 segundos
+    }
+    
+    /**
+     * Aplica efectos visuales progresivos durante la fase RESONANCIA
+     */
+    private void aplicarEfectosVisualesResonancia() {
+        for (Player p : plugin.getServer().getOnlinePlayers()) {
+            Location loc = p.getLocation();
+            World world = loc.getWorld();
+            
+            // Efectos de corrupción visual
+            if (fragmentosRecolectadosGlobalmente >= 30) {
+                // Cerca del final: Darkness periódico
+                if (random.nextDouble() < 0.3) {
+                    p.addPotionEffect(new org.bukkit.potion.PotionEffect(
+                        org.bukkit.potion.PotionEffectType.DARKNESS, 80, 0, false, false, true));
+                }
+                
+                // Partículas de Sculk Soul intensas
+                world.spawnParticle(Particle.SCULK_SOUL, loc, 10, 3, 2, 3, 0.05);
+                world.spawnParticle(Particle.SOUL, loc, 5, 2, 1, 2, 0.02);
+            } else if (fragmentosRecolectadosGlobalmente >= 20) {
+                // Mitad: Partículas más intensas
+                world.spawnParticle(Particle.PORTAL, loc, 15, 2, 2, 2, 0.1);
+                world.spawnParticle(Particle.REVERSE_PORTAL, loc, 8, 1.5, 1.5, 1.5, 0.05);
+            } else {
+                // Inicio: Partículas sutiles
+                world.spawnParticle(Particle.PORTAL, loc, 5, 1, 1, 1, 0.05);
+            }
+            
+            // Sonidos ambientales
+            if (random.nextDouble() < 0.2) {
+                p.playSound(loc, Sound.ENTITY_ENDERMAN_AMBIENT, 0.2f, 0.7f);
+            }
+        }
+    }
+    
     private void aplicarCorrupcionProgresiva() {
         double progreso = fragmentosRecolectadosGlobalmente / (double) FRAGMENTOS_OBJETIVO;
         

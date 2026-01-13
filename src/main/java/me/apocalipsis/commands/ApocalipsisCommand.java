@@ -18,6 +18,9 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.event.HandlerList;
+import org.bukkit.plugin.RegisteredListener;
 
 import me.apocalipsis.Apocalipsis;
 import me.apocalipsis.disaster.DisasterController;
@@ -2467,6 +2470,8 @@ public class ApocalipsisCommand implements CommandExecutor {
             sender.sendMessage("");
             sender.sendMessage("§e▸ Utilidades:");
             sender.sendMessage("  §f/avo evento4 fragmentos <jugador> [cant] §7- Dar fragmentos");
+            sender.sendMessage("  §f/avo evento4 testwarden <jugador> §7- Test Warden (34 fragmentos)");
+            sender.sendMessage("  §f/avo evento4 getitemsevento4 §7- Obtener todos los items únicos");
             sender.sendMessage("  §f/avo evento4 anomalia spawn §7- Spawn anomalía");
             sender.sendMessage("  §f/avo evento4 portal spawn §7- Ver info portal");
             sender.sendMessage("  §f/avo evento4 tp <portal|anomalia> §7- Teleportarse");
@@ -2675,6 +2680,164 @@ public class ApocalipsisCommand implements CommandExecutor {
                 
                 sender.sendMessage("§a✓ Dados §e" + cantidad + " §afragmentos a §e" + target.getName());
                 target.sendMessage("§5§l⚡ Has recibido §e" + cantidad + " §5§lFragmento(s) del Vacío");
+                break;
+                
+            case "testwarden":
+                if (evento4 == null) {
+                    sender.sendMessage("§cEl evento no está activo.");
+                    return;
+                }
+                
+                if (args.length < 3) {
+                    sender.sendMessage("§cUso: /avo evento4 testwarden <jugador>");
+                    sender.sendMessage("§7Da 34 fragmentos para testear el spawn del Warden (aparece a los 35)");
+                    return;
+                }
+                
+                Player targetWarden = plugin.getServer().getPlayer(args[2]);
+                if (targetWarden == null) {
+                    sender.sendMessage("§cJugador no encontrado: " + args[2]);
+                    return;
+                }
+                
+                // Dar 34 fragmentos (el Warden aparece a los 35)
+                int cantidadWarden = 34;
+                for (int i = 0; i < cantidadWarden; i++) {
+                    targetWarden.getInventory().addItem(evento4.getItems().crearFragmentoDelVacio());
+                }
+                
+                // Título y efectos
+                targetWarden.sendTitle("§5§l⚡ TEST WARDEN ⚡", "§c+34 fragmentos §7(Warden spawn a 35)", 10, 60, 15);
+                targetWarden.playSound(targetWarden.getLocation(), Sound.ENTITY_WARDEN_EMERGE, 0.5f, 1.5f);
+                targetWarden.playSound(targetWarden.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.5f);
+                targetWarden.spawnParticle(Particle.DRAGON_BREATH, targetWarden.getLocation().add(0, 1, 0), 50, 0.5, 0.5, 0.5, 0.1);
+                targetWarden.spawnParticle(Particle.SCULK_SOUL, targetWarden.getLocation().add(0, 1, 0), 30, 0.3, 0.5, 0.3, 0.05);
+                
+                sender.sendMessage("§a✓ Dados §c34 fragmentos §aa §e" + targetWarden.getName() + " §a(Test Warden)");
+                sender.sendMessage("§7El Warden spawneará cuando tenga §e35 fragmentos §7totales (recolectados globalmente)");
+                sender.sendMessage("§7Instrucciones:");
+                sender.sendMessage("§7  1. El jugador debe §eentregar los 34 fragmentos §7a una anomalía");
+                sender.sendMessage("§7  2. Luego §erecolectar 1 fragmento más §7para llegar a 35");
+                sender.sendMessage("§7  3. El §4Warden §7spawneará cerca de la anomalía");
+                targetWarden.sendMessage("");
+                targetWarden.sendMessage("§c§l⚠ TEST WARDEN ACTIVADO ⚠");
+                targetWarden.sendMessage("§7Entrega los §e34 fragmentos §7a anomalías");
+                targetWarden.sendMessage("§7Recolecta §e1 más §7y el §4Warden §7aparecerá");
+                targetWarden.sendMessage("");
+                break;
+                
+            case "getitemsevento4":
+                if (!(sender instanceof Player)) {
+                    sender.sendMessage("§cEste comando solo puede ser usado por jugadores.");
+                    return;
+                }
+                
+                Player admin = (Player) sender;
+                
+                // Obtener el listener de CaminoEnd para acceder a métodos de creación de items
+                me.apocalipsis.events.CaminoEndListener listener = null;
+                for (HandlerList handlers : HandlerList.getHandlerLists()) {
+                    for (RegisteredListener rl : handlers.getRegisteredListeners()) {
+                        if (rl.getListener() instanceof me.apocalipsis.events.CaminoEndListener) {
+                            listener = (me.apocalipsis.events.CaminoEndListener) rl.getListener();
+                            break;
+                        }
+                    }
+                    if (listener != null) break;
+                }
+                
+                if (listener == null) {
+                    sender.sendMessage("§cError: No se pudo acceder al sistema de items del evento.");
+                    return;
+                }
+                
+                java.util.List<ItemStack> itemsUnicos = new java.util.ArrayList<>();
+                
+                // Items de anomalías (Enderman guardián)
+                try {
+                    java.lang.reflect.Method metodoEspada = me.apocalipsis.events.CaminoEndListener.class.getDeclaredMethod("crearEspadaDelVacio");
+                    metodoEspada.setAccessible(true);
+                    itemsUnicos.add((ItemStack) metodoEspada.invoke(listener));
+                    
+                    java.lang.reflect.Method metodoPico = me.apocalipsis.events.CaminoEndListener.class.getDeclaredMethod("crearPicoDelVacio");
+                    metodoPico.setAccessible(true);
+                    itemsUnicos.add((ItemStack) metodoPico.invoke(listener));
+                    
+                    java.lang.reflect.Method metodoEscudo = me.apocalipsis.events.CaminoEndListener.class.getDeclaredMethod("crearEscudoDimensional");
+                    metodoEscudo.setAccessible(true);
+                    itemsUnicos.add((ItemStack) metodoEscudo.invoke(listener));
+                    
+                    java.lang.reflect.Method metodoCasco = me.apocalipsis.events.CaminoEndListener.class.getDeclaredMethod("crearCascoDelObservador");
+                    metodoCasco.setAccessible(true);
+                    itemsUnicos.add((ItemStack) metodoCasco.invoke(listener));
+                    
+                    java.lang.reflect.Method metodoPolvo = me.apocalipsis.events.CaminoEndListener.class.getDeclaredMethod("crearPolvoDelVacio");
+                    metodoPolvo.setAccessible(true);
+                    itemsUnicos.add((ItemStack) metodoPolvo.invoke(listener));
+                    
+                    // Items del Warden Final
+                    java.lang.reflect.Method metodoCorazon = me.apocalipsis.events.CaminoEndListener.class.getDeclaredMethod("crearCorazonDelVacio");
+                    metodoCorazon.setAccessible(true);
+                    itemsUnicos.add((ItemStack) metodoCorazon.invoke(listener));
+                    
+                    java.lang.reflect.Method metodoEspadaGuardian = me.apocalipsis.events.CaminoEndListener.class.getDeclaredMethod("crearEspadaDelGuardian");
+                    metodoEspadaGuardian.setAccessible(true);
+                    itemsUnicos.add((ItemStack) metodoEspadaGuardian.invoke(listener));
+                    
+                    java.lang.reflect.Method metodoHacha = me.apocalipsis.events.CaminoEndListener.class.getDeclaredMethod("crearHachaDelGuardian");
+                    metodoHacha.setAccessible(true);
+                    itemsUnicos.add((ItemStack) metodoHacha.invoke(listener));
+                    
+                    java.lang.reflect.Method metodoPeto = me.apocalipsis.events.CaminoEndListener.class.getDeclaredMethod("crearPetoDelGuardian");
+                    metodoPeto.setAccessible(true);
+                    itemsUnicos.add((ItemStack) metodoPeto.invoke(listener));
+                    
+                    java.lang.reflect.Method metodoPantalones = me.apocalipsis.events.CaminoEndListener.class.getDeclaredMethod("crearPantalonesDelGuardian");
+                    metodoPantalones.setAccessible(true);
+                    itemsUnicos.add((ItemStack) metodoPantalones.invoke(listener));
+                    
+                } catch (Exception e) {
+                    sender.sendMessage("§cError al crear items únicos: " + e.getMessage());
+                    e.printStackTrace();
+                    return;
+                }
+                
+                // Dar todos los items al admin
+                for (ItemStack item : itemsUnicos) {
+                    admin.getInventory().addItem(item);
+                }
+                
+                // Mensaje de confirmación
+                admin.sendMessage("");
+                admin.sendMessage("§8§m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                admin.sendMessage("§5§l⚡ ITEMS ÚNICOS DEL CAMINO AL END ⚡");
+                admin.sendMessage("");
+                admin.sendMessage("§7Se han entregado todos los items únicos:");
+                admin.sendMessage("");
+                admin.sendMessage("§d§lDROPS DE ANOMALÍAS (Enderman):");
+                admin.sendMessage("  §8▪ §5Espada del Vacío");
+                admin.sendMessage("  §8▪ §5Pico del Vacío");
+                admin.sendMessage("  §8▪ §5Escudo Dimensional");
+                admin.sendMessage("  §8▪ §5Casco del Observador");
+                admin.sendMessage("  §8▪ §dPolvo del Vacío");
+                admin.sendMessage("");
+                admin.sendMessage("§4§lDROPS DEL GUARDIÁN DE LAS PROFUNDIDADES:");
+                admin.sendMessage("  §8▪ §4§lCorazón de las Profundidades §7(LEGENDARIO)");
+                admin.sendMessage("  §8▪ §7  §8§o\"Spoiler de un evento futuro...\"");
+                admin.sendMessage("  §8▪ §cEspada del Guardián §7(ÉPICO)");
+                admin.sendMessage("  §8▪ §cHacha del Guardián §7(ÉPICO)");
+                admin.sendMessage("  §8▪ §cPeto del Guardián §7(ÉPICO)");
+                admin.sendMessage("  §8▪ §cPantalones del Guardián §7(ÉPICO)");
+                admin.sendMessage("");
+                admin.sendMessage("§7Total: §e" + itemsUnicos.size() + " items únicos");
+                admin.sendMessage("§8§m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                admin.sendMessage("");
+                
+                // Efectos visuales
+                Location loc = admin.getLocation();
+                admin.getWorld().playSound(loc, Sound.BLOCK_END_PORTAL_SPAWN, 1.0f, 1.2f);
+                admin.getWorld().spawnParticle(Particle.PORTAL, loc.clone().add(0, 1, 0), 100, 0.5, 0.5, 0.5, 1.0);
+                admin.getWorld().spawnParticle(Particle.END_ROD, loc.clone().add(0, 1, 0), 50, 0.3, 0.3, 0.3, 0.1);
                 break;
                 
             case "anomalia":

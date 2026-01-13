@@ -164,9 +164,10 @@ public class TutorialManager {
         
         UUID uuid = player.getUniqueId();
         
-        // [IMPORTANTE] NO registrar en el sistema de dificultad todavía
-        // Esto se hará cuando el tutorial termine exitosamente
-        // Si lo hacemos ahora, hasPlayerData() devuelve true y cancela el tutorial
+        // [FIX] Registrar INMEDIATAMENTE en el sistema de dificultad
+        // Esto evita que el jugador reciba el tutorial múltiples veces
+        // si se desconecta antes de que se ejecute el scheduled task (5 min)
+        difficultySystem.registerFirstJoin(player);
         
         // Intentar cargar datos guardados
         TutorialState loadedState = dataPersistence.loadTutorialState(uuid);
@@ -313,12 +314,10 @@ public class TutorialManager {
         
         state.setTutorialStarted(true);
         
-        // [IMPORTANTE] Registrar en el sistema de dificultad AHORA
-        // Esto marca que el jugador ya recibió el tutorial
-        difficultySystem.registerFirstJoin(player);
+        // Registro ya se hizo en handleFirstJoin() para evitar tutoriales duplicados
         
         plugin.getLogger().info(String.format(
-            "[Tutorial] Tutorial iniciado para %s. Kit entregado y registrado en sistema.",
+            "[Tutorial] Tutorial iniciado para %s.",
             player.getName()
         ));
     }

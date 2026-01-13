@@ -175,15 +175,18 @@ dificultad_progresiva:
 
 kit_inicio:
   # ══════════════════════════════════════════════════════════════════
-  # SISTEMA COMPLETAMENTE DESHABILITADO
-  # NO se dan items ni armaduras - Solo efectos según fase del tutorial
+  # SISTEMA DE KIT INICIAL - SOLO COMIDA
+  # NO se dan armaduras ni herramientas - Solo comida para comenzar
   # ══════════════════════════════════════════════════════════════════
-  enabled: false
-  otorgar_automatico: false
-  dar_inmediatamente: false
+  enabled: true
+  otorgar_automatico: true
+  dar_inmediatamente: true
   
-  # Items removidos - no se usan
-  items: []
+  # Solo comida básica para supervivencia
+  items:
+    - "minecraft:bread:16"              # 16 panes
+    - "minecraft:cooked_beef:8"         # 8 filetes cocidos
+    - "minecraft:apple:4"               # 4 manzanas
   
   mensaje_entrega:
     mostrar_titulo: true

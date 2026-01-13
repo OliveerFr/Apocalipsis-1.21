@@ -34,12 +34,65 @@ fases:
     duracion_min_ticks: 36000      # 30 minutos mínimo
     duracion_max_ticks: 54000      # 45 minutos máximo
     
+    clima:
+      tipo: "end_atmosphere"       # Atmósfera del End (sin lluvia)
+      cielo_despejado: true
+      tiempo: 13000                # Atardecer violeta
+      particulas_cielo: true       # Partículas violeta en el cielo
+    
     anomalia_spawn:
       intervalo_ticks: 200         # Cada 10 segundos intento de spawn
       max_simultaneas: 8
       distancia_minima_spawn: 150  # Distancia mínima entre anomalías
       radio_jugador_min: 100       # Radio mínimo desde jugador
       radio_jugador_max: 300       # Radio máximo desde jugador
+      
+      estructura_end:              # Bloques de End en anomalías
+        plataforma: "END_STONE"    # Plataforma base 3x3
+        pilares: "PURPUR_PILLAR"   # Pilares decorativos
+        bloques_flotantes: true    # End Rods flotantes
+    
+    entidades:                     # Sistema de spawneo de entidades
+      guardian_vacio:              # Enderman en anomalías INESTABLES
+        tipo: "ENDERMAN"
+        nombre: "§5§lGuardián del Vacío"
+        cantidad: 1
+        acompañantes:
+          tipo: "ENDERMITE"
+          nombre: "§7§oParásito del Vacío"
+          cantidad_min: 1
+          cantidad_max: 3
+      
+      drops:                       # Sistema de drops con probabilidad
+        guardian:
+          fragmentos_vacio:        # SIEMPRE
+            cantidad_min: 2
+            cantidad_max: 4
+            probabilidad: 100
+          perlas_ender:            # SIEMPRE
+            cantidad_min: 1
+            cantidad_max: 3
+            probabilidad: 100
+          espada_vacio:            # Items únicos con probabilidad
+            probabilidad: 30
+            encantamientos: "Sharpness IV, Knockback II, Looting I"
+          pico_vacio:
+            probabilidad: 25
+            encantamientos: "Efficiency IV, Fortune II, Unbreaking III"
+          escudo_dimensional:
+            probabilidad: 20
+            encantamientos: "Unbreaking III, Mending"
+          casco_observador:
+            probabilidad: 15
+            encantamientos: "Protection IV, Unbreaking III, Respiration III, Aqua Affinity"
+        
+        endermite:
+          fragmento_vacio:
+            cantidad: 1
+            probabilidad: 50
+          polvo_vacio:
+            cantidad: 1
+            probabilidad: 15
     
     efectos_visuales:
       particulas_espiral:
@@ -72,6 +125,7 @@ fases:
   resonancia:
     nombre: "La Resonancia"
     transicion: "automatica"        # Transición automática tras duración de anomalías
+    duracion: "larga"               # Fase más larga (30-45 min)
     
     fragmentos:
       objetivo_global: 40           # Total de fragmentos a recolectar
@@ -82,6 +136,166 @@ fases:
       anuncio_cada: 5               # Anunciar cada 5 fragmentos
       anuncio_global: true
       formato: "§7[§5✦§7] §fFragmento recolectado: §e%actual%§7/§e%total% §7(§a%porcentaje%%§7)"
+    
+    # ═══════════════════════════════════════════════════════════════
+    # SISTEMA DE HORDAS (FASE 2)
+    # ═══════════════════════════════════════════════════════════════
+    hordas:
+      activado: true
+      intervalo_min_ticks: 6000     # 5 minutos mínimo entre hordas
+      intervalo_max_ticks: 12000    # 10 minutos máximo entre hordas
+      
+      tipos:
+        brutos_vacio:                # 40% de probabilidad
+          probabilidad: 40
+          nombre: "§c§oBrutos del Vacío"
+          entidades:
+            - tipo: "PIGLIN_BRUTE"
+              cantidad_min: 3
+              cantidad_max: 5
+              nombre: "§c§lBruto del Vacío"
+              immune_zombificacion: true
+          drops:
+            fragmento_vacio:
+              probabilidad: 40
+            oro:
+              probabilidad: 20
+              cantidad_min: 3
+              cantidad_max: 8
+            espada_oro:
+              probabilidad: 10
+              encantamientos: "Sharpness III, Knockback II"
+        
+        ciudadanos_end:              # 30% de probabilidad
+          probabilidad: 30
+          nombre: "§5§oCiudadanos del End"
+          entidades:
+            - tipo: "ENDERMAN"
+              cantidad_min: 4
+              cantidad_max: 7
+              nombre: "§5§lCiudadano del End"
+          drops:
+            fragmento_vacio:
+              probabilidad: 35
+            perlas_ender:
+              probabilidad: 100
+              cantidad_min: 1
+              cantidad_max: 2
+        
+        legion_vacio:                # 30% de probabilidad (HORDA MIXTA)
+          probabilidad: 30
+          nombre: "§4§oLegión del Vacío"
+          entidades:
+            - tipo: "PIGLIN_BRUTE"
+              cantidad: 2
+              nombre: "§c§lBruto de la Legión"
+            - tipo: "ENDERMAN"
+              cantidad: 3
+              nombre: "§5§lTeleportador de la Legión"
+            - tipo: "ENDERMITE"
+              cantidad_min: 5
+              cantidad_max: 8
+              nombre: "§7Parásito de la Legión"
+          drops:
+            variados: true
+    
+    # ═══════════════════════════════════════════════════════════════
+    # WARDEN - JEFE FINAL
+    # ═══════════════════════════════════════════════════════════════
+    warden:
+      activado: true
+      spawn_fragmentos_min: 35      # Aparece entre fragmento 35-39
+      proximidad_jugador: 20.0      # Radio de detección (bloques)
+      
+      stats:
+        nombre: "§4§l☠ GUARDIÁN DEL VACÍO ABSOLUTO ☠"
+        salud: 1000.0                # 500 corazones
+        daño_ataque: 40.0            # 20 corazones por golpe
+        resistencia_retroceso: 1.0   # Inmune a knockback
+      
+      mecanica_distancia:
+        activado: true
+        radio_maximo: 100.0          # Si todos se alejan >100 bloques
+        despawn_si_lejos: true       # Se despawnea si se alejan
+        excepcion_fragmento_40: true # En fragmento 40 NO se despawnea
+      
+      fragmento_40:
+        obligatorio_matar: true      # DEBE matarse al Warden para fragmento 40
+        mensaje: "§c§l⚠ EL GUARDIÁN DEBE SER DERROTADO ⚠"
+        bloquea_transicion: true     # No permite pasar a REVELACION sin matarlo
+      
+      drops:
+        garantizados:
+          corazon_vacio:             # Item legendario único
+            tipo: "ECHO_SHARD"
+            nombre: "§5§l◆ CORAZÓN DEL VACÍO ABSOLUTO ◆"
+            encantamiento_visual: "Protection X"
+          fragmentos_vacio:
+            cantidad_min: 10
+            cantidad_max: 15
+          escombros_antiguos:
+            cantidad_min: 8
+            cantidad_max: 16
+          diamantes:
+            cantidad_min: 16
+            cantidad_max: 32
+        
+        probabilisticos:
+          espada_guardian:           # 80% - Netherite Sword
+            probabilidad: 80
+            encantamientos: "Sharpness V, Looting III, Knockback II, Fire Aspect II, Unbreaking III"
+          hacha_guardian:            # 70% - Netherite Axe
+            probabilidad: 70
+            encantamientos: "Sharpness V, Efficiency V, Fortune II, Unbreaking III"
+          peto_guardian:             # 60% - Netherite Chestplate
+            probabilidad: 60
+            encantamientos: "Protection V, Unbreaking III, Mending, Knockback Resistance"
+          pantalones_guardian:       # 50% - Netherite Leggings
+            probabilidad: 50
+            encantamientos: "Protection IV, Projectile Protection III, Unbreaking III, Mending"
+    
+    # ═══════════════════════════════════════════════════════════════
+    # EFECTOS VISUALES (FASE 2)
+    # ═══════════════════════════════════════════════════════════════
+    efectos_visuales:
+      darkness:
+        activado: true
+        fragmentos_min: 30           # A partir de 30 fragmentos
+        probabilidad: 0.3            # 30% cada aplicación
+        duracion_ticks: 80           # 4 segundos
+        nivel: 0
+      
+      particulas_progresivas:
+        inicio:                      # 0-20 fragmentos
+          portal:
+            cantidad: 5
+            radio: 1.0
+          reverso_portal:
+            cantidad: 0
+        
+        mitad:                       # 20-30 fragmentos
+          portal:
+            cantidad: 15
+            radio: 2.0
+          reverso_portal:
+            cantidad: 8
+            radio: 1.5
+        
+        final:                       # 30-40 fragmentos
+          portal:
+            cantidad: 0
+          sculk_soul:
+            cantidad: 10
+            radio: 3.0
+          soul:
+            cantidad: 5
+            radio: 2.0
+      
+      sonidos_ambiente:
+        enderman_ambient:
+          probabilidad: 0.2
+          volumen: 0.2
+          pitch: 0.7
   
   revelacion:
     nombre: "La Revelación"
@@ -90,33 +304,55 @@ fases:
     
     portal:
       auto_generar: true
+      buscar_suelo: true         # Busca suelo seguro automáticamente
       ubicacion:
         # Ubicación predefinida (opcional, si no se define usa spawn del mundo)
         world: "world"
         x: 0
-        y: 100
+        y: -1                    # -1 = buscar suelo automáticamente
         z: 0
       
       estructura:
-        tipo: "incompleto"
-        bloques_totales: 12
-        bloques_colocados: 8        # 8 de 12 bloques (66% completo)
+        tipo: "incompleto_epico"
+        tamaño: "9x9"                # Portal épico más grande
+        bloques_totales: 28          # 28 frames en total (7 por lado)
+        bloques_colocados: 14        # 14 de 28 bloques (50% incompleto)
         material_frame: "END_PORTAL_FRAME"
         material_base: "END_STONE_BRICKS"
+        material_pilares: "PURPUR_PILLAR"
+        plataforma_size: "11x11"     # Plataforma épica
       
       efectos:
         particulas_portal:
           tipo: "PORTAL"
-          cantidad: 20
-          radio: 1.5
+          cantidad: 40             # Más partículas
+          radio: 3.5               # Radio más amplio
+          frecuencia_ticks: 2
+        
+        particulas_portal_reverso:
+          tipo: "REVERSE_PORTAL"
+          cantidad: 25
+          radio: 3.0
           frecuencia_ticks: 2
         
         particulas_espiral:
           tipo: "END_ROD"
-          cantidad: 8
-          radio: 2.0
-          altura_max: 5.0
+          cantidad: 16             # Espiral más densa
+          radio: 4.0               # Radio más amplio
+          altura_max: 12.0         # Espiral más alta
           frecuencia_ticks: 2
+        
+        anillo_dragon:
+          tipo: "DRAGON_BREATH"
+          cantidad: 32
+          radio: 5.5
+          frecuencia_ticks: 2
+        
+        pulsos_energia:
+          tipo: "SOUL"
+          cantidad: 50
+          radio: 4.0
+          intervalo_ticks: 80      # Cada 4 segundos
 
 # ═══════════════════════════════════════════════════════════════════
 # MENSAJES DEL EVENTO

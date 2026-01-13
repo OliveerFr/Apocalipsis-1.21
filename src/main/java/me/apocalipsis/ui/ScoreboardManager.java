@@ -21,6 +21,7 @@ import me.apocalipsis.missions.MissionService;
 import me.apocalipsis.missions.RankService;
 import me.apocalipsis.state.ServerState;
 import me.apocalipsis.state.StateManager;
+import me.apocalipsis.tutorial.OnboardingManager;
 
 public class ScoreboardManager {
 
@@ -421,15 +422,17 @@ public class ScoreboardManager {
             // Regenerar contenido de misiones
             StringBuilder missionContent = new StringBuilder();
             
-            // [PRIORIDAD] Verificar si hay hitos de onboarding pendientes
-            boolean showOnboardingFirst = false;
+            // [PRIORIDAD] Verificar si está en tutorial (onboarding NO completado)
+            boolean isInTutorial = false;
             if (plugin.getTutorialManager() != null && plugin.getTutorialManager().getOnboardingManager() != null) {
                 var onboarding = plugin.getTutorialManager().getOnboardingManager();
+                // Si NO ha completado el onboarding, está en tutorial
                 if (!onboarding.hasCompletedOnboarding(uuid)) {
+                    isInTutorial = true;
+                    missionContent.append("§7").append(ICON_MISSIONS).append(" §6§lHitos Tutorial:\n");
+                    
                     var pendingMilestones = onboarding.getPendingMilestones(uuid);
                     if (!pendingMilestones.isEmpty()) {
-                        showOnboardingFirst = true;
-                        missionContent.append("§7").append(ICON_MISSIONS).append(" §6§lHitos Tutorial:\n");
                         int count = 0;
                         for (String milestone : pendingMilestones) {
                             if (count >= 3) break;
@@ -437,41 +440,50 @@ public class ScoreboardManager {
                             missionContent.append("§7• §e").append(milestoneDisplay).append("\n");
                             count++;
                         }
+                    } else {
+                        // Si no hay progreso aún, mostrar todos los hitos como pendientes
+                        missionContent.append("§7• §eCaminar 100 bloques\n");
+                        missionContent.append("§7• §eCraftear primer item\n");
+                        missionContent.append("§7• §eConstruir refugio\n");
                     }
+                    
+                    // Mostrar progreso de hitos
+                    OnboardingManager.OnboardingProgress progress = onboarding.getProgress(uuid);
+                    int completados = (progress != null) ? progress.getCompletedCount() : 0;
+                    int totalHitos = 5; // Total de hitos en OnboardingMilestone enum
+                    missionContent.append("§7Progreso: §a").append(completados).append("§7/§f").append(totalHitos).append("\n");
                 }
             }
             
-            // Si no mostró hitos o aún hay espacio, mostrar misiones globales
-            if (!showOnboardingFirst) {
+            // Solo mostrar misiones globales si NO está en tutorial
+            if (!isInTutorial) {
                 missionContent.append("§7").append(ICON_MISSIONS).append(" §e§lMisiones:\n");
-            } else {
-                missionContent.append("§7").append(ICON_MISSIONS).append(" §e§lMisiones Globales:\n");
-            }
-            
-            var assignments = missionService.getActiveAssignments(player);
-            var incompletas = assignments.stream()
-                .filter(a -> !a.isCompleted() && !a.isFailed())
-                .filter(a -> a.getMission().getTipo().isEnabled())
-                .limit(showOnboardingFirst ? 2 : 3)
-                .toList();
-            
-            if (incompletas.isEmpty()) {
-                missionContent.append("§a§lTodas completadas ✓\n");
-            } else {
-                for (var assignment : incompletas) {
-                    String alias = assignment.getMission().getNombre();
-                    if (alias.length() > MAX_MISSION_NAME_LENGTH) {
-                        alias = alias.substring(0, MAX_MISSION_NAME_LENGTH) + "...";
+                
+                var assignments = missionService.getActiveAssignments(player);
+                var incompletas = assignments.stream()
+                    .filter(a -> !a.isCompleted() && !a.isFailed())
+                    .filter(a -> a.getMission().getTipo().isEnabled())
+                    .limit(3)
+                    .toList();
+                
+                if (incompletas.isEmpty()) {
+                    missionContent.append("§a§lTodas completadas ✓\n");
+                } else {
+                    for (var assignment : incompletas) {
+                        String alias = assignment.getMission().getNombre();
+                        if (alias.length() > MAX_MISSION_NAME_LENGTH) {
+                            alias = alias.substring(0, MAX_MISSION_NAME_LENGTH) + "...";
+                        }
+                        missionContent.append("§7• §f").append(alias).append(" §8(")
+                            .append(assignment.getProgress()).append("/")
+                            .append(assignment.getMission().getCantidad()).append(")\n");
                     }
-                    missionContent.append("§7• §f").append(alias).append(" §8(")
-                        .append(assignment.getProgress()).append("/")
-                        .append(assignment.getMission().getCantidad()).append(")\n");
                 }
+                
+                int completed = missionService.getCompletedCount(player);
+                int total = assignments.size();
+                missionContent.append("§7Completadas: §a").append(completed).append("§7/§f").append(total).append("\n");
             }
-            
-            int completed = missionService.getCompletedCount(player);
-            int total = assignments.size();
-            missionContent.append("§7Completadas: §a").append(completed).append("§7/§f").append(total).append("\n");
             
             // Guardar en caché
             String cached = missionContent.toString();
