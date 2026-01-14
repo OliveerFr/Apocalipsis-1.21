@@ -228,26 +228,130 @@ public class CaminoEndListener implements Listener {
                 clickLoc.getWorld().spawnParticle(Particle.SCULK_SOUL, clickLoc, 30, 0.5, 0.5, 0.5, 0.1);
                 
             } else {
-                // Click en base de piedra del End - información
-                // Mostrar fragmentos que faltan
-                int fragmentosFaltantes = 40 - evento.getFragmentosRecolectados();
-                int fragmentosPorcentaje = (evento.getFragmentosRecolectados() * 100) / 40;
+                // Click en base de piedra del End - ENTREGA DE FRAGMENTOS
+                event.setCancelled(true); // Prevenir interacción normal
                 
-                jugador.sendMessage("§5§l⚡ EL OBSERVADOR:");
-                jugador.sendMessage("§7§o\"El portal... " + fragmentosPorcentaje + "% completo...\"");
-                
-                if (fragmentosFaltantes > 0) {
-                    jugador.sendMessage("§7§o\"Aún faltan " + fragmentosFaltantes + " piezas... invisibles...\"");
-                } else {
-                    jugador.sendMessage("§7§o\"Los fragmentos... todos recuperados...\"");
-                    jugador.sendMessage("§7§o\"Pero el portal... permanece cerrado...\"");
+                // Verificar si el jugador tiene fragmentos en su inventario
+                int fragmentosEnInventario = 0;
+                for (ItemStack item : jugador.getInventory().getContents()) {
+                    if (item != null && evento.getItems().esFragmentoDelVacio(item)) {
+                        fragmentosEnInventario += item.getAmount();
+                    }
                 }
                 
-                jugador.sendMessage("§7§o\"...que el camino existe.\"");
-                
-                // Efecto de partículas
-                clickLoc.getWorld().spawnParticle(Particle.PORTAL, clickLoc, 20, 0.5, 0.5, 0.5, 0.05);
-                jugador.playSound(jugador.getLocation(), Sound.BLOCK_PORTAL_TRIGGER, 0.3f, 0.8f);
+                if (fragmentosEnInventario > 0) {
+                    // ENTREGAR FRAGMENTOS AL PORTAL
+                    int fragmentosActuales = evento.getFragmentosRecolectados();
+                    int fragmentosNecesarios = 40 - fragmentosActuales;
+                    int fragmentosAEntregar = Math.min(fragmentosEnInventario, fragmentosNecesarios);
+                    
+                    if (fragmentosAEntregar > 0) {
+                        // Remover fragmentos del inventario
+                        int fragmentosRestantes = fragmentosAEntregar;
+                        for (ItemStack item : jugador.getInventory().getContents()) {
+                            if (item != null && evento.getItems().esFragmentoDelVacio(item)) {
+                                int cantidad = item.getAmount();
+                                if (cantidad <= fragmentosRestantes) {
+                                    jugador.getInventory().remove(item);
+                                    fragmentosRestantes -= cantidad;
+                                } else {
+                                    item.setAmount(cantidad - fragmentosRestantes);
+                                    fragmentosRestantes = 0;
+                                }
+                                
+                                if (fragmentosRestantes <= 0) break;
+                            }
+                        }
+                        
+                        // Actualizar contador global
+                        int nuevoTotal = fragmentosActuales + fragmentosAEntregar;
+                        evento.setFragmentosRecolectados(nuevoTotal);
+                        
+                        // Feedback visual y sonoro
+                        jugador.playSound(jugador.getLocation(), Sound.BLOCK_END_PORTAL_FRAME_FILL, 1.0f, 1.0f);
+                        jugador.getWorld().spawnParticle(Particle.PORTAL, 
+                            event.getClickedBlock().getLocation().add(0.5, 1, 0.5), 
+                            50, 0.3, 0.5, 0.3, 0.1);
+                        
+                        int porcentaje = (nuevoTotal * 100) / 40;
+                        
+                        // Mensaje del Observador
+                        jugador.sendMessage("§5§l⚡ EL OBSERVADOR:");
+                        jugador.sendMessage("§7§o\"" + fragmentosAEntregar + " fragmento(s) absorbido(s)...\"");
+                        jugador.sendMessage("§7§o\"Portal: " + porcentaje + "% completo... (" + nuevoTotal + "/40)\"");
+                        
+                        // SI SE COMPLETA EL PORTAL (40 fragmentos)
+                        // Verificar si el Warden aún está vivo
+                        boolean wardenVivo = (evento.getWardenActivo() != null && 
+                                            !evento.getWardenActivo().isDead());
+                        
+                        if (nuevoTotal >= 40 && wardenVivo) {
+                            // Aún falta derrotar al Warden
+                            jugador.sendTitle(
+                                "§c§l⚠ INCOMPLETO",
+                                "§7§oEl portal necesita algo más...",
+                                10, 50, 20
+                            );
+                            jugador.sendMessage("§5§l⚡ EL OBSERVADOR:");
+                            jugador.sendMessage("§7§o\"Los fragmentos están... pero falta algo...\"");
+                            jugador.sendMessage("§7§o\"Un guardián debe caer... primero...\"");
+                            jugador.playSound(jugador.getLocation(), Sound.ENTITY_ENDERMAN_STARE, 1.0f, 0.5f);
+                            
+                        } else if (nuevoTotal >= 40 && !wardenVivo) {
+                            // ¡PORTAL COMPLETO! Ejecutar cliffhanger automáticamente
+                            jugador.sendTitle(
+                                "§5§l✦ PORTAL COMPLETO ✦",
+                                "§7§oAlgo se revela...",
+                                10, 70, 30
+                            );
+                            
+                            jugador.sendMessage("§5§l⚡ EL OBSERVADOR:");
+                            jugador.sendMessage("§d§o\"TODO ESTÁ LISTO...\"");
+                            jugador.sendMessage("§d§o\"EL PORTAL... DESPIERTA...\"");
+                            
+                            // Efectos dramáticos
+                            jugador.playSound(jugador.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 0.7f);
+                            jugador.playSound(jugador.getLocation(), Sound.BLOCK_END_PORTAL_SPAWN, 1.0f, 1.0f);
+                            
+                            // EJECUTAR CLIFFHANGER AUTOMÁTICAMENTE después de 3 segundos
+                            plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+                                evento.ejecutarCliffhangerYFinalizar();
+                            }, 60L); // 3 segundos de delay
+                        } else {
+                            // Fragmentos entregados pero aún faltan más
+                            int faltantes = 40 - nuevoTotal;
+                            jugador.sendMessage("§7§o\"Faltan " + faltantes + " fragmentos más...\"");
+                        }
+                        
+                    } else {
+                        // Ya se completaron los 40 fragmentos
+                        jugador.sendMessage("§5§l⚡ EL OBSERVADOR:");
+                        jugador.sendMessage("§7§o\"Todos los fragmentos ya fueron entregados...\"");
+                        jugador.playSound(jugador.getLocation(), Sound.BLOCK_PORTAL_TRIGGER, 0.3f, 0.8f);
+                    }
+                    
+                } else {
+                    // NO TIENE FRAGMENTOS - Mostrar información
+                    int fragmentosFaltantes = 40 - evento.getFragmentosRecolectados();
+                    int fragmentosPorcentaje = (evento.getFragmentosRecolectados() * 100) / 40;
+                    
+                    jugador.sendMessage("§5§l⚡ EL OBSERVADOR:");
+                    jugador.sendMessage("§7§o\"El portal... " + fragmentosPorcentaje + "% completo...\"");
+                    
+                    if (fragmentosFaltantes > 0) {
+                        jugador.sendMessage("§7§o\"Aún faltan " + fragmentosFaltantes + " piezas... invisibles...\"");
+                    } else {
+                        jugador.sendMessage("§7§o\"Los fragmentos... todos recuperados...\"");
+                        jugador.sendMessage("§7§o\"Pero el portal... permanece cerrado...\"");
+                    }
+                    
+                    jugador.sendMessage("§7§o\"...que el camino existe.\"");
+                    
+                    // Efecto de partículas
+                    event.getClickedBlock().getWorld().spawnParticle(Particle.PORTAL, 
+                        event.getClickedBlock().getLocation().add(0.5, 0.5, 0.5), 20, 0.5, 0.5, 0.5, 0.05);
+                    jugador.playSound(jugador.getLocation(), Sound.BLOCK_PORTAL_TRIGGER, 0.3f, 0.8f);
+                }
             }
         }
     }

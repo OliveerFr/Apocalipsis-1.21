@@ -365,6 +365,9 @@ public class CaminoEndEvent extends EventBase {
                             messageBus.broadcast("§5§l⚡ EL OBSERVADOR:", "warden_obligatorio");
                             messageBus.broadcast("§8§o\"...No permitirá que avances...\"", "warden_obligatorio");
                             messageBus.broadcast("§c§o\"...Debe ser derrotado para continuar...\"", "warden_obligatorio");
+                            
+                            // MOSTRAR UBICACIÓN DEL WARDEN en lugar del portal
+                            notificarUbicacionWarden(wardenActivo.getLocation());
                         }
                     } else {
                         transicionarAFase(Fase.REVELACION);
@@ -2544,6 +2547,10 @@ public class CaminoEndEvent extends EventBase {
         return anomaliasActivas;
     }
     
+    public org.bukkit.entity.Warden getWardenActivo() {
+        return wardenActivo;
+    }
+    
     public int getFragmentosRecolectados() {
         return fragmentosRecolectadosGlobalmente;
     }
@@ -2612,7 +2619,7 @@ public class CaminoEndEvent extends EventBase {
     /**
      * Ejecuta la secuencia de cliffhanger completa y luego finaliza el evento
      */
-    private void ejecutarCliffhangerYFinalizar() {
+    public void ejecutarCliffhangerYFinalizar() {
         // Evitar ejecuciones múltiples - CRÍTICO
         if (cliffhangerEjecutado) {
             plugin.getLogger().warning("[CaminoEnd] ⚠ Intento de ejecutar cliffhanger múltiple - BLOQUEADO");
@@ -3798,6 +3805,36 @@ public class CaminoEndEvent extends EventBase {
                 p.sendMessage(susurros[random.nextInt(susurros.length)]);
                 p.playSound(p.getLocation(), Sound.ENTITY_VEX_AMBIENT, 0.2f, 0.5f);
             }
+        }
+    }
+    
+    /**
+     * Notifica a todos los jugadores la ubicación del Warden
+     */
+    private void notificarUbicacionWarden(Location wardenLoc) {
+        for (Player p : plugin.getServer().getOnlinePlayers()) {
+            double distancia = p.getLocation().distance(wardenLoc);
+            int distanciaInt = (int) distancia;
+            
+            p.sendMessage("");
+            p.sendMessage("§c§l⚠ UBICACIÓN DEL GUARDIÁN DETECTADA:");
+            p.sendMessage("§7  Coordenadas: §c" + wardenLoc.getBlockX() + "§7, §c" + wardenLoc.getBlockY() + "§7, §c" + wardenLoc.getBlockZ());
+            p.sendMessage("§7  Distancia: §c~" + distanciaInt + " bloques");
+            p.sendMessage("§7  Mundo: §c" + wardenLoc.getWorld().getName());
+            p.sendMessage("");
+            p.sendMessage("§5§l⚡ EL OBSERVADOR:");
+            p.sendMessage("§7§o\"Derrótalo... para revelar el portal...\"");
+            p.sendMessage("");
+            
+            // Partículas en dirección al Warden (rojas/oscuras)
+            Location direccion = wardenLoc.clone().subtract(p.getLocation()).toVector().normalize()
+                .multiply(3).toLocation(p.getWorld()).add(p.getEyeLocation());
+            p.spawnParticle(Particle.SONIC_BOOM, direccion, 1);
+            p.spawnParticle(Particle.SCULK_SOUL, direccion, 20, 0.5, 0.5, 0.5, 0.02);
+            
+            // Sonido ominoso
+            p.playSound(p.getLocation(), Sound.ENTITY_WARDEN_HEARTBEAT, 0.8f, 0.6f);
+            p.playSound(p.getLocation(), Sound.ENTITY_WARDEN_LISTENING, 0.5f, 1.0f);
         }
     }
     
