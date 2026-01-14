@@ -34,11 +34,14 @@ public class BuddyService {
     // Recompensas pendientes por entregar
     private final Map<UUID, Integer> pendingMentorRewards;
     
-    // Tiempo de duración del buddy (7 días en millis)
-    private static final long BUDDY_DURATION = 7L * 24L * 60L * 60L * 1000L;
+    // Tiempo de duración del buddy (1 día en millis)
+    private static final long BUDDY_DURATION = 1L * 24L * 60L * 60L * 1000L;
     
     // Timestamps de inicio de buddy
     private final Map<UUID, Long> buddyStartTimes;
+    
+    // Historial de mentores previos: UUID del aprendiz → Lista de UUIDs de mentores
+    private final Map<UUID, List<UUID>> mentorHistory;
     
     // Tracking de estadísticas por mentor
     private final Map<UUID, BuddyStats> mentorStats;
@@ -121,6 +124,7 @@ public class BuddyService {
         this.mentorStats = new HashMap<>();
         this.dailyTimeTogetherStart = new HashMap<>();
         this.dailyTimeTogether = new HashMap<>();
+        this.mentorHistory = new HashMap<>();
         this.lastDayChecked = -1;
         
         // Iniciar scheduler de tiempo jugado juntos
@@ -132,6 +136,13 @@ public class BuddyService {
      */
     public boolean tryMatchBuddy(Player newPlayer) {
         UUID newUuid = newPlayer.getUniqueId();
+        
+        // Verificar que el jugador sea NOVATO o EXPLORADOR
+        MissionRank playerRank = plugin.getRankService().getRank(newPlayer);
+        if (playerRank.ordinal() > MissionRank.EXPLORADOR.ordinal()) {
+            plugin.getLogger().info("[Buddy] " + newPlayer.getName() + " tiene rango " + playerRank + ", no necesita mentor (solo NOVATO/EXPLORADOR)");
+            return false;
+        }
         
         // Ya tiene mentor
         if (activeBuddies.containsKey(newUuid)) {
@@ -176,7 +187,7 @@ public class BuddyService {
     
     private boolean isEligibleMentor(Player p) {
         MissionRank rank = plugin.getRankService().getRank(p);
-        return rank.ordinal() >= MissionRank.EXPLORADOR.ordinal();
+        return rank.ordinal() >= MissionRank.SOBREVIVIENTE.ordinal();
     }
     
     private boolean isNoviceNeedingMentor(Player p) {
@@ -185,15 +196,22 @@ public class BuddyService {
         if (activeBuddies.containsKey(uuid)) {
             return false;
         }
+        
+        // Verificar rango: solo NOVATO o EXPLORADOR
+        MissionRank rank = plugin.getRankService().getRank(p);
+        if (rank.ordinal() > MissionRank.EXPLORADOR.ordinal()) {
+            return false;
+        }
+        
         // Si hay sistema de onboarding, usarlo para priorizar novatos reales
         if (plugin.getTutorialManager() != null && plugin.getTutorialManager().getOnboardingManager() != null) {
             try {
                 return !plugin.getTutorialManager().getOnboardingManager().hasCompletedOnboarding(uuid);
             } catch (Throwable t) {
-                // En caso de cualquier excepción, hacer fallback a permitir
+                // En caso de cualquier excepción, hacer fallback a permitir por rango
             }
         }
-        // Fallback: cualquier jugador sin mentor
+        // Fallback: solo por rango
         return true;
     }
     
@@ -202,6 +220,8 @@ public class BuddyService {
      */
     private Player findAvailableMentor(Player newPlayer) {
         List<Player> candidates = new ArrayList<>();
+        UUID newUuid = newPlayer.getUniqueId();
+        List<UUID> previousMentors = mentorHistory.getOrDefault(newUuid, new ArrayList<>());
         
         for (Player online : Bukkit.getOnlinePlayers()) {
             if (online.getUniqueId().equals(newPlayer.getUniqueId())) {
@@ -213,9 +233,14 @@ public class BuddyService {
                 continue;
             }
             
-            // Verificar rango mínimo (EXPLORADOR o superior)
+            // Verificar rango mínimo (SOBREVIVIENTE o superior para ser mentor)
             MissionRank rank = plugin.getRankService().getRank(online);
-            if (rank.ordinal() < MissionRank.EXPLORADOR.ordinal()) {
+            if (rank.ordinal() < MissionRank.SOBREVIVIENTE.ordinal()) {
+                continue;
+            }
+            
+            // No permitir el mismo mentor otra vez
+            if (previousMentors.contains(online.getUniqueId())) {
                 continue;
             }
             
@@ -247,6 +272,10 @@ public class BuddyService {
         activeBuddies.put(newUuid, mentorUuid);
         buddyStartTimes.put(newUuid, System.currentTimeMillis());
         
+        // Agregar al historial de mentores
+        List<UUID> history = mentorHistory.computeIfAbsent(newUuid, k -> new ArrayList<>());
+        history.add(mentorUuid);
+        
         // Notificar a ambos
         newPlayer.sendMessage("");
         newPlayer.sendMessage("§6§l╔═══════════════════════════════════════╗");
@@ -254,7 +283,7 @@ public class BuddyService {
         newPlayer.sendMessage("§6§l╚═══════════════════════════════════════╝");
         newPlayer.sendMessage("§a✓ §6" + mentor.getName() + " §7es ahora tu mentor");
         newPlayer.sendMessage("§7Pueden ayudarse mutuamente y ganar recompensas");
-        newPlayer.sendMessage("§7Duración: §e7 días");
+        newPlayer.sendMessage("§7Duración: §e1 día");
         newPlayer.sendMessage("");
         
         mentor.sendMessage("");
@@ -263,7 +292,7 @@ public class BuddyService {
         mentor.sendMessage("§6§l╚═══════════════════════════════════════╝");
         mentor.sendMessage("§a✓ §6" + newPlayer.getName() + " §7es ahora tu aprendiz");
         mentor.sendMessage("§7Cuando progrese, tú también recibirás recompensas");
-        mentor.sendMessage("§7Duración: §e7 días");
+        mentor.sendMessage("§7Duración: §e1 día");
         mentor.sendMessage("");
         
         // Sonidos
@@ -282,7 +311,7 @@ public class BuddyService {
             return; // No tiene mentor
         }
         
-        // Verificar expiración (7 días)
+        // Verificar expiración (1 día)
         Long startTime = buddyStartTimes.get(apprenticeUuid);
         if (startTime != null && System.currentTimeMillis() - startTime > BUDDY_DURATION) {
             removeBuddyPair(apprenticeUuid);
@@ -394,6 +423,12 @@ public class BuddyService {
         // Nuevo emparejamiento
         activeBuddies.put(apprenticeUuid, mentorUuid);
         buddyStartTimes.put(apprenticeUuid, System.currentTimeMillis());
+        
+        // Agregar al historial de mentores si no existe
+        List<UUID> history = mentorHistory.computeIfAbsent(apprenticeUuid, k -> new ArrayList<>());
+        if (!history.contains(mentorUuid)) {
+            history.add(mentorUuid);
+        }
     }
     
     /**
@@ -619,6 +654,16 @@ public class BuddyService {
             plugin.getConfig().set(path, entry.getValue());
         }
         
+        // Guardar historial de mentores
+        for (Map.Entry<UUID, List<UUID>> entry : mentorHistory.entrySet()) {
+            List<String> mentorStrings = new ArrayList<>();
+            for (UUID mentorUuid : entry.getValue()) {
+                mentorStrings.add(mentorUuid.toString());
+            }
+            String path = "buddy-data.history." + entry.getKey().toString();
+            plugin.getConfig().set(path, mentorStrings);
+        }
+        
         plugin.saveConfig();
     }
     
@@ -639,11 +684,31 @@ public class BuddyService {
                     UUID mentorUuid = UUID.fromString(plugin.getConfig().getString("buddy-data.pairs." + apprenticeStr + ".mentor"));
                     Long startTime = plugin.getConfig().getLong("buddy-data.pairs." + apprenticeStr + ".startTime");
                     
-                    // Verificar si el emparejamiento aún es válido (menos de 7 días)
+                    // Verificar si el emparejamiento aún es válido (menos de 1 día)
                     long durationMs = System.currentTimeMillis() - startTime;
                     if (durationMs < BUDDY_DURATION) {
                         activeBuddies.put(apprenticeUuid, mentorUuid);
                         buddyStartTimes.put(apprenticeUuid, startTime);
+                    }
+                } catch (IllegalArgumentException ignored) {}
+            }
+        }
+        
+        // Cargar historial de mentores
+        org.bukkit.configuration.ConfigurationSection historySection = plugin.getConfig().getConfigurationSection("buddy-data.history");
+        if (historySection != null) {
+            for (String apprenticeStr : historySection.getKeys(false)) {
+                try {
+                    UUID apprenticeUuid = UUID.fromString(apprenticeStr);
+                    List<String> mentorStrings = plugin.getConfig().getStringList("buddy-data.history." + apprenticeStr);
+                    List<UUID> mentors = new ArrayList<>();
+                    for (String mentorStr : mentorStrings) {
+                        try {
+                            mentors.add(UUID.fromString(mentorStr));
+                        } catch (IllegalArgumentException ignored) {}
+                    }
+                    if (!mentors.isEmpty()) {
+                        mentorHistory.put(apprenticeUuid, mentors);
                     }
                 } catch (IllegalArgumentException ignored) {}
             }

@@ -64,7 +64,7 @@ ranks:
   MAESTRO:
     display_name: "&5&lMaestro"
     xp_required: 63350       # Nivel 36
-    misiones_diarias: 5
+    misiones_diarias: 6
     tab_prefix: "&5[M] "
     tab_suffix: ""
     chat_prefix: "&5M&7| "
@@ -73,7 +73,7 @@ ranks:
   TITAN:
     display_name: "&4&lTitán"
     xp_required: 91700       # Nivel 43
-    misiones_diarias: 4
+    misiones_diarias: 6
     tab_prefix: "&4[T] "
     tab_suffix: "&4✦"
     chat_prefix: "&4T&7| "
@@ -82,7 +82,7 @@ ranks:
   ABSOLUTO:
     display_name: "&f&l&oAbsoluto"
     xp_required: 110075       # Nivel 50
-    misiones_diarias: 3
+    misiones_diarias: 6
     tab_prefix: "&f&l[A] "
     tab_suffix: "&f&l✦✦"
     chat_prefix: "&f&lA&7| "

@@ -2561,7 +2561,65 @@ public class ApocalipsisCommand implements CommandExecutor {
                 sender.sendMessage("§7Fase actual: §e" + evento4.getFaseActual());
                 sender.sendMessage("§7Fragmentos recolectados: §e" + evento4.getFragmentosRecolectados() + "§7/§e40");
                 sender.sendMessage("§7Anomalías activas: §e" + evento4.getAnomaliasActivas().size());
-                sender.sendMessage("§7Portal generado: " + (evento4.getFaseActual() == me.apocalipsis.events.CaminoEndEvent.Fase.REVELACION ? "§aŚí" : "§7No"));
+                
+                boolean portalGenerado = evento4.getFaseActual() == me.apocalipsis.events.CaminoEndEvent.Fase.REVELACION;
+                sender.sendMessage("§7Portal generado: " + (portalGenerado ? "§aSí" : "§7No"));
+                
+                if (portalGenerado && evento4.getFragmentosRecolectados() >= 40) {
+                    sender.sendMessage("");
+                    sender.sendMessage("§d§l★ LISTO PARA CLIFFHANGER ★");
+                    sender.sendMessage("§7Usa §e/avo evento4 completarportal §7cuando estés listo");
+                    sender.sendMessage("§7para ejecutar la cinemática final del evento");
+                }
+                
+                sender.sendMessage("");
+                sender.sendMessage("§8Usa §e/avo evento4 anomalias §8para ver ubicaciones");
+                break;
+                
+            case "anomalias":
+            case "anomalías":
+                if (evento4 == null) {
+                    sender.sendMessage("§cEl evento no está activo.");
+                    return;
+                }
+                
+                java.util.Map<Location, ?> anomaliasMap = evento4.getAnomaliasActivas();
+                
+                if (anomaliasMap.isEmpty()) {
+                    sender.sendMessage("§5§l⚡ ANOMALÍAS ACTIVAS");
+                    sender.sendMessage("§7No hay anomalías activas en este momento.");
+                    sender.sendMessage("§7El sistema genera anomalías cada 10 segundos.");
+                    if (evento4.getFaseActual() == me.apocalipsis.events.CaminoEndEvent.Fase.ANOMALIAS) {
+                        sender.sendMessage("§7Fase actual: §eANOMALIAS §7- Espera unos segundos...");
+                    }
+                    return;
+                }
+                
+                sender.sendMessage("§5§l⚡ ═══ ANOMALÍAS ACTIVAS ═══ ⚡");
+                sender.sendMessage("§7Total: §e" + anomaliasMap.size());
+                sender.sendMessage("§7Fase: §e" + evento4.getFaseActual());
+                sender.sendMessage("");
+                
+                int anomaliaIndex = 1;
+                Player senderPlayer = sender instanceof Player ? (Player) sender : null;
+                for (Location loc : anomaliasMap.keySet()) {
+                    String coords = String.format("§e%d, %d, %d", loc.getBlockX(), loc.getBlockY(), loc.getBlockZ());
+                    String distancia = "";
+                    
+                    if (senderPlayer != null && senderPlayer.getWorld().equals(loc.getWorld())) {
+                        double dist = senderPlayer.getLocation().distance(loc);
+                        distancia = String.format(" §8(§7%.0f bloques§8)", dist);
+                    }
+                    
+                    sender.sendMessage("§7" + anomaliaIndex + ". " + coords + distancia);
+                    anomaliaIndex++;
+                }
+                
+                sender.sendMessage("");
+                if (evento4.getFaseActual() == me.apocalipsis.events.CaminoEndEvent.Fase.RESONANCIA && 
+                    evento4.getFragmentosRecolectados() >= 35) {
+                    sender.sendMessage("§6§l⚠ Warden spawneará cuando alguien esté < 20 bloques de una anomalía");
+                }
                 break;
                 
             case "fase":
@@ -2667,10 +2725,14 @@ public class ApocalipsisCommand implements CommandExecutor {
                     }
                 }
                 
-                // Dar fragmentos
+                // Dar fragmentos (items al inventario)
                 for (int i = 0; i < cantidad; i++) {
                     target.getInventory().addItem(evento4.getItems().crearFragmentoDelVacio());
                 }
+                
+                // Incrementar el contador global también
+                int fragmentosAntes = evento4.getFragmentosRecolectados();
+                evento4.setFragmentosRecolectados(fragmentosAntes + cantidad);
                 
                 // Título y sonido para el jugador
                 target.sendTitle("§5§l⚡ FRAGMENTO DEL VACÍO ⚡", "§7+" + cantidad + " fragmento" + (cantidad > 1 ? "s" : ""), 10, 40, 10);
@@ -2679,7 +2741,15 @@ public class ApocalipsisCommand implements CommandExecutor {
                 target.spawnParticle(Particle.DRAGON_BREATH, target.getLocation().add(0, 1, 0), 30, 0.3, 0.5, 0.3, 0.05);
                 
                 sender.sendMessage("§a✓ Dados §e" + cantidad + " §afragmentos a §e" + target.getName());
+                sender.sendMessage("§7Contador global: §e" + fragmentosAntes + " §7→ §e" + evento4.getFragmentosRecolectados() + " §7(+" + cantidad + ")");
                 target.sendMessage("§5§l⚡ Has recibido §e" + cantidad + " §5§lFragmento(s) del Vacío");
+                
+                // Avisos especiales
+                if (evento4.getFragmentosRecolectados() >= 35 && fragmentosAntes < 35) {
+                    sender.sendMessage("");
+                    sender.sendMessage("§4§l⚠ WARDEN HABILITADO ⚠");
+                    sender.sendMessage("§7El Guardián spawneará cuando alguien esté cerca de una anomalía");
+                }
                 break;
                 
             case "testwarden":
@@ -2690,7 +2760,7 @@ public class ApocalipsisCommand implements CommandExecutor {
                 
                 if (args.length < 3) {
                     sender.sendMessage("§cUso: /avo evento4 testwarden <jugador>");
-                    sender.sendMessage("§7Da 34 fragmentos para testear el spawn del Warden (aparece a los 35)");
+                    sender.sendMessage("§7Configura el evento para testear el spawn del Warden");
                     return;
                 }
                 
@@ -2700,30 +2770,222 @@ public class ApocalipsisCommand implements CommandExecutor {
                     return;
                 }
                 
-                // Dar 34 fragmentos (el Warden aparece a los 35)
-                int cantidadWarden = 34;
-                for (int i = 0; i < cantidadWarden; i++) {
-                    targetWarden.getInventory().addItem(evento4.getItems().crearFragmentoDelVacio());
+                // 1. Asegurar que estamos en fase RESONANCIA
+                if (evento4.getFaseActual() != me.apocalipsis.events.CaminoEndEvent.Fase.RESONANCIA) {
+                    evento4.forzarSiguienteFase();
+                    if (evento4.getFaseActual() != me.apocalipsis.events.CaminoEndEvent.Fase.RESONANCIA) {
+                        evento4.forzarSiguienteFase();
+                    }
                 }
                 
-                // Título y efectos
-                targetWarden.sendTitle("§5§l⚡ TEST WARDEN ⚡", "§c+34 fragmentos §7(Warden spawn a 35)", 10, 60, 15);
-                targetWarden.playSound(targetWarden.getLocation(), Sound.ENTITY_WARDEN_EMERGE, 0.5f, 1.5f);
-                targetWarden.playSound(targetWarden.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.5f);
-                targetWarden.spawnParticle(Particle.DRAGON_BREATH, targetWarden.getLocation().add(0, 1, 0), 50, 0.5, 0.5, 0.5, 0.1);
-                targetWarden.spawnParticle(Particle.SCULK_SOUL, targetWarden.getLocation().add(0, 1, 0), 30, 0.3, 0.5, 0.3, 0.05);
+                // 2. Establecer el contador global de fragmentos a 34
+                evento4.setFragmentosRecolectados(34);
                 
-                sender.sendMessage("§a✓ Dados §c34 fragmentos §aa §e" + targetWarden.getName() + " §a(Test Warden)");
-                sender.sendMessage("§7El Warden spawneará cuando tenga §e35 fragmentos §7totales (recolectados globalmente)");
-                sender.sendMessage("§7Instrucciones:");
-                sender.sendMessage("§7  1. El jugador debe §eentregar los 34 fragmentos §7a una anomalía");
-                sender.sendMessage("§7  2. Luego §erecolectar 1 fragmento más §7para llegar a 35");
-                sender.sendMessage("§7  3. El §4Warden §7spawneará cerca de la anomalía");
+                // 3. Verificar que hay anomalías activas
+                int numAnomalias = evento4.getAnomaliasActivas().size();
+                if (numAnomalias == 0) {
+                    sender.sendMessage("§c⚠ No hay anomalías activas.");
+                    sender.sendMessage("§7El evento está intentando generar anomalías...");
+                    sender.sendMessage("§7Espera 10-20 segundos o usa §e/avo evento4 next §7si aún estás en ANOMALIAS");
+                    return;
+                }
+                
+                sender.sendMessage("§a✓ Anomalías activas detectadas: §e" + numAnomalias);
+                
+                // 4. Teletransportar al jugador cerca de una anomalía aleatoria
+                Location anomaliaLoc = evento4.getAnomaliasActivas().keySet().iterator().next();
+                Location tpLoc = anomaliaLoc.clone().add(15, 0, 15);
+                tpLoc.setY(tpLoc.getWorld().getHighestBlockYAt(tpLoc) + 1);
+                targetWarden.teleport(tpLoc);
+                
+                // Mostrar distancia a la anomalía
+                double distancia = targetWarden.getLocation().distance(anomaliaLoc);
+                sender.sendMessage("§7Jugador a §e" + String.format("%.1f", distancia) + " §7bloques de la anomalía");
+                sender.sendMessage("§7Coordenadas anomalía: §e" + anomaliaLoc.getBlockX() + ", " + anomaliaLoc.getBlockY() + ", " + anomaliaLoc.getBlockZ());
+                
+                // 5. Efectos y mensajes
+                targetWarden.sendTitle("§4§l⚡ TEST WARDEN ACTIVADO ⚡", "§7Acércate a la anomalía cercana", 10, 60, 20);
+                targetWarden.playSound(targetWarden.getLocation(), Sound.ENTITY_WARDEN_EMERGE, 0.8f, 0.7f);
+                targetWarden.playSound(targetWarden.getLocation(), Sound.ENTITY_ENDERMAN_SCREAM, 1.0f, 0.6f);
+                targetWarden.spawnParticle(Particle.SCULK_SOUL, targetWarden.getLocation().add(0, 1, 0), 50, 0.5, 1.0, 0.5, 0.1);
+                targetWarden.spawnParticle(Particle.PORTAL, targetWarden.getLocation().add(0, 1, 0), 30, 0.3, 0.5, 0.3, 0.5);
+                
+                // Mensajes al admin
+                sender.sendMessage("§a✓ Test del Warden configurado para §e" + targetWarden.getName());
+                sender.sendMessage("§7Estado del evento:");
+                sender.sendMessage("§7  - Fase: §eRESONANCIA");
+                sender.sendMessage("§7  - Fragmentos globales: §e34/40 §7(Warden spawneará a los 35)");
+                sender.sendMessage("§7  - Jugador teletransportado cerca de anomalía");
+                sender.sendMessage("");
+                sender.sendMessage("§6§l⚡ El Warden spawneará cuando:");
+                sender.sendMessage("§7  1. El contador llegue a §e35 fragmentos globales");
+                sender.sendMessage("§7  2. Alguien esté §ecerca de una anomalía §7(< 20 bloques)");
+                sender.sendMessage("");
+                sender.sendMessage("§e§lOpciones para activar el spawn:");
+                sender.sendMessage("§7  A) Usar §e/avo evento4 fragmentos " + targetWarden.getName() + " 1");
+                sender.sendMessage("§7     (Dará 1 fragmento item + incrementará contador a 35)");
+                sender.sendMessage("§7  B) Acercarse a la anomalía y usar:");
+                sender.sendMessage("§7     §e/avo evento4 setfragmentos 35");
+                
+                // Mensaje al jugador
                 targetWarden.sendMessage("");
-                targetWarden.sendMessage("§c§l⚠ TEST WARDEN ACTIVADO ⚠");
-                targetWarden.sendMessage("§7Entrega los §e34 fragmentos §7a anomalías");
-                targetWarden.sendMessage("§7Recolecta §e1 más §7y el §4Warden §7aparecerá");
+                targetWarden.sendMessage("§4§l⚠ ═══ TEST WARDEN ACTIVADO ═══ ⚠");
                 targetWarden.sendMessage("");
+                targetWarden.sendMessage("§7Has sido teletransportado cerca de una anomalía.");
+                targetWarden.sendMessage("§7Fragmentos globales: §e34/40");
+                targetWarden.sendMessage("");
+                targetWarden.sendMessage("§c§lEl Guardián de las Profundidades §7está a punto de emerger...");
+                targetWarden.sendMessage("§7Pide a un admin que use:");
+                targetWarden.sendMessage("§e  /avo evento4 fragmentos " + targetWarden.getName() + " 1");
+                targetWarden.sendMessage("§7O simplemente acércate más a la anomalía cuando alcancen 35 fragmentos.");
+                targetWarden.sendMessage("");
+                targetWarden.sendMessage("§8§o\"...Algo terrible está a punto de despertar...\"");
+                targetWarden.sendMessage("");
+                break;
+                
+            case "setfragmentos":
+                if (evento4 == null) {
+                    sender.sendMessage("§cEl evento no está activo.");
+                    return;
+                }
+                
+                if (args.length < 3) {
+                    sender.sendMessage("§cUso: /avo evento4 setfragmentos <cantidad>");
+                    sender.sendMessage("§7Establece el contador global de fragmentos recolectados");
+                    sender.sendMessage("§7Actual: §e" + evento4.getFragmentosRecolectados() + "/40");
+                    return;
+                }
+                
+                try {
+                    int nuevaCantidad = Integer.parseInt(args[2]);
+                    if (nuevaCantidad < 0 || nuevaCantidad > 40) {
+                        sender.sendMessage("§cCantidad inválida (0-40).");
+                        return;
+                    }
+                    
+                    int anterior = evento4.getFragmentosRecolectados();
+                    evento4.setFragmentosRecolectados(nuevaCantidad);
+                    
+                    sender.sendMessage("§a✓ Fragmentos globales establecidos");
+                    sender.sendMessage("§7  De: §e" + anterior + " §7→ §e" + nuevaCantidad);
+                    sender.sendMessage("§7  Progreso: §e" + nuevaCantidad + "/40");
+                    
+                    // Avisos especiales según la cantidad
+                    if (nuevaCantidad >= 35 && anterior < 35) {
+                        sender.sendMessage("");
+                        sender.sendMessage("§4§l⚠ WARDEN HABILITADO ⚠");
+                        sender.sendMessage("§7El Warden spawneará cuando alguien esté cerca de una anomalía");
+                        sender.sendMessage("§7(Distancia: < 20 bloques)");
+                    }
+                    
+                    if (nuevaCantidad >= 40 && anterior < 40) {
+                        sender.sendMessage("");
+                        sender.sendMessage("§5§l⚡ OBJETIVO ALCANZADO ⚡");
+                        sender.sendMessage("§7El evento debería transicionar a REVELACION");
+                        sender.sendMessage("§7(Si el Warden fue derrotado)");
+                    }
+                    
+                    // Efectos visuales
+                    for (Player p : plugin.getServer().getOnlinePlayers()) {
+                        p.playSound(p.getLocation(), Sound.BLOCK_BEACON_POWER_SELECT, 0.5f, 1.2f);
+                        if (nuevaCantidad >= 35 && anterior < 35) {
+                            p.spawnParticle(Particle.SCULK_SOUL, p.getLocation().add(0, 1, 0), 20, 0.5, 0.5, 0.5, 0.1);
+                        }
+                    }
+                    
+                } catch (NumberFormatException e) {
+                    sender.sendMessage("§cCantidad inválida: " + args[2]);
+                }
+                break;
+                
+            case "completarportal":
+            case "cliffhanger":
+                if (evento4 == null) {
+                    sender.sendMessage("§cEl evento no está activo.");
+                    return;
+                }
+                
+                sender.sendMessage("");
+                sender.sendMessage("§8§m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                sender.sendMessage("§5§l⚡ COMPLETANDO PORTAL - MODO TEST ⚡");
+                sender.sendMessage("§8§m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                sender.sendMessage("");
+                
+                try {
+                    // Paso 1: Establecer fragmentos a 40
+                    int fragmentosActuales = evento4.getFragmentosRecolectados();
+                    if (fragmentosActuales < 40) {
+                        sender.sendMessage("§71. §eEstableciendo fragmentos a 40...");
+                        evento4.setFragmentosRecolectados(40);
+                        sender.sendMessage("   §a✓ Fragmentos: §e" + fragmentosActuales + " §7→ §e40");
+                    } else {
+                        sender.sendMessage("§71. §7Fragmentos ya en 40 §a✓");
+                    }
+                    
+                    // Paso 2: Resetear Warden (marca como derrotado)
+                    sender.sendMessage("§72. §eMarcando Warden como derrotado...");
+                    Class<?> claseEvento = evento4.getClass();
+                    java.lang.reflect.Method metodoResetear = claseEvento.getDeclaredMethod("resetearWarden");
+                    metodoResetear.setAccessible(true);
+                    metodoResetear.invoke(evento4);
+                    sender.sendMessage("   §a✓ Warden reseteado");
+                    
+                    // Paso 3: Forzar fase REVELACION si no está ya
+                    sender.sendMessage("§73. §eVerificando fase del evento...");
+                    java.lang.reflect.Field faseField = claseEvento.getDeclaredField("faseActual");
+                    faseField.setAccessible(true);
+                    Object faseActual = faseField.get(evento4);
+                    
+                    if (!faseActual.toString().equals("REVELACION")) {
+                        sender.sendMessage("   §7Forzando transición a REVELACION...");
+                        java.lang.reflect.Method metodoForzar = claseEvento.getDeclaredMethod("forzarSiguienteFase");
+                        metodoForzar.setAccessible(true);
+                        metodoForzar.invoke(evento4);
+                        
+                        // Si no está en REVELACION aún, forzar una vez más
+                        faseActual = faseField.get(evento4);
+                        if (!faseActual.toString().equals("REVELACION")) {
+                            metodoForzar.invoke(evento4);
+                        }
+                        sender.sendMessage("   §a✓ Fase: §eREVELACION");
+                    } else {
+                        sender.sendMessage("   §7Ya está en REVELACION §a✓");
+                    }
+                    
+                    // Paso 4: Ejecutar secuencia de cliffhanger
+                    sender.sendMessage("§74. §eEjecutando secuencia de cliffhanger...");
+                    sender.sendMessage("");
+                    sender.sendMessage("§d§l★ INICIANDO CINEMÁTICA FINAL ★");
+                    sender.sendMessage("§7Duración: §e~32 segundos");
+                    sender.sendMessage("§7La secuencia revelará el misterio del portal...");
+                    sender.sendMessage("");
+                    
+                    // Variables finales para la lambda
+                    final Class<?> claseEventoFinal = claseEvento;
+                    final me.apocalipsis.events.CaminoEndEvent evento4Final = evento4;
+                    
+                    // Esperar 2 segundos para que los jugadores lean el mensaje
+                    plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+                        try {
+                            java.lang.reflect.Method metodoCliffhanger = claseEventoFinal.getDeclaredMethod("ejecutarCliffhangerYFinalizar");
+                            metodoCliffhanger.setAccessible(true);
+                            metodoCliffhanger.invoke(evento4Final);
+                            
+                            // Mensaje de confirmación solo al admin
+                            sender.sendMessage("§a✓ Secuencia de cliffhanger iniciada correctamente");
+                            sender.sendMessage("§7Observa el chat para la cinemática completa...");
+                            
+                        } catch (Exception ex) {
+                            sender.sendMessage("§c✗ Error al ejecutar cliffhanger: " + ex.getMessage());
+                            ex.printStackTrace();
+                        }
+                    }, 40L); // 2 segundos de espera
+                    
+                } catch (Exception e) {
+                    sender.sendMessage("§c✗ Error al completar portal:");
+                    sender.sendMessage("§c  " + e.getMessage());
+                    e.printStackTrace();
+                }
                 break;
                 
             case "getitemsevento4":

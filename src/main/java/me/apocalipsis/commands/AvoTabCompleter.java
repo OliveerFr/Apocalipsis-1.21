@@ -118,7 +118,10 @@ public class AvoTabCompleter implements TabCompleter {
                 case "caminoend":
                 case "caminoalend":
                     // Sugerir subcomandos de evento4 (El Camino al End)
-                    return Arrays.asList("start", "stop", "info", "fase", "next", "fragmentos", "anomalia", "portal").stream()
+                    return Arrays.asList("start", "iniciar", "stop", "detener", "info", "status", 
+                                        "fase", "phase", "next", "siguiente", "fragmentos", 
+                                        "testwarden", "setfragmentos", "getitemsevento4", 
+                                        "completarportal", "cliffhanger", "anomalias").stream()
                         .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
                         .collect(Collectors.toList());
                 
@@ -443,6 +446,27 @@ public class AvoTabCompleter implements TabCompleter {
                     suggestions.add("all");
                     return suggestions.stream()
                         .filter(s -> s.toLowerCase().startsWith(args[2].toLowerCase()))
+                        .collect(Collectors.toList());
+                }
+            }
+            
+            // /avo evento4 fragmentos|testwarden <jugador>
+            if ((subCmd.equals("evento4") || subCmd.equals("caminoend") || subCmd.equals("caminoalend"))) {
+                String evento4SubCmd = args[1].toLowerCase();
+                if (evento4SubCmd.equals("fragmentos") || evento4SubCmd.equals("testwarden")) {
+                    return plugin.getServer().getOnlinePlayers().stream()
+                        .map(Player::getName)
+                        .filter(s -> s.toLowerCase().startsWith(args[2].toLowerCase()))
+                        .collect(Collectors.toList());
+                }
+                if (evento4SubCmd.equals("fase") || evento4SubCmd.equals("phase")) {
+                    return Arrays.asList("1", "2", "3").stream()
+                        .filter(s -> s.startsWith(args[2]))
+                        .collect(Collectors.toList());
+                }
+                if (evento4SubCmd.equals("setfragmentos")) {
+                    return Arrays.asList("0", "10", "20", "30", "34", "35", "40").stream()
+                        .filter(s -> s.startsWith(args[2]))
                         .collect(Collectors.toList());
                 }
             }

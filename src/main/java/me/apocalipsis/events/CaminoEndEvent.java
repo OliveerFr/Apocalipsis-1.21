@@ -5,6 +5,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.bukkit.*;
+import org.bukkit.block.Block;
 import org.bukkit.boss.BarColor;
 import org.bukkit.boss.BarStyle;
 import org.bukkit.boss.BossBar;
@@ -445,6 +446,8 @@ public class CaminoEndEvent extends EventBase {
                 
             case RESONANCIA:
                 anunciarFaseResonancia();
+                // Forzar spawn de anomalías inmediatamente para el Warden
+                forzarSpawnAnomalias(3);
                 break;
                 
             case REVELACION:
@@ -477,6 +480,42 @@ public class CaminoEndEvent extends EventBase {
         
         if (ubicacionSpawn != null) {
             spawnearAnomalia(ubicacionSpawn);
+        }
+    }
+    
+    /**
+     * Fuerza el spawn de un número específico de anomalías inmediatamente.
+     * Útil al transicionar a RESONANCIA para garantizar estructuras para el Warden.
+     */
+    private void forzarSpawnAnomalias(int cantidad) {
+        List<Player> jugadoresOnline = new ArrayList<>(plugin.getServer().getOnlinePlayers());
+        if (jugadoresOnline.isEmpty()) {
+            plugin.getLogger().warning("[CaminoEnd] No hay jugadores online para forzar spawn de anomalías");
+            return;
+        }
+        
+        int spawneadas = 0;
+        int intentos = 0;
+        int maxIntentos = cantidad * 5; // 5 intentos por cada anomalía deseada
+        
+        while (spawneadas < cantidad && intentos < maxIntentos) {
+            Player jugadorObjetivo = jugadoresOnline.get(random.nextInt(jugadoresOnline.size()));
+            Location ubicacionSpawn = generarUbicacionAnomaliaAleatoria(jugadorObjetivo.getLocation());
+            
+            if (ubicacionSpawn != null) {
+                spawnearAnomalia(ubicacionSpawn);
+                spawneadas++;
+                plugin.getLogger().info("[CaminoEnd] Anomalía forzada #" + spawneadas + " spawneada en: " + 
+                    ubicacionSpawn.getBlockX() + ", " + ubicacionSpawn.getBlockY() + ", " + ubicacionSpawn.getBlockZ());
+            }
+            
+            intentos++;
+        }
+        
+        if (spawneadas < cantidad) {
+            plugin.getLogger().warning("[CaminoEnd] Solo se pudieron spawnear " + spawneadas + "/" + cantidad + " anomalías forzadas");
+        } else {
+            plugin.getLogger().info("[CaminoEnd] ✓ " + spawneadas + " anomalías spawneadas exitosamente para fase RESONANCIA");
         }
     }
     
@@ -1324,12 +1363,17 @@ public class CaminoEndEvent extends EventBase {
         int x = origen.getBlockX();
         int z = origen.getBlockZ();
         
-        // Buscar desde Y alto hacia abajo hasta encontrar suelo sólido
+        // Buscar desde Y alto hacia abajo hasta encontrar suelo sólido NATURAL
         for (int y = world.getMaxHeight() - 1; y > world.getMinHeight(); y--) {
             Location loc = new Location(world, x, y, z);
-            if (loc.getBlock().getType().isSolid() && 
-                loc.clone().add(0, 1, 0).getBlock().getType().isAir() &&
-                loc.clone().add(0, 2, 0).getBlock().getType().isAir()) {
+            Material type = loc.getBlock().getType();
+            
+            // Buscar bloques naturales del suelo (no hojas ni troncos)
+            if ((type == Material.GRASS_BLOCK || type == Material.DIRT || 
+                 type == Material.STONE || type == Material.DEEPSLATE ||
+                 type == Material.SAND || type == Material.GRAVEL) &&
+                !loc.getBlock().getType().toString().contains("LEAVES") &&
+                !loc.getBlock().getType().toString().contains("LOG")) {
                 return loc.clone().add(0, 1, 0); // Retornar 1 bloque arriba del suelo
             }
         }
@@ -1345,80 +1389,42 @@ public class CaminoEndEvent extends EventBase {
         int baseY = centro.getBlockY();
         int baseZ = centro.getBlockZ();
         
-        // ════════════════════════════════════════════════════════════
-        // PLATAFORMA ÉPICA BASE (11x11)
-        // ════════════════════════════════════════════════════════════
-        for (int x = -5; x <= 5; x++) {
-            for (int z = -5; z <= 5; z++) {
-                // Capa base
-                world.getBlockAt(baseX + x, baseY - 1, baseZ + z).setType(Material.END_STONE_BRICKS);
-                
-                // Borde decorativo con End Stone
-                if (Math.abs(x) == 5 || Math.abs(z) == 5) {
-                    world.getBlockAt(baseX + x, baseY, baseZ + z).setType(Material.END_STONE);
-                }
-                
-                // Esquinas con Purpur Blocks
-                if ((Math.abs(x) == 5 && Math.abs(z) == 5)) {
-                    world.getBlockAt(baseX + x, baseY, baseZ + z).setType(Material.PURPUR_BLOCK);
-                    world.getBlockAt(baseX + x, baseY + 1, baseZ + z).setType(Material.PURPUR_BLOCK);
-                }
-            }
-        }
+        plugin.getLogger().info("[CaminoEnd] Iniciando terraformación épica del portal...");
         
         // ════════════════════════════════════════════════════════════
-        // MARCO DE PORTAL FRAGMENTADO (9x9) - DRAMÁTICAMENTE INCOMPLETO
+        // FASE 1: TERRAFORMACIÓN MASIVA DEL TERRENO (Radio 25 bloques)
         // ════════════════════════════════════════════════════════════
-        
-        // Lado NORTE (5 de 7 bloques) - Mayormente completo
-        world.getBlockAt(baseX - 3, baseY, baseZ - 4).setType(Material.END_PORTAL_FRAME);
-        world.getBlockAt(baseX - 2, baseY, baseZ - 4).setType(Material.END_PORTAL_FRAME);
-        world.getBlockAt(baseX - 1, baseY, baseZ - 4).setType(Material.END_PORTAL_FRAME);
-        // Hueco intencional en baseX, baseZ - 4
-        world.getBlockAt(baseX + 1, baseY, baseZ - 4).setType(Material.END_PORTAL_FRAME);
-        world.getBlockAt(baseX + 2, baseY, baseZ - 4).setType(Material.END_PORTAL_FRAME);
-        // Hueco en baseX + 3, baseZ - 4
-        
-        // Lado ESTE (4 de 7 bloques) - Bastante dañado
-        world.getBlockAt(baseX + 4, baseY, baseZ - 3).setType(Material.END_PORTAL_FRAME);
-        // Hueco en baseX + 4, baseZ - 2
-        world.getBlockAt(baseX + 4, baseY, baseZ - 1).setType(Material.END_PORTAL_FRAME);
-        // Hueco en baseX + 4, baseZ (centro)
-        world.getBlockAt(baseX + 4, baseY, baseZ + 1).setType(Material.END_PORTAL_FRAME);
-        world.getBlockAt(baseX + 4, baseY, baseZ + 2).setType(Material.END_PORTAL_FRAME);
-        // Hueco en baseX + 4, baseZ + 3
-        
-        // Lado SUR (2 de 7 bloques) - MUY INCOMPLETO (crítico)
-        // Solo 2 bloques en los extremos
-        world.getBlockAt(baseX - 3, baseY, baseZ + 4).setType(Material.END_PORTAL_FRAME);
-        // Huecos masivos
-        world.getBlockAt(baseX + 3, baseY, baseZ + 4).setType(Material.END_PORTAL_FRAME);
-        
-        // Lado OESTE (3 de 7 bloques) - Muy dañado
-        // Hueco en baseX - 4, baseZ - 3
-        world.getBlockAt(baseX - 4, baseY, baseZ - 2).setType(Material.END_PORTAL_FRAME);
-        // Hueco en baseX - 4, baseZ - 1
-        // Hueco en baseX - 4, baseZ (centro)
-        world.getBlockAt(baseX - 4, baseY, baseZ + 1).setType(Material.END_PORTAL_FRAME);
-        // Hueco en baseX - 4, baseZ + 2
-        world.getBlockAt(baseX - 4, baseY, baseZ + 3).setType(Material.END_PORTAL_FRAME);
+        terraformarAreaPortal(world, baseX, baseY, baseZ);
         
         // ════════════════════════════════════════════════════════════
-        // PILARES FRAGMENTADOS EN LAS ESQUINAS
+        // FASE 2: CRÁTERES Y GRIETAS (Simulan la "llegada" del portal)
         // ════════════════════════════════════════════════════════════
-        construirPilarFragmentado(world, baseX - 4, baseY, baseZ - 4, 5); // Noroeste
-        construirPilarFragmentado(world, baseX + 4, baseY, baseZ - 4, 4); // Noreste
-        construirPilarFragmentado(world, baseX - 4, baseY, baseZ + 4, 3); // Suroeste
-        construirPilarFragmentado(world, baseX + 4, baseY, baseZ + 4, 6); // Sureste
+        generarGrietasDimensionales(world, baseX, baseY, baseZ);
         
         // ════════════════════════════════════════════════════════════
-        // BLOQUES FLOTANTES "ROTOS" CERCA DEL PORTAL
+        // FASE 3: PLATAFORMA ÉPICA BASE (15x15 con degradado)
         // ════════════════════════════════════════════════════════════
-        // Simulan fragmentos del portal flotando cerca
-        world.getBlockAt(baseX - 2, baseY + 2, baseZ - 3).setType(Material.END_STONE);
-        world.getBlockAt(baseX + 3, baseY + 3, baseZ + 2).setType(Material.END_STONE);
-        world.getBlockAt(baseX + 1, baseY + 1, baseZ - 4).setType(Material.PURPUR_BLOCK);
-        world.getBlockAt(baseX - 3, baseY + 2, baseZ + 3).setType(Material.END_STONE_BRICKS);
+        construirPlataformaPortal(world, baseX, baseY, baseZ);
+        
+        // ════════════════════════════════════════════════════════════
+        // FASE 4: MARCO DE PORTAL FRAGMENTADO (9x9)
+        // ════════════════════════════════════════════════════════════
+        construirMarcoPortalIncompleto(world, baseX, baseY, baseZ);
+        
+        // ════════════════════════════════════════════════════════════
+        // FASE 5: PILARES MONUMENTALES CORRUPTOS
+        // ════════════════════════════════════════════════════════════
+        construirPilaresMonumentales(world, baseX, baseY, baseZ);
+        
+        // ════════════════════════════════════════════════════════════
+        // FASE 6: BLOQUES FLOTANTES Y ESCOMBROS DIMENSIONALES
+        // ════════════════════════════════════════════════════════════
+        generarEscombrosFlotantes(world, baseX, baseY, baseZ);
+        
+        // ════════════════════════════════════════════════════════════
+        // FASE 7: VEGETACIÓN CORRUPTA Y CRISTALES
+        // ════════════════════════════════════════════════════════════
+        generarVegetacionCorrupta(world, baseX, baseY, baseZ);
         
         // ════════════════════════════════════════════════════════════
         // EFECTOS VISUALES PERMANENTES
@@ -1426,27 +1432,403 @@ public class CaminoEndEvent extends EventBase {
         iniciarEfectosPortal(centro);
         iniciarCorazonPortal(centro);
         
-        plugin.getLogger().info("[CaminoEndEvent] Portal épico 9x9 construido - 14 de 28 frames (50% incompleto)");
+        plugin.getLogger().info("[CaminoEnd] Portal épico completado - Terraformación masiva aplicada");
     }
     
     /**
-     * Construye un pilar decorativo fragmentado con alturas variables
+     * Terraforma el área alrededor del portal para integración natural
      */
-    private void construirPilarFragmentado(World world, int x, int y, int z, int altura) {
-        for (int i = 1; i <= altura; i++) {
-            // Alternar entre End Stone Bricks y Purpur
-            Material mat = (i % 2 == 0) ? Material.PURPUR_PILLAR : Material.END_STONE_BRICKS;
-            world.getBlockAt(x, y + i, z).setType(mat);
-            
-            // Algunos pilares tienen bloques rotos (huecos)
-            if (altura >= 5 && i == altura - 1) {
-                world.getBlockAt(x, y + i, z).setType(Material.AIR); // Hueco dramático
+    private void terraformarAreaPortal(World world, int baseX, int baseY, int baseZ) {
+        int radius = 25;
+        
+        // ═══════════════════════════════════════════════════════════════
+        // PASO 1: LIMPIEZA TOTAL DEL ÁREA (REMOVER ÁRBOLES Y VEGETACIÓN)
+        // ═══════════════════════════════════════════════════════════════
+        for (int x = -radius; x <= radius; x++) {
+            for (int z = -radius; z <= radius; z++) {
+                double distancia = Math.sqrt(x * x + z * z);
+                if (distancia > radius) continue;
+                
+                // Limpiar desde el suelo hasta bien arriba (remover TODO)
+                for (int y = baseY - 5; y < baseY + 30; y++) {
+                    Block block = world.getBlockAt(baseX + x, y, baseZ + z);
+                    Material type = block.getType();
+                    
+                    // Remover completamente árboles, hojas, plantas, etc.
+                    if (type.toString().contains("LEAVES") || 
+                        type.toString().contains("LOG") ||
+                        type.toString().contains("WOOD") ||
+                        type == Material.SHORT_GRASS ||
+                        type == Material.TALL_GRASS ||
+                        type == Material.FERN ||
+                        type == Material.LARGE_FERN ||
+                        type.toString().contains("FLOWER") ||
+                        type.toString().contains("SAPLING") ||
+                        type == Material.VINE ||
+                        type == Material.BAMBOO ||
+                        type.toString().contains("MUSHROOM")) {
+                        block.setType(Material.AIR);
+                    }
+                }
             }
         }
         
-        // Corona del pilar (si es alto)
-        if (altura >= 4) {
-            world.getBlockAt(x, y + altura, z).setType(Material.PURPUR_BLOCK);
+        // ═══════════════════════════════════════════════════════════════
+        // PASO 2: NIVELAR Y TERRAFORMAR EL TERRENO
+        // ═══════════════════════════════════════════════════════════════
+        for (int x = -radius; x <= radius; x++) {
+            for (int z = -radius; z <= radius; z++) {
+                double distancia = Math.sqrt(x * x + z * z);
+                if (distancia > radius) continue;
+                
+                // Calcular intensidad basada en distancia
+                double intensidad = 1.0 - (distancia / radius);
+                
+                // No modificar área inmediata del portal (radio 8)
+                if (distancia < 8) continue;
+                
+                // Crear depresión suave hacia el portal
+                int depresion = (int)((1.0 - intensidad) * 2);
+                
+                // Aplicar terraformación desde el suelo base
+                for (int y = baseY - depresion - 3; y < baseY + 2; y++) {
+                    Block block = world.getBlockAt(baseX + x, y, baseZ + z);
+                    Material type = block.getType();
+                    
+                    // Reemplazar tierra/piedra con materiales corruptos
+                    if (type == Material.GRASS_BLOCK || 
+                        type == Material.DIRT ||
+                        type == Material.STONE ||
+                        type == Material.DEEPSLATE ||
+                        type == Material.SAND ||
+                        type == Material.GRAVEL) {
+                        
+                        // Gradiente de corrupción según intensidad
+                        if (intensidad > 0.7 && Math.random() < 0.7) {
+                            block.setType(Material.END_STONE);
+                        } else if (intensidad > 0.5 && Math.random() < 0.6) {
+                            block.setType(Material.NETHERRACK);
+                        } else if (intensidad > 0.3 && Math.random() < 0.4) {
+                            block.setType(Material.END_STONE);
+                        }
+                    }
+                    
+                    // Parches de obsidiana (como si se hubiera quemado)
+                    if (intensidad > 0.6 && Math.random() < 0.12) {
+                        block.setType(Material.OBSIDIAN);
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * Genera grietas dimensionales que irradian desde el portal
+     */
+    private void generarGrietasDimensionales(World world, int baseX, int baseY, int baseZ) {
+        // Crear 8 grietas radiales desde el centro
+        for (int i = 0; i < 8; i++) {
+            double angulo = (i * Math.PI * 2) / 8;
+            
+            // Cada grieta se extiende entre 15-25 bloques
+            int longitud = 15 + random.nextInt(11);
+            
+            for (int dist = 8; dist < longitud; dist++) {
+                int offsetX = (int)(Math.cos(angulo) * dist);
+                int offsetZ = (int)(Math.sin(angulo) * dist);
+                
+                // Ancho de la grieta (se reduce con la distancia)
+                int ancho = Math.max(1, 3 - (dist / 8));
+                
+                for (int w = -ancho; w <= ancho; w++) {
+                    // Perpendicular a la dirección de la grieta
+                    int perpX = (int)(-Math.sin(angulo) * w);
+                    int perpZ = (int)(Math.cos(angulo) * w);
+                    
+                    // Profundidad de la grieta (irregular)
+                    int profundidad = 2 + random.nextInt(3);
+                    
+                    for (int y = 0; y < profundidad; y++) {
+                        Block block = world.getBlockAt(baseX + offsetX + perpX, baseY - y - 1, baseZ + offsetZ + perpZ);
+                        
+                        // Centro de la grieta: vacío
+                        if (Math.abs(w) < ancho) {
+                            block.setType(Material.AIR);
+                        }
+                        
+                        // Bordes de la grieta: End Stone agrietado
+                        if (Math.abs(w) == ancho || y == profundidad - 1) {
+                            if (Math.random() < 0.7) {
+                                block.setType(Material.END_STONE);
+                            }
+                        }
+                        
+                        // Fondo de grietas profundas: Bedrock (infranqueable)
+                        if (y == profundidad - 1 && profundidad > 2) {
+                            block.setType(Material.CRYING_OBSIDIAN);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * Construye la plataforma principal con degradado natural
+     */
+    private void construirPlataformaPortal(World world, int baseX, int baseY, int baseZ) {
+        int radius = 10;
+        
+        for (int x = -radius; x <= radius; x++) {
+            for (int z = -radius; z <= radius; z++) {
+                double distancia = Math.sqrt(x * x + z * z);
+                
+                if (distancia > radius) continue;
+                
+                // Capa base sólida
+                Block baseBlock = world.getBlockAt(baseX + x, baseY - 1, baseZ + z);
+                
+                // Gradiente desde el centro
+                if (distancia < 5) {
+                    baseBlock.setType(Material.END_STONE_BRICKS);
+                } else if (distancia < 7) {
+                    baseBlock.setType(Material.CHISELED_POLISHED_BLACKSTONE);
+                } else if (distancia < 9) {
+                    baseBlock.setType(Material.END_STONE);
+                } else {
+                    // Borde irregular
+                    if (Math.random() < 0.7) {
+                        baseBlock.setType(Material.NETHERRACK);
+                    }
+                }
+                
+                // Detalles decorativos en la superficie
+                if (distancia >= 6 && distancia <= 8 && Math.random() < 0.2) {
+                    world.getBlockAt(baseX + x, baseY, baseZ + z).setType(Material.SOUL_SAND);
+                }
+                
+                // Bordes con Purpur
+                if (Math.abs(x) == radius || Math.abs(z) == radius) {
+                    if (Math.random() < 0.5) {
+                        world.getBlockAt(baseX + x, baseY, baseZ + z).setType(Material.PURPUR_BLOCK);
+                    }
+                }
+            }
+        }
+        
+        // Esquinas elevadas dramáticas
+        int[] corners = {-7, 7};
+        for (int xOff : corners) {
+            for (int zOff : corners) {
+                world.getBlockAt(baseX + xOff, baseY, baseZ + zOff).setType(Material.PURPUR_PILLAR);
+                world.getBlockAt(baseX + xOff, baseY + 1, baseZ + zOff).setType(Material.PURPUR_PILLAR);
+                world.getBlockAt(baseX + xOff, baseY + 2, baseZ + zOff).setType(Material.PURPUR_BLOCK);
+            }
+        }
+    }
+    
+    /**
+     * Construye el marco del portal fragmentado
+     */
+    private void construirMarcoPortalIncompleto(World world, int baseX, int baseY, int baseZ) {
+        // Lado NORTE (5 de 7 bloques) - Mayormente completo
+        world.getBlockAt(baseX - 3, baseY, baseZ - 4).setType(Material.END_PORTAL_FRAME);
+        world.getBlockAt(baseX - 2, baseY, baseZ - 4).setType(Material.END_PORTAL_FRAME);
+        world.getBlockAt(baseX - 1, baseY, baseZ - 4).setType(Material.END_PORTAL_FRAME);
+        world.getBlockAt(baseX + 1, baseY, baseZ - 4).setType(Material.END_PORTAL_FRAME);
+        world.getBlockAt(baseX + 2, baseY, baseZ - 4).setType(Material.END_PORTAL_FRAME);
+        
+        // Lado ESTE (4 de 7 bloques)
+        world.getBlockAt(baseX + 4, baseY, baseZ - 3).setType(Material.END_PORTAL_FRAME);
+        world.getBlockAt(baseX + 4, baseY, baseZ - 1).setType(Material.END_PORTAL_FRAME);
+        world.getBlockAt(baseX + 4, baseY, baseZ + 1).setType(Material.END_PORTAL_FRAME);
+        world.getBlockAt(baseX + 4, baseY, baseZ + 2).setType(Material.END_PORTAL_FRAME);
+        
+        // Lado SUR (2 de 7 bloques) - MUY INCOMPLETO
+        world.getBlockAt(baseX - 3, baseY, baseZ + 4).setType(Material.END_PORTAL_FRAME);
+        world.getBlockAt(baseX + 3, baseY, baseZ + 4).setType(Material.END_PORTAL_FRAME);
+        
+        // Lado OESTE (3 de 7 bloques)
+        world.getBlockAt(baseX - 4, baseY, baseZ - 2).setType(Material.END_PORTAL_FRAME);
+        world.getBlockAt(baseX - 4, baseY, baseZ + 1).setType(Material.END_PORTAL_FRAME);
+        world.getBlockAt(baseX - 4, baseY, baseZ + 3).setType(Material.END_PORTAL_FRAME);
+    }
+    
+    /**
+     * Construye pilares monumentales alrededor del portal
+     */
+    private void construirPilaresMonumentales(World world, int baseX, int baseY, int baseZ) {
+        // 4 pilares principales en esquinas (altura variable 8-15 bloques)
+        construirPilarMonumental(world, baseX - 6, baseY, baseZ - 6, 12);
+        construirPilarMonumental(world, baseX + 6, baseY, baseZ - 6, 10);
+        construirPilarMonumental(world, baseX - 6, baseY, baseZ + 6, 9);
+        construirPilarMonumental(world, baseX + 6, baseY, baseZ + 6, 14);
+        
+        // 4 pilares secundarios (más pequeños)
+        construirPilarMonumental(world, baseX - 8, baseY, baseZ, 7);
+        construirPilarMonumental(world, baseX + 8, baseY, baseZ, 6);
+        construirPilarMonumental(world, baseX, baseY, baseZ - 8, 8);
+        construirPilarMonumental(world, baseX, baseY, baseZ + 8, 5);
+    }
+    
+    /**
+     * Construye un pilar monumental con detalles
+     */
+    private void construirPilarMonumental(World world, int x, int y, int z, int altura) {
+        // Base del pilar (3x3)
+        for (int xOff = -1; xOff <= 1; xOff++) {
+            for (int zOff = -1; zOff <= 1; zOff++) {
+                world.getBlockAt(x + xOff, y - 1, z + zOff).setType(Material.POLISHED_BLACKSTONE);
+                
+                // Centro de la base
+                if (xOff == 0 && zOff == 0) {
+                    world.getBlockAt(x, y, z).setType(Material.CHISELED_POLISHED_BLACKSTONE);
+                }
+            }
+        }
+        
+        // Cuerpo principal del pilar
+        for (int i = 1; i <= altura; i++) {
+            Material mat;
+            
+            // Patrón alternado con daño simulado
+            if (i % 3 == 0) {
+                mat = Material.PURPUR_PILLAR;
+            } else if (i % 3 == 1) {
+                mat = Material.END_STONE_BRICKS;
+            } else {
+                mat = Material.POLISHED_BLACKSTONE_BRICKS;
+            }
+            
+            // Algunos bloques "rotos" (huecos)
+            if (altura > 8 && i == altura - 3 && Math.random() < 0.4) {
+                mat = Material.AIR;
+            }
+            
+            world.getBlockAt(x, y + i, z).setType(mat);
+            
+            // Decoración lateral ocasional
+            if (i % 4 == 0 && i < altura - 2) {
+                int lado = random.nextInt(4);
+                int[] offsets = {-1, 1, 0, 0};
+                int xOffset = (lado < 2) ? offsets[lado] : 0;
+                int zOffset = (lado >= 2) ? offsets[lado] : 0;
+                
+                world.getBlockAt(x + xOffset, y + i, z + zOffset).setType(Material.END_STONE);
+            }
+        }
+        
+        // Corona del pilar
+        if (altura >= 6) {
+            for (int xOff = -1; xOff <= 1; xOff++) {
+                for (int zOff = -1; zOff <= 1; zOff++) {
+                    if (Math.abs(xOff) == 1 || Math.abs(zOff) == 1) {
+                        world.getBlockAt(x + xOff, y + altura, z + zOff).setType(Material.PURPUR_SLAB);
+                    }
+                }
+            }
+            world.getBlockAt(x, y + altura, z).setType(Material.END_ROD);
+        }
+    }
+    
+    /**
+     * Genera escombros flotantes dramáticos
+     */
+    private void generarEscombrosFlotantes(World world, int baseX, int baseY, int baseZ) {
+        // 20-30 bloques flotantes en posiciones aleatorias
+        int cantidadEscombros = 25 + random.nextInt(6);
+        
+        for (int i = 0; i < cantidadEscombros; i++) {
+            // Posición aleatoria alrededor del portal
+            int offsetX = -10 + random.nextInt(21);
+            int offsetZ = -10 + random.nextInt(21);
+            int offsetY = 2 + random.nextInt(8); // Entre 2-10 bloques de altura
+            
+            // No colocar muy cerca del centro
+            if (Math.abs(offsetX) < 5 && Math.abs(offsetZ) < 5) continue;
+            
+            Location escombro = new Location(world, baseX + offsetX, baseY + offsetY, baseZ + offsetZ);
+            
+            // Materiales variados del End
+            Material[] materiales = {
+                Material.END_STONE,
+                Material.END_STONE_BRICKS,
+                Material.PURPUR_BLOCK,
+                Material.OBSIDIAN,
+                Material.CRYING_OBSIDIAN,
+                Material.NETHERRACK
+            };
+            
+            Material mat = materiales[random.nextInt(materiales.length)];
+            escombro.getBlock().setType(mat);
+            
+            // Algunos escombros son grupos de 2-3 bloques
+            if (random.nextBoolean()) {
+                escombro.clone().add(1, 0, 0).getBlock().setType(mat);
+            }
+            if (random.nextInt(100) < 30) {
+                escombro.clone().add(0, 1, 0).getBlock().setType(mat);
+            }
+        }
+    }
+    
+    /**
+     * Genera vegetación corrupta y cristales
+     */
+    private void generarVegetacionCorrupta(World world, int baseX, int baseY, int baseZ) {
+        int radius = 15;
+        
+        for (int x = -radius; x <= radius; x++) {
+            for (int z = -radius; z <= radius; z++) {
+                double distancia = Math.sqrt(x * x + z * z);
+                
+                // Solo en el borde exterior
+                if (distancia < 8 || distancia > radius) continue;
+                
+                if (Math.random() < 0.15) {
+                    Location loc = new Location(world, baseX + x, baseY, baseZ + z);
+                    Block below = loc.clone().subtract(0, 1, 0).getBlock();
+                    
+                    // Solo si hay suelo debajo
+                    if (!below.getType().isSolid()) continue;
+                    
+                    // Flores del End (Chorus)
+                    if (Math.random() < 0.3) {
+                        loc.getBlock().setType(Material.CHORUS_PLANT);
+                        loc.clone().add(0, 1, 0).getBlock().setType(Material.CHORUS_FLOWER);
+                    }
+                    // Hongos
+                    else if (Math.random() < 0.5) {
+                        loc.getBlock().setType(Math.random() < 0.5 ? Material.BROWN_MUSHROOM : Material.RED_MUSHROOM);
+                    }
+                    // Fuego del alma
+                    else if (Math.random() < 0.3) {
+                        below.setType(Material.SOUL_SOIL);
+                        loc.getBlock().setType(Material.SOUL_FIRE);
+                    }
+                    // Cristales de amatista (decorativos)
+                    else {
+                        loc.getBlock().setType(Material.AMETHYST_CLUSTER);
+                    }
+                }
+            }
+        }
+        
+        // Grupos de cristales grandes cerca de los pilares
+        int[] pillarPositions = {-6, 6};
+        for (int xOff : pillarPositions) {
+            for (int zOff : pillarPositions) {
+                // Cluster de cristales alrededor de cada pilar
+                for (int i = 0; i < 5; i++) {
+                    int randX = xOff + random.nextInt(3) - 1;
+                    int randZ = zOff + random.nextInt(3) - 1;
+                    
+                    Location crystalLoc = new Location(world, baseX + randX, baseY, baseZ + randZ);
+                    if (crystalLoc.getBlock().getType() == Material.AIR) {
+                        crystalLoc.getBlock().setType(Material.AMETHYST_CLUSTER);
+                    }
+                }
+            }
         }
     }
     
@@ -1629,10 +2011,14 @@ public class CaminoEndEvent extends EventBase {
         
         soundUtil.playSoundAll(Sound.BLOCK_END_PORTAL_SPAWN, 0.5f, 1.2f);
         
-        // Secuencia de conclusión épica después del portal
-        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-            anunciarConclusionPortal();
-        }, 200L); // 10 segundos después
+        // Log importante para admins
+        plugin.getLogger().info("§a━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        plugin.getLogger().info("§a[CaminoEnd] Portal incompleto generado");
+        plugin.getLogger().info("§e[CaminoEnd] Los jugadores pueden explorar el portal ahora");
+        plugin.getLogger().info("§d[CaminoEnd] ★ Para ejecutar la cinemática final:");
+        plugin.getLogger().info("§d[CaminoEnd]   /avo evento4 completarportal");
+        plugin.getLogger().info("§7[CaminoEnd] (O espera 30 minutos para auto-ejecución)");
+        plugin.getLogger().info("§a━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     }
     
     /**
@@ -2162,6 +2548,22 @@ public class CaminoEndEvent extends EventBase {
         return fragmentosRecolectadosGlobalmente;
     }
     
+    /**
+     * Establece el contador global de fragmentos (para comandos de testeo)
+     */
+    public void setFragmentosRecolectados(int cantidad) {
+        this.fragmentosRecolectadosGlobalmente = cantidad;
+        plugin.getLogger().info("[CaminoEnd] Fragmentos recolectados establecidos a: " + cantidad);
+        
+        // Actualizar bossbar si existe
+        if (bossBar != null) {
+            double progreso = Math.min(1.0, (double) fragmentosRecolectadosGlobalmente / FRAGMENTOS_OBJETIVO);
+            bossBar.setProgress(progreso);
+            bossBar.setTitle(String.format("§5⚡ El Camino al End §7[%d/%d fragmentos] - %s", 
+                fragmentosRecolectadosGlobalmente, FRAGMENTOS_OBJETIVO, faseActual));
+        }
+    }
+    
     public CaminoEndItems getItems() {
         return items;
     }
@@ -2211,17 +2613,23 @@ public class CaminoEndEvent extends EventBase {
      * Ejecuta la secuencia de cliffhanger completa y luego finaliza el evento
      */
     private void ejecutarCliffhangerYFinalizar() {
-        // Evitar ejecuciones múltiples
+        // Evitar ejecuciones múltiples - CRÍTICO
         if (cliffhangerEjecutado) {
-            plugin.getLogger().info("[CaminoEnd] Cliffhanger ya ejecutado - Finalizando directamente");
+            plugin.getLogger().warning("[CaminoEnd] ⚠ Intento de ejecutar cliffhanger múltiple - BLOQUEADO");
+            plugin.getLogger().warning("[CaminoEnd] El cliffhanger ya fue ejecutado, finalizando directamente");
             finalizarEvento();
             return;
         }
         
+        // Marcar INMEDIATAMENTE para evitar llamadas duplicadas
         cliffhangerEjecutado = true;
-        plugin.getLogger().info("[CaminoEnd] Ejecutando secuencia de cliffhanger...");
+        plugin.getLogger().info("§d━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        plugin.getLogger().info("§d[CaminoEnd] ★ INICIANDO CLIFFHANGER FINAL ★");
+        plugin.getLogger().info("§d━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         
         // Anunciar la secuencia de conclusión del portal (cliffhanger)
+        // NOTA: anunciarConclusionPortal() también setea cliffhangerEjecutado=true
+        // pero esto es redundante y seguro (doble protección)
         anunciarConclusionPortal();
         
         // Programar distribución de recompensas DESPUÉS del cliffhanger (32 segundos)
@@ -3163,13 +3571,20 @@ public class CaminoEndEvent extends EventBase {
     // ════════════════════════════════════════════════════════════
     
     private void verificarSpawnWarden() {
-        // Solo verificar cada 5 segundos
-        if (ticksTotales % 100 != 0) return;
+        // Solo verificar cada 2 segundos (antes: 5 segundos)
+        if (ticksTotales % 40 != 0) return;
+        
+        // Debug: Mostrar información de anomalías cada 10 segundos
+        if (ticksTotales % 200 == 0) {
+            plugin.getLogger().info("[CaminoEnd] Verificando spawn Warden - Fragmentos: " + fragmentosRecolectadosGlobalmente + "/40, Anomalías activas: " + anomaliasActivas.size());
+        }
         
         // Verificar si algún jugador está cerca de una anomalía
         for (Player p : plugin.getServer().getOnlinePlayers()) {
             for (Location anomaliaLoc : anomaliasActivas.keySet()) {
-                if (p.getLocation().distance(anomaliaLoc) < 20.0) {
+                double distancia = p.getLocation().distance(anomaliaLoc);
+                if (distancia < 20.0) {
+                    plugin.getLogger().info("[CaminoEnd] ¡Spawneando Warden! Jugador " + p.getName() + " está a " + String.format("%.1f", distancia) + " bloques de anomalía");
                     spawnearWarden(anomaliaLoc);
                     return;
                 }
