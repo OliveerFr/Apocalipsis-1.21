@@ -37,8 +37,8 @@ commands:
     usage: /echest
     aliases: [enderchest, ec]
   waypoint:
-    description: Guarda o teletransporta a tu waypoint
-    usage: /waypoint [set]
+    description: Gestiona tus waypoints (puntos de teletransporte)
+    usage: /waypoint <set|tp|list|delete> [nombre]
     aliases: [wp]
   coords:
     description: Muestra tus coordenadas actuales

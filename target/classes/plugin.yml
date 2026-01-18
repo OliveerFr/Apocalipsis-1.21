@@ -1,5 +1,5 @@
 name: Apocalipsis
-version: '1.22.47'
+version: '1.22.48'
 main: me.apocalipsis.Apocalipsis
 api-version: 1.21
 author: OliveerF
@@ -37,8 +37,8 @@ commands:
     usage: /echest
     aliases: [enderchest, ec]
   waypoint:
-    description: Guarda o teletransporta a tu waypoint
-    usage: /waypoint [set]
+    description: Gestiona tus waypoints (puntos de teletransporte)
+    usage: /waypoint <set|tp|list|delete> [nombre]
     aliases: [wp]
   coords:
     description: Muestra tus coordenadas actuales

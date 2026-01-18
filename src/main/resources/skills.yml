@@ -96,10 +96,14 @@ efectos:
 waypoints:
   # Guardar waypoints en disco (persistencia)
   persistencia: true
-  # Máximo de waypoints por jugador (0 = ilimitado)
+  # Máximo de waypoints por jugador normal (sin rango permanente especial)
   max_por_jugador: 1
   # Cooldown entre teleports en segundos
   cooldown_teleport: 300
+  
+  # Límites por rango permanente
+  # El rango "hunter_adventurer" tiene 10 waypoints (configurado en código)
+  # Otros rangos usan el límite por defecto de max_por_jugador
 
 # ═══════════════════════════════════════════════════════════════════
 # ANTI-SPAM DE MENSAJES

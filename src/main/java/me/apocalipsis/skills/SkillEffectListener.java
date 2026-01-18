@@ -9,6 +9,7 @@ import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.block.Block;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Item;
@@ -1240,24 +1241,52 @@ public class SkillEffectListener implements Listener {
         }
     }
     
-    // ==================== WAYPOINT (EXPLORADOR) - CON PERSISTENCIA ====================
+    // ==================== WAYPOINT (EXPLORADOR) - CON PERSISTENCIA Y MULTIPLES WAYPOINTS ====================
     
-    private final Map<UUID, Location> playerWaypoints = new ConcurrentHashMap<>();
+    // Mapa de waypoints: UUID -> (nombre -> Location)
+    private final Map<UUID, Map<String, Location>> playerWaypoints = new ConcurrentHashMap<>();
     
     /**
-     * Establece un waypoint en la ubicación actual del jugador.
+     * Obtiene el límite de waypoints para un jugador según su rango permanente
      */
-    public void setWaypoint(Player player) {
+    public int getWaypointLimit(Player player) {
+        var permRank = plugin.getPermRankManager().getPlayerPermRank(player.getUniqueId());
+        
+        // Si tiene el rango hunter_adventurer, puede tener hasta 10 waypoints
+        if (permRank != null && permRank.getId().equalsIgnoreCase("hunter_adventurer")) {
+            return 10;
+        }
+        
+        // Jugadores normales: 1 waypoint
+        return 1;
+    }
+    
+    /**
+     * Establece un waypoint con nombre en la ubicación actual del jugador.
+     */
+    public void setWaypoint(Player player, String name) {
         UUID uuid = player.getUniqueId();
         Location loc = player.getLocation();
-        playerWaypoints.put(uuid, loc);
+        
+        // Obtener o crear el mapa de waypoints del jugador
+        Map<String, Location> waypoints = playerWaypoints.computeIfAbsent(uuid, k -> new ConcurrentHashMap<>());
+        
+        // Verificar límite si no está actualizando un waypoint existente
+        int limit = getWaypointLimit(player);
+        if (!waypoints.containsKey(name) && waypoints.size() >= limit) {
+            player.sendMessage("§c✖ §7Has alcanzado el límite de waypoints (§e" + limit + "§7).");
+            player.sendMessage("§7Usa §e/waypoint delete <nombre> §7para eliminar uno.");
+            return;
+        }
+        
+        waypoints.put(name, loc);
         
         // Guardar inmediatamente si persistencia está activa
         if (waypointPersistencia) {
             saveWaypoints();
         }
         
-        player.sendMessage("§a✓ §eWaypoint establecido en: §f" + 
+        player.sendMessage("§a✓ §eWaypoint '§f" + name + "§e' establecido en: §f" + 
             loc.getBlockX() + ", " + loc.getBlockY() + ", " + loc.getBlockZ());
         player.playSound(loc, Sound.BLOCK_NOTE_BLOCK_PLING, 0.8f, 1.2f);
         
@@ -1266,20 +1295,35 @@ public class SkillEffectListener implements Listener {
         trackSkillUsage(uuid, Skill.WAYPOINT);
     }
     
+    /**
+     * Método legacy para compatibilidad - usa waypoint por defecto
+     */
+    public void setWaypoint(Player player) {
+        setWaypoint(player, "default");
+    }
+    
     private void spawnWaypointSetParticles(Location loc) {
         loc.getWorld().spawnParticle(Particle.END_ROD, loc.clone().add(0, 1, 0), 30, 0.5, 0.5, 0.5, 0.05);
         loc.getWorld().spawnParticle(Particle.ENCHANT, loc.clone().add(0, 0.5, 0), 20, 0.3, 0.3, 0.3, 0.5);
     }
     
     /**
-     * Teleporta al jugador a su waypoint guardado.
+     * Teleporta al jugador a un waypoint guardado con nombre.
      */
-    public void teleportToWaypoint(Player player) {
+    public void teleportToWaypoint(Player player, String name) {
         UUID uuid = player.getUniqueId();
-        Location waypoint = playerWaypoints.get(uuid);
+        Map<String, Location> waypoints = playerWaypoints.get(uuid);
+        
+        if (waypoints == null || waypoints.isEmpty()) {
+            player.sendMessage("§c✖ §7No tienes waypoints establecidos. Usa §e/waypoint set <nombre> §7primero.");
+            return;
+        }
+        
+        Location waypoint = waypoints.get(name);
         
         if (waypoint == null) {
-            player.sendMessage("§c✖ §7No tienes un waypoint establecido. Usa §e/waypoint set §7primero.");
+            player.sendMessage("§c✖ §7Waypoint '§f" + name + "§7' no encontrado.");
+            player.sendMessage("§7Waypoints disponibles: §e" + String.join("§7, §e", waypoints.keySet()));
             return;
         }
         
@@ -1292,15 +1336,15 @@ public class SkillEffectListener implements Listener {
         
         // Verificar que el mundo siga cargado
         if (waypoint.getWorld() == null) {
-            player.sendMessage("§c✖ §7El mundo del waypoint ya no está disponible.");
-            playerWaypoints.remove(uuid);
+            player.sendMessage("§c✖ §7El mundo del waypoint '§f" + name + "§7' ya no está disponible.");
+            waypoints.remove(name);
             return;
         }
         
         player.teleport(waypoint);
         setWaypointCooldown(uuid);
         
-        player.sendMessage("§a✓ §eTeletransportado al waypoint.");
+        player.sendMessage("§a✓ §eTeletransportado al waypoint '§f" + name + "§e'.");
         player.playSound(waypoint, Sound.ENTITY_ENDERMAN_TELEPORT, 0.8f, 1.0f);
         
         // Efectos visuales mejorados
@@ -1308,23 +1352,95 @@ public class SkillEffectListener implements Listener {
         trackSkillUsage(uuid, Skill.WAYPOINT);
     }
     
+    /**
+     * Método legacy para compatibilidad - usa waypoint por defecto
+     */
+    public void teleportToWaypoint(Player player) {
+        teleportToWaypoint(player, "default");
+    }
+    
+    /**
+     * Lista todos los waypoints de un jugador
+     */
+    public void listWaypoints(Player player) {
+        UUID uuid = player.getUniqueId();
+        Map<String, Location> waypoints = playerWaypoints.get(uuid);
+        
+        if (waypoints == null || waypoints.isEmpty()) {
+            player.sendMessage("§c✖ §7No tienes waypoints establecidos.");
+            return;
+        }
+        
+        int limit = getWaypointLimit(player);
+        player.sendMessage("§e§l⚑ Waypoints §7(" + waypoints.size() + "/" + limit + ")§e:");
+        
+        for (Map.Entry<String, Location> entry : waypoints.entrySet()) {
+            Location loc = entry.getValue();
+            player.sendMessage("  §f" + entry.getKey() + " §7→ §f" + 
+                loc.getBlockX() + ", " + loc.getBlockY() + ", " + loc.getBlockZ() + 
+                " §8(" + (loc.getWorld() != null ? loc.getWorld().getName() : "?") + ")");
+        }
+    }
+    
+    /**
+     * Elimina un waypoint por nombre
+     */
+    public void deleteWaypoint(Player player, String name) {
+        UUID uuid = player.getUniqueId();
+        Map<String, Location> waypoints = playerWaypoints.get(uuid);
+        
+        if (waypoints == null || !waypoints.containsKey(name)) {
+            player.sendMessage("§c✖ §7Waypoint '§f" + name + "§7' no encontrado.");
+            return;
+        }
+        
+        waypoints.remove(name);
+        
+        if (waypoints.isEmpty()) {
+            playerWaypoints.remove(uuid);
+        }
+        
+        if (waypointPersistencia) {
+            saveWaypoints();
+        }
+        
+        player.sendMessage("§a✓ §7Waypoint '§f" + name + "§7' eliminado.");
+    }
+    
     private void spawnWaypointTeleportParticles(Location loc) {
         loc.getWorld().spawnParticle(Particle.REVERSE_PORTAL, loc.clone().add(0, 1, 0), 50, 0.5, 0.5, 0.5, 0.1);
         loc.getWorld().spawnParticle(Particle.PORTAL, loc.clone().add(0, 0.5, 0), 30, 0.3, 0.3, 0.3, 0.5);
     }
     
-    public Location getWaypoint(UUID uuid) {
+    public Map<String, Location> getWaypoints(UUID uuid) {
         return playerWaypoints.get(uuid);
     }
     
-    public boolean hasWaypoint(UUID uuid) {
-        return playerWaypoints.containsKey(uuid);
+    public Location getWaypoint(UUID uuid, String name) {
+        Map<String, Location> waypoints = playerWaypoints.get(uuid);
+        return waypoints != null ? waypoints.get(name) : null;
     }
     
-    public void removeWaypoint(UUID uuid) {
-        playerWaypoints.remove(uuid);
-        if (waypointPersistencia) {
-            saveWaypoints();
+    public boolean hasWaypoint(UUID uuid, String name) {
+        Map<String, Location> waypoints = playerWaypoints.get(uuid);
+        return waypoints != null && waypoints.containsKey(name);
+    }
+    
+    public boolean hasWaypoints(UUID uuid) {
+        Map<String, Location> waypoints = playerWaypoints.get(uuid);
+        return waypoints != null && !waypoints.isEmpty();
+    }
+    
+    public void removeWaypoint(UUID uuid, String name) {
+        Map<String, Location> waypoints = playerWaypoints.get(uuid);
+        if (waypoints != null) {
+            waypoints.remove(name);
+            if (waypoints.isEmpty()) {
+                playerWaypoints.remove(uuid);
+            }
+            if (waypointPersistencia) {
+                saveWaypoints();
+            }
         }
     }
     
@@ -1362,31 +1478,65 @@ public class SkillEffectListener implements Listener {
         for (String uuidStr : config.getConfigurationSection("waypoints").getKeys(false)) {
             try {
                 UUID uuid = UUID.fromString(uuidStr);
-                String path = "waypoints." + uuidStr;
+                String basePath = "waypoints." + uuidStr;
                 
-                String worldName = config.getString(path + ".world");
-                if (worldName == null) continue;
+                // Verificar si es el formato nuevo (con nombres) o el viejo (sin nombres)
+                ConfigurationSection playerSection = config.getConfigurationSection(basePath);
+                if (playerSection == null) continue;
                 
-                org.bukkit.World world = Bukkit.getWorld(worldName);
-                if (world == null) {
-                    plugin.getLogger().warning("[Skills] Mundo no encontrado para waypoint: " + worldName);
-                    continue;
+                Map<String, Location> waypoints = new ConcurrentHashMap<>();
+                
+                // Si tiene una clave "world" directamente, es formato viejo
+                if (playerSection.contains("world")) {
+                    // Formato viejo: solo un waypoint sin nombre
+                    String worldName = playerSection.getString("world");
+                    if (worldName != null) {
+                        org.bukkit.World world = Bukkit.getWorld(worldName);
+                        if (world != null) {
+                            double x = playerSection.getDouble("x");
+                            double y = playerSection.getDouble("y");
+                            double z = playerSection.getDouble("z");
+                            float yaw = (float) playerSection.getDouble("yaw");
+                            float pitch = (float) playerSection.getDouble("pitch");
+                            
+                            waypoints.put("default", new Location(world, x, y, z, yaw, pitch));
+                        }
+                    }
+                } else {
+                    // Formato nuevo: múltiples waypoints con nombres
+                    for (String waypointName : playerSection.getKeys(false)) {
+                        String wpPath = basePath + "." + waypointName;
+                        
+                        String worldName = config.getString(wpPath + ".world");
+                        if (worldName == null) continue;
+                        
+                        org.bukkit.World world = Bukkit.getWorld(worldName);
+                        if (world == null) {
+                            plugin.getLogger().warning("[Skills] Mundo no encontrado para waypoint '" + waypointName + "': " + worldName);
+                            continue;
+                        }
+                        
+                        double x = config.getDouble(wpPath + ".x");
+                        double y = config.getDouble(wpPath + ".y");
+                        double z = config.getDouble(wpPath + ".z");
+                        float yaw = (float) config.getDouble(wpPath + ".yaw");
+                        float pitch = (float) config.getDouble(wpPath + ".pitch");
+                        
+                        waypoints.put(waypointName, new Location(world, x, y, z, yaw, pitch));
+                    }
                 }
                 
-                double x = config.getDouble(path + ".x");
-                double y = config.getDouble(path + ".y");
-                double z = config.getDouble(path + ".z");
-                float yaw = (float) config.getDouble(path + ".yaw");
-                float pitch = (float) config.getDouble(path + ".pitch");
-                
-                playerWaypoints.put(uuid, new Location(world, x, y, z, yaw, pitch));
+                if (!waypoints.isEmpty()) {
+                    playerWaypoints.put(uuid, waypoints);
+                }
                 
             } catch (IllegalArgumentException e) {
                 plugin.getLogger().warning("[Skills] UUID inválido en waypoints.yml: " + uuidStr);
             }
         }
         
-        plugin.getLogger().info("[Skills] Cargados " + playerWaypoints.size() + " waypoints");
+        int totalWaypoints = playerWaypoints.values().stream().mapToInt(Map::size).sum();
+        plugin.getLogger().info("[Skills] Cargados " + totalWaypoints + " waypoints de " + playerWaypoints.size() + " jugadores");
     }
     
     private void saveWaypoints() {
@@ -1394,17 +1544,22 @@ public class SkillEffectListener implements Listener {
         
         FileConfiguration config = new YamlConfiguration();
         
-        for (Map.Entry<UUID, Location> entry : playerWaypoints.entrySet()) {
-            String path = "waypoints." + entry.getKey().toString();
-            Location loc = entry.getValue();
+        for (Map.Entry<UUID, Map<String, Location>> playerEntry : playerWaypoints.entrySet()) {
+            String uuidStr = playerEntry.getKey().toString();
             
-            if (loc.getWorld() != null) {
-                config.set(path + ".world", loc.getWorld().getName());
-                config.set(path + ".x", loc.getX());
-                config.set(path + ".y", loc.getY());
-                config.set(path + ".z", loc.getZ());
-                config.set(path + ".yaw", loc.getYaw());
-                config.set(path + ".pitch", loc.getPitch());
+            for (Map.Entry<String, Location> wpEntry : playerEntry.getValue().entrySet()) {
+                String waypointName = wpEntry.getKey();
+                Location loc = wpEntry.getValue();
+                String path = "waypoints." + uuidStr + "." + waypointName;
+                
+                if (loc.getWorld() != null) {
+                    config.set(path + ".world", loc.getWorld().getName());
+                    config.set(path + ".x", loc.getX());
+                    config.set(path + ".y", loc.getY());
+                    config.set(path + ".z", loc.getZ());
+                    config.set(path + ".yaw", loc.getYaw());
+                    config.set(path + ".pitch", loc.getPitch());
+                }
             }
         }
         

@@ -342,25 +342,108 @@ public final class Apocalipsis extends JavaPlugin {
             return true;
         });
         
-        // Comando de waypoint (habilidad de exploración)
+        // Comando de waypoint (habilidad de exploración) - Soporte para múltiples waypoints
         getCommand("waypoint").setExecutor((sender, cmd, label, args) -> {
             if (!(sender instanceof org.bukkit.entity.Player player)) {
                 sender.sendMessage("§cEste comando solo puede ser usado por jugadores.");
                 return true;
             }
-            if (args.length > 0 && args[0].equalsIgnoreCase("set")) {
-                this.skillEffectListener.setWaypoint(player);
-            } else {
-                this.skillEffectListener.teleportToWaypoint(player);
+            
+            // Sin argumentos: mostrar ayuda
+            if (args.length == 0) {
+                player.sendMessage("§e§l⚑ Waypoints - Uso:");
+                player.sendMessage("  §f/waypoint set <nombre> §7- Guardar waypoint");
+                player.sendMessage("  §f/waypoint tp <nombre> §7- Teleportarse a waypoint");
+                player.sendMessage("  §f/waypoint list §7- Ver tus waypoints");
+                player.sendMessage("  §f/waypoint delete <nombre> §7- Eliminar waypoint");
+                
+                // Mostrar límite del jugador
+                int limit = this.skillEffectListener.getWaypointLimit(player);
+                player.sendMessage("§7Límite actual: §e" + limit + " waypoint" + (limit > 1 ? "s" : ""));
+                
+                var permRank = this.permRankManager.getPlayerPermRank(player.getUniqueId());
+                if (permRank != null && permRank.getId().equalsIgnoreCase("hunter_adventurer")) {
+                    player.sendMessage("§a✓ §7Rango §fHunter_Adventurer§7: 10 waypoints disponibles");
+                }
+                return true;
             }
+            
+            String subCmd = args[0].toLowerCase();
+            
+            switch (subCmd) {
+                case "set":
+                    if (args.length < 2) {
+                        player.sendMessage("§cUso: /waypoint set <nombre>");
+                        return true;
+                    }
+                    String setName = args[1].toLowerCase();
+                    
+                    // Validar nombre
+                    if (!setName.matches("[a-z0-9_-]+")) {
+                        player.sendMessage("§c✖ §7El nombre solo puede contener letras, números, guiones y guiones bajos.");
+                        return true;
+                    }
+                    
+                    if (setName.length() > 16) {
+                        player.sendMessage("§c✖ §7El nombre no puede tener más de 16 caracteres.");
+                        return true;
+                    }
+                    
+                    this.skillEffectListener.setWaypoint(player, setName);
+                    break;
+                    
+                case "tp":
+                case "teleport":
+                    if (args.length < 2) {
+                        player.sendMessage("§cUso: /waypoint tp <nombre>");
+                        return true;
+                    }
+                    String tpName = args[1].toLowerCase();
+                    this.skillEffectListener.teleportToWaypoint(player, tpName);
+                    break;
+                    
+                case "list":
+                case "lista":
+                    this.skillEffectListener.listWaypoints(player);
+                    break;
+                    
+                case "delete":
+                case "del":
+                case "remove":
+                    if (args.length < 2) {
+                        player.sendMessage("§cUso: /waypoint delete <nombre>");
+                        return true;
+                    }
+                    String delName = args[1].toLowerCase();
+                    this.skillEffectListener.deleteWaypoint(player, delName);
+                    break;
+                    
+                default:
+                    player.sendMessage("§cSubcomando desconocido. Usa §e/waypoint §cpara ver la ayuda.");
+                    break;
+            }
+            
             return true;
         });
         getCommand("waypoint").setTabCompleter((sender, cmd, label, args) -> {
             if (args.length == 1) {
-                return java.util.Arrays.asList("set").stream()
+                return java.util.Arrays.asList("set", "tp", "list", "delete").stream()
                     .filter(s -> s.startsWith(args[0].toLowerCase()))
                     .collect(java.util.stream.Collectors.toList());
             }
+            
+            if (args.length == 2 && (args[0].equalsIgnoreCase("tp") || args[0].equalsIgnoreCase("delete"))) {
+                // Autocompletar con los nombres de waypoints del jugador
+                if (sender instanceof org.bukkit.entity.Player player) {
+                    var waypoints = this.skillEffectListener.getWaypoints(player.getUniqueId());
+                    if (waypoints != null) {
+                        return waypoints.keySet().stream()
+                            .filter(s -> s.startsWith(args[1].toLowerCase()))
+                            .collect(java.util.stream.Collectors.toList());
+                    }
+                }
+            }
+            
             return java.util.Collections.emptyList();
         });
         

@@ -7,6 +7,24 @@
 # Se asignan manualmente con /avo setpermrank
 # Tienen prioridad sobre los rangos normales en el tab y prefix
 
+# ═══════════════════════════════════════════════════════════════
+# CÓDIGOS DE COLOR DISPONIBLES
+# ═══════════════════════════════════════════════════════════════
+# §0 - Negro          §8 - Gris oscuro
+# §1 - Azul oscuro    §9 - Azul
+# §2 - Verde oscuro   §a - Verde
+# §3 - Aqua oscuro    §b - Aqua
+# §4 - Rojo oscuro    §c - Rojo
+# §5 - Púrpura        §d - Rosa
+# §6 - Dorado         §e - Amarillo
+# §7 - Gris           §f - Blanco
+#
+# FORMATOS:
+# §l - Negrita        §o - Cursiva
+# §n - Subrayado      §m - Tachado
+# §k - Ofuscado       §r - Reset
+# ═══════════════════════════════════════════════════════════════
+
 version: 1
 
 # ═══════════════════════════════════════════════════════════════
@@ -94,6 +112,19 @@ rangos:
         - "HASTE:2"             # Minería rápida
     heredar_efectos_rango_normal: true
     prioridad: 20
+  hunter_adventurer:
+    display_name: "§f[Hunter_Adventurer]"
+    tab_prefix: "§f[Hunter_Adventurer] "
+    tab_suffix: ""
+    chat_prefix: "§f[Hunter_Adventurer] "
+    color: "§c"
+    efectos:
+      enabled: true
+      potion_effects:
+        - "REGENERATION:2"
+        - "STRENGTH:1"
+    prioridad: 1
+    heredar_efectos_rango_normal: true
 
 # ═══════════════════════════════════════════════════════════════
 # ASIGNACIONES DE RANGOS PERMANENTES A JUGADORES
