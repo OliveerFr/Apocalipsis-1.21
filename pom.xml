@@ -6,7 +6,7 @@
 
     <groupId>me.apocalipsis</groupId>
     <artifactId>Apocalipsis</artifactId>
-    <version>1.22.49</version>
+    <version>1.22.50</version>
     <packaging>jar</packaging>
 
     <name>Apocalipsis</name>

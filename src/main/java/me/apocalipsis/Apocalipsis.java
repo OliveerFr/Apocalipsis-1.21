@@ -616,6 +616,10 @@ public final class Apocalipsis extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new me.apocalipsis.listeners.TokenProtectionListener(this), this);
         getLogger().info("[TokenProtection] ✓ Protección de tokens activada");
         
+        // Registrar mejoras de creepers (explosiones mucho más poderosas)
+        getServer().getPluginManager().registerEvents(new me.apocalipsis.listeners.CreeperEnhancer(this), this);
+        getLogger().info("[CreeperEnhancer] ✓ Creepers mejorados activados - ¡PELIGRO EXTREMO!");
+        
         // Registrar listener de cartas
         getServer().getPluginManager().registerEvents(new me.apocalipsis.listeners.CartasListener(this, cartasManager), this);
         getLogger().info("[Cartas] ✓ Sistema de cartas a Santa activado");

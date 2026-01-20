@@ -6,6 +6,16 @@ ajustes:
   max_explosion_hearts: 1.5
 
 # ═══════════════════════════════════════════════════════════════════
+# CREEPERS MEJORADOS - Sistema de creepers extremadamente peligrosos
+# ═══════════════════════════════════════════════════════════════════
+creeper_mejoras:
+  multiplicador_radio: 1.2        # Radio de explosión (1.2 = +20% alcance, NO gigante)
+  multiplicador_dano: 4.5         # Daño de explosión (4.5 = 450% más daño, LETAL)
+  probabilidad_cargado: 0.35      # 35% de probabilidad de spawn como cargado (normalmente <1%)
+  velocidad_extra: true           # Dar Speed II permanente
+  resistencia_extra: true         # Dar Resistance II permanente
+
+# ═══════════════════════════════════════════════════════════════════
 # DEBUG - Sistema de logs detallados
 # ═══════════════════════════════════════════════════════════════════
 debug: false  # Activar logs detallados del ciclo de desastres (afecta rendimiento)
