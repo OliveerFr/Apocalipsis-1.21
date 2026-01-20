@@ -82,7 +82,7 @@ ranks:
   ABSOLUTO:
     display_name: "&f&l&oAbsoluto"
     xp_required: 110075       # Nivel 50
-    misiones_diarias: 6
+    misiones_diarias: 15       # Aumentado para máxima variedad
     tab_prefix: "&f&l[A] "
     tab_suffix: "&f&l✦✦"
     chat_prefix: "&f&lA&7| "

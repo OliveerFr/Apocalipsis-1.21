@@ -617,9 +617,199 @@ misiones:
     rangos: ["TITAN"]
     recompensa_ps: 120
 
-  # ========== ABSOLUTO - DIFICIL ==========
-  # META: Desafíos definitivos, cantidades épicas, proyectos monumentales
+  # ========== ABSOLUTO - TODAS LAS DIFICULTADES ==========
+  # META: Rango definitivo con misiones de todos los niveles
+  # Incluye misiones fáciles, medias y difíciles para máxima variedad
+  
+  # ===== ABSOLUTO - MISIONES FÁCILES =====
+  # Misiones básicas rápidas para jugadores del rango más alto
+  
+  - id: "matar_zombies_absoluto_facil"
+    nombre: "Eliminar zombies (rutina)"
+    tipo: "MATAR"
+    objetivo: "ZOMBIE"
+    cantidad: 15
+    dificultad: "FACIL"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 18
 
+  - id: "romper_madera_absoluto_facil"
+    nombre: "Talar árboles"
+    tipo: "ROMPER"
+    objetivo: "ANY_LOG"
+    cantidad: 30
+    dificultad: "FACIL"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 16
+
+  - id: "cocinar_comida_absoluto_facil"
+    nombre: "Cocinar alimentos"
+    tipo: "COCINAR"
+    objetivo: "COOKED_BEEF"
+    cantidad: 10
+    dificultad: "FACIL"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 15
+
+  - id: "matar_pasivos_absoluto_facil"
+    nombre: "Cazar animales"
+    tipo: "MATAR"
+    objetivo: "COW"
+    cantidad: 12
+    dificultad: "FACIL"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 14
+
+  - id: "craftear_antorchas_absoluto_facil"
+    nombre: "Craftear antorchas"
+    tipo: "CRAFTEAR"
+    objetivo: "TORCH"
+    cantidad: 32
+    dificultad: "FACIL"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 12
+
+  - id: "romper_tierra_absoluto_facil"
+    nombre: "Excavar tierra"
+    tipo: "ROMPER"
+    objetivo: "DIRT"
+    cantidad: 64
+    dificultad: "FACIL"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 13
+
+  - id: "consumir_alimento_absoluto_facil"
+    nombre: "Consumir alimentos"
+    tipo: "CONSUMIR"
+    objetivo: "BREAD"
+    cantidad: 8
+    dificultad: "FACIL"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 11
+
+  - id: "fundir_hierro_basico_absoluto_facil"
+    nombre: "Fundir hierro básico"
+    tipo: "COCINAR"
+    objetivo: "IRON_INGOT"
+    cantidad: 8
+    dificultad: "FACIL"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 17
+
+  - id: "matar_esqueletos_absoluto_facil"
+    nombre: "Eliminar esqueletos"
+    tipo: "MATAR"
+    objetivo: "SKELETON"
+    cantidad: 12
+    dificultad: "FACIL"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 16
+
+  - id: "romper_carbon_absoluto_facil"
+    nombre: "Minar carbón"
+    tipo: "ROMPER"
+    objetivo: "COAL_ORE"
+    cantidad: 20
+    dificultad: "FACIL"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 15
+
+  # ===== ABSOLUTO - MISIONES MEDIAS =====
+  # Misiones de dificultad media para variedad
+  
+  - id: "matar_creepers_absoluto_media"
+    nombre: "Eliminar creepers"
+    tipo: "MATAR"
+    objetivo: "CREEPER"
+    cantidad: 15
+    dificultad: "MEDIA"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 35
+
+  - id: "romper_piedra_absoluto_media"
+    nombre: "Minar piedra"
+    tipo: "ROMPER"
+    objetivo: "STONE"
+    cantidad: 128
+    dificultad: "MEDIA"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 32
+
+  - id: "craftear_escudo_absoluto_media"
+    nombre: "Craftear escudos"
+    tipo: "CRAFTEAR"
+    objetivo: "SHIELD"
+    cantidad: 2
+    dificultad: "MEDIA"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 30
+
+  - id: "craftear_espada_hierro_absoluto_media"
+    nombre: "Forjar espadas de hierro"
+    tipo: "CRAFTEAR"
+    objetivo: "IRON_SWORD"
+    cantidad: 2
+    dificultad: "MEDIA"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 28
+
+  - id: "matar_aranas_absoluto_media"
+    nombre: "Eliminar arañas"
+    tipo: "MATAR"
+    objetivo: "SPIDER"
+    cantidad: 18
+    dificultad: "MEDIA"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 31
+
+  - id: "fundir_hierro_lote_absoluto_media"
+    nombre: "Fundir hierro (lote)"
+    tipo: "COCINAR"
+    objetivo: "IRON_INGOT"
+    cantidad: 24
+    dificultad: "MEDIA"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 33
+
+  - id: "romper_hierro_absoluto_media"
+    nombre: "Minar hierro"
+    tipo: "ROMPER"
+    objetivo: "IRON_ORE"
+    cantidad: 48
+    dificultad: "MEDIA"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 36
+
+  - id: "craftear_yunque_absoluto_media"
+    nombre: "Craftear yunque"
+    tipo: "CRAFTEAR"
+    objetivo: "ANVIL"
+    cantidad: 1
+    dificultad: "MEDIA"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 38
+
+  - id: "matar_enderman_absoluto_media"
+    nombre: "Cazar Endermen"
+    tipo: "MATAR"
+    objetivo: "ENDERMAN"
+    cantidad: 20
+    dificultad: "MEDIA"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 40
+
+  - id: "romper_netherrack_absoluto_media"
+    nombre: "Minar Netherrack"
+    tipo: "ROMPER"
+    objetivo: "NETHERRACK"
+    cantidad: 200
+    dificultad: "MEDIA"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 34
+
+  # ===== ABSOLUTO - MISIONES DIFÍCILES =====
+  # Mayor cantidad de misiones difíciles (desafíos épicos)
+  
   - id: "matar_warden"
     nombre: "Enfrentar Wardens"
     tipo: "MATAR"
@@ -710,6 +900,170 @@ misiones:
     rangos: ["ABSOLUTO"]
     recompensa_ps: 150
 
+  # NUEVAS MISIONES DIFÍCILES EXCLUSIVAS ABSOLUTO
+  
+  - id: "matar_wither_skeleton_absoluto"
+    nombre: "Eliminar Wither Skeletons"
+    tipo: "MATAR"
+    objetivo: "WITHER_SKELETON"
+    cantidad: 30
+    dificultad: "DIFICIL"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 172
+
+  - id: "matar_blaze_absoluto"
+    nombre: "Eliminar Blazes en masa"
+    tipo: "MATAR"
+    objetivo: "BLAZE"
+    cantidad: 40
+    dificultad: "DIFICIL"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 168
+
+  - id: "matar_piglin_brute_absoluto"
+    nombre: "Eliminar Piglin Brutes"
+    tipo: "MATAR"
+    objetivo: "PIGLIN_BRUTE"
+    cantidad: 25
+    dificultad: "DIFICIL"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 176
+
+  - id: "matar_ravager_absoluto"
+    nombre: "Eliminar Ravagers"
+    tipo: "MATAR"
+    objetivo: "RAVAGER"
+    cantidad: 12
+    dificultad: "DIFICIL"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 178
+
+  - id: "matar_ghast_absoluto"
+    nombre: "Eliminar Ghasts"
+    tipo: "MATAR"
+    objetivo: "GHAST"
+    cantidad: 15
+    dificultad: "DIFICIL"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 170
+
+  - id: "matar_evoker_absoluto"
+    nombre: "Eliminar Evokers"
+    tipo: "MATAR"
+    objetivo: "EVOKER"
+    cantidad: 10
+    dificultad: "DIFICIL"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 174
+
+  - id: "craftear_armadura_netherite_absoluto"
+    nombre: "Craftear piezas Netherite"
+    tipo: "CRAFTEAR"
+    objetivo: "NETHERITE_CHESTPLATE"
+    cantidad: 1
+    dificultad: "DIFICIL"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 190
+
+  - id: "craftear_herramientas_netherite_absoluto"
+    nombre: "Craftear herramientas Netherite"
+    tipo: "CRAFTEAR"
+    objetivo: "NETHERITE_PICKAXE"
+    cantidad: 1
+    dificultad: "DIFICIL"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 185
+
+  - id: "romper_deepslate_diamante_absoluto"
+    nombre: "Minar Deepslate Diamond"
+    tipo: "ROMPER"
+    objetivo: "DEEPSLATE_DIAMOND_ORE"
+    cantidad: 24
+    dificultad: "DIFICIL"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 172
+
+  - id: "romper_end_stone_absoluto"
+    nombre: "Minar End Stone masivo"
+    tipo: "ROMPER"
+    objetivo: "END_STONE"
+    cantidad: 256
+    dificultad: "DIFICIL"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 162
+
+  - id: "fundir_oro_absoluto"
+    nombre: "Fundir oro en masa"
+    tipo: "COCINAR"
+    objetivo: "GOLD_INGOT"
+    cantidad: 64
+    dificultad: "DIFICIL"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 158
+
+  - id: "romper_quartz_absoluto"
+    nombre: "Minar Quartz del Nether"
+    tipo: "ROMPER"
+    objetivo: "NETHER_QUARTZ_ORE"
+    cantidad: 128
+    dificultad: "DIFICIL"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 160
+
+  - id: "craftear_bloques_hierro_absoluto"
+    nombre: "Craftear bloques de hierro"
+    tipo: "CRAFTEAR"
+    objetivo: "IRON_BLOCK"
+    cantidad: 16
+    dificultad: "DIFICIL"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 156
+
+  - id: "craftear_ojos_ender_absoluto"
+    nombre: "Craftear Ojos de Ender"
+    tipo: "CRAFTEAR"
+    objetivo: "ENDER_EYE"
+    cantidad: 24
+    dificultad: "DIFICIL"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 165
+
+  - id: "romper_glowstone_absoluto"
+    nombre: "Romper Glowstone"
+    tipo: "ROMPER"
+    objetivo: "GLOWSTONE"
+    cantidad: 128
+    dificultad: "DIFICIL"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 154
+
+  - id: "matar_hoglin_absoluto"
+    nombre: "Cazar Hoglins"
+    tipo: "MATAR"
+    objetivo: "HOGLIN"
+    cantidad: 30
+    dificultad: "DIFICIL"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 166
+
+  - id: "craftear_espada_diamante_absoluto"
+    nombre: "Forjar espadas de Diamante"
+    tipo: "CRAFTEAR"
+    objetivo: "DIAMOND_SWORD"
+    cantidad: 2
+    dificultad: "DIFICIL"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 164
+
+  - id: "craftear_pechera_diamante_absoluto"
+    nombre: "Forjar pecheras de Diamante"
+    tipo: "CRAFTEAR"
+    objetivo: "DIAMOND_CHESTPLATE"
+    cantidad: 2
+    dificultad: "DIFICIL"
+    rangos: ["ABSOLUTO"]
+    recompensa_ps: 170
+
 
 
 config:
@@ -722,9 +1076,9 @@ config:
     LEYENDA: 6
     MAESTRO: 5
     TITAN: 4
-    ABSOLUTO: 3
+    ABSOLUTO: 8  # Aumentado para dar más variedad al rango más alto
   pesos_por_dificultad:
-    FACIL: 5
-    MEDIA: 3
-    DIFICIL: 1
+    FACIL: 3    # Reducido para ABSOLUTO (menos misiones fáciles)
+    MEDIA: 2    # Reducido para ABSOLUTO (menos misiones medias)
+    DIFICIL: 5  # Aumentado para ABSOLUTO (más misiones difíciles)
   auto_asignar_al_entrar: true  # Habilita asignación a "late joiners"

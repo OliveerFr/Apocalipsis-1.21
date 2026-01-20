@@ -1,0 +1,581 @@
+# ═══════════════════════════════════════════════════════════════════
+# EVENTO 5: LA APERTURA DEL END
+# ═══════════════════════════════════════════════════════════════════
+# El portal fragmentado despierta.
+# Algo observa desde un lugar que no debería existir.
+# Inicio: /avo evento5 start
+# ═══════════════════════════════════════════════════════════════════
+
+metadata:
+  event_id: "apertura_end"
+  event_number: 5
+  nombre_display: "§8La Apertura del End"
+  version: "2.0.0"
+  enabled: true
+  
+  # Plugins opcionales (auto-detecta)
+  mythicmobs: false
+  modelengine: false
+  
+  # Comandos
+  comandos:
+    - "evento5"
+    - "aperturaend"
+
+# ═══════════════════════════════════════════════════════════════════
+# CONFIGURACIÓN DE MODEL ENGINE (Modo Épico)
+# ═══════════════════════════════════════════════════════════════════
+
+modelo:
+  # ID del modelo en Model Engine
+  # Este debe coincidir con el nombre del archivo .bbmodel en:
+  # plugins/ModelEngine/models/
+  model_engine_id: "corrupted_dragon"
+  
+  # Configuración visual del modelo
+  escala: 1.5  # Tamaño del modelo (1.0 = normal)
+  
+  # Efectos de partículas personalizados
+  particulas_spawn:
+    - type: "PORTAL"
+      cantidad: 200
+      radio: 2.0
+    - type: "DRAGON_BREATH"
+      cantidad: 100
+      radio: 3.0
+    - type: "END_ROD"
+      cantidad: 50
+      radio: 1.0
+
+# ═══════════════════════════════════════════════════════════════════
+# CONFIGURACIÓN DEL EVENTO
+# ═══════════════════════════════════════════════════════════════════
+
+evento:
+  # Duración de la Fase 1 (viaje al portal desde el Overworld)
+  duracion_fase_descubrimiento_segundos: 2700  # 45 minutos
+  
+  jugadores_minimos: 1
+  jugadores_maximos: 20
+  mundo_overworld: "world"
+  mundo_end: "world_the_end"
+  
+  # Portal en el Overworld (coordenadas se generan automáticamente al iniciar)
+  portal:
+    distancia_minima_spawn: 2000  # Mínimo 2000 bloques desde quien inicia el evento
+    distancia_maxima_spawn: 5000  # Máximo 5000 bloques desde quien inicia el evento
+    radio_deteccion_llegada: 50   # Radio para detectar cuando jugadores llegan
+    
+    # Mecánica de agrupación para revelar dirección
+    agrupacion_requerida:
+      enabled: true
+      radio_maximo: 50  # Los jugadores deben estar a menos de 50 bloques entre sí
+      jugadores_minimos: 2  # Mínimo de jugadores que deben estar cerca
+      mensaje_agrupacion: "§8[§7...§8] §7Deben estar juntos para descubrir el camino."
+      mensaje_dispersos: "§c⚠ Los jugadores están muy dispersos. Agrúpense para descubrir el camino al portal."
+  
+  # Spawns dramáticos durante el viaje (Fase 1: DESCUBRIMIENTO)
+  spawns_dramaticos:
+    enabled: true
+    intervalo_minimo: 120  # Mínimo 2 minutos entre spawns
+    intervalo_maximo: 300  # Máximo 5 minutos entre spawns
+    radio_spawn: 30  # Spawns aparecen entre 15-30 bloques de jugadores
+    
+    # Entidades que pueden aparecer
+    entidades:
+      - tipo: "ENDERMAN"
+        probabilidad: 40
+        cantidad_min: 2
+        cantidad_max: 5
+        mensaje: "§8[§7...§8] §7Están observando."
+        efectos_aparicion:
+          - "PORTAL:50:3"
+          - "REVERSE_PORTAL:30:2"
+        sonido: "ENTITY_ENDERMAN_SCREAM:1.5:0.7"
+        
+      - tipo: "ENDERMITE"
+        probabilidad: 25
+        cantidad_min: 3
+        cantidad_max: 8
+        mensaje: "§8[§7...§8] §7Algo se arrastra desde el vacío."
+        efectos_aparicion:
+          - "END_ROD:40:2"
+        sonido: "ENTITY_SILVERFISH_AMBIENT:1.2:0.8"
+        
+      - tipo: "SHULKER"
+        probabilidad: 20
+        cantidad_min: 1
+        cantidad_max: 3
+        mensaje: "§8[§7...§8] §7No deberían estar aquí."
+        efectos_aparicion:
+          - "DRAGON_BREATH:60:3"
+          - "PORTAL:40:2"
+        sonido: "ENTITY_SHULKER_AMBIENT:1.3:0.6"
+        
+      - tipo: "PHANTOM"
+        probabilidad: 15
+        cantidad_min: 2
+        cantidad_max: 4
+        mensaje: "§8[§7...§8] §7El cielo también está corrupto."
+        efectos_aparicion:
+          - "SMOKE:30:4"
+          - "END_ROD:20:3"
+        sonido: "ENTITY_PHANTOM_AMBIENT:1.4:0.5"
+  
+  # Escalado dinámico según jugadores
+  escalado:
+    hp_base: 500
+    hp_por_jugador: 0.15  # +15% HP por jugador
+    daño_base: 15
+    daño_por_jugador: 0.10  # +10% daño por jugador
+
+# ═══════════════════════════════════════════════════════════════════
+# FASES DEL EVENTO
+# ═══════════════════════════════════════════════════════════════════
+# El evento tiene 5 fases narrativas:
+# 1. DESCUBRIMIENTO (Overworld) - Viaje al portal
+# 2. LLEGADA (Portal) - Activación y decisión de entrar
+# 3. COMBATE (End) - Batalla contra el dragón (4 subfases)
+# 4. VICTORIA (End) - Silencio tras la muerte del dragón
+# 5. CLIFFHANGER (End) - Mensaje final misterioso
+
+fases_evento:
+  # ═══ FASE 1: DESCUBRIMIENTO (Overworld) ═══
+  fase_1_descubrimiento:
+    nombre: "§8Descubrimiento"
+    duracion_segundos: 2700  # 45 minutos
+    
+    mensajes_observador:
+      # Inicio del evento (0:00)
+      inicio:
+        - delay: 0
+          texto: "§8[§7...§8] §7No debería existir tan pronto."
+          tipo: "chat"  # Solo chat, misterio inicial
+      
+      # 40 minutos restantes (5:00 transcurridos)
+      40_min_restantes:
+        - delay: 0
+          texto: "§8[§7...§8] §7Huele a… antes."
+          tipo: "chat"
+        - delay: 60
+          texto: "§8[§7...§8] §7Cenizas. Vacío. Vestigios."
+          tipo: "chat"
+      
+      # 35 minutos restantes (10:00 transcurridos)
+      35_min_restantes:
+        - delay: 0
+          texto: "§8[§7...§8] §7Este umbral… lo recuerdo sellado."
+          tipo: "titulo"  # Título para nostalgia
+          titulo: "§8§o..."
+          subtitulo: "§7§oEste umbral… lo recuerdo sellado."
+      
+      # 30 minutos restantes (15:00 transcurridos)
+      30_min_restantes:
+        - delay: 0
+          texto: "§8[§7...§8] §7Antes, esto tomaba más tiempo."
+          tipo: "chat"
+        - delay: 80
+          texto: "§8[§7...§8] §7Siglos. No minutos."
+          tipo: "chat"
+      
+      # 25 minutos restantes (20:00 transcurridos)
+      25_min_restantes:
+        - delay: 0
+          texto: "§8[§7...§8] §7Cuántas veces he visto este momento."
+          tipo: "titulo"
+          titulo: "§8§o..."
+          subtitulo: "§7§oCuántas veces he visto este momento."
+        - delay: 100
+          texto: "§8[§7...§8] §7Y cuántas más faltan."
+          tipo: "chat"
+      
+      # 20 minutos restantes (25:00 transcurridos)
+      20_min_restantes:
+        - delay: 0
+          texto: "§8[§7...§8] §7El mundo está… apurado."
+          tipo: "chat"
+        - delay: 60
+          texto: "§8[§7...§8] §7Como si algo lo persiguiera."
+          tipo: "titulo"
+          titulo: "§8§o..."
+          subtitulo: "§7§oComo si algo lo persiguiera."
+      
+      # 15 minutos restantes (30:00 transcurridos)
+      15_min_restantes:
+        - delay: 0
+          texto: "§8⚡§8⚡§8⚡"
+          tipo: "titulo"
+          titulo: "§8§l15 minutos"
+          subtitulo: "§7El portal se acerca"
+        - delay: 40
+          texto: "§8[§7...§8] §7No fueron suficientes la última vez."
+          tipo: "chat"
+        - delay: 100
+          texto: "§8[§7...§8] §7Ni la anterior."
+          tipo: "chat"
+      
+      # 10 minutos restantes (35:00 transcurridos)
+      10_min_restantes:
+        - delay: 0
+          texto: "§8[§7...§8] §7Puedo sentir el vacío desde aquí."
+          tipo: "titulo"
+          titulo: "§8§o..."
+          subtitulo: "§7§oPuedo sentir el vacío desde aquí."
+        - delay: 80
+          texto: "§8[§7...§8] §7Frío. Silencioso. Esperando."
+          tipo: "chat"
+      
+      # 5 minutos restantes (40:00 transcurridos)
+      5_min_restantes:
+        - delay: 0
+          texto: "§c⚡§8⚡§c⚡"
+          tipo: "titulo"
+          titulo: "§c§l5 MINUTOS"
+          subtitulo: "§7§oYa casi están ahí"
+        - delay: 40
+          texto: "§8[§7...§8] §7Si cruzan ese umbral, no hay marcha atrás."
+          tipo: "chat"
+        - delay: 80
+          texto: "§8[§7...§8] §7Nunca la hay."
+          tipo: "titulo"
+          titulo: "§8§o..."
+          subtitulo: "§7§oNunca la hay."
+      
+      # 3 minutos restantes (42:00 transcurridos)
+      3_min_restantes:
+        - delay: 0
+          texto: "§8[§7...§8] §7El End no olvida."
+          tipo: "chat"
+        - delay: 60
+          texto: "§8[§7...§8] §7Ni perdona."
+          tipo: "titulo"
+          titulo: "§8§l..."
+          subtitulo: "§7§oNi perdona."
+      
+      # 1 minuto restante (44:00 transcurridos)
+      1_min_restante:
+        - delay: 0
+          texto: "§c§l⚡§8§l⚡§c§l⚡"
+          tipo: "titulo_grande"
+          titulo: "§c§l1 MINUTO"
+          subtitulo: "§8§oEl portal despierta"
+        - delay: 40
+          texto: "§8[§7...§8] §7Deberían haber traído más que armadura."
+          tipo: "chat"
+        - delay: 80
+          texto: "§8[§7...§8] §7Deberían haber traído esperanza."
+          tipo: "titulo"
+          titulo: "§8§o..."
+          subtitulo: "§7§oDeberían haber traído esperanza."
+  
+  # ═══ FASE 2: LLEGADA AL PORTAL ═══
+  fase_2_llegada:
+    nombre: "§8Llegada"
+    
+    mensajes_observador:
+      al_detectar_jugadores:
+        - "§8[§7...§8] §7Aquí fue donde todo terminó… más de una vez."
+        - "§8[§7...§8] §7Y aun así, siguen entrando."
+    
+    portal_activacion:
+      delay_segundos: 10  # El portal se activa lentamente, 10 segundos
+      mensaje_final: "§8El portal espera."
+  
+  # ═══ FASE 3: COMBATE (End) ═══
+  fase_3_combate:
+    nombre: "§8Combate"
+    
+    entrada_end:
+      mensajes_observador:
+        - delay: 0
+          texto: "§8[§7...§8] §7No es el mismo lugar."
+        - delay: 40
+          texto: "§8[§7...§8] §7Nunca lo es."
+    
+    pre_dragon_spawn:
+      delay_segundos: 20  # 20 segundos de tensión antes de que aparezca
+      efectos:
+        - "sonidos_ambiente"
+        - "particulas_oscuras"
+        - "cielo_oscurecido"
+    
+    # 4 subfases del combate basadas en HP del dragón
+    subfases_dragon:
+      subfase_1:
+        nombre: "§8§l━━━ §5I §8§l━━━"
+        hp_min: 75
+        hp_max: 100
+        descripcion: "El dragón se mueve con fuerza renovada."
+        
+        dialogos_observador:
+          95: "§8[§7...§8] §7Antes era un final."
+          90: "§8[§7...§8] §7Ahora… es solo otro paso."
+      
+      subfase_2:
+        nombre: "§8§l━━━ §5II §8§l━━━"
+        hp_min: 50
+        hp_max: 75
+        descripcion: "La corrupción se manifiesta."
+        
+        dialogos_observador:
+          70: "§8[§7...§8] §7Siempre lo matan."
+      
+      subfase_3:
+        nombre: "§8§l━━━ §5III §8§l━━━"
+        hp_min: 25
+        hp_max: 50
+        descripcion: "Algo cambia en su comportamiento."
+        
+        dialogos_observador:
+          50: "§8[§7...§8] §7Siempre creen que eso arregla algo."
+          30: "§8[§7...§8] §8..."
+      
+      subfase_4:
+        nombre: "§8§l━━━ §4IV §8§l━━━"
+        hp_min: 0
+        hp_max: 25
+        descripcion: "El final se acerca."
+        
+        dialogos_observador:
+          10: "§8[§7...§8] §7El mundo avanza."
+          5: "§8[§7...§8] §7La memoria… no."
+  
+  # ═══ FASE 4: VICTORIA ═══
+  fase_4_victoria:
+    nombre: "§8Victoria"
+    
+    delay_post_muerte: 60  # Esperar 60 ticks (3s) para animación vanilla
+    
+    secuencia:
+      - delay: 0
+        texto:
+          - "§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          - "§f"
+          - "§8El End guarda silencio."
+          - "§f"
+      
+      - delay: 60
+        texto:
+          - "§7El portal de regreso aparece."
+          - "§8Pero algo ha cambiado."
+      
+      - delay: 100
+        texto:
+          - "§f"
+          - "§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    
+    mensaje_final: "§7Revisen sus inventarios..."
+  
+  # ═══ FASE 5: CLIFFHANGER ═══
+  fase_5_cliffhanger:
+    nombre: "§8..."
+    
+    delay_inicio: 200  # 10 segundos después de la victoria
+    
+    mensaje:
+      - "§f"
+      - "§8§l⚡ §f§oAlgo se ha activado más allá de este mundo. §8§l⚡"
+      - "§f"
+
+# ═══════════════════════════════════════════════════════════════════
+# CRISTALES DEL END
+# ═══════════════════════════════════════════════════════════════════
+
+cristales:
+  cantidad: 10
+  regeneracion_hp_por_segundo: 1
+  rango_curacion: 50
+  
+  recompensa_destruccion:
+    exp: 100
+    mensaje: "§8✓ Cristal destruido (X/10)"
+  
+  bonus_todos_destruidos:
+    mensaje: "§5Los cristales han caído."
+    efecto_jugadores:
+      tipo: "REGENERATION"
+      duracion: 600  # 30 segundos
+      nivel: 2
+
+# ═══════════════════════════════════════════════════════════════════
+# SISTEMA DE RECOMPENSAS
+# ═══════════════════════════════════════════════════════════════════
+
+recompensas:
+  # Drops adicionales (vanilla da 12,000 EXP + huevo automáticamente)
+  drops_garantizados:
+    elytra_desolador:
+      cantidad: 1
+      probabilidad: 100
+    escamas_vacio:
+      cantidad_min: 5
+      cantidad_max: 10
+      probabilidad: 100
+    experiencia_adicional:
+      cantidad: 5000  # SUMA a los 12,000 vanilla
+      distribucion: "proporcional"
+  
+  drops_probabilidad:
+    corazon_desolador:
+      probabilidad: 30
+      cantidad: 1
+    escama_perfecta:
+      probabilidad: 15
+      cantidad_min: 1
+      cantidad_max: 3
+  
+  # Recompensas de participación
+  participacion:
+    daño_minimo: 50  # HP mínimo para recompensas
+    items:
+      - "fragmento_vacio:3-5"
+      - "ender_pearl:5-10"
+      - "end_stone:32-64"
+      - "purpur_block:16-32"
+    experiencia: 1000
+    titulo: "§8Vencedor del End"
+  
+  # Top 3 jugadores con más daño
+  top_damage:
+    puesto_1:
+      corazon_garantizado: true
+      escama_perfecta: 3
+      titulo: "§5§lAzote del Desolador"
+    puesto_2:
+      escama_perfecta: 2
+      fragmento_vacio: 10
+      titulo: "§5Cazador del Vacío"
+    puesto_3:
+      escama_perfecta: 1
+      fragmento_vacio: 5
+      titulo: "§7Desafiante del End"
+
+# ═══════════════════════════════════════════════════════════════════
+# MENSAJES DEL EVENTO
+# ═══════════════════════════════════════════════════════════════════
+
+mensajes:
+  # ═══ FASE 1: DESCUBRIMIENTO (Overworld) ═══
+  fase_1_inicio:
+    broadcast: 
+      - "§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      - "§f"
+      - "§7El aire se vuelve denso."
+      - "§7Algo observa desde un lugar que no debería existir."
+      - "§f"
+      - "§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    
+    coordenadas_formato: "§5§l⚡ §fCoordenadas del portal§5§l ⚡\n§7X: {x} Y: {y} Z: {z}\n§8El portal no está cerca. Tienen que ir."
+  
+  fase_1_15min: "§8⚡ §715 minutos... §8⚡"
+  fase_1_5min: "§8⚡ §75 minutos... §8⚡"
+  fase_1_1min: "§8§l⚡ §f1 minuto... §8§l⚡"
+  fase_1_10s_countdown:
+    - "§810"
+    - "§89"
+    - "§88"
+    - "§77"
+    - "§76"
+    - "§75"
+    - "§c4"
+    - "§c3"
+    - "§42"
+    - "§41"
+  
+  # ═══ FASE 2: LLEGADA AL PORTAL ═══
+  fase_2_deteccion:
+    broadcast:
+      - "§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      - "§f"
+      - "§7Jugadores detectados cerca del portal."
+      - "§f"
+      - "§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  
+  fase_2_activacion:
+    titulo: "§8§l..."
+    subtitulo: "§7El portal se activa lentamente"
+    broadcast:
+      - "§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      - "§f"
+      - "§7El portal se activa lentamente."
+      - "§8El portal espera."
+      - "§f"
+      - "§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  
+  # ═══ FASE 3: COMBATE (End) ═══
+  fase_3_entrada_end:
+    titulo: "§8..."
+    subtitulo: "§7No es el mismo lugar"
+    broadcast:
+      - "§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      - "§f"
+      - "§8Silencio incómodo."
+      - "§7El cielo se siente… pesado."
+      - "§f"
+      - "§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  
+  fase_3_dragon_spawn:
+    titulo: "§8..."
+    subtitulo: "§5El dragón emerge"
+    broadcast:
+      - "§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      - "§f"
+      - "§8Sonidos."
+      - "§8Sombras."
+      - "§8El cielo se oscurece."
+      - "§f"
+      - "§5El dragón emerge."
+      - "§8Más fuerte. Más agresivo."
+      - "§7Diferente."
+      - "§f"
+      - "§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  
+  # ═══ FASE 4: VICTORIA ═══
+  fase_4_victoria:
+    titulo: "§8..."
+    subtitulo: "§7El End guarda silencio"
+  
+  # ═══ FASE 5: CLIFFHANGER ═══
+  fase_5_cliffhanger:
+    titulo: "§8§l..."
+    subtitulo: "§7..."
+
+# ═══════════════════════════════════════════════════════════════════
+# EFECTOS VISUALES Y SONIDOS
+# ═══════════════════════════════════════════════════════════════════
+# Más sutiles, menos explosivos
+
+efectos:
+  portal_activacion:
+    particulas:
+      - tipo: "END_ROD"
+        cantidad: 150
+        radio: 5
+      - tipo: "REVERSE_PORTAL"
+        cantidad: 300
+        radio: 8
+    sonidos:
+      - "AMBIENT_CAVE:1.5:0.5"
+      - "BLOCK_END_PORTAL_SPAWN:2.0:0.8"
+  
+  dragon_spawn:
+    particulas:
+      - tipo: "DRAGON_BREATH"
+        cantidad: 200
+        radio: 10
+    sonidos:
+      - "ENTITY_ENDER_DRAGON_GROWL:2.0:0.6"
+      - "AMBIENT_CAVE:1.0:0.3"
+  
+  muerte_dragon:
+    # Se respeta la animación vanilla (3 segundos)
+    # Luego se añaden efectos sutiles
+    particulas:
+      - tipo: "END_ROD"
+        cantidad: 100
+        radio: 15
+      - tipo: "REVERSE_PORTAL"
+        cantidad: 200
+        radio: 10
+    sonidos:
+      - "AMBIENT_CAVE:1.0:0.4"

@@ -33,6 +33,7 @@ public class AvoTabCompleter implements TabCompleter {
                 "tps", "stats", "backup", "cooldown", "debug", "test", "test-alert",
                 "reload", "admin", "escanear", "protecciones", "eco", "eco_sombras",
                 "evento3", "susurro", "evento4", "caminoend", "caminoalend",
+                "evento5", "aperturaend",
                 "xp", "experience", "nivel", "level", "evasion", "evasiones",
                 "autotest", "habilidad", "habilidades", "skill", "skills",
                 "blockinfo", "bloque", "blockstats", "skillstats",
@@ -122,6 +123,13 @@ public class AvoTabCompleter implements TabCompleter {
                                         "fase", "phase", "next", "siguiente", "fragmentos", 
                                         "testwarden", "setfragmentos", "getitemsevento4", 
                                         "completarportal", "cliffhanger", "anomalias").stream()
+                        .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
+                        .collect(Collectors.toList());
+                
+                case "evento5":
+                case "aperturaend":
+                    // Sugerir subcomandos de evento5 (La Apertura del End)
+                    return Arrays.asList("start", "iniciar", "stop", "detener", "info", "status", "next", "skip", "tp", "teleport").stream()
                         .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
                         .collect(Collectors.toList());
                 
@@ -284,6 +292,13 @@ public class AvoTabCompleter implements TabCompleter {
             // /avo time set|add <minutos>
             if (subCmd.equals("time")) {
                 return Arrays.asList("1", "2", "3", "5", "10", "15", "20", "30").stream()
+                    .filter(s -> s.startsWith(args[2]))
+                    .collect(Collectors.toList());
+            }
+            
+            // /avo evento5 start <minutos>
+            if ((subCmd.equals("evento5") || subCmd.equals("aperturaend")) && args[1].equalsIgnoreCase("start")) {
+                return Arrays.asList("1", "2", "3", "5", "10", "15", "20", "30", "45", "60").stream()
                     .filter(s -> s.startsWith(args[2]))
                     .collect(Collectors.toList());
             }

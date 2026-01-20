@@ -1,0 +1,244 @@
+# ═══════════════════════════════════════════════════════════════════
+# EVENTO 5: LA APERTURA DEL END
+# ═══════════════════════════════════════════════════════════════════
+# Evento raid épico contra el Desolador del Vacío
+# Inicio: /avo evento5 start
+# ═══════════════════════════════════════════════════════════════════
+
+metadata:
+  event_id: "apertura_end"
+  event_number: 5
+  nombre_display: "§5§lLa Apertura del End"
+  version: "1.0.0"
+  enabled: true
+  
+  # Plugins opcionales (auto-detecta)
+  mythicmobs: false
+  modelengine: false
+  
+  # Comandos
+  comandos:
+    - "evento5"
+    - "aperturaend"
+
+# ═══════════════════════════════════════════════════════════════════
+# CONFIGURACIÓN DEL EVENTO
+# ═══════════════════════════════════════════════════════════════════
+
+evento:
+  duracion_preparacion_segundos: 1800  # 30 minutos
+  jugadores_minimos: 1
+  jugadores_maximos: 20
+  mundo_end: "world_the_end"
+  
+  # Escalado dinámico según jugadores
+  escalado:
+    hp_base: 500
+    hp_por_jugador: 0.15  # +15% HP por jugador
+    daño_base: 15
+    daño_por_jugador: 0.10  # +10% daño por jugador
+
+# ═══════════════════════════════════════════════════════════════════
+# FASES DEL DRAGÓN
+# ═══════════════════════════════════════════════════════════════════
+
+fases:
+  fase_1:
+    nombre: "Aéreo Agresivo"
+    hp_inicio: 100
+    hp_fin: 75
+    
+    dialogos_observador:
+      100: "§7§o\"Eso... NO es el dragón que esperaban.\""
+      90: "§7§o\"Está protegiendo algo. Pueden sentirlo.\""
+      80: "§7§o\"Los cristales lo alimentan. Rómpanlos.\""
+  
+  fase_2:
+    nombre: "Invocador Táctico"
+    hp_inicio: 75
+    hp_fin: 50
+    
+    dialogos_observador:
+      75: "§7§o\"Está llamando refuerzos... inteligente.\""
+      65: "§7§o\"El vacío le responde. Cuidado.\""
+      55: "§7§o\"Su respiración corrompe el aire...\""
+  
+  fase_3:
+    nombre: "Desesperación"
+    hp_inicio: 50
+    hp_fin: 25
+    
+    dialogos_observador:
+      50: "§c§o\"Está... ¿asustado?\""
+      40: "§c§o\"Desesperado. Peligroso.\""
+      30: "§c§o\"¡Los cristales! ¡Sigue usándolos!\""
+  
+  fase_4:
+    nombre: "Furia Final"
+    hp_inicio: 25
+    hp_fin: 0
+    
+    dialogos_observador:
+      25: "§4§l§o\"¡ESTÁ PERDIENDO EL CONTROL!\""
+      15: "§4§l§o\"¡LA REALIDAD SE DESGARRA!\""
+      5: "§4§l§o\"¡CASI! ¡NO CEDAN!\""
+      1: "§5§l§o\"Esto... termina ahora.\""
+
+# ═══════════════════════════════════════════════════════════════════
+# CRISTALES DEL END
+# ═══════════════════════════════════════════════════════════════════
+
+cristales:
+  cantidad: 10
+  regeneracion_hp_por_segundo: 1
+  rango_curacion: 50
+  
+  recompensa_destruccion:
+    exp: 100
+    mensaje: "§a¡Cristal destruido! (X/10)"
+  
+  bonus_todos_destruidos:
+    mensaje: "§6§l¡TODOS LOS CRISTALES DESTRUIDOS!"
+    efecto_jugadores:
+      tipo: "REGENERATION"
+      duracion: 600  # 30 segundos
+      nivel: 2
+
+# ═══════════════════════════════════════════════════════════════════
+# SISTEMA DE RECOMPENSAS
+# ═══════════════════════════════════════════════════════════════════
+
+recompensas:
+  # Drops adicionales (vanilla da 12,000 EXP + huevo automáticamente)
+  drops_garantizados:
+    elytra_desolador:
+      cantidad: 1
+      probabilidad: 100
+    escamas_vacio:
+      cantidad_min: 5
+      cantidad_max: 10
+      probabilidad: 100
+    experiencia_adicional:
+      cantidad: 5000  # SUMA a los 12,000 vanilla
+      distribucion: "proporcional"
+  
+  drops_probabilidad:
+    corazon_desolador:
+      probabilidad: 30
+      cantidad: 1
+    escama_perfecta:
+      probabilidad: 15
+      cantidad_min: 1
+      cantidad_max: 3
+  
+  # Recompensas de participación
+  participacion:
+    daño_minimo: 50  # HP mínimo para recompensas
+    items:
+      - "fragmento_vacio:3-5"
+      - "ender_pearl:5-10"
+      - "end_stone:32-64"
+      - "purpur_block:16-32"
+    experiencia: 1000
+    titulo: "§5Vencedor del End"
+  
+  # Top 3 jugadores con más daño
+  top_damage:
+    puesto_1:
+      corazon_garantizado: true
+      escama_perfecta: 3
+      titulo: "§5§lAzote del Desolador"
+    puesto_2:
+      escama_perfecta: 2
+      fragmento_vacio: 10
+      titulo: "§5§lCazador del Vacío"
+    puesto_3:
+      escama_perfecta: 1
+      fragmento_vacio: 5
+      titulo: "§5§lDesafiante del End"
+
+# ═══════════════════════════════════════════════════════════════════
+# MENSAJES
+# ═══════════════════════════════════════════════════════════════════
+
+mensajes:
+  inicio:
+    - "§5§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    - "§5§l        ⚠ EVENTO ÉPICO INICIADO ⚠"
+    - "§5§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    - ""
+    - "§7§oEl portal fragmentado ha despertado..."
+    - ""
+    - "§d§lMISIÓN:"
+    - "§7Reúnan recursos, armaduras y estrategia."
+    - "§7En 30 minutos, el portal se abrirá."
+    - ""
+    - "§5§l⚡ EL OBSERVADOR: §7§o\"Algo espera al otro lado..."
+    - "§7§ono es lo que ustedes creen.\""
+    - "§5§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  
+  countdown:
+    1800: "§ePreparación: §730 minutos restantes"
+    900: "§6¡Solo 15 minutos! §7Ultimen detalles."
+    300: "§c§l¡5 MINUTOS! §7Diríjanse al portal."
+    60: "§4§l¡ÚLTIMO MINUTO!"
+  
+  portal_abierto:
+    titulo: "§5§lEL PORTAL SE ABRE"
+    subtitulo: "§7No hay vuelta atrás..."
+    mensaje: "§5§l⚡ EL OBSERVADOR: §7§o\"No hay vuelta atrás...\""
+  
+  victoria:
+    titulo: "§5§l§nVICTORIA"
+    subtitulo: "§7§oEl Desolador del Vacío ha caído"
+    
+    mensajes_secuencia:
+      - delay: 60
+        texto: "§5§l⚡ EL OBSERVADOR:"
+      - delay: 80
+        texto: "§7§o\"Lo lograron... pero miren a su alrededor.\""
+      - delay: 120
+        texto: "§7§o\"Esto era solo el guardián.\""
+      - delay: 160
+        texto: "§7§o\"¿Qué protegía?\""
+    
+    mensajes_finales:
+      - "§d§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      - "§d§l  RECOMPENSAS DISPONIBLES"
+      - "§d§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      - ""
+      - "§7Revisen sus inventarios."
+      - "§7El portal está activo - pueden volver."
+      - "§7Exploren el End. Hay más secretos."
+      - ""
+      - "§5§l⚡ EL OBSERVADOR:"
+      - "§7§o\"La puerta está abierta.\""
+      - "§7§o\"Pero ahora... ¿pueden cerrarla?\""
+
+# ═══════════════════════════════════════════════════════════════════
+# EFECTOS VISUALES Y SONIDOS
+# ═══════════════════════════════════════════════════════════════════
+
+efectos:
+  portal_activacion:
+    particulas:
+      - tipo: "END_ROD"
+        cantidad: 200
+        radio: 5
+      - tipo: "REVERSE_PORTAL"
+        cantidad: 500
+        radio: 10
+    sonidos:
+      - "AMBIENT_CAVE:2.0:0.5"
+      - "BLOCK_END_PORTAL_SPAWN:3.0:1.0"
+  
+  muerte_dragon:
+    particulas:
+      - tipo: "EXPLOSION_HUGE"
+        cantidad: 100
+        radio: 10
+      - tipo: "REVERSE_PORTAL"
+        cantidad: 500
+        radio: 15
+    sonidos:
+      - "ENTITY_ENDER_DRAGON_DEATH:5.0:0.5"

@@ -26,6 +26,7 @@ import me.apocalipsis.Apocalipsis;
 import me.apocalipsis.disaster.DisasterController;
 import me.apocalipsis.disaster.DisasterEvasionTracker;
 import me.apocalipsis.events.EventController;
+import me.apocalipsis.events.EventBase;
 import me.apocalipsis.missions.MissionService;
 import me.apocalipsis.missions.MissionType;
 import me.apocalipsis.missions.MissionAssignment;
@@ -169,6 +170,10 @@ public class ApocalipsisCommand implements CommandExecutor {
             case "caminoalend":
             case "camino":
                 cmdEvento4(sender, args);
+                break;
+            case "evento5":
+            case "aperturaend":
+                cmdEvento5(sender, args);
                 break;
             case "navidad":
                 cmdNavidad(sender, args);
@@ -6136,6 +6141,625 @@ public class ApocalipsisCommand implements CommandExecutor {
         }
         
         sender.sendMessage("§6═══════════════════════════════════════");
+    }
+    
+    /**
+     * Comando principal del Evento 5: Apertura del End
+     * /avo evento5 <subcomando>
+     */
+    private void cmdEvento5(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("avo.admin")) {
+            sender.sendMessage("§cNo tienes permisos.");
+            return;
+        }
+        
+        if (args.length < 2) {
+            sender.sendMessage("§5§l⚡ ═══ LA APERTURA DEL END ═══ ⚡");
+            sender.sendMessage("§7Evento raid épico contra el Desolador del Vacío");
+            sender.sendMessage("");
+            sender.sendMessage("§e▸ Control Principal:");
+            sender.sendMessage("  §f/avo evento5 start §7- Inicia el evento inmediatamente");
+            sender.sendMessage("  §f/avo evento5 start <minutos> §7- Cuenta regresiva épica");
+            sender.sendMessage("  §f/avo evento5 stop §7- Finaliza el evento");
+            sender.sendMessage("  §f/avo evento5 info §7- Estado del evento");
+            sender.sendMessage("  §f/avo evento5 stats §7- Tus estadísticas");
+            sender.sendMessage("");
+            sender.sendMessage("§e▸ Admin - Testing:");
+            sender.sendMessage("  §f/avo evento5 skip §7- Saltar preparación");
+            sender.sendMessage("  §f/avo evento5 modo §7- Ver modo de integración");
+            sender.sendMessage("  §f/avo evento5 fase <1-4> §7- Forzar fase del dragón");
+            sender.sendMessage("  §f/avo evento5 damage <jugador> <cantidad> §7- Simular daño");
+            sender.sendMessage("  §f/avo evento5 kill §7- Matar dragón (test)");
+            sender.sendMessage("");
+            sender.sendMessage("§7Ejemplos:");
+            sender.sendMessage("  §e/avo evento5 start 5 §7- Empieza en 5 minutos");
+            sender.sendMessage("  §e/avo evento5 start 10 §7- Empieza en 10 minutos");
+            sender.sendMessage("");
+            sender.sendMessage("§7Alias: §faperturaend");
+            return;
+        }
+        
+        String subCmd = args[1].toLowerCase();
+        
+        // Obtener instancia del evento
+        me.apocalipsis.events.AperturaEndEvent evento5 = null;
+        if (eventController.hasActiveEvent() && 
+            eventController.getActiveEvent() instanceof me.apocalipsis.events.AperturaEndEvent) {
+            evento5 = (me.apocalipsis.events.AperturaEndEvent) eventController.getActiveEvent();
+        }
+        
+        switch (subCmd) {
+            case "start":
+            case "iniciar":
+                // Verificar si hay desastre activo
+                if (disasterController.hasActiveDisaster()) {
+                    sender.sendMessage("§cYa hay un desastre activo. Usa §e/avo stop §cprimero.");
+                    return;
+                }
+                
+                // Verificar si ya hay evento activo
+                if (eventController.hasActiveEvent()) {
+                    String eventoActivo = eventController.getActiveEvent().getEventId();
+                    sender.sendMessage("§cYa hay un evento activo: §f" + eventoActivo);
+                    return;
+                }
+                
+                // Verificar SAFE_MODE
+                if (stateManager.isSafeModeActive()) {
+                    sender.sendMessage("§cNo se puede iniciar en SAFE_MODE (TPS bajo).");
+                    return;
+                }
+                
+                // Verificar si hay parámetro de tiempo (cuenta regresiva)
+                if (args.length >= 3) {
+                    try {
+                        int minutos = Integer.parseInt(args[2]);
+                        
+                        if (minutos < 1) {
+                            sender.sendMessage("§cEl tiempo debe ser al menos 1 minuto.");
+                            return;
+                        }
+                        
+                        if (minutos > 60) {
+                            sender.sendMessage("§cEl tiempo máximo es 60 minutos.");
+                            return;
+                        }
+                        
+                        // Iniciar cuenta regresiva épica
+                        iniciarCuentaRegresivaEvento5(sender, minutos);
+                        return;
+                        
+                    } catch (NumberFormatException e) {
+                        sender.sendMessage("§cTiempo inválido. Usa: §e/avo evento5 start <minutos>");
+                        return;
+                    }
+                }
+                
+                // Establecer ubicación del iniciador si es un jugador
+                if (sender instanceof Player) {
+                    Player iniciador = (Player) sender;
+                    
+                    // Obtener instancia del evento ANTES de iniciarlo
+                    me.apocalipsis.events.EventBase eventoBase = eventController.getEvent("apertura_end");
+                    
+                    if (eventoBase instanceof me.apocalipsis.events.AperturaEndEvent) {
+                        me.apocalipsis.events.AperturaEndEvent evento = 
+                            (me.apocalipsis.events.AperturaEndEvent) eventoBase;
+                        evento.setUbicacionIniciador(iniciador.getLocation());
+                    }
+                }
+                
+                // Iniciar evento inmediatamente (sin cuenta regresiva)
+                if (eventController.startEvent("apertura_end")) {
+                    sender.sendMessage("§a✓ Algo ha emergido... §c¡El Observador está aterrado!");
+                    
+                    // Título y sonido para todos
+                    for (Player p : plugin.getServer().getOnlinePlayers()) {
+                        p.sendTitle("§8§l⚠ §4EMERGENCIA§8 ⚠", "§7El Observador: 'Algo... terrible ha despertado'", 10, 80, 20);
+                        p.playSound(p.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 2.0f, 0.6f);
+                        p.playSound(p.getLocation(), Sound.BLOCK_END_PORTAL_SPAWN, 1.5f, 1.0f);
+                    }
+                    
+                    plugin.getLogger().info(String.format("[Apertura End] Iniciado por %s", sender.getName()));
+                } else {
+                    sender.sendMessage("§cNo se pudo iniciar el evento. Verifica la consola.");
+                }
+                break;
+                
+            case "stop":
+            case "detener":
+                if (evento5 == null) {
+                    sender.sendMessage("§cEl evento no está activo.");
+                    return;
+                }
+                
+                // Título y sonido para todos
+                for (Player p : plugin.getServer().getOnlinePlayers()) {
+                    p.sendTitle("§8§l⚡ EVENTO FINALIZADO ⚡", "§7El End vuelve al silencio...", 10, 50, 20);
+                    p.playSound(p.getLocation(), Sound.ENTITY_ENDER_DRAGON_DEATH, 1.0f, 0.5f);
+                }
+                
+                eventController.stopActiveEvent();
+                sender.sendMessage("§7✓ Evento §5La Apertura del End §7detenido");
+                plugin.getLogger().info(String.format("[Apertura End] Detenido por %s", sender.getName()));
+                break;
+                
+            case "info":
+            case "status":
+                if (evento5 == null) {
+                    sender.sendMessage("§5§l⚡ LA APERTURA DEL END - INFO");
+                    sender.sendMessage("§7Estado: §cInactivo");
+                    sender.sendMessage("§7Usa §e/avo evento5 start §7para iniciarlo.");
+                    return;
+                }
+                
+                sender.sendMessage(evento5.getEstadoEvento());
+                break;
+                
+            case "stats":
+                if (!(sender instanceof Player player)) {
+                    sender.sendMessage("§cSolo jugadores pueden ver sus estadísticas.");
+                    return;
+                }
+                
+                if (evento5 == null) {
+                    sender.sendMessage("§cEl evento no está activo.");
+                    return;
+                }
+                
+                sender.sendMessage("§5§l⚡ TUS ESTADÍSTICAS ⚡");
+                sender.sendMessage("§7(WIP - Proximamente)");
+                break;
+                
+            case "skip":
+                if (evento5 == null) {
+                    sender.sendMessage("§cEl evento no está activo.");
+                    return;
+                }
+                
+                if (evento5.getFaseEvento() != me.apocalipsis.events.AperturaEndEvent.EventPhase.DESCUBRIMIENTO) {
+                    sender.sendMessage("§cSolo se puede saltar la fase de descubrimiento.");
+                    return;
+                }
+                
+                evento5.saltarPreparacion();
+                sender.sendMessage("§a✓ Fase de descubrimiento omitida - Portal activándose...");
+                break;
+                
+            case "next":
+                if (evento5 == null) {
+                    sender.sendMessage("§cEl evento no está activo.");
+                    return;
+                }
+                
+                // Obtener fase actual
+                me.apocalipsis.events.AperturaEndEvent.EventPhase faseActual = evento5.getFaseEvento();
+                
+                switch (faseActual) {
+                    case DESCUBRIMIENTO:
+                        // Saltar al siguiente diálogo (cada 5-15 min)
+                        int tiempoNuevo = evento5.saltarAlSiguienteDialogo();
+                        
+                        if (tiempoNuevo == -1) {
+                            sender.sendMessage("§cNo se puede saltar - fase incorrecta");
+                        } else if (tiempoNuevo == 0) {
+                            sender.sendMessage("§a✓ [DESCUBRIMIENTO → LLEGADA] Portal activándose...");
+                        } else {
+                            int minutos = tiempoNuevo / 60;
+                            int segundos = tiempoNuevo % 60;
+                            sender.sendMessage(String.format("§a✓ Saltado a: §e%d:%02d §7(próximo diálogo)", minutos, segundos));
+                            sender.sendMessage("§7Usa §e/avo evento5 next §7de nuevo para continuar");
+                        }
+                        break;
+                        
+                    case LLEGADA:
+                        // Forzar apertura completa del portal
+                        sender.sendMessage("§a✓ [LLEGADA → PORTAL_ABIERTO] Portal abierto instantáneamente");
+                        sender.sendMessage("§7Tip: Entra al portal para continuar a COMBATE");
+                        break;
+                        
+                    case PORTAL_ABIERTO:
+                        sender.sendMessage("§e⚠ Fase PORTAL_ABIERTO activa - Entra al portal para continuar");
+                        sender.sendMessage("§7Tip: Usa §e/tp @a <coords del End> §7para forzar");
+                        break;
+                        
+                    case COMBATE:
+                        // Matar al dragón instantáneamente
+                        evento5.matarDragon();
+                        sender.sendMessage("§a✓ [COMBATE → VICTORIA] Dragón eliminado");
+                        break;
+                        
+                    case VICTORIA:
+                        sender.sendMessage("§a✓ [VICTORIA → CLIFFHANGER] Saltando a mensaje final...");
+                        sender.sendMessage("§7El evento terminará en breve...");
+                        break;
+                        
+                    case CLIFFHANGER:
+                        sender.sendMessage("§e⚠ Ya estás en la fase final (CLIFFHANGER)");
+                        sender.sendMessage("§7El evento terminará automáticamente");
+                        break;
+                        
+                    case INACTIVO:
+                        sender.sendMessage("§cEl evento no está activo.");
+                        break;
+                        
+                    default:
+                        sender.sendMessage("§cFase desconocida: " + faseActual);
+                        break;
+                }
+                break;
+                
+            case "tp":
+            case "teleport":
+                if (!(sender instanceof Player)) {
+                    sender.sendMessage("§cSolo jugadores pueden usar este comando.");
+                    return;
+                }
+                
+                if (evento5 == null) {
+                    sender.sendMessage("§cEl evento 5 no está activo.");
+                    return;
+                }
+                
+                Player player = (Player) sender;
+                Location portalLoc = evento5.getPortalLocation();
+                
+                if (portalLoc == null) {
+                    sender.sendMessage("§cEl portal aún no está definido.");
+                    return;
+                }
+                
+                // Teletransportar a 10 bloques del portal
+                Location tpLoc = portalLoc.clone().add(10, 0, 10);
+                tpLoc.setY(portalLoc.getWorld().getHighestBlockYAt(tpLoc) + 1);
+                
+                player.teleport(tpLoc);
+                sender.sendMessage("§a✓ Teletransportado cerca del portal para testing.");
+                break;
+                
+            case "modo":
+                sender.sendMessage("§a━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                sender.sendMessage("§a  MODO DE INTEGRACIÓN");
+                sender.sendMessage("§a━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                sender.sendMessage("");
+                sender.sendMessage("§e► Modo: §7VANILLA+ (WIP)");
+                sender.sendMessage("§e► Descripción: §7Sin plugins externos");
+                sender.sendMessage("§e► Características:");
+                sender.sendMessage("§7  ✓ Dragón vanilla del End");
+                sender.sendMessage("§7  ✓ Mecánicas vanilla completas");
+                sender.sendMessage("§7  ✓ Fases programadas en Java");
+                sender.sendMessage("§7  ○ MythicMobs: No detectado");
+                sender.sendMessage("§7  ○ ModelEngine: No detectado");
+                sender.sendMessage("");
+                sender.sendMessage("§a━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                break;
+                
+            case "fase":
+                if (evento5 == null) {
+                    sender.sendMessage("§cEl evento no está activo.");
+                    return;
+                }
+                
+                if (args.length < 3) {
+                    sender.sendMessage("§cUso: §e/avo evento5 fase <1-4>");
+                    return;
+                }
+                
+                try {
+                    int fase = Integer.parseInt(args[2]);
+                    
+                    if (fase < 1 || fase > 4) {
+                        sender.sendMessage("§cLa fase debe ser entre 1 y 4.");
+                        return;
+                    }
+                    
+                    evento5.forzarFase(fase);
+                    sender.sendMessage("§a✓ Dragón forzado a fase " + fase);
+                } catch (NumberFormatException e) {
+                    sender.sendMessage("§cNúmero de fase inválido.");
+                }
+                break;
+                
+            case "damage":
+                if (evento5 == null) {
+                    sender.sendMessage("§cEl evento no está activo.");
+                    return;
+                }
+                
+                if (args.length < 4) {
+                    sender.sendMessage("§cUso: §e/avo evento5 damage <jugador> <cantidad>");
+                    return;
+                }
+                
+                Player target = Bukkit.getPlayer(args[2]);
+                if (target == null) {
+                    sender.sendMessage("§cJugador no encontrado: " + args[2]);
+                    return;
+                }
+                
+                try {
+                    double cantidad = Double.parseDouble(args[3]);
+                    evento5.añadirDaño(target, cantidad);
+                    sender.sendMessage("§a✓ Añadidos " + cantidad + " HP de daño a " + target.getName());
+                } catch (NumberFormatException e) {
+                    sender.sendMessage("§cCantidad inválida.");
+                }
+                break;
+                
+            case "kill":
+                if (evento5 == null) {
+                    sender.sendMessage("§cEl evento no está activo.");
+                    return;
+                }
+                
+                evento5.matarDragon();
+                sender.sendMessage("§a✓ Dragón eliminado");
+                break;
+                
+            default:
+                sender.sendMessage("§cSubcomando desconocido: §f" + subCmd);
+                sender.sendMessage("§7Usa §e/avo evento5 §7para ver comandos disponibles.");
+                break;
+        }
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // CUENTA REGRESIVA ÉPICA PARA EVENTO 5
+    // ═══════════════════════════════════════════════════════════════════
+    
+    /**
+     * Inicia una cuenta regresiva épica antes de comenzar el Evento 5
+     * Con mensajes, efectos visuales y sonidos dramáticos
+     */
+    private void iniciarCuentaRegresivaEvento5(CommandSender sender, int minutos) {
+        int segundos = minutos * 60;
+        
+        // Guardar ubicación del iniciador si es un jugador
+        final org.bukkit.Location ubicacionIniciador;
+        if (sender instanceof Player) {
+            ubicacionIniciador = ((Player) sender).getLocation();
+        } else {
+            ubicacionIniciador = null;
+        }
+        
+        // Crear BossBar misteriosa
+        final org.bukkit.boss.BossBar bossBarCountdown = Bukkit.createBossBar(
+            "§8⚠ El Observador detecta algo extraño...",
+            org.bukkit.boss.BarColor.PURPLE,
+            org.bukkit.boss.BarStyle.SEGMENTED_20
+        );
+        
+        // Añadir todos los jugadores a la bossbar
+        for (Player p : plugin.getServer().getOnlinePlayers()) {
+            bossBarCountdown.addPlayer(p);
+        }
+        bossBarCountdown.setVisible(true);
+        
+        // Anuncio inicial misterioso
+        String tiempoTexto = minutos == 1 ? "1 minuto" : minutos + " minutos";
+        Bukkit.getServer().broadcast(
+            net.kyori.adventure.text.Component.text("§8§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬")
+                .color(net.kyori.adventure.text.format.NamedTextColor.DARK_GRAY)
+        );
+        Bukkit.getServer().broadcast(
+            net.kyori.adventure.text.Component.text("§7§l⚠ ⚠ ⚠ ALERTA DEL OBSERVADOR ⚠ ⚠ ⚠")
+                .color(net.kyori.adventure.text.format.NamedTextColor.GRAY)
+        );
+        Bukkit.getServer().broadcast(
+            net.kyori.adventure.text.Component.text("§5Algo está siendo construido en las sombras...")
+                .color(net.kyori.adventure.text.format.NamedTextColor.DARK_PURPLE)
+        );
+        Bukkit.getServer().broadcast(
+            net.kyori.adventure.text.Component.text("§7Una presencia oscura se acerca en: §f§l" + tiempoTexto)
+                .color(net.kyori.adventure.text.format.NamedTextColor.GRAY)
+        );
+        Bukkit.getServer().broadcast(
+            net.kyori.adventure.text.Component.text("§8§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬")
+                .color(net.kyori.adventure.text.format.NamedTextColor.DARK_GRAY)
+        );
+        
+        // Efectos iniciales
+        for (Player p : plugin.getServer().getOnlinePlayers()) {
+            p.sendTitle("§8⚠ §5ALERTA§8 ⚠", "§7El Observador está... preocupado", 10, 60, 20);
+            p.playSound(p.getLocation(), Sound.BLOCK_END_PORTAL_SPAWN, 1.5f, 0.8f);
+            p.playSound(p.getLocation(), Sound.ENTITY_ENDER_DRAGON_AMBIENT, 1.0f, 0.5f);
+        }
+        
+        sender.sendMessage("§a✓ Observador preocupado - algo se está gestando en §e" + tiempoTexto);
+        plugin.getLogger().info(String.format("[Apertura End] Cuenta regresiva iniciada: %d minutos por %s", minutos, sender.getName()));
+        
+        // TASK DE CUENTA REGRESIVA
+        new org.bukkit.scheduler.BukkitRunnable() {
+            int restante = segundos;
+            
+            @Override
+            public void run() {
+                restante--;
+                
+                // Actualizar BossBar con mensajes misteriosos
+                int minRestantes = restante / 60;
+                int segRestantes = restante % 60;
+                double progreso = (double) restante / segundos;
+                bossBarCountdown.setProgress(Math.max(0.0, Math.min(1.0, progreso)));
+                
+                // Cambiar color según tiempo
+                if (restante <= 30) {
+                    bossBarCountdown.setColor(org.bukkit.boss.BarColor.RED);
+                } else if (restante <= 60) {
+                    bossBarCountdown.setColor(org.bukkit.boss.BarColor.PINK);
+                } else if (restante <= 120) {
+                    bossBarCountdown.setColor(org.bukkit.boss.BarColor.PURPLE);
+                }
+                
+                // Mensajes en momentos clave
+                if (restante == 300) { // 5 minutos
+                    bossBarCountdown.setTitle("§8⚠ Algo se está generando en la oscuridad... §75:00");
+                    anunciarTiempoRestante("§e5 minutos", "§7El Observador: 'Siento una energía... desconocida'");
+                    efectoIntermedio();
+                } else if (restante == 180) { // 3 minutos
+                    bossBarCountdown.setTitle("§5⚡ La construcción se acelera... §73:00");
+                    anunciarTiempoRestante("§e3 minutos", "§7El Observador: 'Esto es... inquietante'");
+                    efectoIntermedio();
+                } else if (restante == 120) { // 2 minutos
+                    bossBarCountdown.setTitle("§d⚡ Algo emerge de las sombras... §c2:00");
+                    anunciarTiempoRestante("§c2 minutos", "§7El Observador: 'Jamás había sentido tal poder...'");
+                    efectoIntermedio();
+                } else if (restante == 60) { // 1 minuto
+                    bossBarCountdown.setTitle("§c§l⚠ LA CONSTRUCCIÓN CASI TERMINA §c1:00");
+                    anunciarTiempoRestante("§c§l1 MINUTO", "§c§lEl Observador: '¡PREPÁRENSE PARA LO PEOR!'");
+                    efectoIntenso();
+                } else if (restante == 30) { // 30 segundos
+                    bossBarCountdown.setTitle("§4§l⚠⚠⚠ ALGO DESPIERTA ⚠⚠⚠ §40:30");
+                    anunciarTiempoRestante("§4§l30 SEGUNDOS", "§4§lEl Observador: '¡NO... ESO ES IMPOSIBLE!'");
+                    efectoIntenso();
+                } else if (restante <= 10 && restante > 0) { // 10, 9, 8...
+                    bossBarCountdown.setTitle("§4§l⚠⚠⚠ " + restante + " ⚠⚠⚠");
+                    anunciarConteoFinal(restante);
+                } else if (restante == 0) {
+                    // ¡INICIAR EVENTO!
+                    bossBarCountdown.removeAll();
+                    iniciarEventoDespuesDeCuentaRegresiva();
+                    cancel();
+                    return;
+                } else {
+                    // Actualizar texto normal del bossbar
+                    String tiempo = String.format("%d:%02d", minRestantes, segRestantes);
+                    if (restante > 300) {
+                        bossBarCountdown.setTitle("§8⚠ El Observador percibe algo... §7" + tiempo);
+                    } else if (restante > 180) {
+                        bossBarCountdown.setTitle("§8⚡ Algo se está construyendo... §7" + tiempo);
+                    } else if (restante > 120) {
+                        bossBarCountdown.setTitle("§5⚡ La energía aumenta... §7" + tiempo);
+                    } else if (restante > 60) {
+                        bossBarCountdown.setTitle("§d⚡ Una presencia se acerca... §c" + tiempo);
+                    } else if (restante > 30) {
+                        bossBarCountdown.setTitle("§c§l⚠ Algo está a punto de emerger... §c" + tiempo);
+                    }
+                }
+            }
+            
+            private void anunciarTiempoRestante(String tiempo, String mensaje) {
+                Bukkit.getServer().broadcast(
+                    net.kyori.adventure.text.Component.text("§8§l━━━━━━━━━━━━━━━━━━━━━━━━━")
+                        .color(net.kyori.adventure.text.format.NamedTextColor.DARK_GRAY)
+                );
+                Bukkit.getServer().broadcast(
+                    net.kyori.adventure.text.Component.text(mensaje)
+                        .color(net.kyori.adventure.text.format.NamedTextColor.GRAY)
+                );
+                Bukkit.getServer().broadcast(
+                    net.kyori.adventure.text.Component.text("§8§l━━━━━━━━━━━━━━━━━━━━━━━━━")
+                        .color(net.kyori.adventure.text.format.NamedTextColor.DARK_GRAY)
+                );
+            }
+            
+            private void anunciarConteoFinal(int segundos) {
+                String color = segundos <= 3 ? "§4§l" : "§c§l";
+                
+                Bukkit.getServer().broadcast(
+                    net.kyori.adventure.text.Component.text(color + "⚠ " + segundos + " ⚠")
+                        .color(net.kyori.adventure.text.format.NamedTextColor.DARK_RED)
+                );
+                
+                for (Player p : plugin.getServer().getOnlinePlayers()) {
+                    p.sendTitle(color + "⚠ " + segundos + " ⚠", "§8Algo emerge...", 0, 25, 5);
+                    
+                    if (segundos <= 5) {
+                        p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 2.0f, 2.0f);
+                        p.playSound(p.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 0.5f, 2.0f);
+                    } else {
+                        p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1.5f, 1.5f);
+                    }
+                    
+                    // Partículas épicas
+                    org.bukkit.Location loc = p.getLocation();
+                    p.getWorld().spawnParticle(org.bukkit.Particle.PORTAL, loc, 20 + (10 - segundos) * 10, 1, 1, 1, 0.5);
+                    p.getWorld().spawnParticle(org.bukkit.Particle.END_ROD, loc.clone().add(0, 2, 0), 5, 0.5, 0.5, 0.5);
+                }
+            }
+            
+            private void efectoIntermedio() {
+                for (Player p : plugin.getServer().getOnlinePlayers()) {
+                    p.playSound(p.getLocation(), Sound.BLOCK_END_PORTAL_SPAWN, 1.0f, 0.6f);
+                    p.playSound(p.getLocation(), Sound.AMBIENT_CAVE, 0.5f, 0.5f);
+                    
+                    org.bukkit.Location loc = p.getLocation();
+                    p.getWorld().spawnParticle(org.bukkit.Particle.PORTAL, loc, 30, 2, 1, 2, 0.3);
+                    p.getWorld().spawnParticle(org.bukkit.Particle.ENCHANT, loc, 20, 1.5, 1, 1.5);
+                }
+            }
+            
+            private void efectoIntenso() {
+                for (Player p : plugin.getServer().getOnlinePlayers()) {
+                    p.playSound(p.getLocation(), Sound.ENTITY_WITHER_SPAWN, 0.8f, 0.5f);
+                    p.playSound(p.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 1.5f, 0.7f);
+                    
+                    org.bukkit.Location loc = p.getLocation();
+                    p.getWorld().spawnParticle(org.bukkit.Particle.PORTAL, loc, 60, 3, 2, 3, 0.5);
+                    p.getWorld().spawnParticle(org.bukkit.Particle.DRAGON_BREATH, loc, 30, 2, 1, 2, 0.1);
+                    p.getWorld().spawnParticle(org.bukkit.Particle.END_ROD, loc.clone().add(0, 2, 0), 15, 1, 1, 1);
+                }
+            }
+            
+            private void iniciarEventoDespuesDeCuentaRegresiva() {
+                // ANUNCIO ÉPICO FINAL - OBSERVADOR PREOCUPADO
+                Bukkit.getServer().broadcast(
+                    net.kyori.adventure.text.Component.text("§8§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬")
+                        .color(net.kyori.adventure.text.format.NamedTextColor.DARK_GRAY)
+                );
+                Bukkit.getServer().broadcast(
+                    net.kyori.adventure.text.Component.text("§7§l⚠ ⚠ ⚠ EL OBSERVADOR GRITA ⚠ ⚠ ⚠")
+                        .color(net.kyori.adventure.text.format.NamedTextColor.GRAY)
+                );
+                Bukkit.getServer().broadcast(
+                    net.kyori.adventure.text.Component.text("§4§l'¡ALGO HA EMERGIDO DE LAS SOMBRAS!'")
+                        .color(net.kyori.adventure.text.format.NamedTextColor.DARK_RED)
+                );
+                Bukkit.getServer().broadcast(
+                    net.kyori.adventure.text.Component.text("§5Una presencia antigua y terrible se materializa...")
+                        .color(net.kyori.adventure.text.format.NamedTextColor.DARK_PURPLE)
+                );
+                Bukkit.getServer().broadcast(
+                    net.kyori.adventure.text.Component.text("§8§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬")
+                        .color(net.kyori.adventure.text.format.NamedTextColor.DARK_GRAY)
+                );
+                
+                // Efectos finales masivos
+                for (Player p : plugin.getServer().getOnlinePlayers()) {
+                    p.sendTitle("§8§l⚠ §4EMERGENCIA§8 ⚠", "§5§lEl Observador: '¡CORRAN!'", 10, 80, 20);
+                    p.playSound(p.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 3.0f, 0.5f);
+                    p.playSound(p.getLocation(), Sound.BLOCK_END_PORTAL_SPAWN, 2.0f, 1.0f);
+                    p.playSound(p.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 1.5f, 0.6f);
+                    
+                    org.bukkit.Location loc = p.getLocation();
+                    p.getWorld().spawnParticle(org.bukkit.Particle.EXPLOSION_EMITTER, loc, 3);
+                    p.getWorld().spawnParticle(org.bukkit.Particle.PORTAL, loc, 200, 5, 3, 5, 1.0);
+                    p.getWorld().spawnParticle(org.bukkit.Particle.DRAGON_BREATH, loc, 100, 4, 2, 4, 0.5);
+                    p.getWorld().spawnParticle(org.bukkit.Particle.END_ROD, loc.clone().add(0, 3, 0), 50, 2, 2, 2, 0.2);
+                }
+                
+                // Establecer ubicación del iniciador ANTES de iniciar
+                if (ubicacionIniciador != null) {
+                    me.apocalipsis.events.EventBase eventoBase = eventController.getEvent("apertura_end");
+                    if (eventoBase instanceof me.apocalipsis.events.AperturaEndEvent) {
+                        me.apocalipsis.events.AperturaEndEvent evento = 
+                            (me.apocalipsis.events.AperturaEndEvent) eventoBase;
+                        evento.setUbicacionIniciador(ubicacionIniciador);
+                    }
+                }
+                
+                // INICIAR EVENTO
+                if (eventController.startEvent("apertura_end")) {
+                    plugin.getLogger().info("[Apertura End] ✓ Evento iniciado automáticamente tras cuenta regresiva");
+                } else {
+                    plugin.getLogger().severe("[Apertura End] ✖ Error al iniciar evento tras cuenta regresiva");
+                    Bukkit.getServer().broadcast(
+                        net.kyori.adventure.text.Component.text("§c§l✖ ERROR: No se pudo iniciar el evento")
+                            .color(net.kyori.adventure.text.format.NamedTextColor.RED)
+                    );
+                }
+            }
+        }.runTaskTimer(plugin, 0L, 20L); // Cada segundo
     }
 }
 
