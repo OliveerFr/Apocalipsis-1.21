@@ -1,0 +1,1245 @@
+package me.apocalipsis.events.apertura;
+
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.Sound;
+import org.bukkit.boss.BarColor;
+import org.bukkit.boss.BarStyle;
+import org.bukkit.boss.BossBar;
+import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
+
+import me.apocalipsis.Apocalipsis;
+import me.apocalipsis.ui.MessageBus;
+import me.apocalipsis.ui.SoundUtil;
+
+/**
+ * Gestiona las fases narrativas del evento Apertura del End
+ */
+public class AperturaEndPhaseManager {
+    
+    /**
+     * Fases narrativas del evento
+     */
+    public enum EventPhase {
+        INACTIVO,
+        DESCUBRIMIENTO,    // Fase 1: Overworld, viaje al portal
+        LLEGADA,           // Fase 2: Portal se activa
+        PORTAL_ABIERTO,    // Fase 2b: Portal activado, esperando entrada
+        COMBATE,           // Fase 3: Batalla en el End
+        VICTORIA,          // Fase 4: Dragón muerto, silencio
+        CLIFFHANGER        // Fase 5: Mensaje final
+    }
+    
+    private final Apocalipsis plugin;
+    private final MessageBus messageBus;
+    private final SoundUtil soundUtil;
+    
+    private EventPhase faseEvento = EventPhase.INACTIVO;
+    private int descubrimientoTimer = 2700; // 45 minutos
+    private boolean direccionRevelada = false;
+    
+    // UI
+    private BossBar bossBar;
+    
+    // Tareas
+    private BukkitTask preparacionTask;
+    
+    // Referencias a otros managers
+    private AperturaEndWaypointManager waypointManager;
+    private AperturaEndEffectsManager effectsManager;
+    private AperturaEndDragonController dragonController;
+    private AperturaEndArenaBuilder arenaBuilder;
+    private me.apocalipsis.events.AperturaEndEvent eventRef; // Referencia al evento principal
+    
+    public AperturaEndPhaseManager(Apocalipsis plugin, MessageBus messageBus, SoundUtil soundUtil) {
+        this.plugin = plugin;
+        this.messageBus = messageBus;
+        this.soundUtil = soundUtil;
+    }
+    
+    public void setManagers(AperturaEndWaypointManager waypointManager, AperturaEndEffectsManager effectsManager, 
+                           AperturaEndDragonController dragonController, AperturaEndArenaBuilder arenaBuilder,
+                           me.apocalipsis.events.AperturaEndEvent eventRef) {
+        this.waypointManager = waypointManager;
+        this.effectsManager = effectsManager;
+        this.dragonController = dragonController;
+        this.arenaBuilder = arenaBuilder;
+        this.eventRef = eventRef;
+    }
+    
+    public void iniciarFaseDescubrimiento(int duracionSegundos) {
+        faseEvento = EventPhase.DESCUBRIMIENTO;
+        descubrimientoTimer = duracionSegundos;
+        direccionRevelada = false;
+        
+        // Crear BossBar
+        bossBar = Bukkit.createBossBar(
+            "§8Descubrimiento: 30:00",
+            BarColor.PURPLE,
+            BarStyle.SEGMENTED_10
+        );
+        
+        // Añadir jugadores
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            bossBar.addPlayer(player);
+        }
+        bossBar.setVisible(true);
+        
+        iniciarCountdown();
+    }
+    
+    private void iniciarCountdown() {
+        preparacionTask = new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (faseEvento != EventPhase.DESCUBRIMIENTO) {
+                    cancel();
+                    return;
+                }
+                
+                descubrimientoTimer--;
+                
+                // Actualizar BossBar
+                int minutos = descubrimientoTimer / 60;
+                int segundos = descubrimientoTimer % 60;
+                bossBar.setTitle(String.format("§8Descubrimiento: %02d:%02d", minutos, segundos));
+                bossBar.setProgress(Math.max(0.0, (double) descubrimientoTimer / 2700.0));
+                
+                // Eventos de tiempo específicos
+                procesarEventosTiempo();
+                
+                // COUNTDOWN FINAL - Últimos 10 segundos (Intensidad máxima)
+                if (descubrimientoTimer <= 10 && descubrimientoTimer > 0) {
+                    countdownFinalIntenso();
+                }
+                
+                // Verificar si es tiempo de transición
+                if (descubrimientoTimer <= 0 && !direccionRevelada) {
+                    revelarDireccion();
+                }
+            }
+        }.runTaskTimer(plugin, 0L, 20L);
+    }
+    
+    private void procesarEventosTiempo() {
+        // 40 minutos (2400s) - DIÁLOGO INICIAL ÉPICO + WAYPOINT 1
+        if (descubrimientoTimer == 2400) {
+            secuenciaDialogoInicial();
+        }
+        
+        // 35 minutos (2100s) - PRIMERA TAREA + WAYPOINT ESPECIAL
+        if (descubrimientoTimer == 2100) {
+            secuenciaTareaEnderman();
+        }
+        
+        // 30 minutos (1800s) - DIÁLOGO MISTERIOSO WARDEN #1
+        if (descubrimientoTimer == 1800) {
+            secuenciaDialogoWarden1();
+        }
+        
+        // 25 minutos (1500s) - TRISTEZA PROFUNDA + TAREA 2
+        if (descubrimientoTimer == 1500) {
+            secuenciaTareaObsidiana();
+        }
+        
+        // 20 minutos (1200s) - TENSIÓN CRECIENTE + TAREA 3
+        if (descubrimientoTimer == 1200) {
+            secuenciaTareaOjoEnder();
+        }
+        
+        // 15 minutos (900s) - URGENCIA + efectos épicos
+        if (descubrimientoTimer == 900) {
+            secuenciaUrgencia();
+        }
+        
+        // 12 minutos (720s) - DIÁLOGO MISTERIOSO WARDEN #3 (ADVERTENCIA CRÍTICA)
+        if (descubrimientoTimer == 720) {
+            secuenciaAdvertenciaWardenCritica();
+        }
+        
+        // 10 minutos (600s) - VACÍO ENVOLVENTE + EMPUJES + BRÚJULA
+        if (descubrimientoTimer == 600) {
+            secuenciaVacioEnvolvente();
+        }
+        
+        // 5 minutos (300s) - ALTA TENSIÓN + DARKNESS
+        if (descubrimientoTimer == 300) {
+            secuenciaAltaTension();
+        }
+        
+        // 3 minutos (180s) - ADVERTENCIA FINAL + TELETRANSPORTE
+        if (descubrimientoTimer == 180) {
+            secuenciaAdvertenciaFinal();
+        }
+        
+        // 1 minuto (60s) - MÁXIMA TENSIÓN + secuencia épica final
+        if (descubrimientoTimer == 60) {
+            secuenciaMaximaTension();
+        }
+        
+        // 0 segundos - TRANSICIÓN A LLEGADA
+        if (descubrimientoTimer <= 0) {
+            if (!direccionRevelada) {
+                revelarDireccion();
+            }
+        }
+    }
+    
+    /**
+     * 40 minutos - Diálogo inicial épico con el Observador
+     */
+    private void secuenciaDialogoInicial() {
+        new org.bukkit.scheduler.BukkitRunnable() {
+            int etapa = 0;
+            
+            @Override
+            public void run() {
+                switch (etapa) {
+                    case 0:
+                        Bukkit.broadcastMessage("");
+                        Bukkit.broadcastMessage("§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                        Bukkit.broadcastMessage("");
+                        Bukkit.broadcastMessage("§5§l⚡ EL OBSERVADOR SUSURRA:");
+                        break;
+                    case 1:
+                        Bukkit.broadcastMessage("");
+                        Bukkit.broadcastMessage("§8[§7...§8] §7Ha pasado tanto tiempo...");
+                        break;
+                    case 2:
+                        Bukkit.broadcastMessage("§8[§7...§8] §7El portal está §5manifestándose §7de nuevo.");
+                        // Efectos místicos
+                        for (Player p : Bukkit.getOnlinePlayers()) {
+                            p.getWorld().spawnParticle(org.bukkit.Particle.PORTAL, p.getLocation(), 30, 2, 1, 2, 0.1);
+                            p.playSound(p.getLocation(), org.bukkit.Sound.BLOCK_END_PORTAL_SPAWN, 0.3f, 1.5f);
+                        }
+                        break;
+                    case 3:
+                        Bukkit.broadcastMessage("§8[§7...§8] §8Como un eco del pasado que no quiere morir.");
+                        break;
+                    case 4:
+                        Bukkit.broadcastMessage("");
+                        Bukkit.broadcastMessage("§8[§7...§8] §7Pero esta vez es §c§ldiferente§7.");
+                        break;
+                    case 5:
+                        Bukkit.broadcastMessage("§8[§7...§8] §7Puedo sentir algo... §4§lmás oscuro§7.");
+                        // Efectos de oscuridad
+                        for (Player p : Bukkit.getOnlinePlayers()) {
+                            p.addPotionEffect(new org.bukkit.potion.PotionEffect(
+                                org.bukkit.potion.PotionEffectType.DARKNESS, 60, 0, false, false, false));
+                            p.getWorld().spawnParticle(org.bukkit.Particle.SOUL_FIRE_FLAME, p.getLocation(), 20, 1.5, 0.5, 1.5, 0.02);
+                        }
+                        break;
+                    case 6:
+                        mostrarTituloObserver("§8§o...", "§7§oEste umbral… lo recuerdo sellado.", 10, 80, 30);
+                        break;
+                    case 7:
+                        Bukkit.broadcastMessage("");
+                        Bukkit.broadcastMessage("§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                        
+                        // WAYPOINT 1: Crear primer waypoint
+                        if (waypointManager != null) {
+                            new org.bukkit.scheduler.BukkitRunnable() {
+                                @Override
+                                public void run() {
+                                    waypointManager.intentarCrearWaypoint(0.8, "§5§l⚡ ECO DISTANTE", "§7Algo resuena al norte...");
+                                }
+                            }.runTaskLater(plugin, 20L);
+                        }
+                        
+                        this.cancel();
+                        break;
+                }
+                etapa++;
+            }
+        }.runTaskTimer(plugin, 0L, 60L); // Cada 3 segundos
+    }
+    
+    /**
+     * 35 minutos - Primera tarea con efectos cinematográficos
+     */
+    private void secuenciaTareaEnderman() {
+        // Efectos de revelación
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            p.sendTitle("§5§l⚡", "§8§l▬▬▬▬▬▬▬▬▬▬▬▬▬", 10, 40, 10);
+        }
+        
+        new org.bukkit.scheduler.BukkitRunnable() {
+            @Override
+            public void run() {
+                mostrarTituloObserver("§5§l35 MINUTOS", "§7La primera prueba se acerca", 10, 60, 20);
+                
+                // Efectos épicos
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    Location loc = p.getLocation();
+                    p.getWorld().spawnParticle(org.bukkit.Particle.END_ROD, loc.clone().add(0, 3, 0), 40, 1, 2, 1, 0.2);
+                    p.getWorld().spawnParticle(org.bukkit.Particle.PORTAL, loc, 80, 2.5, 1.5, 2.5, 0.5);
+                    p.getWorld().spawnParticle(org.bukkit.Particle.DRAGON_BREATH, loc, 30, 2, 1, 2, 0.05);
+                    
+                    p.playSound(loc, org.bukkit.Sound.BLOCK_END_PORTAL_FRAME_FILL, 1.2f, 0.8f);
+                    p.playSound(loc, org.bukkit.Sound.ENTITY_ENDER_DRAGON_GROWL, 0.8f, 0.5f);
+                }
+                
+                // Mostrar tarea después de efectos
+                new org.bukkit.scheduler.BukkitRunnable() {
+                    @Override
+                    public void run() {
+                        effectsManager.mostrarTareaEnderman();
+                    }
+                }.runTaskLater(plugin, 60L);
+            }
+        }.runTaskLater(plugin, 30L);
+        
+        programarMensajeRetrasado("§8[§7...§8] §7Como la última vez. Como todas las veces.", 120);
+    }
+    
+    /**
+     * 30 minutos - Primer diálogo misterioso sobre el Warden
+     */
+    private void secuenciaDialogoWarden1() {
+        new org.bukkit.scheduler.BukkitRunnable() {
+            int etapa = 0;
+            
+            @Override
+            public void run() {
+                switch (etapa) {
+                    case 0:
+                        Bukkit.broadcastMessage("");
+                        Bukkit.broadcastMessage("§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                        Bukkit.broadcastMessage("");
+                        Bukkit.broadcastMessage("§5§l⚡ EL OBSERVADOR §8[INQUIETO]:");
+                        break;
+                    case 1:
+                        Bukkit.broadcastMessage("");
+                        Bukkit.broadcastMessage("§8[§7...§8] §7¿Recordáis al §4§lGuardián§7?");
+                        // Sonido del Warden sutil
+                        for (Player p : Bukkit.getOnlinePlayers()) {
+                            p.playSound(p.getLocation(), org.bukkit.Sound.ENTITY_WARDEN_AMBIENT, 0.3f, 0.8f);
+                        }
+                        break;
+                    case 2:
+                        Bukkit.broadcastMessage("§8[§7...§8] §7Aquella §4bestia§7 que surgió de las profundidades.");
+                        break;
+                    case 3:
+                        Bukkit.broadcastMessage("");
+                        Bukkit.broadcastMessage("§8[§7...§8] §8No debería haber estado allí.");
+                        break;
+                    case 4:
+                        Bukkit.broadcastMessage("§8[§7...§8] §7El End y el §4Sculk§7 no se tocan.");
+                        // Partículas de sculk
+                        for (Player p : Bukkit.getOnlinePlayers()) {
+                            p.getWorld().spawnParticle(org.bukkit.Particle.SCULK_SOUL, p.getLocation(), 30, 2, 1, 2, 0.1);
+                        }
+                        break;
+                    case 5:
+                        Bukkit.broadcastMessage("");
+                        Bukkit.broadcastMessage("§8[§7...§8] §8§oNunca se han tocado.");
+                        break;
+                    case 6:
+                        Bukkit.broadcastMessage("");
+                        Bukkit.broadcastMessage("§8[§7...§8] §8§oHasta ahora.");
+                        // Darkness sutil
+                        for (Player p : Bukkit.getOnlinePlayers()) {
+                            p.addPotionEffect(new org.bukkit.potion.PotionEffect(
+                                org.bukkit.potion.PotionEffectType.DARKNESS, 80, 0, false, false, false));
+                        }
+                        break;
+                    case 7:
+                        Bukkit.broadcastMessage("");
+                        Bukkit.broadcastMessage("§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                        this.cancel();
+                        break;
+                }
+                etapa++;
+            }
+        }.runTaskTimer(plugin, 0L, 50L); // Cada 2.5 segundos
+    }
+    
+    /**
+     * 25 minutos - Tristeza profunda + Segunda tarea
+     */
+    private void secuenciaTareaObsidiana() {
+        // Fade oscuro dramático + DARKNESS
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            p.sendTitle("§8§l█", "§8§l█", 20, 60, 20);
+            
+            // DARKNESS - Oscuridad profunda (8 segundos)
+            p.addPotionEffect(new org.bukkit.potion.PotionEffect(
+                org.bukkit.potion.PotionEffectType.DARKNESS, 160, 0, false, false, false));
+        }
+        
+        new org.bukkit.scheduler.BukkitRunnable() {
+            @Override
+            public void run() {
+                mostrarTituloObserver("§8§o...", "§7§oCuántas veces he visto este momento.", 10, 100, 30);
+                
+                // Efectos de tristeza (warped spore + soul)
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    Location loc = p.getLocation();
+                    p.getWorld().spawnParticle(org.bukkit.Particle.WARPED_SPORE, loc, 40, 3, 2, 3, 0.02);
+                    p.getWorld().spawnParticle(org.bukkit.Particle.SOUL, loc.clone().add(0, 0.5, 0), 15, 1, 0.5, 1, 0.01);
+                    p.playSound(loc, org.bukkit.Sound.ENTITY_ELDER_GUARDIAN_AMBIENT, 0.4f, 0.5f);
+                    p.playSound(loc, org.bukkit.Sound.PARTICLE_SOUL_ESCAPE, 0.8f, 0.6f);
+                }
+            }
+        }.runTaskLater(plugin, 80L);
+        
+        programarMensajeRetrasado("§8[§7...§8] §7Y cuántas más faltan.", 140);
+        
+        // Mostrar tarea después del diálogo
+        new org.bukkit.scheduler.BukkitRunnable() {
+            @Override
+            public void run() {
+                effectsManager.mostrarTareaObsidiana();
+            }
+        }.runTaskLater(plugin, 180L);
+    }
+    
+    /**
+     * 20 minutos - Tensión creciente + Tercera tarea
+     */
+    private void secuenciaTareaOjoEnder() {
+        Bukkit.broadcastMessage("§8[§7...§8] §7El mundo está… apurado.");
+        
+        // Efectos de persecución
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            Location loc = p.getLocation();
+            p.getWorld().spawnParticle(org.bukkit.Particle.SCULK_SOUL, loc.clone().add(0, 0.2, 0), 25, 2, 0.2, 2, 0.1);
+            p.playSound(loc, org.bukkit.Sound.BLOCK_SCULK_SHRIEKER_SHRIEK, 0.3f, 0.8f);
+        }
+        
+        new org.bukkit.scheduler.BukkitRunnable() {
+            int tick = 0;
+            
+            @Override
+            public void run() {
+                if (tick == 0) {
+                    mostrarTituloObserver("§8§o...", "§7§oComo si algo lo persiguiera.", 10, 70, 20);
+                }
+                
+                // Latidos aumentando
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    p.playSound(p.getLocation(), org.bukkit.Sound.ENTITY_WARDEN_HEARTBEAT, 0.5f + (tick * 0.1f), 0.8f);
+                    
+                    if (tick % 20 == 0) {
+                        Location loc = p.getLocation();
+                        p.getWorld().spawnParticle(org.bukkit.Particle.CRIMSON_SPORE, loc, 10, 1.5, 1, 1.5, 0.05);
+                    }
+                }
+                
+                tick++;
+                if (tick >= 60) {
+                    this.cancel();
+                    
+                    // Mostrar tarea después de efectos
+                    new org.bukkit.scheduler.BukkitRunnable() {
+                        @Override
+                        public void run() {
+                            effectsManager.mostrarTareaOjoEnder();
+                        }
+                    }.runTaskLater(plugin, 20L);
+                }
+            }
+        }.runTaskTimer(plugin, 40L, 10L);
+    }
+    
+    /**
+     * 15 minutos - Urgencia + efectos épicos
+     */
+    private void secuenciaUrgencia() {
+        // Efecto de revelación cinematográfico
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            p.sendTitle("§5§l⚡", "§8§l▬▬▬▬▬▬▬▬▬▬▬▬▬", 10, 40, 10);
+        }
+        
+        new org.bukkit.scheduler.BukkitRunnable() {
+            @Override
+            public void run() {
+                mostrarTituloObserver("§8§l15 MINUTOS", "§7El portal se acerca", 10, 60, 20);
+                
+                // Explosión de partículas épica
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    Location loc = p.getLocation();
+                    p.getWorld().spawnParticle(org.bukkit.Particle.END_ROD, loc.clone().add(0, 3, 0), 50, 0.5, 2, 0.5, 0.2);
+                    p.getWorld().spawnParticle(org.bukkit.Particle.PORTAL, loc, 100, 3, 2, 3, 1.0);
+                    p.getWorld().spawnParticle(org.bukkit.Particle.DRAGON_BREATH, loc, 40, 2, 1, 2, 0.05);
+                    
+                    p.playSound(loc, org.bukkit.Sound.BLOCK_END_PORTAL_FRAME_FILL, 1.2f, 0.8f);
+                    p.playSound(loc, org.bukkit.Sound.BLOCK_END_PORTAL_SPAWN, 0.5f, 1.5f);
+                    p.playSound(loc, org.bukkit.Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 0.4f, 1.8f);
+                }
+            }
+        }.runTaskLater(plugin, 30L);
+        
+        programarMensajeRetrasado("§8[§7...§8] §7No fueron suficientes la última vez.", 80);
+        programarMensajeRetrasado("§8[§7...§8] §7Ni la anterior.", 140);
+    }
+    
+    /**
+     * 12 minutos - Diálogo misterioso crítico sobre el Warden
+     */
+    private void secuenciaAdvertenciaWardenCritica() {
+        new org.bukkit.scheduler.BukkitRunnable() {
+            int etapa = 0;
+            
+            @Override
+            public void run() {
+                switch (etapa) {
+                    case 0:
+                        Bukkit.broadcastMessage("");
+                        Bukkit.broadcastMessage("§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                        Bukkit.broadcastMessage("");
+                        Bukkit.broadcastMessage("§5§l⚡ EL OBSERVADOR §8[PERTURBADO]:");
+                        // Título dramático
+                        for (Player p : Bukkit.getOnlinePlayers()) {
+                            p.sendTitle("§4§l⚠", "§8§oEl Observador tiembla...", 10, 50, 20);
+                        }
+                        break;
+                    case 1:
+                        Bukkit.broadcastMessage("");
+                        Bukkit.broadcastMessage("§8[§7...§8] §c§lDebo decirlo.");
+                        break;
+                    case 2:
+                        Bukkit.broadcastMessage("");
+                        Bukkit.broadcastMessage("§8[§7...§8] §7Aquel §4§lGuardián§7… no era del End.");
+                        // Sonido del Warden - más fuerte
+                        for (Player p : Bukkit.getOnlinePlayers()) {
+                            p.playSound(p.getLocation(), org.bukkit.Sound.ENTITY_WARDEN_ROAR, 0.5f, 0.6f);
+                            p.getWorld().spawnParticle(org.bukkit.Particle.SCULK_SOUL, p.getLocation(), 40, 2.5, 1.5, 2.5, 0.15);
+                        }
+                        break;
+                    case 3:
+                        Bukkit.broadcastMessage("§8[§7...§8] §8Venía desde §4§lLAS PROFUNDIDADES§8.");
+                        break;
+                    case 4:
+                        Bukkit.broadcastMessage("");
+                        Bukkit.broadcastMessage("§8[§7...§8] §7Un lugar que §cni siquiera yo§7 conozco del todo.");
+                        break;
+                    case 5:
+                        Bukkit.broadcastMessage("§8[§7...§8] §8§oMás allá del Overworld. Más allá del Nether.");
+                        break;
+                    case 6:
+                        Bukkit.broadcastMessage("§8[§7...§8] §8§oMás allá del End.");
+                        // Efectos de oscuridad profunda
+                        for (Player p : Bukkit.getOnlinePlayers()) {
+                            p.addPotionEffect(new org.bukkit.potion.PotionEffect(
+                                org.bukkit.potion.PotionEffectType.DARKNESS, 100, 0, false, false, false));
+                            p.getWorld().spawnParticle(org.bukkit.Particle.ASH, p.getLocation().add(0, 2, 0), 50, 3, 2, 3, 0.05);
+                        }
+                        break;
+                    case 7:
+                        Bukkit.broadcastMessage("");
+                        Bukkit.broadcastMessage("§8[§7...§8] §c§lY si ESO fue enviado como guardián…");
+                        break;
+                    case 8:
+                        Bukkit.broadcastMessage("");
+                        Bukkit.broadcastMessage("§8[§7...§8] §4§l§o…temo lo que vendrá después.");
+                        // Latidos del corazón acelerados
+                        for (Player p : Bukkit.getOnlinePlayers()) {
+                            p.playSound(p.getLocation(), org.bukkit.Sound.ENTITY_WARDEN_HEARTBEAT, 0.8f, 0.7f);
+                        }
+                        break;
+                    case 9:
+                        Bukkit.broadcastMessage("");
+                        Bukkit.broadcastMessage("§8[§7...§8] §7El End no es el final.");
+                        break;
+                    case 10:
+                        Bukkit.broadcastMessage("§8[§7...§8] §8§oEs solo… §5el principio§8§o de algo mucho peor.");
+                        // Efecto final dramático
+                        for (Player p : Bukkit.getOnlinePlayers()) {
+                            p.playSound(p.getLocation(), org.bukkit.Sound.ENTITY_WARDEN_SONIC_BOOM, 0.3f, 0.5f);
+                            p.playSound(p.getLocation(), org.bukkit.Sound.AMBIENT_CAVE, 1.0f, 0.4f);
+                            p.getWorld().spawnParticle(org.bukkit.Particle.SCULK_CHARGE, p.getLocation().add(0, 1, 0), 30, 2, 1.5, 2, 0.2);
+                            p.sendTitle("§4§l⚠ ADVERTENCIA ⚠", "§8§oLas Profundidades aguardan...", 10, 70, 30);
+                        }
+                        break;
+                    case 11:
+                        Bukkit.broadcastMessage("");
+                        Bukkit.broadcastMessage("§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                        Bukkit.broadcastMessage("");
+                        this.cancel();
+                        break;
+                }
+                etapa++;
+            }
+        }.runTaskTimer(plugin, 0L, 50L); // Cada 2.5 segundos
+    }
+    
+    /**
+     * 10 minutos - Vacío envolvente + empujes + brújula
+     */
+    private void secuenciaVacioEnvolvente() {
+        // Pantalla de vacío + DARKNESS
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            p.sendTitle("§0§l████", "§0§l████", 20, 60, 20);
+            
+            // DARKNESS - Vacío total (10 segundos)
+            p.addPotionEffect(new org.bukkit.potion.PotionEffect(
+                org.bukkit.potion.PotionEffectType.DARKNESS, 200, 0, false, false, false));
+        }
+        
+        new org.bukkit.scheduler.BukkitRunnable() {
+            @Override
+            public void run() {
+                mostrarTituloObserver("§8§o...", "§7§oPuedo sentir el vacío desde aquí.", 15, 80, 25);
+                
+                // Vacío envolvente
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    Location loc = p.getLocation();
+                    p.getWorld().spawnParticle(org.bukkit.Particle.SQUID_INK, loc.clone().add(0, 2, 0), 60, 3, 2, 3, 0.02);
+                    p.getWorld().spawnParticle(org.bukkit.Particle.SMOKE, loc, 80, 2, 1, 2, 0.05);
+                    p.getWorld().spawnParticle(org.bukkit.Particle.SCULK_SOUL, loc, 30, 2, 1.5, 2, 0.1);
+                    
+                    p.playSound(loc, org.bukkit.Sound.AMBIENT_CAVE, 2.0f, 0.4f);
+                    p.playSound(loc, org.bukkit.Sound.ENTITY_WARDEN_AMBIENT, 0.6f, 0.5f);
+                    p.playSound(loc, org.bukkit.Sound.AMBIENT_BASALT_DELTAS_MOOD, 0.8f, 0.3f);
+                }
+            }
+        }.runTaskLater(plugin, 80L);
+        
+        programarMensajeRetrasado("§8[§7...§8] §7Frío. Silencioso. Esperando.", 160);
+        
+        // ACTIVAR SISTEMAS DE LLEGADA
+        new org.bukkit.scheduler.BukkitRunnable() {
+            @Override
+            public void run() {
+                // EMPEZAR EMPUJES HACIA EL PORTAL cada 30 segundos
+                iniciarEmpujesHaciaPortal();
+                
+                // INICIAR BRÚJULA DIRECCIONAL CON FLECHAS (obligatorio desde los 10 minutos)
+                iniciarBrujulaDireccional();
+                
+                // Revelar dirección si no se ha hecho
+                if (!direccionRevelada) {
+                    revelarDireccion();
+                }
+            }
+        }.runTaskLater(plugin, 200L);
+    }
+    
+    /**
+     * 5 minutos - Alta tensión + efectos apocalípticos
+     */
+    private void secuenciaAltaTension() {
+        // Secuencia apocalíptica
+        new org.bukkit.scheduler.BukkitRunnable() {
+            int fase = 0;
+            
+            @Override
+            public void run() {
+                if (fase == 0) {
+                    // Flash rojo + DARKNESS
+                    for (Player p : Bukkit.getOnlinePlayers()) {
+                        p.sendTitle("§4§l⚠", "§4§l⚠⚠⚠⚠⚠⚠⚠⚠⚠", 5, 15, 5);
+                        
+                        // DARKNESS - Terror creciente (6 segundos)
+                        p.addPotionEffect(new org.bukkit.potion.PotionEffect(
+                            org.bukkit.potion.PotionEffectType.DARKNESS, 120, 0, false, false, false));
+                    }
+                } else if (fase == 1) {
+                    mostrarTituloObserver("§c§l5 MINUTOS", "§7§oYa casi están ahí", 10, 60, 20);
+                    
+                    // Efectos apocalípticos
+                    for (Player p : Bukkit.getOnlinePlayers()) {
+                        Location loc = p.getLocation();
+                        
+                        // Explosión de partículas dramática
+                        p.getWorld().spawnParticle(org.bukkit.Particle.EXPLOSION, loc.clone().add(0, 1, 0), 5);
+                        p.getWorld().spawnParticle(org.bukkit.Particle.LAVA, loc, 40, 2, 1, 2, 0.1);
+                        p.getWorld().spawnParticle(org.bukkit.Particle.DRAGON_BREATH, loc, 80, 3, 2, 3, 0.1);
+                        p.getWorld().spawnParticle(org.bukkit.Particle.PORTAL, loc, 150, 4, 2, 4, 1.5);
+                        p.getWorld().spawnParticle(org.bukkit.Particle.END_ROD, loc.clone().add(0, 3, 0), 60, 1, 2, 1, 0.3);
+                        
+                        p.playSound(loc, org.bukkit.Sound.ENTITY_ENDER_DRAGON_GROWL, 1.5f, 0.7f);
+                        p.playSound(loc, org.bukkit.Sound.ENTITY_WARDEN_ROAR, 0.8f, 0.5f);
+                        p.playSound(loc, org.bukkit.Sound.ENTITY_GENERIC_EXPLODE, 0.8f, 0.8f);
+                    }
+                }
+                
+                fase++;
+                if (fase >= 2) {
+                    this.cancel();
+                }
+            }
+        }.runTaskTimer(plugin, 0L, 20L);
+        
+        programarMensajeRetrasado("§8[§7...§8] §7Si cruzan ese umbral, no hay marcha atrás.", 80);
+        
+        new org.bukkit.scheduler.BukkitRunnable() {
+            @Override
+            public void run() {
+                mostrarTituloObserver("§8§o...", "§7§oNunca la hay.", 10, 60, 20);
+                
+                // Eco oscuro
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    Location loc = p.getLocation();
+                    p.getWorld().spawnParticle(org.bukkit.Particle.SOUL_FIRE_FLAME, loc.clone().add(0, 0.3, 0), 30, 2, 0.5, 2, 0.02);
+                    p.getWorld().spawnParticle(org.bukkit.Particle.SMOKE, loc, 60, 2, 2, 2, 0.05);
+                    p.playSound(loc, org.bukkit.Sound.ENTITY_WARDEN_LISTENING, 0.8f, 0.5f);
+                }
+            }
+        }.runTaskLater(plugin, 140L);
+    }
+    
+    /**
+     * 3 minutos - Advertencia final + ambiente terrorífico + TELETRANSPORTE
+     */
+    private void secuenciaAdvertenciaFinal() {
+        // DARKNESS inicial - Ambiente de terror (4 segundos)
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            p.addPotionEffect(new org.bukkit.potion.PotionEffect(
+                org.bukkit.potion.PotionEffectType.DARKNESS, 80, 0, false, false, false));
+        }
+        
+        Bukkit.broadcastMessage("§8[§7...§8] §7El End no olvida.");
+        
+        // Ambiente de terror
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            Location loc = p.getLocation();
+            p.getWorld().spawnParticle(org.bukkit.Particle.SOUL_FIRE_FLAME, loc.clone().add(0, 0.3, 0), 30, 2, 0.5, 2, 0.02);
+            p.getWorld().spawnParticle(org.bukkit.Particle.SMOKE, loc, 60, 2, 2, 2, 0.05);
+            p.playSound(loc, org.bukkit.Sound.ENTITY_WARDEN_LISTENING, 0.8f, 0.5f);
+        }
+        
+        new org.bukkit.scheduler.BukkitRunnable() {
+            @Override
+            public void run() {
+                mostrarTituloObserver("§8§l...", "§7§oNi perdona.", 10, 70, 20);
+                
+                // Partículas de condena
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    Location loc = p.getLocation();
+                    p.getWorld().spawnParticle(org.bukkit.Particle.SCULK_CHARGE, loc, 40, 3, 1, 3, 0.5);
+                    p.getWorld().spawnParticle(org.bukkit.Particle.CRIMSON_SPORE, loc, 50, 2, 2, 2, 0.1);
+                    p.playSound(loc, org.bukkit.Sound.ENTITY_WARDEN_AMBIENT, 1.0f, 0.6f);
+                    p.playSound(loc, org.bukkit.Sound.BLOCK_SCULK_SHRIEKER_SHRIEK, 0.5f, 0.7f);
+                }
+            }
+        }.runTaskLater(plugin, 100L);
+        
+        // TELETRANSPORTE MÁS AGRESIVO cada 15 segundos
+        new org.bukkit.scheduler.BukkitRunnable() {
+            @Override
+            public void run() {
+                iniciarTeletransporteIntensivo();
+            }
+        }.runTaskLater(plugin, 120L);
+    }
+    
+    /**
+     * 1 minuto - Máxima tensión + secuencia épica final
+     */
+    private void secuenciaMaximaTension() {
+        // Secuencia cinematográfica final
+        new org.bukkit.scheduler.BukkitRunnable() {
+            int tick = 0;
+            
+            @Override
+            public void run() {
+                if (tick == 0) {
+                    // Pantalla negra inicial + DARKNESS máxima
+                    for (Player p : Bukkit.getOnlinePlayers()) {
+                        p.sendTitle("§0§l███████", "§0§l███████", 10, 30, 10);
+                        
+                        // DARKNESS TOTAL - 15 segundos
+                        p.addPotionEffect(new org.bukkit.potion.PotionEffect(
+                            org.bukkit.potion.PotionEffectType.DARKNESS, 300, 0, false, false, false));
+                    }
+                } else if (tick == 40) {
+                    // Revelación dramática
+                    mostrarTituloObserver("§c§l1 MINUTO", "§8§oEl portal despierta", 15, 70, 25);
+                    
+                    for (Player p : Bukkit.getOnlinePlayers()) {
+                        Location loc = p.getLocation();
+                        
+                        // Explosión masiva de efectos
+                        p.getWorld().spawnParticle(org.bukkit.Particle.EXPLOSION, loc.clone().add(0, 2, 0), 3);
+                        p.getWorld().spawnParticle(org.bukkit.Particle.PORTAL, loc, 200, 5, 3, 5, 2.0);
+                        p.getWorld().spawnParticle(org.bukkit.Particle.DRAGON_BREATH, loc, 120, 4, 2, 4, 0.5);
+                        p.getWorld().spawnParticle(org.bukkit.Particle.END_ROD, loc.clone().add(0, 4, 0), 80, 2, 3, 2, 0.5);
+                        p.getWorld().spawnParticle(org.bukkit.Particle.REVERSE_PORTAL, loc, 100, 3, 2, 3, 1.0);
+                        
+                        p.playSound(loc, org.bukkit.Sound.ENTITY_ENDER_DRAGON_DEATH, 1.0f, 2.0f);
+                        p.playSound(loc, org.bukkit.Sound.ENTITY_WARDEN_HEARTBEAT, 1.5f, 0.5f);
+                        p.playSound(loc, org.bukkit.Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 0.6f);
+                        p.playSound(loc, org.bukkit.Sound.BLOCK_END_PORTAL_SPAWN, 1.5f, 0.5f);
+                    }
+                }
+                
+                tick++;
+                if (tick >= 80) {
+                    this.cancel();
+                }
+            }
+        }.runTaskTimer(plugin, 0L, 1L); // Más rápido para mayor intensidad
+        
+        programarMensajeRetrasado("§8[§7...§8] §7Deberían haber traído más que armadura.", 100);
+        
+        new org.bukkit.scheduler.BukkitRunnable() {
+            @Override
+            public void run() {
+                mostrarTituloObserver("§8§o...", "§7§oDeberían haber traído esperanza.", 15, 80, 25);
+                
+                // Partículas de desesperanza
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    Location loc = p.getLocation();
+                    p.getWorld().spawnParticle(org.bukkit.Particle.SOUL, loc, 60, 3, 2, 3, 0.05);
+                    p.getWorld().spawnParticle(org.bukkit.Particle.ASH, loc, 80, 3, 2, 3, 0.1);
+                }
+            }
+        }.runTaskLater(plugin, 160L);
+    }
+    
+    /**
+     * Programa un mensaje retrasado
+     */
+    private void programarMensajeRetrasado(String mensaje, long ticks) {
+        new org.bukkit.scheduler.BukkitRunnable() {
+            @Override
+            public void run() {
+                Bukkit.broadcastMessage(mensaje);
+            }
+        }.runTaskLater(plugin, ticks);
+    }
+    
+    /**
+     * Countdown final intenso - Últimos 10 segundos
+     */
+    private void countdownFinalIntenso() {
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            player.sendTitle("§c§l" + descubrimientoTimer, "§8§oEl vacío espera", 5, 10, 5);
+            
+            Location loc = player.getLocation();
+            // Efectos crecientes según se acerca el final
+            int intensidad = (11 - descubrimientoTimer) * 10;
+            player.getWorld().spawnParticle(org.bukkit.Particle.PORTAL, loc, intensidad, 1, 1, 1, 0.5);
+            player.getWorld().spawnParticle(org.bukkit.Particle.END_ROD, loc.clone().add(0, 2, 0), intensidad / 2, 0.5, 1, 0.5, 0.1);
+            
+            player.playSound(loc, org.bukkit.Sound.BLOCK_NOTE_BLOCK_HAT, 1.5f, 0.8f);
+            player.playSound(loc, org.bukkit.Sound.ENTITY_WARDEN_HEARTBEAT, 1.0f + (intensidad * 0.01f), 1.0f);
+            
+            if (descubrimientoTimer <= 5) {
+                player.playSound(loc, org.bukkit.Sound.BLOCK_END_PORTAL_SPAWN, 0.5f, 2.0f);
+                
+                // DARKNESS pulsante en últimos 5 segundos
+                if (descubrimientoTimer % 2 == 0) {
+                    player.addPotionEffect(new org.bukkit.potion.PotionEffect(
+                        org.bukkit.potion.PotionEffectType.DARKNESS, 40, 0, false, false, false));
+                }
+            }
+        }
+        
+        // Verificar si hay jugadores cerca del portal para activación
+        if (waypointManager != null && waypointManager.getPortalLocation() != null) {
+            checkJugadoresCercaPortal();
+        }
+    }
+    
+    /**
+     * Inicia sistema de empujes suaves hacia el portal (cada 30 segundos)
+     */
+    private void iniciarEmpujesHaciaPortal() {
+        new org.bukkit.scheduler.BukkitRunnable() {
+            @Override
+            public void run() {
+                if (faseEvento != EventPhase.DESCUBRIMIENTO || waypointManager.getPortalLocation() == null) {
+                    cancel();
+                    return;
+                }
+                
+                Location portalLocation = waypointManager.getPortalLocation();
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    if (!p.getWorld().equals(portalLocation.getWorld())) continue;
+                    
+                    double distancia = p.getLocation().distance(portalLocation);
+                    
+                    // Solo empujar si están lejos (más de 100 bloques)
+                    if (distancia > 100) {
+                        // Vector hacia el portal
+                        org.bukkit.util.Vector direction = portalLocation.toVector()
+                            .subtract(p.getLocation().toVector())
+                            .normalize()
+                            .multiply(0.3); // Empuje suave
+                        
+                        p.setVelocity(p.getVelocity().add(direction));
+                        
+                        // Efectos visuales
+                        p.spawnParticle(org.bukkit.Particle.PORTAL, p.getLocation(), 20, 1, 1, 1, 0.1);
+                        p.playSound(p.getLocation(), org.bukkit.Sound.ENTITY_ENDERMAN_TELEPORT, 0.3f, 1.5f);
+                        p.sendActionBar("§5§l» §7Algo te atrae hacia el portal... §5§l«");
+                    }
+                }
+            }
+        }.runTaskTimer(plugin, 100L, 600L); // Cada 30 segundos
+    }
+    
+    /**
+     * Inicia teletransporte intensivo hacia el portal (últimos 3 minutos)
+     */
+    private void iniciarTeletransporteIntensivo() {
+        new org.bukkit.scheduler.BukkitRunnable() {
+            @Override
+            public void run() {
+                if (faseEvento != EventPhase.DESCUBRIMIENTO || waypointManager.getPortalLocation() == null) {
+                    cancel();
+                    return;
+                }
+                
+                Location portalLocation = waypointManager.getPortalLocation();
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    if (!p.getWorld().equals(portalLocation.getWorld())) continue;
+                    
+                    double distancia = p.getLocation().distance(portalLocation);
+                    
+                    // Teletransportar si están muy lejos (más de 200 bloques)
+                    if (distancia > 200) {
+                        // Calcular punto intermedio (acercar 100 bloques hacia el portal)
+                        org.bukkit.util.Vector direction = portalLocation.toVector()
+                            .subtract(p.getLocation().toVector())
+                            .normalize()
+                            .multiply(100);
+                        
+                        Location newLoc = p.getLocation().clone().add(direction);
+                        newLoc.setY(portalLocation.getWorld().getHighestBlockYAt(newLoc) + 1);
+                        
+                        // Efectos pre-teletransporte
+                        p.getWorld().spawnParticle(org.bukkit.Particle.PORTAL, p.getLocation(), 100, 1, 2, 1, 1.0);
+                        p.playSound(p.getLocation(), org.bukkit.Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 0.8f);
+                        
+                        // Teletransportar
+                        p.teleport(newLoc);
+                        
+                        // Efectos post-teletransporte
+                        p.getWorld().spawnParticle(org.bukkit.Particle.REVERSE_PORTAL, newLoc, 100, 1, 2, 1, 1.0);
+                        p.playSound(newLoc, org.bukkit.Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 1.2f);
+                        
+                        p.sendTitle("§5§l⚡", "§7El Vacío te arrastra", 10, 30, 10);
+                        p.sendMessage("§8[§7...§8] §5El portal te llama...");
+                    }
+                }
+            }
+        }.runTaskTimer(plugin, 100L, 300L); // Cada 15 segundos
+    }
+    
+    /**
+     * Muestra brújula direccional con flechas en ActionBar
+     * Activa desde los 10 minutos restantes para guiar a los jugadores al portal
+     */
+    private void iniciarBrujulaDireccional() {
+        // Mensaje informativo
+        Bukkit.broadcastMessage("");
+        Bukkit.broadcastMessage("§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        Bukkit.broadcastMessage("");
+        Bukkit.broadcastMessage("§5§l⚡ BRÚJULA ACTIVADA ⚡");
+        Bukkit.broadcastMessage("");
+        Bukkit.broadcastMessage("§7Las flechas ahora guían §lconstantemente§7.");
+        Bukkit.broadcastMessage("§8El portal está muy cerca...");
+        Bukkit.broadcastMessage("");
+        Bukkit.broadcastMessage("§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        
+        new org.bukkit.scheduler.BukkitRunnable() {
+            @Override
+            public void run() {
+                if (faseEvento != EventPhase.DESCUBRIMIENTO || waypointManager.getPortalLocation() == null) {
+                    cancel();
+                    return;
+                }
+                
+                Location portalLocation = waypointManager.getPortalLocation();
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    if (!p.getWorld().equals(portalLocation.getWorld())) continue;
+                    
+                    Location playerLoc = p.getLocation();
+                    double distancia = playerLoc.distance(portalLocation);
+                    
+                    // Calcular dirección
+                    org.bukkit.util.Vector toPortal = portalLocation.toVector().subtract(playerLoc.toVector());
+                    double angle = Math.atan2(toPortal.getZ(), toPortal.getX());
+                    
+                    // Convertir a dirección del jugador
+                    float playerYaw = playerLoc.getYaw();
+                    double playerAngle = Math.toRadians(playerYaw + 90); // Ajuste por sistema de coordenadas
+                    
+                    // Calcular diferencia angular
+                    double diffAngle = angle - playerAngle;
+                    
+                    // Normalizar a -PI a PI
+                    while (diffAngle > Math.PI) diffAngle -= 2 * Math.PI;
+                    while (diffAngle < -Math.PI) diffAngle += 2 * Math.PI;
+                    
+                    // Determinar flecha según ángulo
+                    String flecha;
+                    String direccion;
+                    
+                    if (Math.abs(diffAngle) < Math.PI / 8) {
+                        // Adelante
+                        flecha = "↑↑↑";
+                        direccion = "§a§lADELANTE";
+                    } else if (Math.abs(diffAngle) > 7 * Math.PI / 8) {
+                        // Atrás
+                        flecha = "↓↓↓";
+                        direccion = "§c§lATRÁS";
+                    } else if (diffAngle > 0) {
+                        // Izquierda
+                        if (diffAngle < 3 * Math.PI / 8) {
+                            flecha = "↖↖↖";
+                            direccion = "§e§lIZQUIERDA ADELANTE";
+                        } else if (diffAngle < 5 * Math.PI / 8) {
+                            flecha = "←←←";
+                            direccion = "§e§lIZQUIERDA";
+                        } else {
+                            flecha = "↙↙↙";
+                            direccion = "§6§lIZQUIERDA ATRÁS";
+                        }
+                    } else {
+                        // Derecha
+                        if (diffAngle > -3 * Math.PI / 8) {
+                            flecha = "↗↗↗";
+                            direccion = "§b§lDERECHA ADELANTE";
+                        } else if (diffAngle > -5 * Math.PI / 8) {
+                            flecha = "→→→";
+                            direccion = "§b§lDERECHA";
+                        } else {
+                            flecha = "↘↘↘";
+                            direccion = "§3§lDERECHA ATRÁS";
+                        }
+                    }
+                    
+                    // Mostrar en ActionBar
+                    String distanciaStr = distancia < 1000 ? String.format("§b%d bloques", (int)distancia) : String.format("§b%.1fkm", distancia / 1000);
+                    p.sendActionBar("§5§l⚡ PORTAL §8§l| " + flecha + " " + direccion + " §8§l| " + distanciaStr);
+                }
+            }
+        }.runTaskTimer(plugin, 20L, 20L); // Cada segundo
+    }
+    
+    /**
+     * Verifica si hay jugadores cerca del portal para activar Fase 2
+     * REQUISITO: El iniciador del evento DEBE estar cerca del portal para que se active
+     */
+    private void checkJugadoresCercaPortal() {
+        if (waypointManager.getPortalLocation() == null) return;
+        if (faseEvento != EventPhase.DESCUBRIMIENTO) return;
+        
+        Location portalLocation = waypointManager.getPortalLocation();
+        int radioDeteccion = 30; // Reducido a 30 bloques (debe estar MUY cerca)
+        
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            if (player.getWorld().equals(portalLocation.getWorld())) {
+                double distancia = player.getLocation().distance(portalLocation);
+                
+                // DEBUG: Mostrar distancia al jugador si está relativamente cerca
+                // PERO solo si NO está activa la brújula direccional (timer > 600 seg)
+                if (distancia <= 200 && descubrimientoTimer > 600) {
+                    player.sendActionBar("§8[§7Portal§8] §7Distancia: §b" + (int)distancia + " bloques §8(Activación: §a<" + radioDeteccion + "§8)");
+                }
+                
+                if (distancia <= radioDeteccion) {
+                    // ¡Jugadores llegaron al portal!
+                    plugin.getLogger().info("[Apertura End] ✓ Jugador " + player.getName() + " detectado a " + (int)distancia + " bloques del portal");
+                    Bukkit.broadcastMessage("§a§l✓ " + player.getName() + " ha llegado al portal!");
+                    iniciarFaseLlegadaEpica();
+                    return;
+                }
+            }
+        }
+    }
+    
+    /**
+     * FASE 2: Llegada al portal
+     * Jugadores detectados cerca, portal se activa lentamente
+     */
+    private void iniciarFaseLlegadaEpica() {
+        cambiarFase(EventPhase.LLEGADA);
+        
+        // ========================================
+        // CINEMÁTICO ÉPICO - PORTAL ACTIVANDOSE
+        // ========================================
+        
+        Location portalLocation = waypointManager.getPortalLocation();
+        if (portalLocation != null) {
+            org.bukkit.World world = portalLocation.getWorld();
+            
+            // 1. CAMBIAR A NOCHE INSTANTÁNEA
+            world.setTime(18000); // Medianoche
+            world.setStorm(true); // Iniciar tormenta
+            world.setThunderDuration(12000); // Duración de la tormenta (10 minutos)
+            world.setWeatherDuration(12000);
+            
+            plugin.getLogger().info("[Apertura End] ⚡ CINEMÁTICO ACTIVADO: Noche + Tormenta");
+        }
+        
+        // 2. EFECTOS VISUALES MASIVOS DE OSCURIDAD PARA TODOS
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            // Fade to black completo
+            p.sendTitle("§8§l█████████████", "§8§l█████████████", 10, 60, 30);
+            
+            // Aplicar ceguera breve para efecto oscuro
+            p.addPotionEffect(new org.bukkit.potion.PotionEffect(
+                org.bukkit.potion.PotionEffectType.BLINDNESS, 
+                60, // 3 segundos
+                1, 
+                false, 
+                false, 
+                false
+            ));
+            
+            // Sonidos de terror
+            p.playSound(p.getLocation(), org.bukkit.Sound.ENTITY_WITHER_SPAWN, 1.5f, 0.5f);
+            p.playSound(p.getLocation(), org.bukkit.Sound.ENTITY_ENDER_DRAGON_GROWL, 2.0f, 0.4f);
+            p.playSound(p.getLocation(), org.bukkit.Sound.AMBIENT_CAVE, 1.0f, 0.5f);
+        }
+        
+        // 3. ANUNCIO DRÁMATICO CON RETRASO
+        new org.bukkit.scheduler.BukkitRunnable() {
+            @Override
+            public void run() {
+                Bukkit.broadcastMessage("");
+                Bukkit.broadcastMessage("§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                Bukkit.broadcastMessage("");
+                Bukkit.broadcastMessage("§5§l⚡ EL PORTAL DESPIERTA ⚡");
+                Bukkit.broadcastMessage("");
+                Bukkit.broadcastMessage("§8[§7...§8] §7Aquí fue donde todo terminó… más de una vez.");
+                Bukkit.broadcastMessage("§8[§7...§8] §7Y aun así, siguen entrando.");
+                Bukkit.broadcastMessage("");
+                Bukkit.broadcastMessage("§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                
+                // Título épico
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    p.sendTitle("§8§l⚠ §4EL PORTAL DESPIERTA", "§5Una grieta entre mundos se abre...", 10, 80, 20);
+                }
+            }
+        }.runTaskLater(plugin, 60L); // 3 segundos después
+        
+        // 4. ACTIVAR PORTAL EN EL EVENTO PRINCIPAL
+        if (eventRef != null) {
+            new org.bukkit.scheduler.BukkitRunnable() {
+                @Override
+                public void run() {
+                    eventRef.activarPortalLentamente();
+                }
+            }.runTaskLater(plugin, 100L); // 5 segundos después
+        }
+    }
+    
+    /**
+     * Muestra título del Observador a todos los jugadores
+     */
+    private void mostrarTituloObserver(String titulo, String subtitulo, int fadeIn, int stay, int fadeOut) {
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            p.sendTitle(titulo, subtitulo, fadeIn, stay, fadeOut);
+        }
+    }
+    
+    public void revelarDireccion() {
+        direccionRevelada = true;
+        
+        Bukkit.broadcastMessage("");
+        Bukkit.broadcastMessage("§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        Bukkit.broadcastMessage("");
+        Bukkit.broadcastMessage("§5§l⚡ DIRECCIÓN REVELADA ⚡");
+        Bukkit.broadcastMessage("");
+        Bukkit.broadcastMessage("§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            p.playSound(p.getLocation(), Sound.BLOCK_END_PORTAL_SPAWN, 1.5f, 1.0f);
+        }
+        
+        // Revelar coordenadas a través del waypoint manager
+        if (waypointManager != null) {
+            waypointManager.revelarDireccion();
+        }
+        
+        // Cambiar a fase de llegada después de revelar
+        new org.bukkit.scheduler.BukkitRunnable() {
+            @Override
+            public void run() {
+                cambiarFase(EventPhase.LLEGADA);
+            }
+        }.runTaskLater(plugin, 100L); // 5 segundos después
+    }
+    
+    public void cambiarFase(EventPhase nuevaFase) {
+        this.faseEvento = nuevaFase;
+        
+        switch (nuevaFase) {
+            case LLEGADA:
+                if (bossBar != null) {
+                    bossBar.setTitle("§8El portal se activa...");
+                    bossBar.setColor(BarColor.WHITE);
+                }
+                
+                // Construir arena épica cuando se activa la llegada
+                if (arenaBuilder != null) {
+                    new org.bukkit.scheduler.BukkitRunnable() {
+                        @Override
+                        public void run() {
+                            arenaBuilder.construirArenaCompleta();
+                        }
+                    }.runTaskLater(plugin, 20L); // 1 segundo después
+                }
+                
+                // Activar portal lentamente
+                if (eventRef != null) {
+                    new org.bukkit.scheduler.BukkitRunnable() {
+                        @Override
+                        public void run() {
+                            eventRef.activarPortalLentamente();
+                        }
+                    }.runTaskLater(plugin, 40L); // 2 segundos después
+                }
+                break;
+                
+            case PORTAL_ABIERTO:
+                if (bossBar != null) {
+                    bossBar.setTitle("§8El portal está activo - Entra al End");
+                    bossBar.setColor(BarColor.PURPLE);
+                }
+                break;
+                
+            case COMBATE:
+                if (bossBar != null) {
+                    bossBar.setTitle("§c§lDesolador del Vacío");
+                    bossBar.setColor(BarColor.RED);
+                }
+                
+                // Spawnear dragón cuando inicia el combate
+                if (dragonController != null) {
+                    new org.bukkit.scheduler.BukkitRunnable() {
+                        @Override
+                        public void run() {
+                            dragonController.spawnearDragon();
+                        }
+                    }.runTaskLater(plugin, 40L); // 2 segundos después
+                }
+                break;
+                
+            case CLIFFHANGER:
+                if (bossBar != null) {
+                    bossBar.setTitle("§8§lEvento completado");
+                    bossBar.setColor(BarColor.GREEN);
+                }
+                break;
+        }
+    }
+    
+    public void detener() {
+        if (bossBar != null) {
+            bossBar.removeAll();
+            bossBar.setVisible(false);
+        }
+        
+        if (preparacionTask != null) {
+            preparacionTask.cancel();
+        }
+        
+        faseEvento = EventPhase.INACTIVO;
+    }
+    
+    // Getters
+    public EventPhase getFaseEvento() { return faseEvento; }
+    public int getDescubrimientoTimer() { return descubrimientoTimer; }
+    public boolean isDireccionRevelada() { return direccionRevelada; }
+    public BossBar getBossBar() { return bossBar; }
+}

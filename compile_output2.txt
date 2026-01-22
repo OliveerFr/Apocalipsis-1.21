@@ -1,0 +1,126 @@
+﻿[INFO] Scanning for projects...
+[INFO] 
+[INFO] ---------------------< me.apocalipsis:Apocalipsis >---------------------
+[INFO] Building Apocalipsis 1.22.50
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- maven-resources-plugin:2.6:resources (default-resources) @ Apocalipsis ---
+[INFO] Using 'UTF-8' encoding to copy filtered resources.
+[INFO] Copying 21 resources
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.11.0:compile (default-compile) @ Apocalipsis ---
+[INFO] Changes detected - recompiling the module! :source
+[INFO] Compiling 137 source files with javac [forked debug deprecation target 21] to target\classes
+[WARNING]   on the class path. A future release of javac may disable annotation processing
+  unless at least one processor is specified by name (-processor), or a search
+  path is specified (--processor-path, --processor-module-path), or annotation
+  processing is enabled explicitly (-proc:only, -proc:full).
+  Use -Xlint:-options to suppress this message.
+  Use -proc:none to disable annotation processing.
+Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\CartasManager.java:[55,31] [deprecation] createInventory(InventoryHolder,int,String) in Bukkit has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\CartasManager.java:[60,16] [deprecation] setDisplayName(String) in ItemMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\CartasManager.java:[61,16] [deprecation] setLore(List<String>) in ItemMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\CartasManager.java:[80,34] [deprecation] setDisplayName(String) in ItemMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\CartasManager.java:[135,39] [deprecation] getPages() in BookMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\CartasManager.java:[161,32] [deprecation] getPages() in BookMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\CartasManager.java:[208,31] [deprecation] createInventory(InventoryHolder,int,String) in Bukkit has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\CartasManager.java:[219,20] [deprecation] setPages(List<String>) in BookMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\CartasManager.java:[227,20] [deprecation] setLore(List<String>) in ItemMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\commands\ApocalipsisCommand.java:[2526,25] [deprecation] sendTitle(String,String,int,int,int) in Player has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\commands\ApocalipsisCommand.java:[2546,21] [deprecation] sendTitle(String,String,int,int,int) in Player has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\commands\ApocalipsisCommand.java:[2690,21] [deprecation] sendTitle(String,String,int,int,int) in Player has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\commands\ApocalipsisCommand.java:[2743,22] [deprecation] sendTitle(String,String,int,int,int) in Player has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\commands\ApocalipsisCommand.java:[2812,28] [deprecation] sendTitle(String,String,int,int,int) in Player has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\commands\ApocalipsisCommand.java:[6258,25] [deprecation] sendTitle(String,String,int,int,int) in Player has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\commands\ApocalipsisCommand.java:[6278,21] [deprecation] sendTitle(String,String,int,int,int) in Player has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\commands\ApocalipsisCommand.java:[6579,13] [deprecation] sendTitle(String,String,int,int,int) in Player has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\commands\ApocalipsisCommand.java:[6681,21] [deprecation] sendTitle(String,String,int,int,int) in Player has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\commands\ApocalipsisCommand.java:[6745,21] [deprecation] sendTitle(String,String,int,int,int) in Player has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\Apocalipsis.java:[133,48] [deprecation] getDescription() in JavaPlugin has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\disaster\DisasterController.java:[1800,111] [removal] name() in OldEnum has been deprecated and marked for removal
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\tutorial\OnboardingManager.java:[245,14] [deprecation] sendTitle(String,String,int,int,int) in Player has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\missions\RankService.java:[67,71] [deprecation] getPsRequired() in MissionRank has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\missions\PermRankManager.java:[119,56] [deprecation] getByName(String) in PotionEffectType has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\missions\PermRankManager.java:[336,22] [deprecation] setPlayerListName(String) in Player has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\missions\PermRankManager.java:[338,22] [deprecation] setPlayerListName(String) in Player has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\missions\PermRankManager.java:[347,22] [deprecation] setPlayerListName(String) in Player has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\missions\PermRankManager.java:[349,22] [deprecation] setPlayerListName(String) in Player has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\missions\PermRankManager.java:[380,18] [deprecation] addPotionEffect(PotionEffect,boolean) in LivingEntity has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\missions\StreamFeaturesManager.java:[220,62] [deprecation] getDisplayName() in ItemMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\missions\StreamFeaturesManager.java:[226,67] [removal] valueOf(String) in Sound has been deprecated and marked for removal
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\missions\StreamFeaturesManager.java:[298,20] [deprecation] setDisplayName(String) in ItemMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\missions\StreamFeaturesManager.java:[308,20] [deprecation] setLore(List<String>) in ItemMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\missions\StreamFeaturesManager.java:[516,26] [deprecation] getDisplayName() in ItemMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\StreamMenuGUI.java:[44,31] [deprecation] createInventory(InventoryHolder,int,String) in Bukkit has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\StreamMenuGUI.java:[65,21] [deprecation] setDisplayName(String) in ItemMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\StreamMenuGUI.java:[84,18] [deprecation] createInventory(InventoryHolder,int,String) in Bukkit has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\StreamMenuGUI.java:[119,26] [deprecation] getDisplayName() in ItemMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\StreamMenuGUI.java:[133,26] [deprecation] getDisplayName() in ItemMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\StreamMenuGUI.java:[142,16] [deprecation] setDisplayName(String) in ItemMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\StreamMenuGUI.java:[163,16] [deprecation] setLore(List<String>) in ItemMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\StreamMenuGUI.java:[175,16] [deprecation] setDisplayName(String) in ItemMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\StreamMenuGUI.java:[193,16] [deprecation] setLore(List<String>) in ItemMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\StreamMenuGUI.java:[205,16] [deprecation] setDisplayName(String) in ItemMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\StreamMenuGUI.java:[222,16] [deprecation] setLore(List<String>) in ItemMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\StreamMenuGUI.java:[234,16] [deprecation] setDisplayName(String) in ItemMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\StreamMenuGUI.java:[255,16] [deprecation] setLore(List<String>) in ItemMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\StreamMenuGUI.java:[266,38] [deprecation] getTitle() in InventoryView has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\StreamMenuGUI.java:[278,36] [deprecation] getLore() in ItemMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\StreamMenuGUI.java:[329,38] [deprecation] getTitle() in InventoryView has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\experience\AbilityService.java:[163,18] [deprecation] addPotionEffect(PotionEffect,boolean) in LivingEntity has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\experience\RewardService.java:[363,16] [deprecation] setDisplayName(String) in ItemMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\experience\RewardService.java:[377,16] [deprecation] setLore(List<String>) in ItemMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\skills\SkillService.java:[807,26] [deprecation] sendActionBar(String) in Player has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\skills\SkillService.java:[1244,16] [deprecation] setCustomName(String) in Nameable has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\skills\SkillService.java:[1258,20] [deprecation] setCustomName(String) in Nameable has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\skills\SkillService.java:[1331,11] [deprecation] setCustomName(String) in Nameable has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\skills\SkillService.java:[1340,71] [removal] values() in Type has been deprecated and marked for removal
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\skills\SkillService.java:[1346,15] [deprecation] setCustomName(String) in Nameable has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\skills\SkillService.java:[1413,17] [deprecation] setCustomName(String) in Nameable has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\skills\SkillService.java:[1545,15] [deprecation] setCustomName(String) in Nameable has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\skills\SkillService.java:[1599,13] [deprecation] setCustomName(String) in Nameable has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\skills\SkillService.java:[1610,17] [deprecation] setCustomName(String) in Nameable has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\skills\SkillService.java:[1714,15] [deprecation] setCustomName(String) in Nameable has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\skills\SkillService.java:[1761,14] [deprecation] setCustomName(String) in Nameable has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\skills\SkillService.java:[2050,14] [deprecation] broadcastMessage(String) in Bukkit has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\skills\SkillTreeGUI.java:[116,30] [deprecation] createInventory(InventoryHolder,int,String) in Bukkit has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\skills\SkillTreeGUI.java:[131,30] [deprecation] createInventory(InventoryHolder,int,String) in Bukkit has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\skills\SkillTreeGUI.java:[146,30] [deprecation] createInventory(InventoryHolder,int,String) in Bukkit has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\skills\SkillTreeGUI.java:[161,30] [deprecation] createInventory(InventoryHolder,int,String) in Bukkit has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\skills\SkillTreeGUI.java:[235,16] [deprecation] setDisplayName(String) in ItemMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\skills\SkillTreeGUI.java:[255,16] [deprecation] setLore(List<String>) in ItemMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\skills\SkillTreeGUI.java:[372,16] [deprecation] setDisplayName(String) in ItemMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\skills\SkillTreeGUI.java:[373,16] [deprecation] setLore(List<String>) in ItemMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\skills\SkillTreeGUI.java:[951,16] [deprecation] setDisplayName(String) in ItemMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\skills\SkillTreeGUI.java:[952,16] [deprecation] setLore(List<String>) in ItemMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\skills\SkillTreeGUI.java:[1123,16] [deprecation] setDisplayName(String) in ItemMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\skills\SkillTreeGUI.java:[1124,16] [deprecation] setLore(List<String>) in ItemMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\skills\SkillTreeGUI.java:[1188,16] [deprecation] setDisplayName(String) in ItemMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\skills\SkillTreeGUI.java:[1190,20] [deprecation] setLore(List<String>) in ItemMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\skills\BackpackService.java:[77,30] [deprecation] createInventory(InventoryHolder,int,String) in Bukkit has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\skills\BackpackService.java:[326,30] [deprecation] createInventory(InventoryHolder,int,String) in Bukkit has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\skills\SkillEffectListener.java:[573,21] [deprecation] setDeathMessage(String) in PlayerDeathEvent has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\skills\SkillEffectListener.java:[612,22] [deprecation] broadcastMessage(String) in Bukkit has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\skills\SkillEffectListener.java:[1722,18] [deprecation] getCustomName() in Nameable has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\RewardClaimSystem.java:[212,35] [deprecation] createInventory(InventoryHolder,int,String) in Bukkit has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\RewardClaimSystem.java:[240,24] [deprecation] setDisplayName(String) in ItemMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\RewardClaimSystem.java:[241,24] [deprecation] setLore(List<String>) in ItemMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\RewardClaimSystem.java:[292,35] [deprecation] createInventory(InventoryHolder,int,String) in Bukkit has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\RewardClaimSystem.java:[311,38] [deprecation] getTitle() in InventoryView has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\RewardClaimSystem.java:[324,57] [deprecation] getLore() in ItemMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\RewardClaimSystem.java:[413,38] [deprecation] getTitle() in InventoryView has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\RewardClaimSystem.java:[495,12] [deprecation] setDisplayName(String) in ItemMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\RewardClaimSystem.java:[532,12] [deprecation] setDisplayName(String) in ItemMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\RewardClaimSystem.java:[548,12] [deprecation] setLore(List<String>) in ItemMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\RewardClaimSystem.java:[613,46] [deprecation] getLore() in ItemMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\RewardClaimSystem.java:[634,46] [deprecation] getLore() in ItemMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\MainMenuManager.java:[52,31] [deprecation] createInventory(InventoryHolder,int,String) in Bukkit has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\MainMenuManager.java:[88,21] [deprecation] setDisplayName(String) in ItemMeta has been deprecated
+[WARNING] Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\MainMenuManager.java:[141,21] [deprecation] setLore(List<String>) in ItemMeta has been deprecated
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  02:03 min
+[INFO] Finished at: 2026-01-21T19:26:53-05:00
+[INFO] ------------------------------------------------------------------------

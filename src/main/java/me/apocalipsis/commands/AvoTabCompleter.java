@@ -129,7 +129,7 @@ public class AvoTabCompleter implements TabCompleter {
                 case "evento5":
                 case "aperturaend":
                     // Sugerir subcomandos de evento5 (La Apertura del End)
-                    return Arrays.asList("start", "iniciar", "stop", "detener", "info", "status", "next", "skip", "tp", "teleport").stream()
+                    return Arrays.asList("start", "iniciar", "stop", "detener", "info", "status", "next", "skip", "tp", "teleport", "forzarportal").stream()
                         .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
                         .collect(Collectors.toList());
                 

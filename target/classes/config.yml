@@ -3,14 +3,14 @@ ajustes:
   reproducir_sonidos: true
   dano_aleatorio: true
   test_mode: false  # /avo test alterna este valor en runtime (no persistir)
-  max_explosion_hearts: 1.5
+  max_explosion_hearts: 999
 
 # ═══════════════════════════════════════════════════════════════════
 # CREEPERS MEJORADOS - Sistema de creepers extremadamente peligrosos
 # ═══════════════════════════════════════════════════════════════════
 creeper_mejoras:
   multiplicador_radio: 1.2        # Radio de explosión (1.2 = +20% alcance, NO gigante)
-  multiplicador_dano: 4.5         # Daño de explosión (4.5 = 450% más daño, LETAL)
+  multiplicador_dano: 6.5         # Daño de explosión (6.5 = 650% más daño, LETAL)
   probabilidad_cargado: 0.35      # 35% de probabilidad de spawn como cargado (normalmente <1%)
   velocidad_extra: true           # Dar Speed II permanente
   resistencia_extra: true         # Dar Resistance II permanente

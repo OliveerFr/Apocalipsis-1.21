@@ -6,7 +6,7 @@
 
     <groupId>me.apocalipsis</groupId>
     <artifactId>Apocalipsis</artifactId>
-    <version>1.22.50</version>
+    <version>1.22.52</version>
     <packaging>jar</packaging>
 
     <name>Apocalipsis</name>
@@ -35,13 +35,25 @@
                     <source>21</source>
                     <target>21</target>
                     <fork>true</fork>
-                    <maxmem>2048m</maxmem>
-                    <meminitial>1024m</meminitial>
-                    <showWarnings>true</showWarnings>
-                    <showDeprecation>true</showDeprecation>
+                    <maxmem>8192m</maxmem>
+                    <meminitial>4096m</meminitial>
+                    <showWarnings>false</showWarnings>
+                    <showDeprecation>false</showDeprecation>
                     <compilerArgs>
-                        <arg>-Xlint:deprecation</arg>
-                        <arg>-J-XX:+UseParallelGC</arg>
+                        <arg>-J-XX:+UseG1GC</arg>
+                        <arg>-J-XX:MaxMetaspaceSize=2048m</arg>
+                        <arg>-J-Xss64m</arg>
+                        <arg>-J-XX:+UnlockExperimentalVMOptions</arg>
+                        <arg>-J-XX:G1HeapRegionSize=32m</arg>
+                        <arg>-J-XX:NewRatio=1</arg>
+                        <arg>-J-XX:SurvivorRatio=8</arg>
+                        <arg>-J-XX:MaxGCPauseMillis=200</arg>
+                        <arg>-Xlint:none</arg>
+                        <arg>-proc:none</arg>
+                        <arg>-Xmaxerrs</arg>
+                        <arg>50</arg>
+                        <arg>-Xmaxwarns</arg>
+                        <arg>0</arg>
                     </compilerArgs>
                 </configuration>
             </plugin>
@@ -88,6 +100,11 @@
             <id>lumine-repo</id>
             <url>https://mvn.lumine.io/repository/maven-public/</url>
         </repository>
+        <repository>
+            <id>nexus</id>
+            <name>Lumine Releases</name>
+            <url>https://mvn.lumine.io/repository/maven-public/</url>
+        </repository>
     </repositories>
 
     <dependencies>
@@ -103,8 +120,18 @@
             <version>R4.0.7</version>
             <scope>provided</scope>
         </dependency>
+        <!-- MythicMobs dependency comentada - activar si está disponible
+        <dependency>
+            <groupId>io.lumine</groupId>
+            <artifactId>MythicMobs</artifactId>
+            <version>5.10.0</version>
+            <scope>system</scope>
+            <systemPath>C:/Users/riolu/OneDrive/Desktop/Server Test/plugins/MythicMobs-5.10.0-131488.jar</systemPath>
+        </dependency>
+        -->
     </dependencies>
 </project>
+
 
 
 

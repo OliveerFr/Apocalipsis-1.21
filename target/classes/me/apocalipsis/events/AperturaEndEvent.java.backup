@@ -5726,6 +5726,7 @@ public class AperturaEndEvent extends EventBase {
             }
         }.runTaskTimer(plugin, 60L, intervalo); // Usar variable local para garantizar intervalo correcto
     }
+    }
     
     /**
      * Devuelve el intervalo de spawneo en ticks según la fase del dragón

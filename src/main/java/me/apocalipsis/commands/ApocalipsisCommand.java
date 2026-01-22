@@ -18,24 +18,22 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
 import org.bukkit.event.HandlerList;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.RegisteredListener;
 
 import me.apocalipsis.Apocalipsis;
 import me.apocalipsis.disaster.DisasterController;
-import me.apocalipsis.disaster.DisasterEvasionTracker;
 import me.apocalipsis.events.EventController;
-import me.apocalipsis.events.EventBase;
+import me.apocalipsis.events.testing.TestResult;
+import me.apocalipsis.missions.MissionAssignment;
 import me.apocalipsis.missions.MissionService;
 import me.apocalipsis.missions.MissionType;
-import me.apocalipsis.missions.MissionAssignment;
+import me.apocalipsis.skills.Skill;
 import me.apocalipsis.state.ServerState;
 import me.apocalipsis.state.StateManager;
 import me.apocalipsis.state.TimeService;
 import me.apocalipsis.ui.MessageBus;
-import me.apocalipsis.events.testing.TestResult;
-import me.apocalipsis.skills.Skill;
 
 public class ApocalipsisCommand implements CommandExecutor {
 
@@ -6245,7 +6243,7 @@ public class ApocalipsisCommand implements CommandExecutor {
                     if (eventoBase instanceof me.apocalipsis.events.AperturaEndEvent) {
                         me.apocalipsis.events.AperturaEndEvent evento = 
                             (me.apocalipsis.events.AperturaEndEvent) eventoBase;
-                        evento.setUbicacionIniciador(iniciador.getLocation());
+                        evento.setIniciador(iniciador);  // Ahora guarda ubicación Y UUID
                     }
                 }
                 
@@ -6337,19 +6335,10 @@ public class ApocalipsisCommand implements CommandExecutor {
                 
                 switch (faseActual) {
                     case DESCUBRIMIENTO:
-                        // Saltar al siguiente diálogo (cada 5-15 min)
-                        int tiempoNuevo = evento5.saltarAlSiguienteDialogo();
-                        
-                        if (tiempoNuevo == -1) {
-                            sender.sendMessage("§cNo se puede saltar - fase incorrecta");
-                        } else if (tiempoNuevo == 0) {
-                            sender.sendMessage("§a✓ [DESCUBRIMIENTO → LLEGADA] Portal activándose...");
-                        } else {
-                            int minutos = tiempoNuevo / 60;
-                            int segundos = tiempoNuevo % 60;
-                            sender.sendMessage(String.format("§a✓ Saltado a: §e%d:%02d §7(próximo diálogo)", minutos, segundos));
-                            sender.sendMessage("§7Usa §e/avo evento5 next §7de nuevo para continuar");
-                        }
+                        // Saltar al siguiente diálogo
+                        evento5.saltarAlSiguienteDialogo();
+                        sender.sendMessage("§a✓ Saltando al siguiente diálogo...");
+                        sender.sendMessage("§7Usa §e/avo evento5 next §7de nuevo para continuar");
                         break;
                         
                     case LLEGADA:
@@ -6414,7 +6403,23 @@ public class ApocalipsisCommand implements CommandExecutor {
                 tpLoc.setY(portalLoc.getWorld().getHighestBlockYAt(tpLoc) + 1);
                 
                 player.teleport(tpLoc);
-                sender.sendMessage("§a✓ Teletransportado cerca del portal para testing.");
+                
+                // Mostrar info de distancia
+                double distancia = player.getLocation().distance(portalLoc);
+                sender.sendMessage("§a✓ Teletransportado cerca del portal.");
+                sender.sendMessage("§7Distancia al portal: §b" + (int)distancia + " bloques");
+                sender.sendMessage("§7Usa §e/avo evento5 forzarportal §7para generar el portal inmediatamente");
+                break;
+                
+            case "forzarportal":
+                if (evento5 == null) {
+                    sender.sendMessage("§cEl evento 5 no está activo.");
+                    return;
+                }
+                
+                // Forzar la generación del portal sin esperar a que lleguen jugadores
+                evento5.forzarGeneracionPortal();
+                sender.sendMessage("§a✓ Generación de portal forzada.");
                 break;
                 
             case "modo":
@@ -6514,12 +6519,12 @@ public class ApocalipsisCommand implements CommandExecutor {
     private void iniciarCuentaRegresivaEvento5(CommandSender sender, int minutos) {
         int segundos = minutos * 60;
         
-        // Guardar ubicación del iniciador si es un jugador
-        final org.bukkit.Location ubicacionIniciador;
+        // Guardar el jugador iniciador si es un jugador
+        final Player jugadorIniciador;
         if (sender instanceof Player) {
-            ubicacionIniciador = ((Player) sender).getLocation();
+            jugadorIniciador = (Player) sender;
         } else {
-            ubicacionIniciador = null;
+            jugadorIniciador = null;
         }
         
         // Crear BossBar misteriosa
@@ -6606,7 +6611,7 @@ public class ApocalipsisCommand implements CommandExecutor {
                     efectoIntermedio();
                 } else if (restante == 60) { // 1 minuto
                     bossBarCountdown.setTitle("§c§l⚠ LA CONSTRUCCIÓN CASI TERMINA §c1:00");
-                    anunciarTiempoRestante("§c§l1 MINUTO", "§c§lEl Observador: '¡PREPÁRENSE PARA LO PEOR!'");
+                    anunciarTiempoRestante("§c§l1 MINUTO", "§c§lEl Observador: '¡PREPARENSE PARA LO PEOR!'");
                     efectoIntenso();
                 } else if (restante == 30) { // 30 segundos
                     bossBarCountdown.setTitle("§4§l⚠⚠⚠ ALGO DESPIERTA ⚠⚠⚠ §40:30");
@@ -6726,7 +6731,7 @@ public class ApocalipsisCommand implements CommandExecutor {
                 
                 // Efectos finales masivos
                 for (Player p : plugin.getServer().getOnlinePlayers()) {
-                    p.sendTitle("§8§l⚠ §4EMERGENCIA§8 ⚠", "§5§lEl Observador: '¡CORRAN!'", 10, 80, 20);
+                    p.sendTitle("§8§l⚠ §4EMERGENCIA§8 ⚠", "§5§lEl Observador: '¡ESCAPEN!'", 10, 80, 20);
                     p.playSound(p.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 3.0f, 0.5f);
                     p.playSound(p.getLocation(), Sound.BLOCK_END_PORTAL_SPAWN, 2.0f, 1.0f);
                     p.playSound(p.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 1.5f, 0.6f);
@@ -6738,13 +6743,13 @@ public class ApocalipsisCommand implements CommandExecutor {
                     p.getWorld().spawnParticle(org.bukkit.Particle.END_ROD, loc.clone().add(0, 3, 0), 50, 2, 2, 2, 0.2);
                 }
                 
-                // Establecer ubicación del iniciador ANTES de iniciar
-                if (ubicacionIniciador != null) {
+                // Establecer el iniciador ANTES de iniciar (con UUID)
+                if (jugadorIniciador != null) {
                     me.apocalipsis.events.EventBase eventoBase = eventController.getEvent("apertura_end");
                     if (eventoBase instanceof me.apocalipsis.events.AperturaEndEvent) {
                         me.apocalipsis.events.AperturaEndEvent evento = 
                             (me.apocalipsis.events.AperturaEndEvent) eventoBase;
-                        evento.setUbicacionIniciador(ubicacionIniciador);
+                        evento.setIniciador(jugadorIniciador);  // Guarda ubicación Y UUID
                     }
                 }
                 

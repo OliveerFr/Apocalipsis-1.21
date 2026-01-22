@@ -61,6 +61,12 @@ public class OnboardingListener implements Listener {
             return;
         }
         
+        // Verificar que estén en el mismo mundo antes de calcular distancia
+        if (!lastLoc.getWorld().equals(to.getWorld())) {
+            lastLocations.put(uuid, to.clone());
+            return;
+        }
+        
         double distance = lastLoc.distance(to);
         if (distance > 0.5) { // Solo si se movió más de medio bloque
             int blocks = (int) Math.floor(distance);

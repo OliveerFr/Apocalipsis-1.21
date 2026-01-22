@@ -561,7 +561,7 @@ actos:
             cantidad: 5
           mensaje_titulo:
             titulo: "§8§lGuardián de la Sombra Larga"
-            subtitulo: "§7Enfrentad vuestro destino"
+            subtitulo: "§7Enfrenten su destino"
             duracion_ticks: 60
         
         muerte:

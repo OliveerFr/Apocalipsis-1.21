@@ -641,11 +641,11 @@ misiones:
     rangos: ["ABSOLUTO"]
     recompensa_ps: 18
 
-  - id: "consumir_stew_absoluto_facil"
-    nombre: "Consumir guiso de hongos"
-    tipo: "CONSUMIR"
-    objetivo: "MUSHROOM_STEW"
-    cantidad: 3
+  - id: "craftear_torches_absoluto_facil"
+    nombre: "Craftear antorchas (iluminación)"
+    tipo: "CRAFTEAR"
+    objetivo: "TORCH"
+    cantidad: 64
     dificultad: "FACIL"
     rangos: ["ABSOLUTO"]
     recompensa_ps: 17
@@ -695,14 +695,14 @@ misiones:
     rangos: ["ABSOLUTO"]
     recompensa_ps: 18
 
-  - id: "consumir_cookie_absoluto_facil"
-    nombre: "Consumir galletas (snack)"
-    tipo: "CONSUMIR"
-    objetivo: "COOKIE"
-    cantidad: 8
+  - id: "romper_quartz_block_absoluto_facil"
+    nombre: "Romper bloques de cuarzo"
+    tipo: "ROMPER"
+    objetivo: "QUARTZ_BLOCK"
+    cantidad: 16
     dificultad: "FACIL"
     rangos: ["ABSOLUTO"]
-    recompensa_ps: 14
+    recompensa_ps: 16
 
   - id: "cocinar_potato_absoluto_facil"
     nombre: "Cocinar patatas (comida rápida)"

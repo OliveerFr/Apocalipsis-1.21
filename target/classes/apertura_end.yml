@@ -14,8 +14,8 @@ metadata:
   enabled: true
   
   # Plugins opcionales (auto-detecta)
-  mythicmobs: false
-  modelengine: false
+  mythicmobs: true
+  modelengine: true
   
   # Comandos
   comandos:
@@ -30,7 +30,7 @@ modelo:
   # ID del modelo en Model Engine
   # Este debe coincidir con el nombre del archivo .bbmodel en:
   # plugins/ModelEngine/models/
-  model_engine_id: "corrupted_dragon"
+  model_engine_id: "toro_ender_dragon"
   
   # Configuración visual del modelo
   escala: 1.5  # Tamaño del modelo (1.0 = normal)
@@ -71,8 +71,8 @@ evento:
       enabled: true
       radio_maximo: 50  # Los jugadores deben estar a menos de 50 bloques entre sí
       jugadores_minimos: 2  # Mínimo de jugadores que deben estar cerca
-      mensaje_agrupacion: "§8[§7...§8] §7Deben estar juntos para descubrir el camino."
-      mensaje_dispersos: "§c⚠ Los jugadores están muy dispersos. Agrúpense para descubrir el camino al portal."
+      mensaje_agrupacion: "§8[§7...§8] §7Tienen que estar juntos para descubrir el camino."
+      mensaje_dispersos: "§c⚠ Los jugadores están muy dispersos. Necesitan agruparse para descubrir el camino al portal."
   
   # Spawns dramáticos durante el viaje (Fase 1: DESCUBRIMIENTO)
   spawns_dramaticos:
@@ -81,53 +81,46 @@ evento:
     intervalo_maximo: 300  # Máximo 5 minutos entre spawns
     radio_spawn: 30  # Spawns aparecen entre 15-30 bloques de jugadores
     
-    # Entidades que pueden aparecer
+    # Entidades que pueden aparecer (formato: clave nombrada)
     entidades:
-      - tipo: "ENDERMAN"
-        probabilidad: 40
+      enderman_spawn:
+        tipo: "ENDERMAN"
+        probabilidad: 100
         cantidad_min: 2
         cantidad_max: 5
         mensaje: "§8[§7...§8] §7Están observando."
-        efectos_aparicion:
-          - "PORTAL:50:3"
-          - "REVERSE_PORTAL:30:2"
-        sonido: "ENTITY_ENDERMAN_SCREAM:1.5:0.7"
+        sonido: "ENTITY_ENDERMAN_SCREAM"
         
-      - tipo: "ENDERMITE"
-        probabilidad: 25
+      endermite_spawn:
+        tipo: "ENDERMITE"
+        probabilidad: 75
         cantidad_min: 3
         cantidad_max: 8
         mensaje: "§8[§7...§8] §7Algo se arrastra desde el vacío."
-        efectos_aparicion:
-          - "END_ROD:40:2"
-        sonido: "ENTITY_SILVERFISH_AMBIENT:1.2:0.8"
+        sonido: "ENTITY_SILVERFISH_AMBIENT"
         
-      - tipo: "SHULKER"
-        probabilidad: 20
+      shulker_spawn:
+        tipo: "SHULKER"
+        probabilidad: 40
         cantidad_min: 1
         cantidad_max: 3
         mensaje: "§8[§7...§8] §7No deberían estar aquí."
-        efectos_aparicion:
-          - "DRAGON_BREATH:60:3"
-          - "PORTAL:40:2"
-        sonido: "ENTITY_SHULKER_AMBIENT:1.3:0.6"
+        sonido: "ENTITY_SHULKER_AMBIENT"
         
-      - tipo: "PHANTOM"
-        probabilidad: 15
+      phantom_spawn:
+        tipo: "PHANTOM"
+        probabilidad: 55
         cantidad_min: 2
         cantidad_max: 4
         mensaje: "§8[§7...§8] §7El cielo también está corrupto."
-        efectos_aparicion:
-          - "SMOKE:30:4"
-          - "END_ROD:20:3"
-        sonido: "ENTITY_PHANTOM_AMBIENT:1.4:0.5"
+        sonido: "ENTITY_PHANTOM_AMBIENT"
   
-  # Escalado dinámico según jugadores
+  # Escalado dinámico según jugadores - HP AUMENTADO PARA MAYOR ÉPICA
   escalado:
-    hp_base: 500
-    hp_por_jugador: 0.15  # +15% HP por jugador
-    daño_base: 15
-    daño_por_jugador: 0.10  # +10% daño por jugador
+    hp_base: 4500  # Incrementado de 500 → 850 (batalla más larga y épica)
+    hp_por_jugador: 0.20  # Incrementado de 0.15 → 0.20 (+20% HP por jugador)
+    daño_base: 20  # Incrementado de 15 → 20
+    daño_por_jugador: 0.15  # Incrementado de 0.10 → 0.15 (+15% daño por jugador)
 
 # ═══════════════════════════════════════════════════════════════════
 # FASES DEL EVENTO
@@ -279,6 +272,26 @@ fases_evento:
     
     portal_activacion:
       delay_segundos: 10  # El portal se activa lentamente, 10 segundos
+      
+      # Efectos visuales durante la activación
+      efectos:
+        particulas:
+          - tipo: "END_ROD"
+            cantidad: 200
+            radio: 5
+          - tipo: "REVERSE_PORTAL"
+            cantidad: 500
+            radio: 10
+        sonidos:
+          - "AMBIENT_CAVE:2.0:0.5"
+          - "BLOCK_END_PORTAL_SPAWN:3.0:1.0"
+      
+      # Mensajes cuando el portal está completamente activado
+      portal_abierto:
+        titulo: "§5§lEL PORTAL SE ABRE"
+        subtitulo: "§7No hay vuelta atrás..."
+        mensaje: "§5§l⚡ EL OBSERVADOR: §7§o\"No hay vuelta atrás...\""
+      
       mensaje_final: "§8El portal espera."
   
   # ═══ FASE 3: COMBATE (End) ═══
@@ -299,46 +312,85 @@ fases_evento:
         - "particulas_oscuras"
         - "cielo_oscurecido"
     
-    # 4 subfases del combate basadas en HP del dragón
+    # 4 SUBFASES DEL COMBATE ÉPICAS - BASADAS EN HP DEL DRAGÓN
+    # Sub-fases progresivamente más intensas con mecánicas especiales
     subfases_dragon:
       subfase_1:
         nombre: "§8§l━━━ §5I §8§l━━━"
         hp_min: 75
         hp_max: 100
-        descripcion: "El dragón se mueve con fuerza renovada."
+        descripcion: "§5El Despertar - §7El dragón emerge con fuerza renovada"
         
+        # Múltiples diálogos que se van mostrando según el % de HP
         dialogos_observador:
-          95: "§8[§7...§8] §7Antes era un final."
-          90: "§8[§7...§8] §7Ahora… es solo otro paso."
+          100: "§8[§7...§8] §7Ha comenzado otra vez."
+          95: "§8[§7...§8] §7Antes… esto era un final."
+          92: "§8[§7...§8] §dLas personas celebraban."
+          90: "§8[§7...§8] §7Ahora… es solo otro paso en algo más grande."
+          87: "§8[§7...§8] §8El dragón siempre cae. No importa cuántas veces renazca."
+          85: "§8[§7...§8] §7¿Recuerda este lugar?"
+          82: "§8[§7...§8] §7¿Recuerda las veces que ha muerto aquí?"
+          80: "§8[§7...§8] §8Yo sí."
+          77: "§8[§7...§8] §7Sus alas conocen estos pilares…"
+          76: "§8[§7...§8] §7Su aliento conoce estas piedras…"
       
       subfase_2:
         nombre: "§8§l━━━ §5II §8§l━━━"
         hp_min: 50
         hp_max: 75
-        descripcion: "La corrupción se manifiesta."
+        descripcion: "§5La Furia - §7El dragón se vuelve más agresivo y veloz"
         
         dialogos_observador:
+          74: "§8[§7...§8] §5Algo cambia en sus ojos."
+          72: "§8[§7...§8] §7La bestia siente el daño."
           70: "§8[§7...§8] §7Siempre lo matan."
+          68: "§8[§7...§8] §dY él siempre vuelve."
+          65: "§8[§7...§8] §7¿Cuántos ciclos lleva?"
+          63: "§8[§7...§8] §8He perdido la cuenta."
+          60: "§8[§7...§8] §7La rabia del dragón no es suya…"
+          58: "§8[§7...§8] §7Es el eco de mil batallas pasadas."
+          55: "§8[§7...§8] §5Mil derrotas."
+          53: "§8[§7...§8] §8Mil renacimientos."
+          51: "§8[§7...§8] §7El vacío no olvida."
       
       subfase_3:
         nombre: "§8§l━━━ §5III §8§l━━━"
         hp_min: 25
         hp_max: 50
-        descripcion: "Algo cambia en su comportamiento."
+        descripcion: "§5La Desesperación - §7El dragón lucha con fiereza renovada"
         
         dialogos_observador:
-          50: "§8[§7...§8] §7Siempre creen que eso arregla algo."
-          30: "§8[§7...§8] §8..."
+          50: "§8[§7...§8] §7Siempre creen que matarlo arregla algo."
+          48: "§8[§7...§8] §8Como si el fin de un guardián trajera paz."
+          45: "§8[§7...§8] §7No entienden…"
+          43: "§8[§7...§8] §5El dragón no guarda el End."
+          40: "§8[§7...§8] §7El End guarda algo más."
+          38: "§8[§7...§8] §8Algo que ni siquiera yo puedo ver del todo."
+          35: "§8[§7...§8] §7Sus rugidos suenan… diferentes."
+          33: "§8[§7...§8] §7¿Miedo? ¿Rabia?"
+          30: "§8[§7...§8] §5¿Reconocimiento?"
+          28: "§8[§7...§8] §8..."
+          26: "§8[§7...§8] §7Quizás él también sabe que esto es inútil."
       
       subfase_4:
         nombre: "§8§l━━━ §4IV §8§l━━━"
         hp_min: 0
         hp_max: 25
-        descripcion: "El final se acerca."
+        descripcion: "§4El Ocaso - §cLa furia final antes del silencio"
         
         dialogos_observador:
+          24: "§8[§7...§8] §cLa fase final."
+          22: "§8[§7...§8] §7Siempre la más desesperada."
+          20: "§8[§7...§8] §4El dragón se aferra a lo que queda de sí mismo."
+          18: "§8[§7...§8] §8Pero el desenlace ya está escrito."
+          15: "§8[§7...§8] §7Escrito en cenizas y ciclos."
+          13: "§8[§7...§8] §5Grabado en este vacío sin tiempo."
           10: "§8[§7...§8] §7El mundo avanza."
-          5: "§8[§7...§8] §7La memoria… no."
+          8: "§8[§7...§8] §7Los jugadores celebran victorias."
+          6: "§8[§7...§8] §7Creen que han cambiado algo."
+          5: "§8[§7...§8] §8Pero la memoria… no avanza."
+          3: "§8[§7...§8] §4La memoria solo… repite."
+          1: "§8[§7...§8] §8§oY yo… sigo observando."
   
   # ═══ FASE 4: VICTORIA ═══
   fase_4_victoria:
@@ -364,7 +416,7 @@ fases_evento:
           - "§f"
           - "§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     
-    mensaje_final: "§7Revisen sus inventarios..."
+    mensaje_final: "§7Revisa tu inventario..."
   
   # ═══ FASE 5: CLIFFHANGER ═══
   fase_5_cliffhanger:
