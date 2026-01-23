@@ -6168,6 +6168,7 @@ public class ApocalipsisCommand implements CommandExecutor {
             sender.sendMessage("  §f/avo evento5 fase <1-4> §7- Forzar fase del dragón");
             sender.sendMessage("  §f/avo evento5 damage <jugador> <cantidad> §7- Simular daño");
             sender.sendMessage("  §f/avo evento5 kill §7- Matar dragón (test)");
+            sender.sendMessage("  §f/avo evento5 recompensas §7- Obtener todas las recompensas");
             sender.sendMessage("");
             sender.sendMessage("§7Ejemplos:");
             sender.sendMessage("  §e/avo evento5 start 5 §7- Empieza en 5 minutos");
@@ -6499,6 +6500,75 @@ public class ApocalipsisCommand implements CommandExecutor {
                 
                 evento5.matarDragon();
                 sender.sendMessage("§a✓ Dragón eliminado");
+                break;
+                
+            case "recompensas":
+            case "rewards":
+                if (!(sender instanceof Player)) {
+                    sender.sendMessage("§cEste comando solo puede ejecutarlo un jugador.");
+                    return;
+                }
+                
+                Player admin = (Player) sender;
+                
+                // Dar todas las recompensas PLATINUM (las mejores - 23 items)
+                me.apocalipsis.events.AperturaEndEvent eventoRecompensas = new me.apocalipsis.events.AperturaEndEvent(
+                    plugin, messageBus, plugin.getSoundUtil()
+                );
+                
+                List<org.bukkit.inventory.ItemStack> recompensas = new java.util.ArrayList<>();
+                
+                // Items base (8 items)
+                recompensas.add(eventoRecompensas.getItems().crearFragmentoDelVacio(8));
+                recompensas.add(new org.bukkit.inventory.ItemStack(org.bukkit.Material.ENDER_PEARL, 12));
+                recompensas.add(new org.bukkit.inventory.ItemStack(org.bukkit.Material.ENDER_EYE, 12));
+                
+                // Items épicos Top 1 (10 items adicionales)
+                recompensas.add(eventoRecompensas.getItems().crearEscamaPerfecta(5));
+                recompensas.add(eventoRecompensas.getItems().crearCorazonDesolador());
+                recompensas.add(new org.bukkit.inventory.ItemStack(org.bukkit.Material.END_STONE, 32));
+                recompensas.add(new org.bukkit.inventory.ItemStack(org.bukkit.Material.DIAMOND, 24));
+                
+                // Armadura completa Desoladora (4 piezas)
+                recompensas.add(eventoRecompensas.crearArmaduraDesoladora("helmet"));
+                recompensas.add(eventoRecompensas.crearArmaduraDesoladora("chestplate"));
+                recompensas.add(eventoRecompensas.crearArmaduraDesoladora("leggings"));
+                recompensas.add(eventoRecompensas.crearArmaduraDesoladora("boots"));
+                
+                // Armas y herramientas (3 items)
+                recompensas.add(eventoRecompensas.crearEspadaDesoladora());
+                recompensas.add(eventoRecompensas.crearArcoDesolador());
+                recompensas.add(eventoRecompensas.crearPicoDesolador());
+                
+                // Añadir al inventario
+                int itemsRecibidos = 0;
+                for (org.bukkit.inventory.ItemStack item : recompensas) {
+                    if (admin.getInventory().firstEmpty() != -1) {
+                        admin.getInventory().addItem(item);
+                        itemsRecibidos++;
+                    } else {
+                        admin.getWorld().dropItemNaturally(admin.getLocation(), item);
+                    }
+                }
+                
+                // XP del Top 1
+                plugin.getExperienceService().addXP(admin, 11000, "Admin: Evento 5 Rewards", false);
+                
+                // Mensaje de confirmación
+                sender.sendMessage("");
+                sender.sendMessage("§5§l⚡ ═══ RECOMPENSAS EVENTO 5 ═══ ⚡");
+                sender.sendMessage("§7Recompensas del §ePuesto #1 §7(PLATINUM)");
+                sender.sendMessage("");
+                sender.sendMessage("§a✓ Items recibidos: §f" + itemsRecibidos + " §7/ §f" + recompensas.size());
+                sender.sendMessage("§a✓ XP recibido: §f+11,000");
+                sender.sendMessage("");
+                sender.sendMessage("§7Incluye:");
+                sender.sendMessage("  §8▪ §5Armadura Desoladora §7completa (4 piezas)");
+                sender.sendMessage("  §8▪ §5Espada§7, §5Arco §7y §5Pico Desolador");
+                sender.sendMessage("  §8▪ §5x1 Corazón Desolador §7(LEGENDARIO)");
+                sender.sendMessage("  §8▪ §5x5 Escama Perfecta §7(ÉPICO)");
+                sender.sendMessage("  §8▪ §7End Stone, Diamantes y más");
+                sender.sendMessage("");
                 break;
                 
             default:

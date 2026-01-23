@@ -129,7 +129,9 @@ public class AvoTabCompleter implements TabCompleter {
                 case "evento5":
                 case "aperturaend":
                     // Sugerir subcomandos de evento5 (La Apertura del End)
-                    return Arrays.asList("start", "iniciar", "stop", "detener", "info", "status", "next", "skip", "tp", "teleport", "forzarportal").stream()
+                    return Arrays.asList("start", "iniciar", "stop", "detener", "info", "status", "stats", 
+                                        "next", "skip", "modo", "fase", "damage", "kill", 
+                                        "recompensas", "rewards").stream()
                         .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
                         .collect(Collectors.toList());
                 
@@ -300,6 +302,21 @@ public class AvoTabCompleter implements TabCompleter {
             if ((subCmd.equals("evento5") || subCmd.equals("aperturaend")) && args[1].equalsIgnoreCase("start")) {
                 return Arrays.asList("1", "2", "3", "5", "10", "15", "20", "30", "45", "60").stream()
                     .filter(s -> s.startsWith(args[2]))
+                    .collect(Collectors.toList());
+            }
+            
+            // /avo evento5 fase <1-4>
+            if ((subCmd.equals("evento5") || subCmd.equals("aperturaend")) && args[1].equalsIgnoreCase("fase")) {
+                return Arrays.asList("1", "2", "3", "4").stream()
+                    .filter(s -> s.startsWith(args[2]))
+                    .collect(Collectors.toList());
+            }
+            
+            // /avo evento5 damage <jugador>
+            if ((subCmd.equals("evento5") || subCmd.equals("aperturaend")) && args[1].equalsIgnoreCase("damage")) {
+                return plugin.getServer().getOnlinePlayers().stream()
+                    .map(Player::getName)
+                    .filter(s -> s.toLowerCase().startsWith(args[2].toLowerCase()))
                     .collect(Collectors.toList());
             }
             
@@ -510,6 +527,16 @@ public class AvoTabCompleter implements TabCompleter {
             return Arrays.asList("permanent", "1d", "7d", "30d", "1h", "24h", "60m").stream()
                 .filter(s -> s.toLowerCase().startsWith(args[3].toLowerCase()))
                 .collect(Collectors.toList());
+        }
+        
+        // args.length == 4: /avo evento5 damage <jugador> <cantidad>
+        if (args.length == 4 && (args[0].equalsIgnoreCase("evento5") || args[0].equalsIgnoreCase("aperturaend"))) {
+            if (args[1].equalsIgnoreCase("damage")) {
+                // Sugerir cantidades comunes de daño
+                return Arrays.asList("100", "500", "1000", "5000", "10000").stream()
+                    .filter(s -> s.startsWith(args[3]))
+                    .collect(Collectors.toList());
+            }
         }
         
         // args.length == 4: /avo buddy match <aprendiz> <mentor>

@@ -149,16 +149,16 @@ Se añadió un header completo explicando:
 
 ---
 
-## 🎮 INTEGRACIÓN CON SISTEMA DE FASES
+## 🔗 INTEGRACIÓN CON SISTEMA DE FASES
 
 ### **Cómo Funciona:**
 
 1. **Java (AperturaEndEvent.java)** detecta el HP del dragón cada tick
 2. **Java aplica multiplicadores** de daño y velocidad según la fase:
    - FASE 1 (100-75%): x1.0 daño, x1.0 velocidad
-   - FASE 2 (75-50%): x1.25 daño, x1.10 velocidad
-   - FASE 3 (50-25%): x1.50 daño, x1.20 velocidad
-   - FASE 4 (25-0%): x2.0 daño, x1.30 velocidad
+   - FASE 2 (75-50%): x2.5 daño, x1.15 velocidad
+   - FASE 3 (50-25%): x4.0 daño, x1.25 velocidad
+   - FASE 4 (25-0%): x6.0 daño ¡EXTREMO!, x1.35 velocidad
 
 3. **MythicMobs ejecuta skills** con valores base
 4. **Java multiplica el daño** final antes de aplicarlo
@@ -171,8 +171,8 @@ HP Dragón: 40% (FASE 3)
 
 Cálculo:
 - Daño base MythicMobs: 25
-- Multiplicador FASE 3: x1.50
-- Daño final aplicado: 37.5 ≈ 38
+- Multiplicador FASE 3: x4.0
+- Daño final aplicado: 100
 ```
 
 ---

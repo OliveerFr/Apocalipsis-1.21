@@ -13,13 +13,17 @@ import org.bukkit.boss.BarStyle;
 import org.bukkit.boss.BossBar;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.*;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 
 import me.apocalipsis.Apocalipsis;
+import me.apocalipsis.events.AperturaEndItems;
 import me.apocalipsis.ui.MessageBus;
 import me.apocalipsis.ui.SoundUtil;
 
@@ -135,6 +139,9 @@ public class AperturaEndEvent extends EventBase {
     // Configuración
     private FileConfiguration config;
     
+    // Sistema de items custom
+    private AperturaEndItems items;
+    
     // Tareas programadas
     private BukkitTask mainTask;
     private BukkitTask preparacionTask;
@@ -190,8 +197,16 @@ public class AperturaEndEvent extends EventBase {
     
     public AperturaEndEvent(Apocalipsis plugin, MessageBus messageBus, SoundUtil soundUtil) {
         super(plugin, messageBus, soundUtil, "apertura_end");
+        this.items = new AperturaEndItems(plugin);
         loadConfig();
         detectarModelEngine();
+    }
+    
+    /**
+     * Obtiene el sistema de items custom del evento
+     */
+    public AperturaEndItems getItems() {
+        return items;
     }
     
     // ═══════════════════════════════════════════════════════════════════
@@ -282,6 +297,9 @@ public class AperturaEndEvent extends EventBase {
         
         // Iniciar spawns dramáticos
         iniciarSpawnsDramaticos();
+        
+        // Iniciar oleadas de mobs hostiles periódicas
+        iniciarOleadasHostilesDescubrimiento();
         
         plugin.getLogger().info("[Apertura End] Evento iniciado - Fase de preparación");
     }
@@ -506,7 +524,9 @@ public class AperturaEndEvent extends EventBase {
                     }
                 }
                 
-                // ═══ EMISARIOS DEL END (Endermans especiales) cada 30 segundos ═══
+                // ═══ EMISARIOS DEL END DESACTIVADOS ═══
+                // REMOVIDO: Spawns de Endermans cada 30 segundos
+                /*
                 if (ticksTranscurridos % 600 == 0) {
                     List<Player> onlinePlayers = new ArrayList<>(Bukkit.getOnlinePlayers());
                     if (onlinePlayers.isEmpty()) return;
@@ -579,6 +599,7 @@ public class AperturaEndEvent extends EventBase {
                         Bukkit.broadcastMessage("§8[§7...§8] §5Emisarios del End §7han aparecido en el mundo...");
                     }
                 }
+                */
             }
         }.runTaskTimer(plugin, 600L, 20L); // Iniciar después de 30 segundos, check cada segundo
         
@@ -2730,7 +2751,7 @@ public class AperturaEndEvent extends EventBase {
                 double dist = Math.sqrt(x * x + z * z);
                 if (dist > radius) continue;
                 
-                Material mat = (dist < 4) ? Material.NETHERITE_BLOCK : Material.POLISHED_DEEPSLATE;
+                Material mat = (dist < 4) ? Material.OBSIDIAN : Material.POLISHED_DEEPSLATE;
                 world.getBlockAt(spawnX + x, spawnY - 3, spawnZ + z).setType(mat);
             }
         }
@@ -2807,7 +2828,7 @@ public class AperturaEndEvent extends EventBase {
             // Base de la torre (3x3)
             for (int xOff = -1; xOff <= 1; xOff++) {
                 for (int zOff = -1; zOff <= 1; zOff++) {
-                    world.getBlockAt(tX + xOff, spawnY - 1, tZ + zOff).setType(Material.NETHERITE_BLOCK);
+                    world.getBlockAt(tX + xOff, spawnY - 1, tZ + zOff).setType(Material.OBSIDIAN);
                     world.getBlockAt(tX + xOff, spawnY, tZ + zOff).setType(Material.POLISHED_BLACKSTONE_BRICKS);
                 }
             }
@@ -2972,7 +2993,7 @@ public class AperturaEndEvent extends EventBase {
                     // Base del pilar (3x3)
                     for (int xOff = -1; xOff <= 1; xOff++) {
                         for (int zOff = -1; zOff <= 1; zOff++) {
-                            world.getBlockAt(pilarX + xOff, currentY - 2, pilarZ + zOff).setType(Material.NETHERITE_BLOCK);
+                            world.getBlockAt(pilarX + xOff, currentY - 2, pilarZ + zOff).setType(Material.OBSIDIAN);
                             world.getBlockAt(pilarX + xOff, currentY - 1, pilarZ + zOff).setType(Material.POLISHED_BLACKSTONE);
                         }
                     }
@@ -3067,7 +3088,7 @@ public class AperturaEndEvent extends EventBase {
                 if (dist < 8) {
                     mat = Material.ANCIENT_DEBRIS; // Centro antiguo
                 } else if (dist < 25) {
-                    mat = (Math.random() < 0.3) ? Material.NETHERITE_BLOCK : Material.POLISHED_DEEPSLATE;
+                    mat = (Math.random() < 0.3) ? Material.OBSIDIAN : Material.POLISHED_DEEPSLATE;
                 } else {
                     mat = Material.BLACKSTONE;
                 }
@@ -3110,7 +3131,7 @@ public class AperturaEndEvent extends EventBase {
                     boolean esEstrella = (Math.cos(angle * 5) > 0.6);
                     mat = esEstrella ? Material.CRYING_OBSIDIAN : Material.OBSIDIAN;
                 } else if (dist < 12) {
-                    mat = Material.NETHERITE_BLOCK; // Anillo 1: Poder
+                    mat = Material.OBSIDIAN; // Anillo 1: Poder
                 } else if (dist < 22) {
                     mat = Material.POLISHED_BLACKSTONE_BRICKS; // Anillo 2: Elegancia
                 } else if (dist < 35) {
@@ -3273,7 +3294,7 @@ public class AperturaEndEvent extends EventBase {
             // Base del pilar EXPANDIDA (7x7)
             for (int xOff = -3; xOff <= 3; xOff++) {
                 for (int zOff = -3; zOff <= 3; zOff++) {
-                    world.getBlockAt(x + xOff, centerY - 3, z + zOff).setType(Material.NETHERITE_BLOCK);
+                    world.getBlockAt(x + xOff, centerY - 3, z + zOff).setType(Material.OBSIDIAN);
                     world.getBlockAt(x + xOff, centerY - 2, z + zOff).setType(Material.POLISHED_BLACKSTONE);
                     world.getBlockAt(x + xOff, centerY - 1, z + zOff).setType(Material.CHISELED_POLISHED_BLACKSTONE);
                 }
@@ -3497,7 +3518,7 @@ public class AperturaEndEvent extends EventBase {
                 Material.CRYING_OBSIDIAN,
                 Material.POLISHED_BLACKSTONE, // NUEVO
                 Material.POLISHED_DEEPSLATE,  // NUEVO
-                Material.NETHERITE_BLOCK      // NUEVO (raros)
+                Material.OBSIDIAN      // Bloques raros de poder
             };
             Material mat = materiales[random.nextInt(materiales.length)];
             
@@ -3659,7 +3680,7 @@ public class AperturaEndEvent extends EventBase {
             // Base del pilar (3x3)
             for (int xOff = -1; xOff <= 1; xOff++) {
                 for (int zOff = -1; zOff <= 1; zOff++) {
-                    world.getBlockAt(pilarX + xOff, centerY + 3, pilarZ + zOff).setType(Material.NETHERITE_BLOCK);
+                    world.getBlockAt(pilarX + xOff, centerY + 3, pilarZ + zOff).setType(Material.OBSIDIAN);
                 }
             }
             
@@ -4144,7 +4165,7 @@ public class AperturaEndEvent extends EventBase {
                     double dist = Math.sqrt(x * x + z * z);
                     if (dist > 4.5) continue;
                     
-                    world.getBlockAt(fuenteX + x, centerY - 1, fuenteZ + z).setType(Material.NETHERITE_BLOCK);
+                    world.getBlockAt(fuenteX + x, centerY - 1, fuenteZ + z).setType(Material.OBSIDIAN);
                     world.getBlockAt(fuenteX + x, centerY, fuenteZ + z).setType(Material.POLISHED_BLACKSTONE);
                 }
             }
@@ -4793,7 +4814,7 @@ public class AperturaEndEvent extends EventBase {
         }.runTaskLater(plugin, 200L); // 10 segundos de espera
         
         // ═══════════════════════════════════════════════════════════════
-        // T+15s: PRIMER DIÁLOGO - LA REVELACIÓN (10s + 5s)
+        // T+13s: PRIMER DIÁLOGO - LA REVELACIÓN (10s + 3s)
         // ═══════════════════════════════════════════════════════════════
         new BukkitRunnable() {
             @Override
@@ -4808,15 +4829,15 @@ public class AperturaEndEvent extends EventBase {
                 
                 for (Player p : Bukkit.getOnlinePlayers()) {
                     if (p.getWorld().equals(endWorld)) {
-                        p.sendTitle("§8§l...", "§7¿Ese... era el dragón?", 10, 80, 20);
+                        p.sendTitle("§8§l...", "§7¿Ese... era el dragón?", 10, 60, 20);
                         p.playSound(p.getLocation(), Sound.AMBIENT_CAVE, 1.5f, 0.3f);
                     }
                 }
             }
-        }.runTaskLater(plugin, 300L); // 10s + 5s = 15s
+        }.runTaskLater(plugin, 260L); // 10s + 3s = 13s
         
         // ═══════════════════════════════════════════════════════════════
-        // T+21s: SEGUNDO DIÁLOGO - NEGACIÓN (10s + 11s)
+        // T+16s: SEGUNDO DIÁLOGO - NEGACIÓN (10s + 6s)
         // ═══════════════════════════════════════════════════════════════
         new BukkitRunnable() {
             @Override
@@ -4833,15 +4854,15 @@ public class AperturaEndEvent extends EventBase {
                 
                 for (Player p : Bukkit.getOnlinePlayers()) {
                     if (p.getWorld().equals(endWorld)) {
-                        p.sendTitle("§c§lNO", "§7Ese no era el dragón verdadero", 10, 90, 20);
+                        p.sendTitle("§c§lNO", "§7Ese no era el dragón verdadero", 10, 70, 20);
                         p.playSound(p.getLocation(), Sound.ENTITY_WITHER_AMBIENT, 1.0f, 0.5f);
                     }
                 }
             }
-        }.runTaskLater(plugin, 420L); // 10s + 11s = 21s
+        }.runTaskLater(plugin, 320L); // 10s + 6s = 16s
         
         // ═══════════════════════════════════════════════════════════════
-        // T+28s: TERCER DIÁLOGO - CONEXIÓN CON EVENTOS ECO (10s + 18s)
+        // T+19s: TERCER DIÁLOGO - CONEXIÓN CON EVENTOS ECO (10s + 9s)
         // ═══════════════════════════════════════════════════════════════
         new BukkitRunnable() {
             @Override
@@ -4860,15 +4881,15 @@ public class AperturaEndEvent extends EventBase {
                 
                 for (Player p : Bukkit.getOnlinePlayers()) {
                     if (p.getWorld().equals(endWorld)) {
-                        p.sendTitle("§5§l...", "§7Fragmentos de ESTO", 10, 80, 20);
+                        p.sendTitle("§5§l...", "§7Fragmentos de ESTO", 10, 60, 20);
                         p.playSound(p.getLocation(), Sound.BLOCK_PORTAL_AMBIENT, 1.5f, 0.4f);
                     }
                 }
             }
-        }.runTaskLater(plugin, 560L); // 10s + 18s = 28s
+        }.runTaskLater(plugin, 380L); // 10s + 9s = 19s
         
         // ═══════════════════════════════════════════════════════════════
-        // T+35s: CUARTO DIÁLOGO - MUNDOS ANTERIORES + CURACIÓN/REPARACIÓN (10s + 25s)
+        // T+23s: CUARTO DIÁLOGO - MUNDOS ANTERIORES + CURACIÓN/REPARACIÓN (10s + 13s)
         // ═══════════════════════════════════════════════════════════════
         new BukkitRunnable() {
             @Override
@@ -4887,7 +4908,7 @@ public class AperturaEndEvent extends EventBase {
                 
                 for (Player p : Bukkit.getOnlinePlayers()) {
                     if (p.getWorld().equals(endWorld)) {
-                        p.sendTitle("§5§lMUNDOS ANTERIORES", "§7Y siempre... vuelve", 10, 100, 20);
+                        p.sendTitle("§5§lMUNDOS ANTERIORES", "§7Y siempre... vuelve", 10, 80, 20);
                         p.playSound(p.getLocation(), Sound.ENTITY_ENDERMAN_SCREAM, 1.0f, 0.3f);
                     }
                 }
@@ -4990,12 +5011,12 @@ public class AperturaEndEvent extends EventBase {
                         
                         plugin.getLogger().info("[Apertura End] ⚡ Todos los jugadores curados y reparados completamente");
                     }
-                }.runTaskLater(plugin, 100L); // 5 segundos después de T+35s
+                }.runTaskLater(plugin, 60L); // 3 segundos después de T+23s
             }
-        }.runTaskLater(plugin, 700L); // 10s + 25s = 35s
+        }.runTaskLater(plugin, 460L); // 10s + 13s = 23s
         
         // ═══════════════════════════════════════════════════════════════
-        // T+46s: QUINTO DIÁLOGO - ADVERTENCIA FINAL (10s + 36s, después de curación)
+        // T+27s: QUINTO DIÁLOGO - ADVERTENCIA FINAL (10s + 17s, después de curación)
         // ═══════════════════════════════════════════════════════════════
         new BukkitRunnable() {
             @Override
@@ -5014,16 +5035,16 @@ public class AperturaEndEvent extends EventBase {
                 
                 for (Player p : Bukkit.getOnlinePlayers()) {
                     if (p.getWorld().equals(endWorld)) {
-                        p.sendTitle("§c§l⚠", "§7Lo van a necesitar todo", 10, 90, 20);
+                        p.sendTitle("§c§l⚠", "§7Lo van a necesitar todo", 10, 70, 20);
                         p.playSound(p.getLocation(), Sound.ENTITY_WITHER_AMBIENT, 1.2f, 0.6f);
                         p.playSound(p.getLocation(), Sound.AMBIENT_CAVE, 1.5f, 0.4f);
                     }
                 }
             }
-        }.runTaskLater(plugin, 920L); // 10s + 36s = 46s
+        }.runTaskLater(plugin, 540L); // 10s + 17s = 27s
         
         // ═══════════════════════════════════════════════════════════════
-        // T+53s: SEXTO DIÁLOGO - REVELACIÓN DEL VERDADERO (10s + 43s)
+        // T+32s: SEXTO DIÁLOGO - REVELACIÓN DEL VERDADERO (10s + 22s)
         // ═══════════════════════════════════════════════════════════════
         new BukkitRunnable() {
             @Override
@@ -5042,17 +5063,17 @@ public class AperturaEndEvent extends EventBase {
                 
                 for (Player p : Bukkit.getOnlinePlayers()) {
                     if (p.getWorld().equals(endWorld)) {
-                        p.sendTitle("§4§l⚠⚠⚠", "§c§lEL VERDADERO DRAGÓN", 10, 100, 20);
+                        p.sendTitle("§4§l⚠⚠⚠", "§c§lEL VERDADERO DRAGÓN", 10, 80, 20);
                         p.playSound(p.getLocation(), Sound.ENTITY_WITHER_SPAWN, 1.5f, 0.4f);
                         p.playSound(p.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 1.0f, 0.5f);
                         p.playSound(p.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 1.8f, 0.3f);
                     }
                 }
             }
-        }.runTaskLater(plugin, 1060L); // 10s + 43s = 53s
+        }.runTaskLater(plugin, 640L); // 10s + 22s = 32s
         
         // ═══════════════════════════════════════════════════════════════
-        // T+60s: EFECTOS PRE-SPAWN MASIVOS (10s + 50s)
+        // T+35s: EFECTOS PRE-SPAWN MASIVOS (10s + 25s)
         // ═══════════════════════════════════════════════════════════════
         new BukkitRunnable() {
             @Override
@@ -5083,10 +5104,10 @@ public class AperturaEndEvent extends EventBase {
                     }
                 }
             }
-        }.runTaskLater(plugin, 1200L); // 10s + 50s = 60s
+        }.runTaskLater(plugin, 700L); // 10s + 25s = 35s
         
         // ═══════════════════════════════════════════════════════════════
-        // T+65s: SPAWN DEL DRAGÓN MYTHIC (VERDADERO) (10s + 55s)
+        // T+38s: SPAWN DEL DRAGÓN MYTHIC (VERDADERO) (10s + 28s)
         // ═══════════════════════════════════════════════════════════════
         new BukkitRunnable() {
             @Override
@@ -5144,7 +5165,7 @@ public class AperturaEndEvent extends EventBase {
                 // Reiniciar tracking del dragón (ahora para el mythic)
                 iniciarTrackingDragon();
             }
-        }.runTaskLater(plugin, 1300L); // 10s + 55s = 65s (1300 ticks)
+        }.runTaskLater(plugin, 760L); // 10s + 28s = 38s (760 ticks)
     }
     
     /**
@@ -5588,7 +5609,7 @@ public class AperturaEndEvent extends EventBase {
                 
             case FASE_2_INVOCADOR:
                 // ═══ FASE 2: LA FURIA (75-50% HP) ═══
-                multiplicadorDano = 1.3;
+                multiplicadorDano = 2.5;
                 multiplicadorVelocidad = 1.15;
                 
                 Bukkit.broadcastMessage("");
@@ -5597,12 +5618,13 @@ public class AperturaEndEvent extends EventBase {
                 Bukkit.broadcastMessage("§5§l⚡⚡ FASE II: LA FURIA ⚡⚡");
                 Bukkit.broadcastMessage("");
                 Bukkit.broadcastMessage("§d§lEl dragón invoca aliados del vacío");
-                Bukkit.broadcastMessage("§7Daño aumentado §cx1.3");
+                Bukkit.broadcastMessage("§7Daño aumentado §c§lx2.5");
                 Bukkit.broadcastMessage("");
                 Bukkit.broadcastMessage("§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                 Bukkit.broadcastMessage("");
                 
-                // Spawn de 3-5 Endermen alrededor del dragón
+                // DESACTIVADO: Spawn inicial de Endermen removido
+                /*
                 int endermanCount = 3 + random.nextInt(3);
                 for (int i = 0; i < endermanCount; i++) {
                     double angle = (i * Math.PI * 2) / endermanCount;
@@ -5611,11 +5633,35 @@ public class AperturaEndEvent extends EventBase {
                     double y = targetDragon.getLocation().getY() - 5;
                     
                     Location spawnLoc = new Location(targetDragon.getWorld(), x, y, z);
-                    targetDragon.getWorld().spawnEntity(spawnLoc, EntityType.ENDERMAN);
+                    Entity entity = targetDragon.getWorld().spawnEntity(spawnLoc, EntityType.ENDERMAN);
+                    
+                    // BUFFEAR ENDERMAN - FASE 2 (x6.0 daño)
+                    if (entity instanceof Enderman) {
+                        Enderman enderman = (Enderman) entity;
+                        enderman.customName(Component.text("§5§l⚡ Emisario del Vacío ⚡"));
+                        enderman.setCustomNameVisible(true);
+                        
+                        // HP aumentado x3
+                        if (enderman.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH) != null) {
+                            enderman.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).setBaseValue(120.0); // 40 → 120
+                            enderman.setHealth(120.0);
+                        }
+                        
+                        // DAÑO x6.0 (40 base → 240)
+                        if (enderman.getAttribute(org.bukkit.attribute.Attribute.ATTACK_DAMAGE) != null) {
+                            enderman.getAttribute(org.bukkit.attribute.Attribute.ATTACK_DAMAGE).setBaseValue(240.0);
+                        }
+                        
+                        // Velocidad aumentada x1.5
+                        if (enderman.getAttribute(org.bukkit.attribute.Attribute.MOVEMENT_SPEED) != null) {
+                            enderman.getAttribute(org.bukkit.attribute.Attribute.MOVEMENT_SPEED).setBaseValue(0.45);
+                        }
+                    }
                     
                     // Efecto de spawn
                     targetDragon.getWorld().spawnParticle(Particle.PORTAL, spawnLoc, 50, 1.0, 1.0, 1.0, 0.5);
                 }
+                */
                 
                 // Efectos visuales intensos
                 targetDragon.getWorld().spawnParticle(Particle.DRAGON_BREATH, 
@@ -5632,13 +5678,13 @@ public class AperturaEndEvent extends EventBase {
                     p.sendTitle("§5§l⚡⚡", "§d§lFASE II - LA FURIA", 10, 60, 10);
                 }
                 
-                // Iniciar task de spawns periódicos de Endermen (cada 20 segundos)
-                iniciarSpawnsPeriodicos(EntityType.ENDERMAN, 20, 2, 3);
+                // DESACTIVADO: Spawns de Endermen removidos
+                // iniciarSpawnsPeriodicos(EntityType.ENDERMAN, 20, 2, 3);
                 break;
                 
             case FASE_3_DESESPERADO:
                 // ═══ FASE 3: LA DESESPERACIÓN (50-25% HP) ═══
-                multiplicadorDano = 1.6;
+                multiplicadorDano = 4.0;
                 multiplicadorVelocidad = 1.25;
                 
                 Bukkit.broadcastMessage("");
@@ -5648,12 +5694,13 @@ public class AperturaEndEvent extends EventBase {
                 Bukkit.broadcastMessage("");
                 Bukkit.broadcastMessage("§5§l¡El dragón entra en estado crítico!");
                 Bukkit.broadcastMessage("§d§lSpawn de Shulkers + Zona de Levitación");
-                Bukkit.broadcastMessage("§7Daño aumentado §cx1.6");
+                Bukkit.broadcastMessage("§7Daño aumentado §c§lx4.0");
                 Bukkit.broadcastMessage("");
                 Bukkit.broadcastMessage("§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                 Bukkit.broadcastMessage("");
                 
-                // Spawn de 4-6 Shulkers en posiciones aleatorias
+                // DESACTIVADO: Spawn inicial de Shulkers removido
+                /*
                 int shulkerCount = 4 + random.nextInt(3);
                 for (int i = 0; i < shulkerCount; i++) {
                     double angle = Math.random() * Math.PI * 2;
@@ -5663,11 +5710,25 @@ public class AperturaEndEvent extends EventBase {
                     double y = targetDragon.getLocation().getY() - 8;
                     
                     Location spawnLoc = new Location(targetDragon.getWorld(), x, y, z);
-                    targetDragon.getWorld().spawnEntity(spawnLoc, EntityType.SHULKER);
+                    Entity entity = targetDragon.getWorld().spawnEntity(spawnLoc, EntityType.SHULKER);
+                    
+                    // BUFFEAR SHULKER - FASE 3 (x6.0 daño)
+                    if (entity instanceof Shulker) {
+                        Shulker shulker = (Shulker) entity;
+                        shulker.customName(Component.text("§d§l⚡ Guardián de la Desesperación ⚡"));
+                        shulker.setCustomNameVisible(true);
+                        
+                        // HP aumentado x5
+                        if (shulker.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH) != null) {
+                            shulker.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).setBaseValue(150.0); // 30 → 150
+                            shulker.setHealth(150.0);
+                        }
+                    }
                     
                     // Efecto de spawn
                     targetDragon.getWorld().spawnParticle(Particle.REVERSE_PORTAL, spawnLoc, 80, 1.0, 1.0, 1.0, 0.8);
                 }
+                */
                 
                 // Zona de levitación peligrosa alrededor del dragón
                 for (Player p : Bukkit.getOnlinePlayers()) {
@@ -5697,8 +5758,8 @@ public class AperturaEndEvent extends EventBase {
                 targetDragon.getWorld().spawnParticle(Particle.END_ROD, 
                     targetDragon.getLocation(), 150, 6.0, 6.0, 6.0, 0.3);
                 
-                // Iniciar spawns periódicos de Shulkers (cada 25 segundos)
-                iniciarSpawnsPeriodicos(EntityType.SHULKER, 25, 2, 4);
+                // DESACTIVADO: Spawns de Shulkers removidos
+                // iniciarSpawnsPeriodicos(EntityType.SHULKER, 25, 2, 4);
                 
                 // Iniciar zona de peligro constante (partículas y efectos cada 5 segundos)
                 iniciarZonaPeligro();
@@ -5707,7 +5768,7 @@ public class AperturaEndEvent extends EventBase {
             case FASE_4_FURIA:
                 // ═══ FASE 4: EL OCASO - FURIA FINAL (25-0% HP) ═══
                 // ¡¡¡ MOMENTO MÁS ATERRADOR DEL EVENTO !!!
-                multiplicadorDano = 2.0;
+                multiplicadorDano = 6.0;
                 multiplicadorVelocidad = 1.35;
                 
                 // ═══════════════════════════════════════════════════════════════════
@@ -5740,7 +5801,7 @@ public class AperturaEndEvent extends EventBase {
                         Bukkit.broadcastMessage("");
                         Bukkit.broadcastMessage("§c§l¡EL DRAGÓN ENTRA EN FURIA TOTAL!");
                         Bukkit.broadcastMessage("§4§lSpawns masivos + Explosiones de aliento");
-                        Bukkit.broadcastMessage("§7Daño aumentado §4§lx2.0");
+                        Bukkit.broadcastMessage("§7Daño aumentado §4§l§nx6.0 ¡¡¡EXTREMO!!!");
                         Bukkit.broadcastMessage("");
                         Bukkit.broadcastMessage("§8[§7...§8] §4Ya no hay retorno.");
                         Bukkit.broadcastMessage("");
@@ -5875,6 +5936,7 @@ public class AperturaEndEvent extends EventBase {
     
     /**
      * Inicia spawns periódicos de una entidad específica durante la fase actual
+     * Los mobs spawneados tienen stats mejoradas x6.0 para combate épico
      */
     private void iniciarSpawnsPeriodicos(EntityType tipo, int intervaloSegundos, int cantidadMin, int cantidadMax) {
         if (spawnPeriodicoTask != null && !spawnPeriodicoTask.isCancelled()) {
@@ -5898,11 +5960,46 @@ public class AperturaEndEvent extends EventBase {
                     double y = dragon.getLocation().getY() - 6;
                     
                     Location spawnLoc = new Location(dragon.getWorld(), x, y, z);
-                    dragon.getWorld().spawnEntity(spawnLoc, tipo);
+                    Entity entity = dragon.getWorld().spawnEntity(spawnLoc, tipo);
+                    
+                    // BUFFEAR MOBS SEGÚN TIPO - x6.0 DAÑO ÉPICO
+                    if (entity instanceof Enderman) {
+                        Enderman enderman = (Enderman) entity;
+                        enderman.customName(Component.text("§5§l⚡ Emisario del Vacío ⚡"));
+                        enderman.setCustomNameVisible(true);
+                        
+                        // HP x3
+                        if (enderman.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH) != null) {
+                            enderman.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).setBaseValue(120.0);
+                            enderman.setHealth(120.0);
+                        }
+                        
+                        // DAÑO x6.0 (40 → 240)
+                        if (enderman.getAttribute(org.bukkit.attribute.Attribute.ATTACK_DAMAGE) != null) {
+                            enderman.getAttribute(org.bukkit.attribute.Attribute.ATTACK_DAMAGE).setBaseValue(240.0);
+                        }
+                        
+                        // Velocidad x1.5
+                        if (enderman.getAttribute(org.bukkit.attribute.Attribute.MOVEMENT_SPEED) != null) {
+                            enderman.getAttribute(org.bukkit.attribute.Attribute.MOVEMENT_SPEED).setBaseValue(0.45);
+                        }
+                        
+                    } else if (entity instanceof Shulker) {
+                        Shulker shulker = (Shulker) entity;
+                        shulker.customName(Component.text("§d§l⚡ Guardián de la Desesperación ⚡"));
+                        shulker.setCustomNameVisible(true);
+                        
+                        // HP x5
+                        if (shulker.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH) != null) {
+                            shulker.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).setBaseValue(150.0);
+                            shulker.setHealth(150.0);
+                        }
+                    }
+                    
                     dragon.getWorld().spawnParticle(Particle.PORTAL, spawnLoc, 30, 1, 1, 1, 0.3);
                 }
                 
-                Bukkit.broadcastMessage("§8[§5...§8] §5El dragón invoca más aliados...");
+                Bukkit.broadcastMessage("§8[§5...§8] §5El dragón invoca más aliados §c§lx6.0 §5poderosos...");
             }
         }.runTaskTimer(plugin, intervaloSegundos * 20L, intervaloSegundos * 20L);
     }
@@ -5950,6 +6047,10 @@ public class AperturaEndEvent extends EventBase {
     /**
      * Inicia spawns masivos constantes (Fase 4)
      */
+    /**
+     * Inicia spawns masivos de mobs (Fase 4 - FURIA TOTAL)
+     * Spawns cada 15 segundos con stats x6.0 EXTREMOS
+     */
     private void iniciarSpawnsMasivos() {
         if (spawnsMasivosTask != null && !spawnsMasivosTask.isCancelled()) {
             spawnsMasivosTask.cancel();
@@ -5963,7 +6064,7 @@ public class AperturaEndEvent extends EventBase {
                     return;
                 }
                 
-                // Spawn de 4-6 Endermen o Shulkers
+                // Spawn de 4-6 Endermen o Shulkers BUFFEADOS
                 int cantidad = 4 + random.nextInt(3);
                 for (int i = 0; i < cantidad; i++) {
                     double angle = (i * Math.PI * 2) / cantidad;
@@ -5973,11 +6074,46 @@ public class AperturaEndEvent extends EventBase {
                     
                     Location spawnLoc = new Location(dragon.getWorld(), x, y, z);
                     EntityType tipo = (i % 2 == 0) ? EntityType.ENDERMAN : EntityType.SHULKER;
-                    dragon.getWorld().spawnEntity(spawnLoc, tipo);
+                    Entity entity = dragon.getWorld().spawnEntity(spawnLoc, tipo);
+                    
+                    // BUFFEAR MOBS FASE 4 - x6.0 FURIA TOTAL
+                    if (entity instanceof Enderman) {
+                        Enderman enderman = (Enderman) entity;
+                        enderman.customName(Component.text("§4§l⚡ DEVASTADOR DEL VACÍO ⚡"));
+                        enderman.setCustomNameVisible(true);
+                        
+                        // HP x3
+                        if (enderman.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH) != null) {
+                            enderman.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).setBaseValue(120.0);
+                            enderman.setHealth(120.0);
+                        }
+                        
+                        // DAÑO x6.0 EXTREMO (40 → 240)
+                        if (enderman.getAttribute(org.bukkit.attribute.Attribute.ATTACK_DAMAGE) != null) {
+                            enderman.getAttribute(org.bukkit.attribute.Attribute.ATTACK_DAMAGE).setBaseValue(240.0);
+                        }
+                        
+                        // Velocidad x1.5
+                        if (enderman.getAttribute(org.bukkit.attribute.Attribute.MOVEMENT_SPEED) != null) {
+                            enderman.getAttribute(org.bukkit.attribute.Attribute.MOVEMENT_SPEED).setBaseValue(0.45);
+                        }
+                        
+                    } else if (entity instanceof Shulker) {
+                        Shulker shulker = (Shulker) entity;
+                        shulker.customName(Component.text("§c§l⚡ CENTINELA DE LA FURIA ⚡"));
+                        shulker.setCustomNameVisible(true);
+                        
+                        // HP x5
+                        if (shulker.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH) != null) {
+                            shulker.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).setBaseValue(150.0);
+                            shulker.setHealth(150.0);
+                        }
+                    }
+                    
                     dragon.getWorld().spawnParticle(Particle.EXPLOSION, spawnLoc, 3, 0.5, 0.5, 0.5, 0);
                 }
                 
-                Bukkit.broadcastMessage("§4[§c!§4] §c§lOleada de refuerzos!");
+                Bukkit.broadcastMessage("§4[§c!§4] §c§lOleada de refuerzos §4§lx6.0 EXTREMOS§c§l!");
                 
                 for (Player p : Bukkit.getOnlinePlayers()) {
                     if (p.getWorld().equals(dragon.getWorld())) {
@@ -6176,7 +6312,7 @@ public class AperturaEndEvent extends EventBase {
         }
         
         long intervalo = getSpawnInterval();
-        plugin.getLogger().info(String.format("[Apertura End] ✓ Spawns de combate iniciados - Fase: %s, Intervalo: %d ticks (%ds) - OLEADAS CADA 1 MINUTO", 
+        plugin.getLogger().info(String.format("[Apertura End] ✓ Spawns de combate iniciados - Fase: %s, Intervalo: %d ticks (%ds) - OLEADAS CADA 2 MINUTOS", 
             faseDragon, intervalo, intervalo / 20));
         
         spawnMobsHostilesTask = new BukkitRunnable() {
@@ -6271,7 +6407,7 @@ public class AperturaEndEvent extends EventBase {
                     }
                 }
                 
-                plugin.getLogger().info(String.format("[Apertura End] ✓ Oleada spawneada: %d jugadores, Fase: %s, Próxima en 1 minuto", 
+                plugin.getLogger().info(String.format("[Apertura End] ✓ Oleada spawneada: %d jugadores, Fase: %s, Próxima en 2 minutos", 
                     jugadoresEnd, faseDragon));
                 
                 mobSpawnCounter++;
@@ -6281,11 +6417,11 @@ public class AperturaEndEvent extends EventBase {
     
     /**
      * Devuelve el intervalo de spawneo en ticks según la fase del dragón
-     * MODIFICADO: Oleadas cada 1 minuto (1200 ticks) independiente de la fase
+     * MODIFICADO: Oleadas cada 2 minutos (2400 ticks) independiente de la fase
      */
     private long getSpawnInterval() {
-        // TODAS LAS FASES: 1 minuto (60 segundos = 1200 ticks)
-        return 1200L; // Oleadas cada 1 minuto - PRESIÓN MÁXIMA 🔥
+        // TODAS LAS FASES: 2 minutos (120 segundos = 2400 ticks)
+        return 2400L; // Oleadas cada 2 minutos - AUMENTA LA PRESIÓN
     }
     
     /**
@@ -6344,15 +6480,15 @@ public class AperturaEndEvent extends EventBase {
     
     /**
      * Devuelve la cantidad de mobs a spawnear según la fase
-     * AUMENTADO: Más mobs para mayor presión y desafío
+     * LIMITADO: Cantidades controladas para evitar spam y lag
      */
     private int getCantidadMobsPorFase() {
         switch (faseDragon) {
-            case FASE_1_AEREO: return 4; // 4 mobs por jugador
-            case FASE_2_INVOCADOR: return 5; // 5 mobs por jugador 🔥
-            case FASE_3_DESESPERADO: return 5; // 5 mobs por jugador 💀
-            case FASE_4_FURIA: return 6; // 6 mobs por jugador - CAOS TOTAL ⚡
-            default: return 4;
+            case FASE_1_AEREO: return 2; // 2 mobs por jugador
+            case FASE_2_INVOCADOR: return 2; // 2 mobs por jugador (REDUCIDO desde 3)
+            case FASE_3_DESESPERADO: return 3; // 3 mobs por jugador (REDUCIDO desde 4)
+            case FASE_4_FURIA: return 3; // 3 mobs por jugador (REDUCIDO desde 5)
+            default: return 2;
         }
     }
     
@@ -6388,13 +6524,11 @@ public class AperturaEndEvent extends EventBase {
                 mobsDisponibles.add(EntityType.PILLAGER);
                 mobsDisponibles.add(EntityType.EVOKER);
                 mobsDisponibles.add(EntityType.RAVAGER);
-                mobsDisponibles.add(EntityType.PIGLIN_BRUTE);
                 break;
                 
             case FASE_4_FURIA:
                 // Fase 4: Solo los más fuertes
                 mobsDisponibles.add(EntityType.RAVAGER);
-                mobsDisponibles.add(EntityType.PIGLIN_BRUTE);
                 mobsDisponibles.add(EntityType.EVOKER);
                 mobsDisponibles.add(EntityType.VINDICATOR);
                 mobsDisponibles.add(EntityType.WITHER_SKELETON);
@@ -6428,26 +6562,26 @@ public class AperturaEndEvent extends EventBase {
                 break;
                 
             case FASE_2_INVOCADOR:
-                // Fase 2: Buffs moderados - daño x3.9 (Strength III)
+                // Fase 2: Buffs moderados - daño x2.6
                 mob.addPotionEffect(new org.bukkit.potion.PotionEffect(
                     org.bukkit.potion.PotionEffectType.SPEED, duracion, 1, false, false));
                 mob.addPotionEffect(new org.bukkit.potion.PotionEffect(
                     org.bukkit.potion.PotionEffectType.RESISTANCE, duracion, 0, false, false));
                 mob.addPotionEffect(new org.bukkit.potion.PotionEffect(
-                    org.bukkit.potion.PotionEffectType.STRENGTH, duracion, 2, false, false)); // Strength III = +390% daño 🔥
+                    org.bukkit.potion.PotionEffectType.STRENGTH, duracion, 1, false, false)); // Strength II = +260% daño
                 // Aumentar HP
                 mob.setMaxHealth(mob.getMaxHealth() * 1.3);
                 mob.setHealth(mob.getMaxHealth());
                 break;
                 
             case FASE_3_DESESPERADO:
-                // Fase 3: Buffs fuertes - daño x5.2 (Strength IV)
+                // Fase 3: Buffs fuertes - daño x4.3
                 mob.addPotionEffect(new org.bukkit.potion.PotionEffect(
                     org.bukkit.potion.PotionEffectType.SPEED, duracion, 2, false, false));
                 mob.addPotionEffect(new org.bukkit.potion.PotionEffect(
                     org.bukkit.potion.PotionEffectType.RESISTANCE, duracion, 1, false, false));
                 mob.addPotionEffect(new org.bukkit.potion.PotionEffect(
-                    org.bukkit.potion.PotionEffectType.STRENGTH, duracion, 3, false, false)); // Strength IV = +520% daño 💀
+                    org.bukkit.potion.PotionEffectType.STRENGTH, duracion, 2, false, false)); // Strength III = +330% daño
                 // Aumentar HP significativamente
                 mob.setMaxHealth(mob.getMaxHealth() * 1.6);
                 mob.setHealth(mob.getMaxHealth());
@@ -6540,15 +6674,27 @@ public class AperturaEndEvent extends EventBase {
         
         plugin.getLogger().info("[Apertura End] Spawneando " + cantidad + " mob(s) cerca de " + jugador.getName() + " (intensidad: " + String.format("%.2f", intensidad) + ")");
         
-        // Tipos de mobs posibles (BALANCEADOS - no muy fuertes)
-        org.bukkit.entity.EntityType[] tiposMobs = {
+        // Tipos de mobs posibles (ÉPICOS - ESCALA PROGRESIVA)
+        org.bukkit.entity.EntityType[] tiposMobsBasicos = {
             org.bukkit.entity.EntityType.ZOMBIE,
             org.bukkit.entity.EntityType.SKELETON,
             org.bukkit.entity.EntityType.SPIDER,
-            org.bukkit.entity.EntityType.CAVE_SPIDER,
-            org.bukkit.entity.EntityType.HUSK,        // Solo si hay suficiente intensidad
-            org.bukkit.entity.EntityType.STRAY,       // Solo si hay suficiente intensidad
-            org.bukkit.entity.EntityType.WITCH        // Ocasional
+            org.bukkit.entity.EntityType.CAVE_SPIDER
+        };
+        
+        org.bukkit.entity.EntityType[] tiposMobsMedios = {
+            org.bukkit.entity.EntityType.HUSK,
+            org.bukkit.entity.EntityType.STRAY,
+            org.bukkit.entity.EntityType.WITCH,
+            org.bukkit.entity.EntityType.PILLAGER,
+            org.bukkit.entity.EntityType.VINDICATOR
+        };
+        
+        org.bukkit.entity.EntityType[] tiposMobsAvanzados = {
+            org.bukkit.entity.EntityType.RAVAGER,
+            org.bukkit.entity.EntityType.EVOKER,
+            org.bukkit.entity.EntityType.VEX,
+            org.bukkit.entity.EntityType.WITHER_SKELETON
         };
         
         for (int i = 0; i < cantidad; i++) {
@@ -6567,15 +6713,26 @@ public class AperturaEndEvent extends EventBase {
             
             // Seleccionar tipo de mob según intensidad
             org.bukkit.entity.EntityType tipoMob;
-            if (intensidad < 0.4) {
-                // Temprano: Solo zombies, skeletons, spiders
-                tipoMob = tiposMobs[random.nextInt(3)];
-            } else if (intensidad < 0.7) {
-                // Medio: Agregar cave spiders, husks, strays
-                tipoMob = tiposMobs[random.nextInt(6)];
+            if (intensidad < 0.3) {
+                // Temprano (0-13.5 min): Solo zombies, skeletons, spiders básicos
+                tipoMob = tiposMobsBasicos[random.nextInt(tiposMobsBasicos.length)];
+            } else if (intensidad < 0.6) {
+                // Medio (13.5-27 min): Agregar Husks, Strays, Witches, Pillagers, Vindicators
+                if (random.nextDouble() < 0.6) {
+                    tipoMob = tiposMobsBasicos[random.nextInt(tiposMobsBasicos.length)];
+                } else {
+                    tipoMob = tiposMobsMedios[random.nextInt(tiposMobsMedios.length)];
+                }
             } else {
-                // Tarde: Todos los mobs, incluidas brujas ocasionales
-                tipoMob = tiposMobs[random.nextInt(tiposMobs.length)];
+                // Avanzado (27+ min): TODOS los mobs incluidos Ravagers, Evokers, Vex, Wither Skeletons
+                double roll = random.nextDouble();
+                if (roll < 0.4) {
+                    tipoMob = tiposMobsBasicos[random.nextInt(tiposMobsBasicos.length)];
+                } else if (roll < 0.7) {
+                    tipoMob = tiposMobsMedios[random.nextInt(tiposMobsMedios.length)];
+                } else {
+                    tipoMob = tiposMobsAvanzados[random.nextInt(tiposMobsAvanzados.length)];
+                }
             }
             
             // Spawnear el mob
@@ -6643,21 +6800,33 @@ public class AperturaEndEvent extends EventBase {
     private String obtenerNombreMobOscuro(org.bukkit.entity.EntityType tipo) {
         switch (tipo) {
             case ZOMBIE:
-                return "§8Eco Olvidado";
+                return "§8§l⚔ Eco Olvidado ⚔";
             case SKELETON:
-                return "§7Fragmento Errante";
+                return "§7§l☠ Fragmento Errante ☠";
             case SPIDER:
-                return "§8Tejedora del Vacío";
+                return "§8§l✦ Tejedora del Vacío ✦";
             case CAVE_SPIDER:
-                return "§5Rastrera Sombría";
+                return "§5§l✦ Rastrera Sombría ✦";
             case HUSK:
-                return "§6Guardián Árido";
+                return "§6§l⚔ Guardián Árido ⚔";
             case STRAY:
-                return "§b§oVestigio Helado";
+                return "§b§l❄ Vestigio Helado ❄";
             case WITCH:
-                return "§5§lHechicera Corrupta";
+                return "§5§l⚡ Hechicera Corrupta ⚡";
+            case PILLAGER:
+                return "§8§l⚔ Saqueador del Vacío ⚔";
+            case VINDICATOR:
+                return "§c§l⚔ VINDICADOR OSCURO ⚔";
+            case RAVAGER:
+                return "§4§l⚡ DEVASTADOR CORRUPTO ⚡";
+            case EVOKER:
+                return "§5§l✦ INVOCADOR DEL ABISMO ✦";
+            case VEX:
+                return "§d§l✦ Espíritu Vengativo ✦";
+            case WITHER_SKELETON:
+                return "§8§l☠ ESQUELETO DEL OLVIDO ☠";
             default:
-                return "§8Criatura Oscura";
+                return "§8§lCriatura del Vacío";
         }
     }
     
@@ -6666,10 +6835,10 @@ public class AperturaEndEvent extends EventBase {
      * Más fuerte que vanilla pero MENOS que los mobs del End
      */
     private void aplicarEstadisticasModeradas(LivingEntity mob, double intensidad) {
-        // Multiplicadores base (moderados)
-        double multHP = 1.3 + (intensidad * 0.4);      // 1.3x a 1.7x HP
-        double multDamage = 1.2 + (intensidad * 0.3);  // 1.2x a 1.5x daño
-        double multSpeed = 1.0 + (intensidad * 0.15);  // 1.0x a 1.15x velocidad
+        // Multiplicadores - Escala progresiva hasta x5.0 daño
+        double multHP = 2.0 + (intensidad * 2.0);      // 2.0x a 4.0x HP
+        double multDamage = 2.0 + (intensidad * 3.0);  // 2.0x a 5.0x daño
+        double multSpeed = 1.1 + (intensidad * 0.3);   // 1.1x a 1.4x velocidad
         
         // Aplicar HP
         if (mob.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH) != null) {
@@ -6679,7 +6848,7 @@ public class AperturaEndEvent extends EventBase {
             mob.setHealth(nuevoHP);
         }
         
-        // Aplicar daño
+        // Aplicar daño ÉPICO
         if (mob.getAttribute(org.bukkit.attribute.Attribute.ATTACK_DAMAGE) != null) {
             double danoBase = mob.getAttribute(org.bukkit.attribute.Attribute.ATTACK_DAMAGE).getBaseValue();
             mob.getAttribute(org.bukkit.attribute.Attribute.ATTACK_DAMAGE).setBaseValue(danoBase * multDamage);
@@ -6698,45 +6867,104 @@ public class AperturaEndEvent extends EventBase {
     }
     
     /**
-     * Equipa mobs con armadura/armas básicas según intensidad
+     * Aplica estadísticas FIJAS a mobs de oleadas (sin progresión)
+     */
+    private void aplicarEstadisticasFijasOleadas(LivingEntity mob) {
+        // Multiplicadores fijos - sin progresión
+        double multHP = 2.5;      // x2.5 HP fijo
+        double multDamage = 2.5;  // x2.5 daño fijo
+        double multSpeed = 1.15;  // x1.15 velocidad fijo
+        
+        // Aplicar HP
+        if (mob.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH) != null) {
+            double hpBase = mob.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).getBaseValue();
+            double nuevoHP = hpBase * multHP;
+            mob.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).setBaseValue(nuevoHP);
+            mob.setHealth(nuevoHP);
+        }
+        
+        // Aplicar daño
+        if (mob.getAttribute(org.bukkit.attribute.Attribute.ATTACK_DAMAGE) != null) {
+            double danoBase = mob.getAttribute(org.bukkit.attribute.Attribute.ATTACK_DAMAGE).getBaseValue();
+            mob.getAttribute(org.bukkit.attribute.Attribute.ATTACK_DAMAGE).setBaseValue(danoBase * multDamage);
+        }
+        
+        // Aplicar velocidad
+        if (mob.getAttribute(org.bukkit.attribute.Attribute.MOVEMENT_SPEED) != null) {
+            double velBase = mob.getAttribute(org.bukkit.attribute.Attribute.MOVEMENT_SPEED).getBaseValue();
+            mob.getAttribute(org.bukkit.attribute.Attribute.MOVEMENT_SPEED).setBaseValue(velBase * multSpeed);
+        }
+    }
+    
+    /**
+     * Equipa mobs con armadura/armas ÉPICAS según intensidad
      */
     private void equiparMobBasico(LivingEntity mob, double intensidad) {
         org.bukkit.inventory.EntityEquipment equip = mob.getEquipment();
         if (equip == null) return;
         
-        // Solo zombies y skeletons
-        if (!(mob instanceof org.bukkit.entity.Zombie || mob instanceof org.bukkit.entity.Skeleton)) {
-            return;
-        }
-        
-        // Arma
-        if (mob instanceof org.bukkit.entity.Skeleton) {
-            equip.setItemInMainHand(new org.bukkit.inventory.ItemStack(org.bukkit.Material.BOW));
-        } else if (random.nextBoolean()) {
+        // ZOMBIES Y SKELETONS - Armas mejoradas
+        if (mob instanceof org.bukkit.entity.Zombie) {
             org.bukkit.Material[] armas = {
-                org.bukkit.Material.WOODEN_SWORD,
                 org.bukkit.Material.STONE_SWORD,
-                org.bukkit.Material.IRON_SWORD
+                org.bukkit.Material.IRON_SWORD,
+                org.bukkit.Material.DIAMOND_SWORD
             };
-            int nivel = (int) (intensidad * armas.length);
-            if (nivel >= armas.length) nivel = armas.length - 1;
+            int nivel = Math.min((int) (intensidad * armas.length), armas.length - 1);
             equip.setItemInMainHand(new org.bukkit.inventory.ItemStack(armas[nivel]));
+            equip.setItemInMainHandDropChance(0.05f);
+        } 
+        else if (mob instanceof org.bukkit.entity.Skeleton) {
+            equip.setItemInMainHand(new org.bukkit.inventory.ItemStack(org.bukkit.Material.BOW));
+            equip.setItemInMainHandDropChance(0.05f);
         }
         
-        // Armadura ligera (solo si intensidad > 0.5)
-        if (intensidad > 0.5 && random.nextBoolean()) {
-            if (random.nextBoolean()) {
-                equip.setHelmet(new org.bukkit.inventory.ItemStack(org.bukkit.Material.LEATHER_HELMET));
-            }
-            if (random.nextBoolean()) {
-                equip.setChestplate(new org.bukkit.inventory.ItemStack(org.bukkit.Material.LEATHER_CHESTPLATE));
-            }
+        // PILLAGERS - Ballestas mejoradas
+        else if (mob instanceof org.bukkit.entity.Pillager) {
+            org.bukkit.entity.Pillager pillager = (org.bukkit.entity.Pillager) mob;
+            equip.setItemInMainHand(new org.bukkit.inventory.ItemStack(org.bukkit.Material.CROSSBOW));
+            equip.setItemInMainHandDropChance(0.1f);
         }
         
-        // Probabilidades de drop bajas
-        equip.setHelmetDropChance(0.05f);
-        equip.setChestplateDropChance(0.05f);
-        equip.setItemInMainHandDropChance(0.1f);
+        // VINDICATORS - Hachas encantadas
+        else if (mob instanceof org.bukkit.entity.Vindicator) {
+            org.bukkit.Material[] hachas = {
+                org.bukkit.Material.IRON_AXE,
+                org.bukkit.Material.DIAMOND_AXE,
+                org.bukkit.Material.NETHERITE_AXE
+            };
+            int nivel = Math.min((int) (intensidad * hachas.length), hachas.length - 1);
+            equip.setItemInMainHand(new org.bukkit.inventory.ItemStack(hachas[nivel]));
+            equip.setItemInMainHandDropChance(0.08f);
+        }
+        
+        // Armadura progresiva según intensidad
+        if (intensidad > 0.3) {
+            org.bukkit.Material[] materiales = {
+                org.bukkit.Material.LEATHER_HELMET,
+                org.bukkit.Material.CHAINMAIL_HELMET,
+                org.bukkit.Material.IRON_HELMET
+            };
+            int nivel = Math.min((int) (intensidad * materiales.length), materiales.length - 1);
+            
+            if (random.nextDouble() < 0.6) {
+                equip.setHelmet(new org.bukkit.inventory.ItemStack(
+                    materiales[nivel].name().contains("LEATHER") ? org.bukkit.Material.LEATHER_HELMET :
+                    materiales[nivel].name().contains("CHAIN") ? org.bukkit.Material.CHAINMAIL_HELMET :
+                    org.bukkit.Material.IRON_HELMET
+                ));
+                equip.setHelmetDropChance(0.03f);
+            }
+            
+            if (random.nextDouble() < 0.5) {
+                equip.setChestplate(new org.bukkit.inventory.ItemStack(
+                    materiales[nivel].name().contains("LEATHER") ? org.bukkit.Material.LEATHER_CHESTPLATE :
+                    materiales[nivel].name().contains("CHAIN") ? org.bukkit.Material.CHAINMAIL_CHESTPLATE :
+                    org.bukkit.Material.IRON_CHESTPLATE
+                ));
+                equip.setChestplateDropChance(0.03f);
+            }
+        }
     }
     
     private String getNombreFase(DragonPhase fase) {
@@ -7063,15 +7291,9 @@ public class AperturaEndEvent extends EventBase {
         // de regreso al Overworld, creando más suspenso
         
         // ═══════════════════════════════════════════════════════════════
+        // LAS RECOMPENSAS AHORA SE DAN AL REGRESAR AL OVERWORLD
+        // Se distribuyen 7 segundos después de detectar cruce de portal
         // ═══════════════════════════════════════════════════════════════
-        // T+35s: DISTRIBUIR RECOMPENSAS
-        // ═══════════════════════════════════════════════════════════════
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                distribuirRecompensas();
-            }
-        }.runTaskLater(plugin, 700L);
                 
             } // Fin del BukkitRunnable de delay inicial
         }.runTaskLater(plugin, 100L); // 5 segundos de delay para ver animación de muerte
@@ -7304,7 +7526,7 @@ public class AperturaEndEvent extends EventBase {
                 Bukkit.broadcastMessage("§8Pero algo ha cambiado...");
                 Bukkit.broadcastMessage("");
                 Bukkit.broadcastMessage("§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-                Bukkit.broadcastMessage("§7Usa §e/recompensas §7para reclamar tus premios");
+                Bukkit.broadcastMessage("§7Revisen sus inventarios...");
                 Bukkit.broadcastMessage("");
                 
                 for (Player p : Bukkit.getOnlinePlayers()) {
@@ -7399,19 +7621,32 @@ public class AperturaEndEvent extends EventBase {
                     }
                 }
                 
-                // Si al menos 1 jugador ha regresado, activar cliffhanger después de un tiempo
+                // Si al menos 1 jugador ha regresado, PRIMERO dar recompensas, LUEGO cliffhanger
                 if (!jugadoresQueRegresaron.isEmpty() && !cliffhangerActivado) {
                     cliffhangerActivado = true;
-                    plugin.getLogger().info("[Apertura End] ⚡ ACTIVANDO CLIFFHANGER - Jugadores han regresado");
+                    plugin.getLogger().info("[Apertura End] ⚡ JUGADORES HAN REGRESADO - Iniciando secuencia de recompensas y cliffhanger");
                     
-                    // Esperar 30-40 segundos para generar MÁXIMO SUSPENSO
-                    // Los jugadores estarán tranquilos en el Overworld pensando que todo terminó...
+                    // ═══════════════════════════════════════════════════════════════
+                    // PARTE 1: RECOMPENSAS (7 segundos después de detectar Overworld)
+                    // ═══════════════════════════════════════════════════════════════
                     new BukkitRunnable() {
                         @Override
                         public void run() {
+                            plugin.getLogger().info("[Apertura End] 📦 Distribuyendo recompensas épicas...");
+                            distribuirRecompensas();
+                        }
+                    }.runTaskLater(plugin, 140L); // 7 segundos
+                    
+                    // ═══════════════════════════════════════════════════════════════
+                    // PARTE 2: CLIFFHANGER (10 segundos después de recompensas = 17s total)
+                    // ═══════════════════════════════════════════════════════════════
+                    new BukkitRunnable() {
+                        @Override
+                        public void run() {
+                            plugin.getLogger().info("[Apertura End] ⚡ ACTIVANDO CLIFFHANGER - Jugadores han recibido recompensas");
                             activarCliffhangerEnOverworld();
                         }
-                    }.runTaskLater(plugin, 600L + (long)(Math.random() * 200)); // 30-40 segundos aleatorio
+                    }.runTaskLater(plugin, 340L); // 17 segundos (7s + 10s)
                     
                     cancel();
                 }
@@ -7737,6 +7972,39 @@ public class AperturaEndEvent extends EventBase {
         }.runTaskLater(plugin, 500L);
         
         // ═══════════════════════════════════════════════════════════════
+        // T+40s: MENSAJE FINAL Y DETENER EVENTO (15s después del cliffhanger)
+        // ═══════════════════════════════════════════════════════════════
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                Bukkit.broadcastMessage("");
+                Bukkit.broadcastMessage("§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                Bukkit.broadcastMessage("");
+                Bukkit.broadcastMessage("§5§l⚡ EVENTO COMPLETADO ⚡");
+                Bukkit.broadcastMessage("§7La Apertura del End ha concluido");
+                Bukkit.broadcastMessage("");
+                Bukkit.broadcastMessage("§8Pero algo ha cambiado...");
+                Bukkit.broadcastMessage("");
+                Bukkit.broadcastMessage("§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                Bukkit.broadcastMessage("");
+                
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    p.sendTitle("§5§l✓", "§7Evento completado", 10, 60, 20);
+                    p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.2f);
+                    p.playSound(p.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
+                    
+                    // Remover efectos de oscuridad
+                    p.removePotionEffect(org.bukkit.potion.PotionEffectType.DARKNESS);
+                    p.removePotionEffect(org.bukkit.potion.PotionEffectType.BLINDNESS);
+                }
+                
+                // Detener el evento
+                plugin.getLogger().info("[Apertura End] ⚡⚡⚡ EVENTO DETENIDO AUTOMÁTICAMENTE TRAS CLIFFHANGER");
+                onStop();
+            }
+        }.runTaskLater(plugin, 800L); // 500L (mensaje final) + 300L (15 segundos) = 800L
+        
+        // ═══════════════════════════════════════════════════════════════
         // EFECTOS AMBIENTALES PERSISTENTES (30s después del cliffhanger)
         // ═══════════════════════════════════════════════════════════════
         new BukkitRunnable() {
@@ -7774,131 +8042,455 @@ public class AperturaEndEvent extends EventBase {
     }
     
     private void distribuirRecompensas() {
-        plugin.getLogger().info("[Apertura End] Distribuyendo recompensas...");
+        plugin.getLogger().info("[Apertura End] ⚡⚡⚡ DISTRIBUYENDO RECOMPENSAS ÉPICAS DEL DRAGÓN ⚡⚡⚡");
+        plugin.getLogger().info("[Apertura End] Participantes registrados inicialmente: " + participantes.size());
+        plugin.getLogger().info("[Apertura End] RewardClaimSystem disponible: " + (plugin.getRewardClaimSystem() != null));
         
-        if (plugin.getRewardClaimSystem() == null) {
-            plugin.getLogger().warning("[Apertura End] Sistema de recompensas no disponible");
+        // CRÍTICO: Si no hay participantes, agregar TODOS los jugadores online
+        if (participantes.isEmpty()) {
+            plugin.getLogger().warning("[Apertura End] ⚠ Lista de participantes vacía - AUTO-REGISTRANDO jugadores online");
+            
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                participantes.add(p.getUniqueId());
+                damageTracker.put(p.getUniqueId(), 100.0); // Daño simbólico
+                plugin.getLogger().info("[Apertura End] ✓ Auto-registrado: " + p.getName() + " (" + p.getWorld().getName() + ")");
+            }
+            
+            plugin.getLogger().info("[Apertura End] Total participantes después de auto-registro: " + participantes.size());
+        }
+        
+        if (participantes.isEmpty()) {
+            plugin.getLogger().warning("[Apertura End] ⚠ NINGÚN JUGADOR ONLINE - No se pueden dar recompensas");
             return;
         }
         
-        // Calcular top 3 jugadores por daño
-        List<Map.Entry<UUID, Double>> topDamage = damageTracker.entrySet().stream()
-            .sorted(Map.Entry.<UUID, Double>comparingByValue().reversed())
-            .limit(3)
-            .toList();
+        plugin.getLogger().info("[Apertura End] Participantes totales: " + participantes.size());
         
-        // Distribuir recompensas a cada participante
+        // Log de daño de cada participante
+        plugin.getLogger().info("[Apertura End] ═══ DAÑO DE PARTICIPANTES ═══");
         for (UUID uuid : participantes) {
-            Player player = Bukkit.getPlayer(uuid);
-            if (player == null) continue; // Jugador offline
-            
-            List<org.bukkit.inventory.ItemStack> recompensas = new ArrayList<>();
-            String rangoRecompensa = "§7Participante";
-            
-            // ═══════════════════════════════════════════════════════
-            // RECOMPENSAS TOP 3 DAÑO
-            // ═══════════════════════════════════════════════════════
-            int posicion = -1;
-            for (int i = 0; i < topDamage.size(); i++) {
-                if (topDamage.get(i).getKey().equals(uuid)) {
-                    posicion = i + 1;
-                    break;
-                }
+            Player p = Bukkit.getPlayer(uuid);
+            String nombre = (p != null) ? p.getName() : "Desconectado";
+            double dano = damageTracker.getOrDefault(uuid, 0.0);
+            plugin.getLogger().info(String.format("[Apertura End]   %s: %.1f daño", nombre, dano));
+        }
+        plugin.getLogger().info("[Apertura End] ═══════════════════════════════");
+        
+        // Mensaje épico de recompensas
+        Bukkit.broadcastMessage("");
+        Bukkit.broadcastMessage("§5§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        Bukkit.broadcastMessage("");
+        Bukkit.broadcastMessage("§5§l⚡ RECOMPENSAS DEL DESOLADOR ⚡");
+        Bukkit.broadcastMessage("");
+        Bukkit.broadcastMessage("§7El dragón ha caído.");
+        Bukkit.broadcastMessage("§7Sus tesoros son suyos.");
+        Bukkit.broadcastMessage("");
+        Bukkit.broadcastMessage("§5§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        Bukkit.broadcastMessage("");
+        
+        // Calcular Top 3 por daño
+        List<Map.Entry<UUID, Double>> ranking = new ArrayList<>(damageTracker.entrySet());
+        ranking.sort((a, b) -> Double.compare(b.getValue(), a.getValue()));
+        
+        // Anunciar Top 3
+        if (!ranking.isEmpty()) {
+            Bukkit.broadcastMessage("§e§l⚔ TOP 3 CAZADORES DEL DRAGÓN §e§l⚔");
+            for (int i = 0; i < Math.min(3, ranking.size()); i++) {
+                UUID uuid = ranking.get(i).getKey();
+                Player p = Bukkit.getPlayer(uuid);
+                String nombre = (p != null) ? p.getName() : "Desconocido";
+                double daño = ranking.get(i).getValue();
+                
+                String medalla = i == 0 ? "§6§l👑" : i == 1 ? "§7§l⚔" : "§e§l⚡";
+                String color = i == 0 ? "§6" : i == 1 ? "§7" : "§e";
+                Bukkit.broadcastMessage(medalla + " #" + (i + 1) + " " + color + nombre + " §8- §c" + String.format("%.0f", daño) + " daño");
             }
-            
-            if (posicion == 1) {
-                // 🥇 PRIMER LUGAR
-                rangoRecompensa = "§6§l🥇 MVP - Domador del Vacío";
-                recompensas.add(crearElytraEpica());
-                recompensas.add(new org.bukkit.inventory.ItemStack(Material.DRAGON_HEAD, 1));
-                recompensas.add(new org.bukkit.inventory.ItemStack(Material.NETHERITE_INGOT, 16));
-                recompensas.add(new org.bukkit.inventory.ItemStack(Material.ENCHANTED_GOLDEN_APPLE, 8));
-                recompensas.add(new org.bukkit.inventory.ItemStack(Material.TOTEM_OF_UNDYING, 2));
-                recompensas.add(new org.bukkit.inventory.ItemStack(Material.DRAGON_BREATH, 16));
-                
-            } else if (posicion == 2) {
-                // 🥈 SEGUNDO LUGAR
-                rangoRecompensa = "§e§l🥈 Cazador del Vacío";
-                recompensas.add(crearElytraEpica());
-                recompensas.add(new org.bukkit.inventory.ItemStack(Material.NETHERITE_INGOT, 12));
-                recompensas.add(new org.bukkit.inventory.ItemStack(Material.ENCHANTED_GOLDEN_APPLE, 6));
-                recompensas.add(new org.bukkit.inventory.ItemStack(Material.TOTEM_OF_UNDYING, 1));
-                recompensas.add(new org.bukkit.inventory.ItemStack(Material.DRAGON_BREATH, 12));
-                
-            } else if (posicion == 3) {
-                // 🥉 TERCER LUGAR
-                rangoRecompensa = "§c§l🥉 Guerrero del Vacío";
-                recompensas.add(crearElytraEpica());
-                recompensas.add(new org.bukkit.inventory.ItemStack(Material.NETHERITE_INGOT, 8));
-                recompensas.add(new org.bukkit.inventory.ItemStack(Material.ENCHANTED_GOLDEN_APPLE, 4));
-                recompensas.add(new org.bukkit.inventory.ItemStack(Material.TOTEM_OF_UNDYING, 1));
-                recompensas.add(new org.bukkit.inventory.ItemStack(Material.DRAGON_BREATH, 8));
-                
-            } else {
-                // PARTICIPANTE REGULAR
-                rangoRecompensa = "§7Superviviente del Vacío";
-                recompensas.add(new org.bukkit.inventory.ItemStack(Material.ELYTRA, 1));
-                recompensas.add(new org.bukkit.inventory.ItemStack(Material.NETHERITE_INGOT, 4));
-                recompensas.add(new org.bukkit.inventory.ItemStack(Material.ENCHANTED_GOLDEN_APPLE, 2));
-                recompensas.add(new org.bukkit.inventory.ItemStack(Material.DRAGON_BREATH, 4));
-            }
-            
-            // ═══════════════════════════════════════════════════════
-            // RECOMPENSAS COMUNES PARA TODOS
-            // ═══════════════════════════════════════════════════════
-            recompensas.add(new org.bukkit.inventory.ItemStack(Material.END_STONE, 64));
-            recompensas.add(new org.bukkit.inventory.ItemStack(Material.OBSIDIAN, 32));
-            recompensas.add(new org.bukkit.inventory.ItemStack(Material.ENDER_PEARL, 16));
-            recompensas.add(new org.bukkit.inventory.ItemStack(Material.EXPERIENCE_BOTTLE, 32));
-            
-            // ═══════════════════════════════════════════════════════
-            // REGISTRAR EN SISTEMA /recompensas
-            // ═══════════════════════════════════════════════════════
-            plugin.getRewardClaimSystem().addRewards(
-                uuid,
-                "apertura_end",
-                "§5§l⚡ La Apertura del End",
-                recompensas,
-                120, // 120 minutos = 2 horas para reclamar
-                rangoRecompensa,
-                0 // Sin PS adicional (ya se otorgan durante el evento)
-            );
+            Bukkit.broadcastMessage("");
         }
         
-        Bukkit.broadcastMessage("");
-        Bukkit.broadcastMessage("§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        Bukkit.broadcastMessage("§a§l✓ Recompensas registradas");
-        Bukkit.broadcastMessage("§7Usa §e/recompensas §7para reclamarlas");
-        Bukkit.broadcastMessage("§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        Bukkit.broadcastMessage("");
+        // Distribuir recompensas a participantes usando RewardClaimSystem
+        for (UUID uuid : participantes) {
+            Player jugador = Bukkit.getPlayer(uuid);
+            if (jugador == null) continue;
+            
+            double daño = damageTracker.getOrDefault(uuid, 0.0);
+            int posicion = obtenerPosicionRanking(uuid, ranking);
+            
+            // ═══════════════════════════════════════════════════════════════
+            // PREPARAR LISTA DE RECOMPENSAS PARA EL MENÚ
+            // ═══════════════════════════════════════════════════════════════
+            List<ItemStack> recompensasItems = new ArrayList<>();
+            
+            // Recompensas base para todos los participantes
+            recompensasItems.add(items.crearFragmentoDelVacio(8));
+            recompensasItems.add(new ItemStack(Material.ENDER_PEARL, 12));
+            recompensasItems.add(new ItemStack(Material.END_STONE, 64));
+            recompensasItems.add(new ItemStack(Material.PURPUR_BLOCK, 48));
+            recompensasItems.add(new ItemStack(Material.EXPERIENCE_BOTTLE, 30));
+            
+            // XP base
+            int xpTotal = 3000;
+            String rangoRecompensa = "PARTICIPANTE";
+            
+            // Recompensas especiales para Top 3
+            if (posicion == 1) {
+                // PUESTO 1: SET COMPLETO DE NETHERITE + ESPADA Y PICO ÉPICOS
+                recompensasItems.add(crearEspadaDesoladora());
+                recompensasItems.add(crearPicoDesolador());
+                recompensasItems.add(crearArmaduraDesoladora("helmet"));
+                recompensasItems.add(crearArmaduraDesoladora("chestplate"));
+                recompensasItems.add(crearArmaduraDesoladora("leggings"));
+                recompensasItems.add(crearArmaduraDesoladora("boots"));
+                recompensasItems.add(items.crearEscamaPerfecta(5));
+                recompensasItems.add(items.crearCorazonDesolador());
+                recompensasItems.add(new ItemStack(Material.NETHERITE_INGOT, 3));
+                recompensasItems.add(new ItemStack(Material.DIAMOND, 24));
+                xpTotal = 11000; // 3000 + 8000
+                rangoRecompensa = "PLATINUM";
+                
+                Bukkit.broadcastMessage("§6§l⚡ " + jugador.getName() + " §7ha recibido el §6§lTESORO DEL DESOLADOR §7(Set Épico Completo)");
+                jugador.sendTitle("§5§l⚡ AZOTE DEL DESOLADOR ⚡", "§7Set Épico Completo", 10, 80, 20);
+                
+            } else if (posicion == 2) {
+                // PUESTO 2: ESPADA + PICO + PETO Y PANTALONES
+                recompensasItems.add(crearEspadaDesoladora());
+                recompensasItems.add(crearPicoDesolador());
+                recompensasItems.add(crearArmaduraDesoladora("chestplate"));
+                recompensasItems.add(crearArmaduraDesoladora("leggings"));
+                recompensasItems.add(items.crearEscamaPerfecta(3));
+                recompensasItems.add(new ItemStack(Material.NETHERITE_INGOT, 2));
+                recompensasItems.add(new ItemStack(Material.DIAMOND, 16));
+                xpTotal = 8000; // 3000 + 5000
+                rangoRecompensa = "GOLD";
+                
+                Bukkit.broadcastMessage("§7§l⚔ " + jugador.getName() + " §7ha recibido §7§lARMAMENTO DEL VACÍO §7(Armas y Armadura)");
+                jugador.sendTitle("§5§l⚔ CAZADOR DEL VACÍO ⚔", "§7Armamento Épico", 10, 80, 20);
+                
+            } else if (posicion == 3) {
+                // PUESTO 3: ESPADA + PICO
+                recompensasItems.add(crearEspadaDesoladora());
+                recompensasItems.add(crearPicoDesolador());
+                recompensasItems.add(items.crearEscamaPerfecta(2));
+                recompensasItems.add(new ItemStack(Material.NETHERITE_INGOT, 1));
+                recompensasItems.add(new ItemStack(Material.DIAMOND, 12));
+                xpTotal = 6000; // 3000 + 3000
+                rangoRecompensa = "SILVER";
+                
+                Bukkit.broadcastMessage("§e§l⚡ " + jugador.getName() + " §7ha recibido §e§lARMAS DIMENSIONALES §7(Espada y Pico)");
+                jugador.sendTitle("§7§l⚔ DESAFIANTE DEL END ⚔", "§7Armas Épicas", 10, 80, 20);
+            } else {
+                rangoRecompensa = "BRONZE";
+            }
+            
+            // ═══════════════════════════════════════════════════════════════
+            // REGISTRAR RECOMPENSAS EN EL SISTEMA DE MENÚ
+            // ═══════════════════════════════════════════════════════════════
+            if (plugin.getRewardClaimSystem() != null) {
+                plugin.getLogger().info("[Apertura End] Registrando recompensas para " + jugador.getName() + 
+                    " (Rango: " + rangoRecompensa + ", Items: " + recompensasItems.size() + ")");
+                
+                plugin.getRewardClaimSystem().addRewards(
+                    uuid,
+                    "apertura_end",
+                    "§5§l⚡ La Apertura del End",
+                    recompensasItems,
+                    60, // 60 minutos = 1 hora para reclamar
+                    rangoRecompensa,
+                    0 // PS no se usa en este evento
+                );
+                
+                plugin.getLogger().info("[Apertura End] ✓ Recompensas registradas exitosamente para " + jugador.getName());
+                
+                // Dar XP directamente (no va al menú)
+                if (plugin.getExperienceService() != null) {
+                    plugin.getExperienceService().addXP(jugador, xpTotal, "apertura_end", false);
+                }
+                
+                // Mensaje de recompensa
+                jugador.sendMessage("");
+                jugador.sendMessage("§8§m═══════════════════════════════════════════");
+                jugador.sendMessage("");
+                jugador.sendMessage("     §5§l⚡ §f§lRECOMPENSAS DEL DESOLADOR §5§l⚡");
+                jugador.sendMessage("");
+                jugador.sendMessage("§7El dragón ha caído. Sus tesoros te esperan:");
+                jugador.sendMessage("");
+                jugador.sendMessage("§5§l✦ XP GANADO:");
+                jugador.sendMessage("  §8▪ §e+" + xpTotal + " XP de Rango");
+                jugador.sendMessage("");
+                jugador.sendMessage("§5§l✦ ITEMS RECLAMABLES:");
+                jugador.sendMessage("  §8▪ §a" + recompensasItems.size() + " items épicos");
+                jugador.sendMessage("  §8▪ §7Usa §f/recompensa §7para reclamarlos");
+                jugador.sendMessage("");
+                jugador.sendMessage("§c⏰ §7Expiran en: §e60 minutos");
+                jugador.sendMessage("");
+                jugador.sendMessage("§8§m═══════════════════════════════════════════");
+                jugador.sendMessage("");
+                
+            } else {
+                plugin.getLogger().severe("[Apertura End] ❌ ERROR CRÍTICO: RewardClaimSystem es NULL!");
+                plugin.getLogger().severe("[Apertura End] Las recompensas NO se pudieron registrar para " + jugador.getName());
+                plugin.getLogger().severe("[Apertura End] Verifica que el sistema de recompensas esté inicializado en Apocalipsis.java");
+                
+                // Mensaje de error al jugador
+                jugador.sendMessage("§c§l⚠ ERROR: Sistema de recompensas no disponible");
+                jugador.sendMessage("§cContacta a un administrador inmediatamente");
+            }
+            
+            // Efectos visuales
+            jugador.spawnParticle(Particle.TOTEM_OF_UNDYING, jugador.getLocation().add(0, 1, 0), 50, 0.5, 1, 0.5, 0.1);
+            jugador.spawnParticle(Particle.END_ROD, jugador.getLocation(), 30, 1, 1, 1, 0.2);
+            jugador.playSound(jugador.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.5f, 1.0f);
+            jugador.playSound(jugador.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.2f);
+        }
         
-        plugin.getLogger().info("[Apertura End] Recompensas distribuidas a " + participantes.size() + " jugadores");
+        plugin.getLogger().info("[Apertura End] ✓ Recompensas distribuidas a " + participantes.size() + " participantes");
     }
     
     /**
-     * Crea una Elytra épica con encantamientos
+     * Obtiene la posición de un jugador en el ranking (1, 2, 3, etc.)
      */
-    private org.bukkit.inventory.ItemStack crearElytraEpica() {
-        org.bukkit.inventory.ItemStack elytra = new org.bukkit.inventory.ItemStack(Material.ELYTRA);
-        org.bukkit.inventory.meta.ItemMeta meta = elytra.getItemMeta();
+    private int obtenerPosicionRanking(UUID uuid, List<Map.Entry<UUID, Double>> ranking) {
+        for (int i = 0; i < ranking.size(); i++) {
+            if (ranking.get(i).getKey().equals(uuid)) {
+                return i + 1;
+            }
+        }
+        return 999;
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // ITEMS ÉPICOS DEL DRAGÓN (MEJORES QUE EVENTO ANTERIOR)
+    // Forjados con cristales del End y esencia del dragón
+    // ═══════════════════════════════════════════════════════════════════
+    
+    /**
+     * Espada Desoladora - Diamante reforzado con cristales del End
+     */
+    public ItemStack crearEspadaDesoladora() {
+        ItemStack espada = new ItemStack(Material.NETHERITE_SWORD);
+        ItemMeta meta = espada.getItemMeta();
         
         if (meta != null) {
-            meta.setDisplayName("§5§lAlas del Vacío");
-            List<String> lore = new ArrayList<>();
-            lore.add("§7Concedidas a quienes enfrentaron");
-            lore.add("§7al Desolador del Vacío y vivieron");
-            lore.add("");
-            lore.add("§8Evento: §5La Apertura del End");
-            meta.setLore(lore);
+            meta.displayName(net.kyori.adventure.text.Component.text("§5§lESPADA DESOLADORA"));
+            meta.lore(java.util.Arrays.asList(
+                net.kyori.adventure.text.Component.text("§7Recompensa de la Apertura del End"),
+                net.kyori.adventure.text.Component.text(""),
+                net.kyori.adventure.text.Component.text("§7Forjada con cristales del End y"),
+                net.kyori.adventure.text.Component.text("§7netherite puro del Nether."),
+                net.kyori.adventure.text.Component.text(""),
+                net.kyori.adventure.text.Component.text("§5Filo V"),
+                net.kyori.adventure.text.Component.text("§5Botín IV"),
+                net.kyori.adventure.text.Component.text("§5Barrido III"),
+                net.kyori.adventure.text.Component.text("§5Empuje II"),
+                net.kyori.adventure.text.Component.text("§5Irrompibilidad III"),
+                net.kyori.adventure.text.Component.text("§5Aspecto Ígneo II"),
+                net.kyori.adventure.text.Component.text("§5Reparación"),
+                net.kyori.adventure.text.Component.text(""),
+                net.kyori.adventure.text.Component.text("§8§o\"El filo que partió al Desolador\""),
+                net.kyori.adventure.text.Component.text("§5§l⚡ ÉPICO ⚡")
+            ));
             
-            // Encantamientos
-            meta.addEnchant(org.bukkit.enchantments.Enchantment.UNBREAKING, 3, true);
-            meta.addEnchant(org.bukkit.enchantments.Enchantment.MENDING, 1, true);
+            meta.addEnchant(Enchantment.SHARPNESS, 5, true);
+            meta.addEnchant(Enchantment.LOOTING, 4, true);
+            meta.addEnchant(Enchantment.SWEEPING_EDGE, 3, true);
+            meta.addEnchant(Enchantment.KNOCKBACK, 2, true);
+            meta.addEnchant(Enchantment.UNBREAKING, 3, true);
+            meta.addEnchant(Enchantment.FIRE_ASPECT, 2, true);
+            meta.addEnchant(Enchantment.MENDING, 1, true);
             
-            elytra.setItemMeta(meta);
+            espada.setItemMeta(meta);
         }
         
-        return elytra;
+        return espada;
+    }
+    
+    /**
+     * Pico Desolador - Diamante reforzado con cristales del End
+     */
+    public ItemStack crearPicoDesolador() {
+        ItemStack pico = new ItemStack(Material.NETHERITE_PICKAXE);
+        ItemMeta meta = pico.getItemMeta();
+        
+        if (meta != null) {
+            meta.displayName(net.kyori.adventure.text.Component.text("§5§lPICO DESOLADOR"));
+            meta.lore(java.util.Arrays.asList(
+                net.kyori.adventure.text.Component.text("§7Recompensa de la Apertura del End"),
+                net.kyori.adventure.text.Component.text(""),
+                net.kyori.adventure.text.Component.text("§7Imbuido con cristales del End y"),
+                net.kyori.adventure.text.Component.text("§7netherite puro del Nether."),
+                net.kyori.adventure.text.Component.text(""),
+                net.kyori.adventure.text.Component.text("§5Eficiencia V"),
+                net.kyori.adventure.text.Component.text("§5Fortuna IV"),
+                net.kyori.adventure.text.Component.text("§5Irrompibilidad III"),
+                net.kyori.adventure.text.Component.text("§5Reparación"),
+                net.kyori.adventure.text.Component.text(""),
+                net.kyori.adventure.text.Component.text("§8§o\"Rompe la realidad misma\""),
+                net.kyori.adventure.text.Component.text("§5§l⚡ ÉPICO ⚡")
+            ));
+            
+            meta.addEnchant(Enchantment.EFFICIENCY, 5, true);
+            meta.addEnchant(Enchantment.FORTUNE, 4, true);
+            meta.addEnchant(Enchantment.UNBREAKING, 3, true);
+            meta.addEnchant(Enchantment.MENDING, 1, true);
+            
+            pico.setItemMeta(meta);
+        }
+        
+        return pico;
+    }
+    
+    /**
+     * Arco Desolador - El arco del conquistador del End
+     */
+    public ItemStack crearArcoDesolador() {
+        ItemStack arco = new ItemStack(Material.BOW);
+        ItemMeta meta = arco.getItemMeta();
+        
+        if (meta != null) {
+            meta.displayName(net.kyori.adventure.text.Component.text("§5§lARCO DESOLADOR"));
+            meta.lore(java.util.Arrays.asList(
+                net.kyori.adventure.text.Component.text("§7Recompensa de la Apertura del End"),
+                net.kyori.adventure.text.Component.text(""),
+                net.kyori.adventure.text.Component.text("§7Imbuido con el poder del vacío."),
+                net.kyori.adventure.text.Component.text("§7Sus flechas nunca fallan su objetivo."),
+                net.kyori.adventure.text.Component.text(""),
+                net.kyori.adventure.text.Component.text("§5Poder V"),
+                net.kyori.adventure.text.Component.text("§5Empuje II"),
+                net.kyori.adventure.text.Component.text("§5Fuego"),
+                net.kyori.adventure.text.Component.text("§5Infinidad"),
+                net.kyori.adventure.text.Component.text("§5Irrompibilidad III"),
+                net.kyori.adventure.text.Component.text("§5Reparación"),
+                net.kyori.adventure.text.Component.text(""),
+                net.kyori.adventure.text.Component.text("§8§o\"La muerte llega desde las sombras\""),
+                net.kyori.adventure.text.Component.text("§5§l⚡ ÉPICO ⚡")
+            ));
+            
+            meta.addEnchant(Enchantment.POWER, 5, true);
+            meta.addEnchant(Enchantment.PUNCH, 2, true);
+            meta.addEnchant(Enchantment.FLAME, 1, true);
+            meta.addEnchant(Enchantment.INFINITY, 1, true);
+            meta.addEnchant(Enchantment.UNBREAKING, 3, true);
+            meta.addEnchant(Enchantment.MENDING, 1, true);
+            
+            arco.setItemMeta(meta);
+        }
+        
+        return arco;
+    }
+    
+    /**
+     * Armadura Desoladora - Diamante reforzado con escamas del dragón
+     */
+    public ItemStack crearArmaduraDesoladora(String pieza) {
+        Material material;
+        String nombrePieza;
+        java.util.List<net.kyori.adventure.text.Component> loreEncantamientos = new java.util.ArrayList<>();
+        
+        switch (pieza.toLowerCase()) {
+            case "helmet":
+                material = Material.NETHERITE_HELMET;
+                nombrePieza = "CASCO";
+                loreEncantamientos.add(net.kyori.adventure.text.Component.text("§5Protección IV"));
+                loreEncantamientos.add(net.kyori.adventure.text.Component.text("§5Irrompibilidad III"));
+                loreEncantamientos.add(net.kyori.adventure.text.Component.text("§5Respiración III"));
+                loreEncantamientos.add(net.kyori.adventure.text.Component.text("§5Afinidad Acuática"));
+                loreEncantamientos.add(net.kyori.adventure.text.Component.text("§5Reparación"));
+                break;
+            case "chestplate":
+                material = Material.NETHERITE_CHESTPLATE;
+                nombrePieza = "PETO";
+                loreEncantamientos.add(net.kyori.adventure.text.Component.text("§5Protección IV"));
+                loreEncantamientos.add(net.kyori.adventure.text.Component.text("§5Irrompibilidad III"));
+                loreEncantamientos.add(net.kyori.adventure.text.Component.text("§5Espinas III"));
+                loreEncantamientos.add(net.kyori.adventure.text.Component.text("§5Reparación"));
+                break;
+            case "leggings":
+                material = Material.NETHERITE_LEGGINGS;
+                nombrePieza = "PANTALONES";
+                loreEncantamientos.add(net.kyori.adventure.text.Component.text("§5Protección IV"));
+                loreEncantamientos.add(net.kyori.adventure.text.Component.text("§5Irrompibilidad III"));
+                loreEncantamientos.add(net.kyori.adventure.text.Component.text("§5Sigilo Veloz III"));
+                loreEncantamientos.add(net.kyori.adventure.text.Component.text("§5Reparación"));
+                break;
+            case "boots":
+                material = Material.NETHERITE_BOOTS;
+                nombrePieza = "BOTAS";
+                loreEncantamientos.add(net.kyori.adventure.text.Component.text("§5Protección IV"));
+                loreEncantamientos.add(net.kyori.adventure.text.Component.text("§5Irrompibilidad III"));
+                loreEncantamientos.add(net.kyori.adventure.text.Component.text("§5Caída de Pluma IV"));
+                loreEncantamientos.add(net.kyori.adventure.text.Component.text("§5Agilidad Acuática III"));
+                loreEncantamientos.add(net.kyori.adventure.text.Component.text("§5Velocidad de Alma III"));
+                loreEncantamientos.add(net.kyori.adventure.text.Component.text("§5Reparación"));
+                break;
+            default:
+                material = Material.NETHERITE_CHESTPLATE;
+                nombrePieza = "PETO";
+                loreEncantamientos.add(net.kyori.adventure.text.Component.text("§5Protección IV"));
+                loreEncantamientos.add(net.kyori.adventure.text.Component.text("§5Irrompibilidad III"));
+        }
+        
+        ItemStack armadura = new ItemStack(material);
+        ItemMeta meta = armadura.getItemMeta();
+        
+        if (meta != null) {
+            meta.displayName(net.kyori.adventure.text.Component.text("§5§l" + nombrePieza + " DESOLADOR"));
+            
+            // Construir lore dinámico
+            java.util.List<net.kyori.adventure.text.Component> lore = new java.util.ArrayList<>();
+            lore.add(net.kyori.adventure.text.Component.text("§7Recompensa de la Apertura del End"));
+            lore.add(net.kyori.adventure.text.Component.text(""));
+            lore.add(net.kyori.adventure.text.Component.text("§7Armadura reforzada con escamas"));
+            lore.add(net.kyori.adventure.text.Component.text("§7del dragón y netherite puro."));
+            lore.add(net.kyori.adventure.text.Component.text(""));
+            lore.addAll(loreEncantamientos);
+            lore.add(net.kyori.adventure.text.Component.text(""));
+            lore.add(net.kyori.adventure.text.Component.text("§8§o\"Coraza del conquistador del End\""));
+            lore.add(net.kyori.adventure.text.Component.text("§5§l⚡ ÉPICO ⚡"));
+            
+            meta.lore(lore);
+            
+            // Encantamientos base (todas las piezas)
+            meta.addEnchant(Enchantment.PROTECTION, 4, true);
+            meta.addEnchant(Enchantment.UNBREAKING, 3, true);
+            meta.addEnchant(Enchantment.MENDING, 1, true);
+            
+            // Encantamientos específicos por pieza
+            switch (pieza.toLowerCase()) {
+                case "helmet":
+                    meta.addEnchant(Enchantment.RESPIRATION, 3, true);
+                    meta.addEnchant(Enchantment.AQUA_AFFINITY, 1, true);
+                    break;
+                case "chestplate":
+                    meta.addEnchant(Enchantment.THORNS, 3, true);
+                    break;
+                case "leggings":
+                    meta.addEnchant(Enchantment.SWIFT_SNEAK, 3, true);
+                    break;
+                case "boots":
+                    meta.addEnchant(Enchantment.FEATHER_FALLING, 4, true);
+                    meta.addEnchant(Enchantment.DEPTH_STRIDER, 3, true);
+                    meta.addEnchant(Enchantment.SOUL_SPEED, 3, true);
+                    break;
+            }
+            
+            // Añadir Armor Trim épico del End
+            if (meta instanceof org.bukkit.inventory.meta.ArmorMeta) {
+                org.bukkit.inventory.meta.ArmorMeta armorMeta = (org.bukkit.inventory.meta.ArmorMeta) meta;
+                try {
+                    // Vex Trim (patrón) + Amethyst (material) = Diseño épico morado/End
+                    org.bukkit.inventory.meta.trim.TrimPattern pattern = org.bukkit.inventory.meta.trim.TrimPattern.VEX;
+                    org.bukkit.inventory.meta.trim.TrimMaterial trimMaterial = org.bukkit.inventory.meta.trim.TrimMaterial.AMETHYST;
+                    org.bukkit.inventory.meta.trim.ArmorTrim trim = new org.bukkit.inventory.meta.trim.ArmorTrim(trimMaterial, pattern);
+                    armorMeta.setTrim(trim);
+                } catch (Exception e) {
+                    // Fallback silencioso si no se puede aplicar el trim
+                }
+            }
+            
+            armadura.setItemMeta(meta);
+        }
+        
+        return armadura;
     }
     
     // ═══════════════════════════════════════════════════════════════════
@@ -9880,7 +10472,7 @@ public class AperturaEndEvent extends EventBase {
             // Base del pilar (7x7 - MÁS GRANDE)
             for (int xOff = -3; xOff <= 3; xOff++) {
                 for (int zOff = -3; zOff <= 3; zOff++) {
-                    world.getBlockAt(x + xOff, centerY - 3, z + zOff).setType(Material.NETHERITE_BLOCK);
+                    world.getBlockAt(x + xOff, centerY - 3, z + zOff).setType(Material.OBSIDIAN);
                     world.getBlockAt(x + xOff, centerY - 2, z + zOff).setType(Material.POLISHED_BLACKSTONE);
                     world.getBlockAt(x + xOff, centerY - 1, z + zOff).setType(Material.CHISELED_POLISHED_BLACKSTONE);
                 }
@@ -9951,7 +10543,7 @@ public class AperturaEndEvent extends EventBase {
                         if (dist < 3) {
                             baseMat = Material.ANCIENT_DEBRIS;
                         } else if (dist < 5) {
-                            baseMat = Material.NETHERITE_BLOCK;
+                            baseMat = Material.OBSIDIAN;
                         } else {
                             baseMat = Material.POLISHED_BLACKSTONE;
                         }
@@ -10985,6 +11577,116 @@ public class AperturaEndEvent extends EventBase {
     /**
      * Iniciar spawns dramáticos durante el viaje al portal
      */
+    /**
+     * ═══════════════════════════════════════════════════════════════════
+     * OLEADAS DE MOBS HOSTILES DURANTE DESCUBRIMIENTO
+     * ═══════════════════════════════════════════════════════════════════
+     * Spawna oleadas de 2-4 mobs hostiles cerca de cada jugador cada 60 segundos
+     */
+    private void iniciarOleadasHostilesDescubrimiento() {
+        BukkitTask oleadasTask = new BukkitRunnable() {
+            private int oleadaNumero = 0;
+            
+            @Override
+            public void run() {
+                if (faseEvento != EventPhase.DESCUBRIMIENTO) {
+                    cancel();
+                    return;
+                }
+                
+                oleadaNumero++;
+                
+                // Intensidad aumenta con el tiempo
+                double intensidad = 1.0 - (descubrimientoTimer / 2700.0);
+                
+                // Mensaje cada oleada
+                if (oleadaNumero % 3 == 0) {  // Cada 3 oleadas (3 minutos)
+                    Bukkit.broadcastMessage("");
+                    Bukkit.broadcastMessage("§8§l━━━━━━━━━━━━━━━━━━━━━━");
+                    Bukkit.broadcastMessage("§c§l⚡ OLEADA HOSTIL #" + oleadaNumero + " ⚡");
+                    Bukkit.broadcastMessage("§7Intensidad: §c" + String.format("%.0f%%", intensidad * 100));
+                    Bukkit.broadcastMessage("§8§l━━━━━━━━━━━━━━━━━━━━━━");
+                    Bukkit.broadcastMessage("");
+                }
+                
+                // Spawnear para cada jugador en Overworld
+                int totalSpawneados = 0;
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    if (p.getWorld().getEnvironment() != World.Environment.NORMAL) continue;
+                    
+                    // Cantidad aumenta con intensidad: 2-4 al inicio, 3-6 al final
+                    int cantidadBase = intensidad > 0.5 ? 3 : 2;
+                    int cantidadMax = intensidad > 0.7 ? 6 : 4;
+                    int cantidad = cantidadBase + random.nextInt(cantidadMax - cantidadBase + 1);
+                    
+                    for (int i = 0; i < cantidad; i++) {
+                        // Spawnear a 10-20 bloques del jugador
+                        double angulo = random.nextDouble() * 2 * Math.PI;
+                        double distancia = 10 + random.nextDouble() * 10;
+                        
+                        double x = p.getLocation().getX() + Math.cos(angulo) * distancia;
+                        double z = p.getLocation().getZ() + Math.sin(angulo) * distancia;
+                        double y = p.getWorld().getHighestBlockYAt((int) x, (int) z) + 1;
+                        
+                        Location spawnLoc = new Location(p.getWorld(), x, y, z);
+                        
+                        // Elegir tipo de mob según intensidad
+                        EntityType tipoMob;
+                        if (intensidad < 0.3) {
+                            // Fase temprana: solo básicos
+                            EntityType[] tiposBasicos = {EntityType.ZOMBIE, EntityType.SKELETON, EntityType.SPIDER};
+                            tipoMob = tiposBasicos[random.nextInt(tiposBasicos.length)];
+                        } else if (intensidad < 0.6) {
+                            // Fase media: básicos + medios
+                            EntityType[] tiposMedios = {EntityType.ZOMBIE, EntityType.SKELETON, EntityType.SPIDER, 
+                                                        EntityType.HUSK, EntityType.STRAY, EntityType.CAVE_SPIDER};
+                            tipoMob = tiposMedios[random.nextInt(tiposMedios.length)];
+                        } else {
+                            // Fase avanzada: todos incluidos avanzados
+                            EntityType[] tiposAvanzados = {EntityType.ZOMBIE, EntityType.SKELETON, EntityType.SPIDER,
+                                                           EntityType.PILLAGER, EntityType.VINDICATOR, EntityType.RAVAGER,
+                                                           EntityType.WITCH, EntityType.WITHER_SKELETON};
+                            tipoMob = tiposAvanzados[random.nextInt(tiposAvanzados.length)];
+                        }
+                        
+                        // Spawnear
+                        Entity entity = p.getWorld().spawnEntity(spawnLoc, tipoMob);
+                        if (entity instanceof LivingEntity) {
+                            LivingEntity mob = (LivingEntity) entity;
+                            
+                            // Aplicar buffs FIJOS (sin progresión para oleadas)
+                            aplicarEstadisticasFijasOleadas(mob);
+                            
+                            // Nombre épico
+                            String nombre = obtenerNombreMobOscuro(tipoMob);
+                            mob.customName(Component.text(nombre));
+                            mob.setCustomNameVisible(true);
+                            mob.setGlowing(true);
+                            
+                            // Equipment (intensidad fija en 0.3 para oleadas)
+                            equiparMobBasico(mob, 0.3);
+                            
+                            // Tracking
+                            mobsSpawneados.add(mob.getUniqueId());
+                            totalSpawneados++;
+                        }
+                        
+                        // Efectos de spawn
+                        p.getWorld().spawnParticle(Particle.SMOKE, spawnLoc, 20, 0.5, 0.5, 0.5, 0.1);
+                        p.getWorld().spawnParticle(Particle.FLAME, spawnLoc, 10, 0.3, 0.3, 0.3, 0.05);
+                    }
+                }
+                
+                if (totalSpawneados > 0) {
+                    plugin.getLogger().info(String.format("[Apertura End] Oleada #%d - %d mobs spawneados (Intensidad: %.0f%%)",
+                        oleadaNumero, totalSpawneados, intensidad * 100));
+                }
+            }
+        }.runTaskTimer(plugin, 200L, 1200L);  // Iniciar a los 10s, repetir cada 60s (1200 ticks)
+        
+        plugin.getLogger().info("[Apertura End] ✓ Sistema de oleadas hostiles iniciado - Cada 60 segundos");
+    }
+    
     private void iniciarSpawnsDramaticos() {
         if (!config.getBoolean("evento.spawns_dramaticos.enabled", true)) {
             return;
@@ -11244,6 +11946,123 @@ public class AperturaEndEvent extends EventBase {
             }
         }, plugin);
         
+        // ═══════════════════════════════════════════════════════════════════
+        // LISTENER PARA BUFFEAR MOBS INVOCADOS (Vex de Evokers, etc.)
+        // ═══════════════════════════════════════════════════════════════════
+        Bukkit.getPluginManager().registerEvents(new org.bukkit.event.Listener() {
+            @org.bukkit.event.EventHandler
+            public void onMobSpawn(org.bukkit.event.entity.CreatureSpawnEvent e) {
+                // Solo durante fase de descubrimiento
+                if (faseEvento != EventPhase.DESCUBRIMIENTO) return;
+                
+                // Solo en el Overworld
+                if (e.getEntity().getWorld().getEnvironment() != World.Environment.NORMAL) return;
+                
+                LivingEntity mob = e.getEntity();
+                
+                // Buffear VEX invocados por Evokers
+                if (mob instanceof org.bukkit.entity.Vex) {
+                    org.bukkit.entity.Vex vex = (org.bukkit.entity.Vex) mob;
+                    
+                    // Calcular intensidad actual
+                    double intensidad = 1.0 - (descubrimientoTimer / 2700.0);
+                    
+                    // Aplicar buffs
+                    double multHP = 2.0 + (intensidad * 2.0);      // 2.0x a 4.0x HP
+                    double multDamage = 2.0 + (intensidad * 3.0);  // 2.0x a 5.0x daño
+                    
+                    org.bukkit.attribute.AttributeInstance attrHP = vex.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
+                    if (attrHP != null) {
+                        double nuevoHP = attrHP.getBaseValue() * multHP;
+                        attrHP.setBaseValue(nuevoHP);
+                        vex.setHealth(nuevoHP);
+                    }
+                    
+                    org.bukkit.attribute.AttributeInstance attrDamage = vex.getAttribute(org.bukkit.attribute.Attribute.ATTACK_DAMAGE);
+                    if (attrDamage != null) {
+                        attrDamage.setBaseValue(attrDamage.getBaseValue() * multDamage);
+                    }
+                    
+                    // Nombre épico
+                    vex.customName(net.kyori.adventure.text.Component.text("§d§l✦ Espíritu Vengativo del Vacío ✦"));
+                    vex.setCustomNameVisible(true);
+                    vex.setGlowing(true);
+                    
+                    // Rastrear para limpieza
+                    mobsSpawneados.add(vex.getUniqueId());
+                }
+                
+                // Buffear otros mobs que puedan spawnear (reinforcements, etc.)
+                else if (mob instanceof org.bukkit.entity.Zombie || 
+                         mob instanceof org.bukkit.entity.Skeleton ||
+                         mob instanceof org.bukkit.entity.Spider ||
+                         mob instanceof org.bukkit.entity.Pillager ||
+                         mob instanceof org.bukkit.entity.Vindicator) {
+                    
+                    // Calcular intensidad
+                    double intensidad = 1.0 - (descubrimientoTimer / 2700.0);
+                    
+                    // Aplicar buffs moderados a spawns naturales/reinforcements
+                    aplicarEstadisticasModeradas(mob, intensidad);
+                    
+                    // Nombre y efectos
+                    String nombreMob = obtenerNombreMobOscuro(mob.getType());
+                    mob.customName(net.kyori.adventure.text.Component.text(nombreMob));
+                    mob.setCustomNameVisible(true);
+                    mob.setGlowing(true);
+                    
+                    // Rastrear
+                    mobsSpawneados.add(mob.getUniqueId());
+                }
+            }
+        }, plugin);
+        
+        // ═══════════════════════════════════════════════════════════════════
+        // LISTENER PARA REGISTRAR DAÑO A MOBS DE OLEADAS
+        // ═══════════════════════════════════════════════════════════════════
+        Bukkit.getPluginManager().registerEvents(new org.bukkit.event.Listener() {
+            @org.bukkit.event.EventHandler
+            public void onMobDamage(org.bukkit.event.entity.EntityDamageByEntityEvent e) {
+                // Solo durante fase DESCUBRIMIENTO o COMBATE
+                if (faseEvento != EventPhase.DESCUBRIMIENTO && faseEvento != EventPhase.COMBATE) return;
+                
+                // Verificar que sea un jugador atacando
+                Player atacante = null;
+                if (e.getDamager() instanceof Player) {
+                    atacante = (Player) e.getDamager();
+                } else if (e.getDamager() instanceof org.bukkit.entity.Projectile) {
+                    org.bukkit.entity.Projectile proyectil = (org.bukkit.entity.Projectile) e.getDamager();
+                    if (proyectil.getShooter() instanceof Player) {
+                        atacante = (Player) proyectil.getShooter();
+                    }
+                }
+                
+                if (atacante == null) return;
+                
+                // Verificar que la entidad dañada sea un mob de nuestras oleadas
+                if (!(e.getEntity() instanceof LivingEntity)) return;
+                LivingEntity mob = (LivingEntity) e.getEntity();
+                
+                // Solo registrar si es un mob que spawneamos nosotros
+                if (!mobsSpawneados.contains(mob.getUniqueId())) return;
+                
+                // Registrar el daño
+                double dano = e.getFinalDamage();
+                UUID jugadorUUID = atacante.getUniqueId();
+                
+                // Agregar a damageTracker y participantes
+                damageTracker.put(jugadorUUID, damageTracker.getOrDefault(jugadorUUID, 0.0) + dano);
+                participantes.add(jugadorUUID);
+                
+                // Log cada 100 de daño acumulado (para evitar spam)
+                double danoTotal = damageTracker.get(jugadorUUID);
+                if (danoTotal % 100 < dano) {
+                    plugin.getLogger().info(String.format("[Apertura End] %s ha hecho %.1f daño total a mobs de oleadas", 
+                        atacante.getName(), danoTotal));
+                }
+            }
+        }, plugin);
+        
         // Listener para redirigir la curación de los ender crystals al dragón de MythicMobs
         Bukkit.getPluginManager().registerEvents(new org.bukkit.event.Listener() {
             @org.bukkit.event.EventHandler
@@ -11290,9 +12109,8 @@ public class AperturaEndEvent extends EventBase {
                 if (blockType == org.bukkit.Material.NETHERITE_BLOCK || 
                     blockType == org.bukkit.Material.ANCIENT_DEBRIS) {
                     
-                    // Cancelar el evento Y bloquear drops
+                    // Cancelar el evento
                     e.setCancelled(true);
-                    e.setDropItems(false); // CRÍTICO: No dropear items
                     
                     // Mensaje al jugador
                     player.sendMessage("§c✗ No puedes romper bloques de netherite durante el evento del End");
@@ -12879,5 +13697,7 @@ public class AperturaEndEvent extends EventBase {
         }
     }
 }
+
+
 
 
