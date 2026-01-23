@@ -1082,6 +1082,194 @@ habilidades_config:
 # ═══════════════════════════════════════════════════════════════
 
 # ═══════════════════════════════════════════════════════════════
+# 🐉 RECOMPENSAS DEL EVENTO 5: LA APERTURA DEL END 🐉
+# Recompensas únicas y épicas por completar el evento del dragón
+# Estas recompensas se acumulan en /recompensas para reclamarlas
+# cuando el jugador quiera
+# ═══════════════════════════════════════════════════════════════
+
+recompensas_evento5_apertura_end:
+  enabled: true
+  
+  # ═══════════════════════════════════════════════════════════════
+  # RECOMPENSAS BASE DE PARTICIPACIÓN
+  # Todos los jugadores que participen y hagan daño mínimo
+  # ═══════════════════════════════════════════════════════════════
+  recompensas_participacion:
+    titulo: "§8§l⚡ §5Vencedor del End §8§l⚡"
+    descripcion: "§7Recompensas por participar en la batalla contra el Desolador"
+    xp_rango: 2000              # XP de rango como recompensa
+    comandos:
+      # Fragmentos del Vacío (5-8)
+      - "give %player% minecraft:end_stone 64"
+      - "give %player% minecraft:end_stone 32"
+      
+      # Perlas de Ender (8-15)
+      - "give %player% minecraft:ender_pearl 12"
+      
+      # Bloques de Purpur (32-48)
+      - "give %player% minecraft:purpur_block 40"
+      
+      # Fruta Chorus (16-32)
+      - "give %player% minecraft:chorus_fruit 24"
+      
+      # Experiencia adicional en botellas
+      - "give %player% minecraft:experience_bottle 20"
+    mensaje: "§5§l✦ §eHas recibido las recompensas de participación del End"
+    acumulable: true
+  
+  # ═══════════════════════════════════════════════════════════════
+  # DROPS GARANTIZADOS - Todos los participantes
+  # ═══════════════════════════════════════════════════════════════
+  drops_garantizados:
+    titulo: "§d§l⚡ Tesoros del Desolador ⚡"
+    descripcion: "§7Items garantizados por derrotar al dragón"
+    comandos:
+      # Elytra del Desolador (con encantamientos)
+      - "give %player% minecraft:elytra[enchantments={levels:{\"minecraft:unbreaking\":3,\"minecraft:mending\":1},show_in_tooltip:true},item_name='[{\"text\":\"⚡ Elytra del Desolador ⚡\",\"color\":\"dark_purple\",\"bold\":true,\"italic\":false}]',lore=['[{\"text\":\"Alas del End\",\"color\":\"gray\",\"italic\":false}]','[{\"text\":\"\",\"italic\":false}]','[{\"text\":\"Curtidas por el vacío dimensional.\",\"color\":\"dark_purple\",\"italic\":true}]']] 1"
+      
+      # Escamas del Vacío (8-15) - representadas como Phantom Membrane
+      - "give %player% minecraft:phantom_membrane[item_name='[{\"text\":\"✦ Escama del Vacío ✦\",\"color\":\"dark_purple\",\"italic\":false}]',lore=['[{\"text\":\"Material Dimensional\",\"color\":\"gray\",\"italic\":false}]','[{\"text\":\"\",\"italic\":false}]','[{\"text\":\"Fragmento de la corrupción del End.\",\"color\":\"dark_gray\",\"italic\":true}]']] 12"
+      
+      # Experiencia masiva (8000 XP adicional + 12000 vanilla = 20000 total)
+      - "give %player% minecraft:experience_bottle 64"
+      - "give %player% minecraft:experience_bottle 64"
+      - "give %player% minecraft:experience_bottle 32"
+    mensaje: "§d§l✦ §eHas recibido los Tesoros del Desolador"
+    acumulable: true
+  
+  # ═══════════════════════════════════════════════════════════════
+  # DROPS PROBABILÍSTICOS - Recompensas raras
+  # ═══════════════════════════════════════════════════════════════
+  drops_raros:
+    # Corazón del Desolador (45% probabilidad)
+    corazon_desolador:
+      titulo: "§4§l♥ Corazón del Desolador ♥"
+      descripcion: "§7El corazón corrupto del dragón del End"
+      probabilidad: 45
+      comandos:
+        - "give %player% minecraft:dragon_head[item_name='[{\"text\":\"♥ Corazón del Desolador ♥\",\"color\":\"dark_red\",\"bold\":true,\"italic\":false}]',lore=['[{\"text\":\"Reliquia del End\",\"color\":\"gray\",\"italic\":false}]','[{\"text\":\"\",\"italic\":false}]','[{\"text\":\"Late con energía dimensional.\",\"color\":\"dark_red\",\"italic\":true}]','[{\"text\":\"Un poder que no debería existir.\",\"color\":\"dark_purple\",\"italic\":true}]']] 1"
+      mensaje: "§4§l✦ §c¡Has obtenido el Corazón del Desolador!"
+      acumulable: true
+    
+    # Escama Perfecta (25% probabilidad, 2-4 unidades)
+    escama_perfecta:
+      titulo: "§5§l✦ Escama Perfecta ✦"
+      descripcion: "§7Una escama intacta del dragón corrompido"
+      probabilidad: 25
+      comandos:
+        - "give %player% minecraft:echo_shard[item_name='[{\"text\":\"✦ Escama Perfecta ✦\",\"color\":\"dark_purple\",\"bold\":true,\"italic\":false}]',lore=['[{\"text\":\"Material Épico\",\"color\":\"gold\",\"italic\":false}]','[{\"text\":\"\",\"italic\":false}]','[{\"text\":\"Una escama intacta del Desolador.\",\"color\":\"light_purple\",\"italic\":true}]','[{\"text\":\"Irradia poder ancestral.\",\"color\":\"dark_purple\",\"italic\":true}]']] 3"
+      mensaje: "§5§l✦ §d¡Has obtenido Escamas Perfectas!"
+      acumulable: true
+    
+    # Fragmento Supremo (10% probabilidad) - ULTRA RARO
+    fragmento_supremo:
+      titulo: "§6§l⭐ Fragmento Supremo ⭐"
+      descripcion: "§7Un fragmento de poder dimensional puro"
+      probabilidad: 10
+      comandos:
+        - "give %player% minecraft:nether_star[item_name='[{\"text\":\"⭐ Fragmento Supremo ⭐\",\"color\":\"gold\",\"bold\":true,\"italic\":false}]',lore=['[{\"text\":\"Material Legendario\",\"color\":\"yellow\",\"italic\":false}]','[{\"text\":\"\",\"italic\":false}]','[{\"text\":\"Poder concentrado del vacío.\",\"color\":\"gold\",\"italic\":true}]','[{\"text\":\"Solo los más fuertes lo obtienen.\",\"color\":\"dark_purple\",\"italic\":true}]']] 1"
+      mensaje: "§6§l✦ §e¡HAS OBTENIDO UN FRAGMENTO SUPREMO!"
+      acumulable: true
+  
+  # ═══════════════════════════════════════════════════════════════
+  # TOP 1 - MÁXIMO DAÑO AL DRAGÓN
+  # ═══════════════════════════════════════════════════════════════
+  top_1_damage:
+    titulo: "§5§l⚡⚡⚡ AZOTE DEL DESOLADOR ⚡⚡⚡"
+    descripcion: "§7Recompensas por ser el jugador con más daño al dragón"
+    xp_rango: 5000
+    comandos:
+      # Corazón del Desolador GARANTIZADO
+      - "give %player% minecraft:dragon_head[item_name='[{\"text\":\"♥ Corazón del Desolador ♥\",\"color\":\"dark_red\",\"bold\":true,\"italic\":false}]',lore=['[{\"text\":\"Reliquia del End\",\"color\":\"gray\",\"italic\":false}]','[{\"text\":\"\",\"italic\":false}]','[{\"text\":\"Late con energía dimensional.\",\"color\":\"dark_red\",\"italic\":true}]','[{\"text\":\"Un poder que no debería existir.\",\"color\":\"dark_purple\",\"italic\":true}]']] 1"
+      
+      # 5 Escamas Perfectas GARANTIZADAS
+      - "give %player% minecraft:echo_shard[item_name='[{\"text\":\"✦ Escama Perfecta ✦\",\"color\":\"dark_purple\",\"bold\":true,\"italic\":false}]',lore=['[{\"text\":\"Material Épico\",\"color\":\"gold\",\"italic\":false}]','[{\"text\":\"\",\"italic\":false}]','[{\"text\":\"Una escama intacta del Desolador.\",\"color\":\"light_purple\",\"italic\":true}]','[{\"text\":\"Irradia poder ancestral.\",\"color\":\"dark_purple\",\"italic\":true}]']] 5"
+      
+      # 1 Fragmento Supremo GARANTIZADO
+      - "give %player% minecraft:nether_star[item_name='[{\"text\":\"⭐ Fragmento Supremo ⭐\",\"color\":\"gold\",\"bold\":true,\"italic\":false}]',lore=['[{\"text\":\"Material Legendario\",\"color\":\"yellow\",\"italic\":false}]','[{\"text\":\"\",\"italic\":false}]','[{\"text\":\"Poder concentrado del vacío.\",\"color\":\"gold\",\"italic\":true}]','[{\"text\":\"Solo los más fuertes lo obtienen.\",\"color\":\"dark_purple\",\"italic\":true}]']] 1"
+      
+      # Netherite y recursos épicos
+      - "give %player% minecraft:netherite_ingot 10"
+      - "give %player% minecraft:diamond 32"
+      - "give %player% minecraft:enchanted_golden_apple 8"
+    mensaje: "§5§l✦ §e¡ERES EL AZOTE DEL DESOLADOR! Has recibido recompensas legendarias"
+    titulo_personalizado:
+      titulo: "§5§l⚡ AZOTE DEL DESOLADOR ⚡"
+      subtitulo: "§d¡El más poderoso del End!"
+    acumulable: true
+  
+  # ═══════════════════════════════════════════════════════════════
+  # TOP 2 - SEGUNDO MÁXIMO DAÑO
+  # ═══════════════════════════════════════════════════════════════
+  top_2_damage:
+    titulo: "§5§l⚡⚡ Cazador del Vacío ⚡⚡"
+    descripcion: "§7Recompensas por ser el segundo con más daño"
+    xp_rango: 3000
+    comandos:
+      # 3 Escamas Perfectas
+      - "give %player% minecraft:echo_shard[item_name='[{\"text\":\"✦ Escama Perfecta ✦\",\"color\":\"dark_purple\",\"bold\":true,\"italic\":false}]',lore=['[{\"text\":\"Material Épico\",\"color\":\"gold\",\"italic\":false}]','[{\"text\":\"\",\"italic\":false}]','[{\"text\":\"Una escama intacta del Desolador.\",\"color\":\"light_purple\",\"italic\":true}]','[{\"text\":\"Irradia poder ancestral.\",\"color\":\"dark_purple\",\"italic\":true}]']] 3"
+      
+      # 15 Fragmentos del Vacío
+      - "give %player% minecraft:phantom_membrane[item_name='[{\"text\":\"✦ Fragmento del Vacío ✦\",\"color\":\"dark_purple\",\"italic\":false}]',lore=['[{\"text\":\"Material Dimensional\",\"color\":\"gray\",\"italic\":false}]','[{\"text\":\"\",\"italic\":false}]','[{\"text\":\"Fragmento de la corrupción del End.\",\"color\":\"dark_gray\",\"italic\":true}]']] 15"
+      
+      # Recursos valiosos
+      - "give %player% minecraft:netherite_ingot 6"
+      - "give %player% minecraft:diamond 20"
+      - "give %player% minecraft:enchanted_golden_apple 5"
+    mensaje: "§5§l✦ §e¡ERES EL CAZADOR DEL VACÍO! Has recibido grandes recompensas"
+    acumulable: true
+  
+  # ═══════════════════════════════════════════════════════════════
+  # TOP 3 - TERCER MÁXIMO DAÑO
+  # ═══════════════════════════════════════════════════════════════
+  top_3_damage:
+    titulo: "§7§l⚡ Desafiante del End ⚡"
+    descripcion: "§7Recompensas por ser el tercero con más daño"
+    xp_rango: 1500
+    comandos:
+      # 2 Escamas Perfectas
+      - "give %player% minecraft:echo_shard[item_name='[{\"text\":\"✦ Escama Perfecta ✦\",\"color\":\"dark_purple\",\"bold\":true,\"italic\":false}]',lore=['[{\"text\":\"Material Épico\",\"color\":\"gold\",\"italic\":false}]','[{\"text\":\"\",\"italic\":false}]','[{\"text\":\"Una escama intacta del Desolador.\",\"color\":\"light_purple\",\"italic\":true}]','[{\"text\":\"Irradia poder ancestral.\",\"color\":\"dark_purple\",\"italic\":true}]']] 2"
+      
+      # 10 Fragmentos del Vacío
+      - "give %player% minecraft:phantom_membrane[item_name='[{\"text\":\"✦ Fragmento del Vacío ✦\",\"color\":\"dark_purple\",\"italic\":false}]',lore=['[{\"text\":\"Material Dimensional\",\"color\":\"gray\",\"italic\":false}]','[{\"text\":\"\",\"italic\":false}]','[{\"text\":\"Fragmento de la corrupción del End.\",\"color\":\"dark_gray\",\"italic\":true}]']] 10"
+      
+      # Recursos valiosos
+      - "give %player% minecraft:netherite_ingot 3"
+      - "give %player% minecraft:diamond 12"
+      - "give %player% minecraft:enchanted_golden_apple 3"
+    mensaje: "§7§l✦ §e¡ERES EL DESAFIANTE DEL END! Has recibido buenas recompensas"
+    acumulable: true
+  
+  # ═══════════════════════════════════════════════════════════════
+  # BONUS POR DESTRUIR TODOS LOS CRISTALES
+  # ═══════════════════════════════════════════════════════════════
+  bonus_cristales_destruidos:
+    titulo: "§5§l✦ Destructor de Cristales ✦"
+    descripcion: "§7Bonus por contribuir a destruir todos los cristales del End"
+    comandos:
+      - "give %player% minecraft:experience_bottle 32"
+      - "give %player% minecraft:diamond 8"
+      - "give %player% minecraft:golden_apple 5"
+    mensaje: "§5§l✦ §eBonus por destruir cristales del End"
+    acumulable: true
+  
+  # ═══════════════════════════════════════════════════════════════
+  # MENSAJE FINAL Y CONFIGURACIÓN
+  # ═══════════════════════════════════════════════════════════════
+  mensaje_completo: "§8§l⚡ §5§lEVENTO APERTURA DEL END COMPLETADO §8§l⚡\n§eHas recibido todas las recompensas del Desolador.\n§8El End guarda silencio... por ahora."
+  
+  # Efectos especiales al recibir
+  efectos:
+    fuegos_artificiales: 15     # Cantidad de fuegos artificiales
+    particulas: true            # Partículas épicas del End
+    sonidos: true               # Sonidos del dragón
+    titulo_final:
+      enabled: true
+      titulo: "§8§l⚡ END CONQUISTADO ⚡"
+      subtitulo: "§5¡Victoria sobre el Desolador!"
+
+# ═══════════════════════════════════════════════════════════════
 # 🎄 RECOMPENSAS DEL EVENTO NAVIDAD 🎄
 # Recompensas únicas y especiales por completar el evento
 # Estas recompensas tienen temática navideña y son útiles

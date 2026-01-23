@@ -115,12 +115,12 @@ evento:
         mensaje: "§8[§7...§8] §7El cielo también está corrupto."
         sonido: "ENTITY_PHANTOM_AMBIENT"
   
-  # Escalado dinámico según jugadores - HP AUMENTADO PARA MAYOR ÉPICA
+  # Escalado dinámico según jugadores - HP MASIVAMENTE AUMENTADO PARA BATALLA ÉPICA
   escalado:
-    hp_base: 4500  # Incrementado de 500 → 850 (batalla más larga y épica)
-    hp_por_jugador: 0.20  # Incrementado de 0.15 → 0.20 (+20% HP por jugador)
-    daño_base: 20  # Incrementado de 15 → 20
-    daño_por_jugador: 0.15  # Incrementado de 0.10 → 0.15 (+15% daño por jugador)
+    hp_base: 6000  # ÉPICO: Batalla larga y memorable (antes 4500)
+    hp_por_jugador: 0.25  # +25% HP por jugador adicional (antes 0.20)
+    daño_base: 25  # Golpes más devastadores (antes 20)
+    daño_por_jugador: 0.18  # +18% daño por jugador (antes 0.15)
 
 # ═══════════════════════════════════════════════════════════════════
 # FASES DEL EVENTO
@@ -324,13 +324,18 @@ fases_evento:
         # Múltiples diálogos que se van mostrando según el % de HP
         dialogos_observador:
           100: "§8[§7...§8] §7Ha comenzado otra vez."
+          98: "§8[§7...§8] §5El ciclo eterno continúa…"
           95: "§8[§7...§8] §7Antes… esto era un final."
+          93: "§8[§7...§8] §7El fin de todos los fines."
           92: "§8[§7...§8] §dLas personas celebraban."
           90: "§8[§7...§8] §7Ahora… es solo otro paso en algo más grande."
+          88: "§8[§7...§8] §8Algo que nadie comprende aún."
           87: "§8[§7...§8] §8El dragón siempre cae. No importa cuántas veces renazca."
           85: "§8[§7...§8] §7¿Recuerda este lugar?"
+          83: "§8[§7...§8] §5¿Recuerda las cenizas de sus encarnaciones pasadas?"
           82: "§8[§7...§8] §7¿Recuerda las veces que ha muerto aquí?"
-          80: "§8[§7...§8] §8Yo sí."
+          80: "§8[§7...§8] §8Yo sí. Todas y cada una."
+          78: "§8[§7...§8] §7Mil dragones. Mil muertes."
           77: "§8[§7...§8] §7Sus alas conocen estos pilares…"
           76: "§8[§7...§8] §7Su aliento conoce estas piedras…"
       
@@ -342,15 +347,25 @@ fases_evento:
         
         dialogos_observador:
           74: "§8[§7...§8] §5Algo cambia en sus ojos."
+          73: "§8[§7...§8] §7Una furia ancestral despierta."
           72: "§8[§7...§8] §7La bestia siente el daño."
+          71: "§8[§7...§8] §cY responde con violencia primitiva."
           70: "§8[§7...§8] §7Siempre lo matan."
+          69: "§8[§7...§8] §8Generación tras generación."
           68: "§8[§7...§8] §dY él siempre vuelve."
+          66: "§8[§7...§8] §5Más fuerte. Más rabioso."
           65: "§8[§7...§8] §7¿Cuántos ciclos lleva?"
+          64: "§8[§7...§8] §8¿Mil? ¿Diez mil?"
           63: "§8[§7...§8] §8He perdido la cuenta."
+          61: "§8[§7...§8] §7Los números dejan de importar."
           60: "§8[§7...§8] §7La rabia del dragón no es suya…"
+          59: "§8[§7...§8] §5Es la suma de todas sus muertes."
           58: "§8[§7...§8] §7Es el eco de mil batallas pasadas."
+          56: "§8[§7...§8] §4Mil derrotas grabadas en su esencia."
           55: "§8[§7...§8] §5Mil derrotas."
+          54: "§8[§7...§8] §7Mil gritos silenciados."
           53: "§8[§7...§8] §8Mil renacimientos."
+          52: "§8[§7...§8] §7Cada uno más doloroso que el anterior."
           51: "§8[§7...§8] §7El vacío no olvida."
       
       subfase_3:
@@ -361,15 +376,25 @@ fases_evento:
         
         dialogos_observador:
           50: "§8[§7...§8] §7Siempre creen que matarlo arregla algo."
+          49: "§8[§7...§8] §8Como si la muerte tuviera significado aquí."
           48: "§8[§7...§8] §8Como si el fin de un guardián trajera paz."
+          47: "§8[§7...§8] §7La paz es una ilusión en el End."
           45: "§8[§7...§8] §7No entienden…"
+          44: "§8[§7...§8] §8Nunca entienden."
           43: "§8[§7...§8] §5El dragón no guarda el End."
+          42: "§8[§7...§8] §7Es prisionero, no carcelero."
           40: "§8[§7...§8] §7El End guarda algo más."
+          39: "§8[§7...§8] §8Algo oscuro. Antiguo."
           38: "§8[§7...§8] §8Algo que ni siquiera yo puedo ver del todo."
+          36: "§8[§7...§8] §5Algo que prefiero no ver."
           35: "§8[§7...§8] §7Sus rugidos suenan… diferentes."
+          34: "§8[§7...§8] §7Más… conscientes."
           33: "§8[§7...§8] §7¿Miedo? ¿Rabia?"
+          32: "§8[§7...§8] §8¿Dolor existencial?"
           30: "§8[§7...§8] §5¿Reconocimiento?"
+          29: "§8[§7...§8] §7¿Sabe que esto es inútil?"
           28: "§8[§7...§8] §8..."
+          27: "§8[§7...§8] §8Creo que sí."
           26: "§8[§7...§8] §7Quizás él también sabe que esto es inútil."
       
       subfase_4:
@@ -379,17 +404,27 @@ fases_evento:
         descripcion: "§4El Ocaso - §cLa furia final antes del silencio"
         
         dialogos_observador:
-          24: "§8[§7...§8] §cLa fase final."
+          24: "§8[§7...§8] §c§lLa fase final."
+          23: "§8[§7...§8] §4El fin de este ciclo se acerca."
           22: "§8[§7...§8] §7Siempre la más desesperada."
+          21: "§8[§7...§8] §cEl dragón lucha con todo lo que le queda."
           20: "§8[§7...§8] §4El dragón se aferra a lo que queda de sí mismo."
+          19: "§8[§7...§8] §7Cada rugido es un lamento…"
           18: "§8[§7...§8] §8Pero el desenlace ya está escrito."
+          16: "§8[§7...§8] §5Escrito mil veces antes."
           15: "§8[§7...§8] §7Escrito en cenizas y ciclos."
+          14: "§8[§7...§8] §8En sangre dimensional y memorias rotas."
           13: "§8[§7...§8] §5Grabado en este vacío sin tiempo."
+          11: "§8[§7...§8] §7Sus alas se quiebran… otra vez."
           10: "§8[§7...§8] §7El mundo avanza."
+          9: "§8[§7...§8] §4Pero el End permanece inmutable."
           8: "§8[§7...§8] §7Los jugadores celebran victorias."
+          7: "§8[§7...§8] §cVictorias que ya han celebrado antes."
           6: "§8[§7...§8] §7Creen que han cambiado algo."
           5: "§8[§7...§8] §8Pero la memoria… no avanza."
+          4: "§8[§7...§8] §5La memoria está atrapada."
           3: "§8[§7...§8] §4La memoria solo… repite."
+          2: "§8[§7...§8] §c§oEternamente."
           1: "§8[§7...§8] §8§oY yo… sigo observando."
   
   # ═══ FASE 4: VICTORIA ═══
@@ -434,20 +469,20 @@ fases_evento:
 # ═══════════════════════════════════════════════════════════════════
 
 cristales:
-  cantidad: 10
-  regeneracion_hp_por_segundo: 1
-  rango_curacion: 50
+  cantidad: 12  # AUMENTADO: Más desafío épico
+  regeneracion_hp_por_segundo: 1.5  # Regeneran más HP al dragón
+  rango_curacion: 55
   
   recompensa_destruccion:
-    exp: 100
-    mensaje: "§8✓ Cristal destruido (X/10)"
+    exp: 150  # Más XP por cristal
+    mensaje: "§8✓ Cristal destruido §5§l(X/12) §8⚡"
   
   bonus_todos_destruidos:
-    mensaje: "§5Los cristales han caído."
+    mensaje: "§5§l⚡⚡⚡ TODOS LOS CRISTALES HAN CAÍDO §5§l⚡⚡⚡"
     efecto_jugadores:
       tipo: "REGENERATION"
-      duracion: 600  # 30 segundos
-      nivel: 2
+      duracion: 800  # 40 segundos (antes 30)
+      nivel: 3  # Nivel 3 (antes 2)
 
 # ═══════════════════════════════════════════════════════════════════
 # SISTEMA DE RECOMPENSAS
@@ -455,51 +490,60 @@ cristales:
 
 recompensas:
   # Drops adicionales (vanilla da 12,000 EXP + huevo automáticamente)
+  # RECOMPENSAS MEJORADAS para reflejar el desafío épico aumentado
   drops_garantizados:
     elytra_desolador:
       cantidad: 1
       probabilidad: 100
     escamas_vacio:
-      cantidad_min: 5
-      cantidad_max: 10
+      cantidad_min: 8  # AUMENTADO: más escamas por batalla más larga
+      cantidad_max: 15  # AUMENTADO
       probabilidad: 100
     experiencia_adicional:
-      cantidad: 5000  # SUMA a los 12,000 vanilla
+      cantidad: 8000  # AUMENTADO: 8000 + 12000 vanilla = 20000 total
       distribucion: "proporcional"
   
   drops_probabilidad:
     corazon_desolador:
-      probabilidad: 30
+      probabilidad: 45  # AUMENTADO: más probable por dificultad
       cantidad: 1
     escama_perfecta:
-      probabilidad: 15
-      cantidad_min: 1
-      cantidad_max: 3
+      probabilidad: 25  # AUMENTADO
+      cantidad_min: 2  # AUMENTADO
+      cantidad_max: 4  # AUMENTADO
+    fragmento_supremo:  # NUEVO: Item ultra-raro
+      probabilidad: 10
+      cantidad: 1
   
   # Recompensas de participación
   participacion:
-    daño_minimo: 50  # HP mínimo para recompensas
+    daño_minimo: 100  # AUMENTADO: Requiere más participación
     items:
-      - "fragmento_vacio:3-5"
-      - "ender_pearl:5-10"
-      - "end_stone:32-64"
-      - "purpur_block:16-32"
-    experiencia: 1000
+      - "fragmento_vacio:5-8"  # AUMENTADO
+      - "ender_pearl:8-15"  # AUMENTADO
+      - "end_stone:64-96"  # AUMENTADO
+      - "purpur_block:32-48"  # AUMENTADO
+      - "chorus_fruit:16-32"  # NUEVO
+    experiencia: 2000  # DUPLICADO
     titulo: "§8Vencedor del End"
   
-  # Top 3 jugadores con más daño
+  # Top 3 jugadores con más daño - RECOMPENSAS ÉPICAS
   top_damage:
     puesto_1:
       corazon_garantizado: true
-      escama_perfecta: 3
-      titulo: "§5§lAzote del Desolador"
+      escama_perfecta: 5  # AUMENTADO
+      fragmento_supremo: 1  # GARANTIZADO
+      experiencia_bonus: 5000
+      titulo: "§5§l⚡ Azote del Desolador ⚡"
     puesto_2:
-      escama_perfecta: 2
-      fragmento_vacio: 10
+      escama_perfecta: 3  # AUMENTADO
+      fragmento_vacio: 15  # AUMENTADO
+      experiencia_bonus: 3000
       titulo: "§5Cazador del Vacío"
     puesto_3:
-      escama_perfecta: 1
-      fragmento_vacio: 5
+      escama_perfecta: 2  # AUMENTADO
+      fragmento_vacio: 10  # AUMENTADO
+      experiencia_bonus: 1500
       titulo: "§7Desafiante del End"
 
 # ═══════════════════════════════════════════════════════════════════
@@ -563,22 +607,34 @@ mensajes:
       - "§f"
       - "§8Silencio incómodo."
       - "§7El cielo se siente… pesado."
+      - "§5El aire vibra con energía ancestral."
+      - "§8Algo observa desde las sombras."
+      - "§f"
+      - "§8[§7...§8] §7Este lugar… no debería existir."
+      - "§8[§7...§8] §8Y sin embargo, aquí están."
       - "§f"
       - "§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   
   fase_3_dragon_spawn:
     titulo: "§8..."
-    subtitulo: "§5El dragón emerge"
+    subtitulo: "§5§lEl dragón emerge"
     broadcast:
       - "§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━"
       - "§f"
       - "§8Sonidos."
       - "§8Sombras."
+      - "§7El suelo tiembla."
       - "§8El cielo se oscurece."
+      - "§5Una presencia colosal desciende."
       - "§f"
-      - "§5El dragón emerge."
+      - "§5§l⚡ EL DRAGÓN EMERGE ⚡"
+      - "§f"
       - "§8Más fuerte. Más agresivo."
       - "§7Diferente."
+      - "§5§oConoce este lugar."
+      - "§8§oConoce esta muerte."
+      - "§f"
+      - "§8[§7...§8] §7Ha comenzado otra vez…"
       - "§f"
       - "§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   
@@ -601,33 +657,53 @@ efectos:
   portal_activacion:
     particulas:
       - tipo: "END_ROD"
-        cantidad: 150
-        radio: 5
-      - tipo: "REVERSE_PORTAL"
-        cantidad: 300
+        cantidad: 300  # DUPLICADO para más impacto visual
         radio: 8
-    sonidos:
-      - "AMBIENT_CAVE:1.5:0.5"
-      - "BLOCK_END_PORTAL_SPAWN:2.0:0.8"
-  
-  dragon_spawn:
-    particulas:
+      - tipo: "REVERSE_PORTAL"
+        cantidad: 600  # DUPLICADO para efecto masivo
+        radio: 12
       - tipo: "DRAGON_BREATH"
         cantidad: 200
         radio: 10
     sonidos:
-      - "ENTITY_ENDER_DRAGON_GROWL:2.0:0.6"
-      - "AMBIENT_CAVE:1.0:0.3"
+      - "AMBIENT_CAVE:2.0:0.5"
+      - "BLOCK_END_PORTAL_SPAWN:3.0:0.8"
+      - "ENTITY_ENDER_DRAGON_GROWL:1.5:0.5"  # Añadido: rugido lejano
+  
+  dragon_spawn:
+    particulas:
+      - tipo: "DRAGON_BREATH"
+        cantidad: 500  # INCREMENTADO masivamente
+        radio: 15
+      - tipo: "END_ROD"
+        cantidad: 300
+        radio: 12
+      - tipo: "PORTAL"
+        cantidad: 400
+        radio: 10
+    sonidos:
+      - "ENTITY_ENDER_DRAGON_GROWL:3.0:0.6"
+      - "ENTITY_ENDER_DRAGON_AMBIENT:2.5:0.5"
+      - "AMBIENT_CAVE:1.5:0.3"
+      - "ENTITY_LIGHTNING_BOLT_THUNDER:1.0:0.8"  # Trueno épico
   
   muerte_dragon:
     # Se respeta la animación vanilla (3 segundos)
-    # Luego se añaden efectos sutiles
+    # Luego se añaden EFECTOS ÉPICOS MASIVOS
     particulas:
       - tipo: "END_ROD"
-        cantidad: 100
-        radio: 15
+        cantidad: 500  # MASIVAMENTE AUMENTADO
+        radio: 25
       - tipo: "REVERSE_PORTAL"
-        cantidad: 200
-        radio: 10
+        cantidad: 800  # MASIVAMENTE AUMENTADO
+        radio: 20
+      - tipo: "DRAGON_BREATH"
+        cantidad: 600
+        radio: 18
+      - tipo: "PORTAL"
+        cantidad: 400
+        radio: 15
     sonidos:
-      - "AMBIENT_CAVE:1.0:0.4"
+      - "AMBIENT_CAVE:2.0:0.4"
+      - "ENTITY_ENDER_DRAGON_DEATH:3.0:1.0"
+      - "ENTITY_LIGHTNING_BOLT_THUNDER:2.0:0.7"

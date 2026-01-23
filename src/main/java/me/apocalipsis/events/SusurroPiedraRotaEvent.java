@@ -8759,7 +8759,7 @@ public class SusurroPiedraRotaEvent extends EventBase {
             if (participantesOriginales.contains(p.getUniqueId())) {
                 p.sendTitle(
                     "§d§l✦ EL ALTAR ANCESTRAL ✦",
-                    "§7§oHabéis regresado con el corazón corrupto...",
+                    "§7§oHan regresado con el corazón corrupto...",
                     20, 100, 20
                 );
                 

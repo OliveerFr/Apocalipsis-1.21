@@ -14,6 +14,8 @@ import org.bukkit.boss.BossBar;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.*;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 
@@ -177,6 +179,11 @@ public class AperturaEndEvent extends EventBase {
     private BukkitTask agrupacionCheckTask = null;
     private final double DISTANCIA_MAXIMA_AGRUPACION = 30.0; // Distancia máxima entre jugadores para considerarse "juntos"
     
+    // Sistema de defensa del portal (si llegan temprano)
+    private boolean defenderPortalActivo = false;
+    private BukkitTask defensaPortalTask = null;
+    private int oleadasCompletadas = 0;
+    
     // ═══════════════════════════════════════════════════════════════════
     // CONSTRUCTOR
     // ═══════════════════════════════════════════════════════════════════
@@ -329,6 +336,9 @@ public class AperturaEndEvent extends EventBase {
         if (heartbeatTask != null) {
             heartbeatTask.cancel();
         }
+        if (defensaPortalTask != null) {
+            defensaPortalTask.cancel();
+        }
         
         // Limpiar mobs spawneados
         limpiarMobsHostiles();
@@ -387,7 +397,8 @@ public class AperturaEndEvent extends EventBase {
         
         int x = puntoReferencia.getBlockX() + (int) (distancia * Math.cos(angulo));
         int z = puntoReferencia.getBlockZ() + (int) (distancia * Math.sin(angulo));
-        int y = overworld.getHighestBlockYAt(x, z);
+        // ALTURA FIJA MEJORADA: Portal entre Y=85-95 (accesible, no demasiado alto)
+        int y = 85 + random.nextInt(11); // Rango: 85-95
         
         portalLocation = new Location(overworld, x, y, z);
         
@@ -409,9 +420,11 @@ public class AperturaEndEvent extends EventBase {
                 
                 Bukkit.getScheduler().runTaskLater(plugin, () -> {
                     plugin.getLogger().info("[Apertura End] ✓✓✓ ARENA ÉPICA GENERADA COMPLETAMENTE ✓✓✓");
-                    plugin.getLogger().info("[Apertura End] ✓ Plataforma: 80x80 bloques");
-                    plugin.getLogger().info("[Apertura End] ✓ Pilares: 12 colosales de 40-45 bloques");
-                    plugin.getLogger().info("[Apertura End] ✓ Torres: 4 esquineras de 35 bloques");
+                    plugin.getLogger().info("[Apertura End] ✓ Área limpiada: 400x400 bloques (200 radio)");
+                    plugin.getLogger().info("[Apertura End] ✓ Altura vertical: Y=140 (masivo espacio aéreo)");
+                    plugin.getLogger().info("[Apertura End] ✓ Plataforma: 120x120 bloques");
+                    plugin.getLogger().info("[Apertura End] ✓ Pilares: 12 colosales de 50-60 bloques");
+                    plugin.getLogger().info("[Apertura End] ✓ Torres: 4 esquineras de 45 bloques");
                     plugin.getLogger().info("[Apertura End] ✓ Fragmentos flotantes: 80-100 bloques");
                     plugin.getLogger().info("[Apertura End] ✓ Cristales gigantes: 20+ de 20 bloques");
                 }, 40L); // 2 segundos después para logs
@@ -1947,19 +1960,287 @@ public class AperturaEndEvent extends EventBase {
                 if (distancia <= radioDeteccion) {
                     // ¡Jugadores llegaron al portal!
                     plugin.getLogger().info("[Apertura End] ✓ Jugador " + player.getName() + " detectado a " + (int)distancia + " bloques del portal");
-                    if (iniciadorUUID != null) {
-                        Bukkit.broadcastMessage("§a§l✓ El iniciador y jugadores han llegado al portal!");
+                    
+                    // VERIFICAR SI QUEDAN MÁS DE 10 MINUTOS (600 segundos)
+                    if (descubrimientoTimer > 600) {
+                        // Llegaron TEMPRANO - Iniciar defensa del portal
+                        int minutosRestantes = descubrimientoTimer / 60;
+                        plugin.getLogger().warning("[Apertura End] ⚠ Jugadores llegaron temprano (faltan " + minutosRestantes + " minutos) - Iniciando DEFENSA");
+                        
+                        if (iniciadorUUID != null) {
+                            Bukkit.broadcastMessage("§e§l⚠ El iniciador y jugadores llegaron al portal... §c¡pero es demasiado temprano!");
+                        } else {
+                            Bukkit.broadcastMessage("§e§l⚠ " + player.getName() + " llegó al portal... §c¡pero es demasiado temprano!");
+                        }
+                        
+                        iniciarDefensaPortal();
+                        return;
                     } else {
-                        Bukkit.broadcastMessage("§a§l✓ " + player.getName() + " ha llegado al portal!");
+                        // Llegaron en el momento correcto (≤10 minutos restantes) - Activar portal normalmente
+                        plugin.getLogger().info("[Apertura End] ✓ Momento correcto - Activando portal");
+                        
+                        if (iniciadorUUID != null) {
+                            Bukkit.broadcastMessage("§a§l✓ El iniciador y jugadores han llegado al portal!");
+                        } else {
+                            Bukkit.broadcastMessage("§a§l✓ " + player.getName() + " ha llegado al portal!");
+                        }
+                        
+                        iniciarFaseLlegada();
+                        if (preparacionTask != null) {
+                            preparacionTask.cancel();
+                        }
+                        return;
                     }
-                    iniciarFaseLlegada();
-                    if (preparacionTask != null) {
-                        preparacionTask.cancel();
-                    }
-                    return;
                 }
             }
         }
+    }
+    
+    /**
+     * Inicia sistema de defensa del portal cuando los jugadores llegan muy temprano
+     * Oleadas de mobs hostiles cada 2 minutos hasta que solo queden 10 minutos
+     */
+    private void iniciarDefensaPortal() {
+        defenderPortalActivo = true;
+        oleadasCompletadas = 0;
+        
+        // Cancelar la tarea de preparación normal
+        if (preparacionTask != null) {
+            preparacionTask.cancel();
+        }
+        
+        // Calcular minutos restantes
+        int minutosRestantes = descubrimientoTimer / 60;
+        
+        // Anuncio épico
+        Bukkit.broadcastMessage("");
+        Bukkit.broadcastMessage("§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        Bukkit.broadcastMessage("");
+        Bukkit.broadcastMessage("§c§l⚔ HAN LLEGADO TEMPRANO ⚔");
+        Bukkit.broadcastMessage("");
+        Bukkit.broadcastMessage("§8[§7...§8] §7El portal aún no está §5listo§7...");
+        Bukkit.broadcastMessage("§8[§7...§8] §7Faltan §e" + minutosRestantes + " minutos §7para la apertura.");
+        Bukkit.broadcastMessage("");
+        Bukkit.broadcastMessage("§8[§7...§8] §cPero el vacío ya los detectó.");
+        Bukkit.broadcastMessage("");
+        Bukkit.broadcastMessage("§e§l⚠ DEFIENDAN EL PORTAL");
+        Bukkit.broadcastMessage("§7Oleadas de §ccriaturas hostiles §7aparecerán cada §e2 minutos");
+        Bukkit.broadcastMessage("§7hasta que el portal esté listo §8(§a10 minutos§8)");
+        Bukkit.broadcastMessage("");
+        Bukkit.broadcastMessage("§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            p.sendTitle("§c§l⚔ DEFENSA DEL PORTAL ⚔", "§7Resistiendo §e" + minutosRestantes + " minutos", 10, 80, 20);
+            p.playSound(p.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 1.5f, 0.6f);
+            p.playSound(p.getLocation(), Sound.ENTITY_WARDEN_ROAR, 0.8f, 0.7f);
+            p.playSound(p.getLocation(), Sound.EVENT_RAID_HORN, 1.0f, 0.8f);
+            
+            // Efectos visuales
+            Location loc = p.getLocation();
+            p.getWorld().spawnParticle(Particle.SOUL_FIRE_FLAME, loc.clone().add(0, 2, 0), 50, 2, 1, 2, 0.1);
+            p.getWorld().spawnParticle(Particle.CRIMSON_SPORE, loc, 40, 3, 2, 3, 0.05);
+        }
+        
+        // Actualizar BossBar
+        bossBar.setTitle("§c⚔ DEFENDIENDO PORTAL - " + minutosRestantes + " min restantes");
+        bossBar.setColor(BarColor.RED);
+        
+        // Generar primera oleada inmediatamente
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                generarOleadaDefensa();
+            }
+        }.runTaskLater(plugin, 60L); // 3 segundos después
+        
+        // Iniciar tarea que genera oleadas cada 2 minutos y verifica el tiempo
+        defensaPortalTask = new BukkitRunnable() {
+            int ticksTranscurridos = 0;
+            
+            @Override
+            public void run() {
+                if (faseEvento != EventPhase.DESCUBRIMIENTO) {
+                    cancel();
+                    return;
+                }
+                
+                descubrimientoTimer--;
+                ticksTranscurridos++;
+                
+                // Actualizar BossBar
+                int minutos = descubrimientoTimer / 60;
+                int segundos = descubrimientoTimer % 60;
+                bossBar.setTitle(String.format("§c⚔ DEFENDIENDO PORTAL - %02d:%02d", minutos, segundos));
+                bossBar.setProgress(Math.max(0.0, (double) descubrimientoTimer / 2700.0));
+                
+                // Generar oleada cada 2 minutos (2400 ticks)
+                if (ticksTranscurridos % 2400 == 0) {
+                    generarOleadaDefensa();
+                }
+                
+                // Verificar si ya es tiempo de activar el portal (10 minutos o menos)
+                if (descubrimientoTimer <= 600) {
+                    // ¡Tiempo cumplido! Activar portal
+                    Bukkit.broadcastMessage("");
+                    Bukkit.broadcastMessage("§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                    Bukkit.broadcastMessage("");
+                    Bukkit.broadcastMessage("§a§l✓ HAN RESISTIDO ✓");
+                    Bukkit.broadcastMessage("");
+                    Bukkit.broadcastMessage("§8[§7...§8] §7El portal está §5listo§7...");
+                    Bukkit.broadcastMessage("§8[§7...§8] §a¡Sobrevivieron " + oleadasCompletadas + " oleadas!");
+                    Bukkit.broadcastMessage("");
+                    Bukkit.broadcastMessage("§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                    
+                    for (Player p : Bukkit.getOnlinePlayers()) {
+                        p.sendTitle("§a§l✓ PORTAL LISTO ✓", "§7El vacío los espera...", 10, 80, 20);
+                        p.playSound(p.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
+                        p.playSound(p.getLocation(), Sound.BLOCK_END_PORTAL_SPAWN, 1.0f, 0.8f);
+                    }
+                    
+                    cancel();
+                    iniciarFaseLlegada();
+                    return;
+                }
+                
+                // Advertencias periódicas
+                if (descubrimientoTimer == 900) { // 15 minutos
+                    Bukkit.broadcastMessage("§8[§7...§8] §e15 minutos §7hasta la apertura...");
+                } else if (descubrimientoTimer == 720) { // 12 minutos
+                    Bukkit.broadcastMessage("§8[§7...§8] §e12 minutos §7restantes...");
+                }
+            }
+        }.runTaskTimer(plugin, 20L, 20L); // Cada segundo
+        
+        plugin.getLogger().info("[Apertura End] ⚔ DEFENSA DEL PORTAL ACTIVADA - Oleadas cada 2 minutos hasta 10 minutos restantes");
+    }
+    
+    /**
+     * Genera una oleada de defensa con mobs hostiles cerca del portal
+     */
+    private void generarOleadaDefensa() {
+        if (portalLocation == null) return;
+        
+        oleadasCompletadas++;
+        
+        // Anuncio de oleada
+        Bukkit.broadcastMessage("");
+        Bukkit.broadcastMessage("§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        Bukkit.broadcastMessage("");
+        Bukkit.broadcastMessage("§c§l⚡ OLEADA #" + oleadasCompletadas + " ⚡");
+        Bukkit.broadcastMessage("");
+        Bukkit.broadcastMessage("§8[§7...§8] §7El vacío envía sus §cguardianes§7...");
+        Bukkit.broadcastMessage("");
+        Bukkit.broadcastMessage("§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            p.sendTitle("§c§l⚡ OLEADA #" + oleadasCompletadas + " ⚡", "§7Nuevos enemigos aparecen", 10, 60, 10);
+            p.playSound(p.getLocation(), Sound.EVENT_RAID_HORN, 1.5f, 0.8f);
+            p.playSound(p.getLocation(), Sound.ENTITY_WARDEN_ROAR, 0.6f, 0.8f);
+        }
+        
+        // Calcular cantidad de mobs según la oleada (escala progresivamente)
+        int cantidadMobs = 10 + (oleadasCompletadas * 3); // Empieza con 10, aumenta 3 por oleada
+        int cantidadJugadores = Bukkit.getOnlinePlayers().size();
+        cantidadMobs = cantidadMobs + (cantidadJugadores * 2); // +2 mobs por jugador extra
+        
+        plugin.getLogger().info("[Apertura End] Generando oleada #" + oleadasCompletadas + " con " + cantidadMobs + " mobs");
+        
+        // Generar mobs en círculo alrededor del portal
+        for (int i = 0; i < cantidadMobs; i++) {
+            double angulo = (2 * Math.PI * i) / cantidadMobs;
+            double distancia = 20 + random.nextInt(15); // 20-35 bloques del portal
+            
+            int x = portalLocation.getBlockX() + (int)(distancia * Math.cos(angulo));
+            int z = portalLocation.getBlockZ() + (int)(distancia * Math.sin(angulo));
+            int y = portalLocation.getWorld().getHighestBlockYAt(x, z) + 1;
+            
+            Location spawnLoc = new Location(portalLocation.getWorld(), x, y, z);
+            
+            // Variedad de mobs hostiles (más difíciles según la oleada)
+            org.bukkit.entity.EntityType mobType;
+            double rand = random.nextDouble();
+            
+            if (oleadasCompletadas >= 5) {
+                // Oleadas avanzadas: mobs más difíciles
+                if (rand < 0.3) mobType = org.bukkit.entity.EntityType.RAVAGER;
+                else if (rand < 0.5) mobType = org.bukkit.entity.EntityType.VINDICATOR;
+                else if (rand < 0.7) mobType = org.bukkit.entity.EntityType.PILLAGER;
+                else if (rand < 0.85) mobType = org.bukkit.entity.EntityType.WITHER_SKELETON;
+                else mobType = org.bukkit.entity.EntityType.ENDERMAN;
+            } else if (oleadasCompletadas >= 3) {
+                // Oleadas medias
+                if (rand < 0.25) mobType = org.bukkit.entity.EntityType.VINDICATOR;
+                else if (rand < 0.5) mobType = org.bukkit.entity.EntityType.PILLAGER;
+                else if (rand < 0.75) mobType = org.bukkit.entity.EntityType.WITHER_SKELETON;
+                else mobType = org.bukkit.entity.EntityType.ENDERMAN;
+            } else {
+                // Oleadas iniciales
+                if (rand < 0.3) mobType = org.bukkit.entity.EntityType.ZOMBIE;
+                else if (rand < 0.6) mobType = org.bukkit.entity.EntityType.SKELETON;
+                else if (rand < 0.8) mobType = org.bukkit.entity.EntityType.PILLAGER;
+                else mobType = org.bukkit.entity.EntityType.ENDERMAN;
+            }
+            
+            // Spawnear mob
+            org.bukkit.entity.Entity entity = spawnLoc.getWorld().spawnEntity(spawnLoc, mobType);
+            
+            if (entity instanceof org.bukkit.entity.Mob) {
+                org.bukkit.entity.Mob mob = (org.bukkit.entity.Mob) entity;
+                
+                // Nombre épico
+                mob.customName(net.kyori.adventure.text.Component.text("§c⚡ Guardián del Vacío §c⚡"));
+                mob.setCustomNameVisible(true);
+                mob.setGlowing(true);
+                
+                // Buffear según oleada
+                double multiplicadorHP = 1.0 + (oleadasCompletadas * 0.3); // +30% HP por oleada
+                double multiplicadorDamage = 1.0 + (oleadasCompletadas * 0.2); // +20% daño por oleada
+                
+                if (mob.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH) != null) {
+                    double hpBase = mob.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).getBaseValue();
+                    mob.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).setBaseValue(hpBase * multiplicadorHP);
+                    mob.setHealth(hpBase * multiplicadorHP);
+                }
+                
+                if (mob.getAttribute(org.bukkit.attribute.Attribute.ATTACK_DAMAGE) != null) {
+                    double damageBase = mob.getAttribute(org.bukkit.attribute.Attribute.ATTACK_DAMAGE).getBaseValue();
+                    mob.getAttribute(org.bukkit.attribute.Attribute.ATTACK_DAMAGE).setBaseValue(damageBase * multiplicadorDamage);
+                }
+                
+                // Encontrar jugador más cercano para targetear
+                Player closestPlayer = null;
+                double closestDistance = Double.MAX_VALUE;
+                
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    if (p.getWorld().equals(spawnLoc.getWorld())) {
+                        double dist = p.getLocation().distance(spawnLoc);
+                        if (dist < closestDistance) {
+                            closestDistance = dist;
+                            closestPlayer = p;
+                        }
+                    }
+                }
+                
+                if (closestPlayer != null) {
+                    mob.setTarget(closestPlayer);
+                }
+            }
+            
+            // Efectos visuales de spawn
+            spawnLoc.getWorld().spawnParticle(Particle.SOUL_FIRE_FLAME, spawnLoc.clone().add(0, 1, 0), 30, 0.5, 1, 0.5, 0.05);
+            spawnLoc.getWorld().spawnParticle(Particle.SMOKE, spawnLoc, 20, 0.5, 0.5, 0.5, 0.05);
+            
+            // Sonido ocasional
+            if (i % 5 == 0) {
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    if (p.getWorld().equals(spawnLoc.getWorld()) && p.getLocation().distance(spawnLoc) < 60) {
+                        p.playSound(spawnLoc, Sound.ENTITY_ZOMBIE_VILLAGER_CONVERTED, 0.5f, 0.6f);
+                    }
+                }
+            }
+        }
+        
+        plugin.getLogger().info("[Apertura End] ✓ Oleada #" + oleadasCompletadas + " generada con " + cantidadMobs + " mobs");
     }
     
     /**
@@ -2291,12 +2572,12 @@ public class AperturaEndEvent extends EventBase {
         int centerY = 64; // Altura de la plataforma principal
         int centerZ = 0;
         
-        plugin.getLogger().info("[Apertura End] ⚡⚡⚡ Generando ARENA DE BATALLA ÉPICA (ESPACIO AMPLIO) ⚡⚡⚡");
+        plugin.getLogger().info("[Apertura End] ⚡⚡⚡ Generando ARENA DE BATALLA ÉPICA (ESPACIO MASIVO) ⚡⚡⚡");
         
         // ═══════════════════════════════════════════════════════════════
-        // PASO 1: LIMPIAR ÁREA MASIVA - 150 BLOQUES DE RADIO (300x300)
+        // PASO 1: LIMPIAR ÁREA MASIVA - 200 BLOQUES DE RADIO (400x400)
         // ═══════════════════════════════════════════════════════════════
-        limpiarAreaBatalla(endWorld, centerX, centerY, centerZ, 150);
+        limpiarAreaBatalla(endWorld, centerX, centerY, centerZ, 200);
         
         // ═══════════════════════════════════════════════════════════════
         // PASO 2: PLATAFORMA DE SPAWN MEJORADA (donde aparecen los jugadores)
@@ -2319,9 +2600,14 @@ public class AperturaEndEvent extends EventBase {
         construirAltarCentral(endWorld, centerX, centerY, centerZ);
         
         // ═══════════════════════════════════════════════════════════════
-        // PASO 6: 8 PILARES EN PERÍMETRO (altura 30 bloques, MÁS SEPARADOS)
+        // PASO 6: 8 PILARES EN PERÍMETRO (altura 50 bloques, MEGA SEPARADOS)
         // ═══════════════════════════════════════════════════════════════
         construirPilaresBatallaEspaciados(endWorld, centerX, centerY, centerZ);
+        
+        // ═══════════════════════════════════════════════════════════════
+        // PASO 6.5: 4 TORRES ESQUINERAS GIGANTES (altura 60 bloques) - NUEVAS
+        // ═══════════════════════════════════════════════════════════════
+        construirTorresEsquinerasGigantes(endWorld, centerX, centerY, centerZ);
         
         // ═══════════════════════════════════════════════════════════════
         // PASO 7: RUNAS LUMINOSAS SIMPLES (solo 2 círculos)
@@ -2338,25 +2624,44 @@ public class AperturaEndEvent extends EventBase {
         // ═══════════════════════════════════════════════════════════════
         generarCristalesMinimos(endWorld, centerX, centerY, centerZ);
         
+        // ═══════════════════════════════════════════════════════════════
+        // PASO 10: DECORACIÓN ADICIONAL DEL TERRENO - NUEVOS ELEMENTOS ÉPICOS
+        // ═══════════════════════════════════════════════════════════════
+        generarEstructurasDecorativasTerreno(endWorld, centerX, centerY, centerZ);
+        generarFormacionesNaturalesEnd(endWorld, centerX, centerY, centerZ);
+        generarPatronesDecorativosSuelo(endWorld, centerX, centerY, centerZ);
+        generarObeliscosDecorativosPerimetro(endWorld, centerX, centerY, centerZ);
+        
+        // ═══════════════════════════════════════════════════════════════
+        // PASO 11: FOSO DE LAVA DECORATIVO alrededor de la plataforma (NUEVO)
+        // ═══════════════════════════════════════════════════════════════
+        generarFosoLavaDecorativo(endWorld, centerX, centerY, centerZ);
+        
+        // ═══════════════════════════════════════════════════════════════
+        // PASO 12: ISLAS FLOTANTES GIGANTES en el cielo (NUEVO)
+        // ═══════════════════════════════════════════════════════════════
+        generarIslasFlotantesGigantes(endWorld, centerX, centerY, centerZ);
+        
         // ELEMENTOS ELIMINADOS PARA MÁS ESPACIO:
         // ✗ Puentes entre pilares (obstruían el combate aéreo)
-        // ✗ Torres esquineras (bloqueaban movimiento)
         // ✗ Murallas con almenas (limitaban el espacio)
-        // ✗ Fosas de lava/agua (peligro innecesario)
         // ✗ Escaleras monumentales (ocupaban espacio)
         // ✗ Estatuas de guardianes (decoración excesiva)
         
         // ═══════════════════════════════════════════════════════════════
-        // PASO 10: EFECTOS VISUALES SUTILES (no invasivos)
+        // PASO 11: EFECTOS VISUALES SUTILES (no invasivos)
         // ═══════════════════════════════════════════════════════════════
         iniciarEfectosArenaBatalla(new Location(endWorld, centerX, centerY + 5, centerZ));
         
         plugin.getLogger().info("[Apertura End] ✓✓✓ ARENA DE BATALLA ESPACIOSA generada exitosamente");
         plugin.getLogger().info("[Apertura End] ✓ Plataforma spawn: 25x25 bloques en (100, 48, 0)");
         plugin.getLogger().info("[Apertura End] ✓ Puente monumental: 100 bloques desde spawn a centro");
-        plugin.getLogger().info("[Apertura End] ✓ Área de combate: 300x300 bloques (150 radio)");
-        plugin.getLogger().info("[Apertura End] ✓ Plataforma principal: 100x100 bloques");
-        plugin.getLogger().info("[Apertura End] ✓ Elementos decorativos: MINIMIZADOS para máximo espacio");
+        plugin.getLogger().info("[Apertura End] ✓ Área de combate: 400x400 bloques (200 radio) - ÉPICO");
+        plugin.getLogger().info("[Apertura End] ✓ Altura máxima limpiada: Y=140 - Espacio vertical masivo");
+        plugin.getLogger().info("[Apertura End] ✓ Plataforma principal: 120x120 bloques - AMPLIADA");
+        plugin.getLogger().info("[Apertura End] ✓ Pilares monumentales: 50-60 bloques altura - COLOSALES");
+        plugin.getLogger().info("[Apertura End] ✓ Decoración terreno: Estructuras, formaciones, patrones - ÉPICO");
+        plugin.getLogger().info("[Apertura End] ✓ Obeliscos perimetrales: Monumentos decorativos distribuidos");
     }
     
     /**
@@ -2373,8 +2678,8 @@ public class AperturaEndEvent extends EventBase {
                 double dist = Math.sqrt(x * x + z * z);
                 if (dist > radius) continue;
                 
-                // LIMPIEZA VERTICAL MASIVA: Remover TODO desde el suelo hasta altura 120
-                for (int y = centerY - 20; y <= 120; y++) {
+                // LIMPIEZA VERTICAL MASIVA: Remover TODO desde el suelo hasta altura 140 (ÉPICO)
+                for (int y = centerY - 20; y <= 140; y++) {
                     Block block = world.getBlockAt(centerX + x, y, centerZ + z);
                     Material type = block.getType();
                     
@@ -2746,9 +3051,9 @@ public class AperturaEndEvent extends EventBase {
      * ═══════════════════════════════════════════════════════════════════
      */
     private void construirPlataformaBatallaEpica(World world, int centerX, int centerY, int centerZ) {
-        int radius = 50; // Plataforma de 100x100 (AMPLIADO desde 80x80)
+        int radius = 90; // Plataforma de 180x180 (MEGA ÉPICA)
         
-        plugin.getLogger().info("[Arena End] Construyendo plataforma épica 100x100...");
+        plugin.getLogger().info("[Arena End] Construyendo plataforma MEGA épica 180x180...");
         
         // ═══════════════════════════════════════════════════════════════
         // CAPA -3 (CIMIENTOS PROFUNDOS): Patrón de netherite y bedrock
@@ -2872,10 +3177,24 @@ public class AperturaEndEvent extends EventBase {
                 }
                 
                 // ═══════════════════════════════════════════════════════
-                // ILUMINACIÓN DISPERSA ESTRATÉGICA
+                // ILUMINACIÓN DISPERSA ESTRATÉGICA - más densa
                 // ═══════════════════════════════════════════════════════
-                if (dist > 15 && dist < 43 && Math.random() < 0.03) {
+                if (dist > 15 && dist < 43 && Math.random() < 0.05) {
                     surface.setType(Material.GLOWSTONE);
+                }
+                
+                // ═══════════════════════════════════════════════════════
+                // DECORACIÓN ADICIONAL: Bloques de purpur dispersos
+                // ═══════════════════════════════════════════════════════
+                if (dist > 25 && dist < 40 && Math.random() < 0.04) {
+                    surface.setType(Material.PURPUR_BLOCK);
+                }
+                
+                // ═══════════════════════════════════════════════════════
+                // DETALLES: Pequeños clusters de end stone bricks
+                // ═══════════════════════════════════════════════════════
+                if (dist > 30 && dist < 50 && Math.random() < 0.03) {
+                    surface.setType(Material.END_STONE_BRICKS);
                 }
                 
                 // ═══════════════════════════════════════════════════════
@@ -2931,7 +3250,7 @@ public class AperturaEndEvent extends EventBase {
         world.getBlockAt(centerX + 2, centerY + 2, centerZ - 2).setType(Material.END_ROD);
         world.getBlockAt(centerX - 2, centerY + 2, centerZ - 2).setType(Material.END_ROD);
         
-        plugin.getLogger().info("[Arena End] ✓ Plataforma épica 100x100 construida:");
+        plugin.getLogger().info("[Arena End] ✓ Plataforma épica 120x120 construida:");
         plugin.getLogger().info("[Arena End]   - 5 anillos concéntricos");
         plugin.getLogger().info("[Arena End]   - 8 caminos radiales");
         plugin.getLogger().info("[Arena End]   - 3 círculos de runas luminosas");
@@ -2939,11 +3258,11 @@ public class AperturaEndEvent extends EventBase {
     }
     
     /**
-     * Construye 12 pilares COLOSALES monumentales alrededor de la arena (40-45 bloques)
+     * Construye 12 pilares COLOSALES monumentales alrededor de la arena (50-60 bloques) - ÉPICOS
      */
     private void construirPilaresBatalla(World world, int centerX, int centerY, int centerZ) {
-        int[] distancias = {32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32};
-        int[] alturas = {42, 40, 44, 41, 43, 39, 45, 42, 40, 43, 41, 44};
+        int[] distancias = {40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40}; // MÁS SEPARADOS
+        int[] alturas = {55, 52, 58, 54, 60, 51, 59, 56, 53, 57, 54, 58}; // MÁS ALTOS
         
         for (int i = 0; i < 12; i++) {
             double angle = (i * Math.PI * 2) / 12;
@@ -3018,15 +3337,15 @@ public class AperturaEndEvent extends EventBase {
     }
     
     /**
-     * Construye 4 torres esquineras MASIVAS con cristales (35 bloques altura)
+     * Construye 4 torres esquineras MASIVAS con cristales (45 bloques altura) - ÉPICAS
      */
     private void construirTorresEsquineras(World world, int centerX, int centerY, int centerZ) {
-        int[][] esquinas = {{28, 28}, {-28, 28}, {28, -28}, {-28, -28}};
+        int[][] esquinas = {{35, 35}, {-35, 35}, {35, -35}, {-35, -35}}; // MÁS SEPARADAS
         
         for (int[] esquina : esquinas) {
             int x = centerX + esquina[0];
             int z = centerZ + esquina[1];
-            int altura = 35; // AUMENTADO desde 20
+            int altura = 45; // AUMENTADO ÉPICO desde 35
             
             // Base MASIVA de la torre (11x11)
             for (int xOff = -5; xOff <= 5; xOff++) {
@@ -3154,15 +3473,15 @@ public class AperturaEndEvent extends EventBase {
     }
     
     /**
-     * Genera fragmentos flotantes MASIVOS épicos alrededor de la arena (80-100 fragmentos)
+     * Genera fragmentos flotantes MASIVOS épicos alrededor de la arena (120-150 fragmentos)
      */
     private void generarFragmentosFlotantesEpicos(World world, int centerX, int centerY, int centerZ) {
-        int cantidadFragmentos = 80 + random.nextInt(21); // 80-100 fragmentos (DUPLICADO)
+        int cantidadFragmentos = 120 + random.nextInt(31); // 120-150 fragmentos (MEGA ÉPICO)
         
         for (int i = 0; i < cantidadFragmentos; i++) {
             // Posición aleatoria alrededor (pero no muy cerca del centro)
             double angle = Math.random() * Math.PI * 2;
-            double distancia = 35 + Math.random() * 35; // Entre 35-70 bloques (EXPANDIDO)
+            double distancia = 45 + Math.random() * 50; // Entre 45-95 bloques (MEGA EXPANDIDO)
             int x = centerX + (int)(Math.cos(angle) * distancia);
             int z = centerZ + (int)(Math.sin(angle) * distancia);
             int y = centerY + 5 + random.nextInt(35); // Entre 5-40 bloques de altura (MÁS ALTO)
@@ -3276,14 +3595,14 @@ public class AperturaEndEvent extends EventBase {
      * - Iluminación épica con beacons y sea lanterns
      */
     private void construirAltarCentral(World world, int centerX, int centerY, int centerZ) {
-        plugin.getLogger().info("[Arena End] Construyendo altar central épico...");
+        plugin.getLogger().info("[Arena End] Construyendo altar central MEGA épico...");
         
-        int radioBase = 7; // Plataforma de 15x15
+        int radioBase = 10; // Plataforma de 21x21 (MEGA EXPANDIDO)
         
         // ═══════════════════════════════════════════════════════════════
-        // PLATAFORMA ESCALONADA (8 niveles hacia arriba)
+        // PLATAFORMA ESCALONADA (4 niveles hacia arriba - MÁS BAJA)
         // ═══════════════════════════════════════════════════════════════
-        for (int nivel = 0; nivel < 8; nivel++) {
+        for (int nivel = 0; nivel < 4; nivel++) {
             int radioNivel = radioBase - nivel;
             
             for (int x = -radioNivel; x <= radioNivel; x++) {
@@ -3340,12 +3659,12 @@ public class AperturaEndEvent extends EventBase {
             // Base del pilar (3x3)
             for (int xOff = -1; xOff <= 1; xOff++) {
                 for (int zOff = -1; zOff <= 1; zOff++) {
-                    world.getBlockAt(pilarX + xOff, centerY + 7, pilarZ + zOff).setType(Material.NETHERITE_BLOCK);
+                    world.getBlockAt(pilarX + xOff, centerY + 3, pilarZ + zOff).setType(Material.NETHERITE_BLOCK);
                 }
             }
             
-            // Cuerpo del pilar (altura 12 bloques)
-            for (int y = 8; y < 20; y++) {
+            // Cuerpo del pilar (altura 8 bloques - MÁS BAJO)
+            for (int y = 4; y < 12; y++) {
                 Material mat = (y % 3 == 0) ? Material.PURPUR_PILLAR : Material.POLISHED_BLACKSTONE_BRICKS;
                 world.getBlockAt(pilarX, centerY + y, pilarZ).setType(mat);
                 
@@ -3359,46 +3678,46 @@ public class AperturaEndEvent extends EventBase {
             }
             
             // Cima del pilar con cristal de amatista
-            world.getBlockAt(pilarX, centerY + 20, pilarZ).setType(Material.AMETHYST_BLOCK);
-            world.getBlockAt(pilarX, centerY + 21, pilarZ).setType(Material.AMETHYST_CLUSTER);
+            world.getBlockAt(pilarX, centerY + 12, pilarZ).setType(Material.AMETHYST_BLOCK);
+            world.getBlockAt(pilarX, centerY + 13, pilarZ).setType(Material.AMETHYST_CLUSTER);
             
             // Sea lantern flotante sobre el pilar
-            world.getBlockAt(pilarX, centerY + 22, pilarZ).setType(Material.SEA_LANTERN);
+            world.getBlockAt(pilarX, centerY + 14, pilarZ).setType(Material.SEA_LANTERN);
         }
         
         // ═══════════════════════════════════════════════════════════════
-        // PORTAL DECORATIVO DIMENSIONAL (marco de 5x5)
+        // PORTAL DECORATIVO DIMENSIONAL (marco de 5x5 - MÁS BAJO)
         // ═══════════════════════════════════════════════════════════════
         // Marco inferior
         for (int x = -2; x <= 2; x++) {
-            world.getBlockAt(centerX + x, centerY + 8, centerZ).setType(Material.OBSIDIAN);
+            world.getBlockAt(centerX + x, centerY + 4, centerZ).setType(Material.OBSIDIAN);
         }
         
         // Pilares laterales
-        for (int y = 9; y <= 12; y++) {
+        for (int y = 5; y <= 6; y++) {
             world.getBlockAt(centerX - 2, centerY + y, centerZ).setType(Material.OBSIDIAN);
             world.getBlockAt(centerX + 2, centerY + y, centerZ).setType(Material.OBSIDIAN);
         }
         
         // Marco superior
         for (int x = -2; x <= 2; x++) {
-            world.getBlockAt(centerX + x, centerY + 13, centerZ).setType(Material.OBSIDIAN);
+            world.getBlockAt(centerX + x, centerY + 7, centerZ).setType(Material.OBSIDIAN);
         }
         
         // Interior del portal (purple stained glass)
         for (int x = -1; x <= 1; x++) {
-            for (int y = 9; y <= 12; y++) {
+            for (int y = 5; y <= 6; y++) {
                 world.getBlockAt(centerX + x, centerY + y, centerZ).setType(Material.PURPLE_STAINED_GLASS);
             }
         }
         
         // ═══════════════════════════════════════════════════════════════
-        // OBELISCO CENTRAL FLOTANTE (sobre el portal)
+        // OBELISCO CENTRAL BAJO (sobre el portal) - ALTURA 12 BLOQUES
         // ═══════════════════════════════════════════════════════════════
-        for (int y = 14; y < 34; y++) {
+        for (int y = 8; y < 20; y++) {
             // El obelisco se adelgaza hacia arriba
             Material mat;
-            if (y < 20) {
+            if (y < 14) {
                 mat = Material.CRYING_OBSIDIAN;
                 // Base más ancha
                 world.getBlockAt(centerX, centerY + y, centerZ).setType(mat);
@@ -3408,7 +3727,7 @@ public class AperturaEndEvent extends EventBase {
                     world.getBlockAt(centerX, centerY + y, centerZ + 1).setType(Material.OBSIDIAN);
                     world.getBlockAt(centerX, centerY + y, centerZ - 1).setType(Material.OBSIDIAN);
                 }
-            } else if (y < 28) {
+            } else if (y < 18) {
                 mat = Material.PURPUR_PILLAR;
                 world.getBlockAt(centerX, centerY + y, centerZ).setType(mat);
             } else {
@@ -3418,7 +3737,7 @@ public class AperturaEndEvent extends EventBase {
             }
             
             // Anillos luminosos cada 6 bloques
-            if (y % 6 == 0 && y < 28) {
+            if (y % 6 == 0 && y < 18) {
                 for (int i = 0; i < 4; i++) {
                     double ringAngle = (i * Math.PI / 2);
                     int ringX = centerX + (int)(Math.cos(ringAngle) * 2);
@@ -3429,25 +3748,25 @@ public class AperturaEndEvent extends EventBase {
         }
         
         // ═══════════════════════════════════════════════════════════════
-        // BEACON EN LA CIMA DEL OBELISCO
+        // BEACON EN LA CIMA DEL OBELISCO BAJO
         // ═══════════════════════════════════════════════════════════════
-        world.getBlockAt(centerX, centerY + 34, centerZ).setType(Material.BEACON);
+        world.getBlockAt(centerX, centerY + 20, centerZ).setType(Material.BEACON);
         
         // Corona de sea lanterns alrededor del beacon
         for (int i = 0; i < 4; i++) {
             double crownAngle = (i * Math.PI / 2);
             int crownX = centerX + (int)(Math.cos(crownAngle));
             int crownZ = centerZ + (int)(Math.sin(crownAngle));
-            world.getBlockAt(crownX, centerY + 34, crownZ).setType(Material.SEA_LANTERN);
+            world.getBlockAt(crownX, centerY + 20, crownZ).setType(Material.SEA_LANTERN);
         }
         
         // ═══════════════════════════════════════════════════════════════
-        // ESCALERAS DE ACCESO (4 escaleras hacia el altar)
+        // ESCALERAS DE ACCESO (4 escaleras hacia el altar - MÁS CORTAS)
         // ═══════════════════════════════════════════════════════════════
         for (int i = 0; i < 4; i++) {
             double stairAngle = (i * Math.PI / 2);
             
-            for (int step = 0; step < 8; step++) {
+            for (int step = 0; step < 4; step++) {
                 int stairX = centerX + (int)(Math.cos(stairAngle) * (7 + step));
                 int stairZ = centerZ + (int)(Math.sin(stairAngle) * (7 + step));
                 
@@ -3462,12 +3781,12 @@ public class AperturaEndEvent extends EventBase {
             }
         }
         
-        plugin.getLogger().info("[Arena End] ✓ Altar central épico construido:");
-        plugin.getLogger().info("[Arena End]   - Plataforma escalonada 15x15 (8 niveles)");
-        plugin.getLogger().info("[Arena End]   - 8 pilares monumentales con cristales");
-        plugin.getLogger().info("[Arena End]   - Portal dimensional decorativo");
-        plugin.getLogger().info("[Arena End]   - Obelisco flotante (altura 20)");
-        plugin.getLogger().info("[Arena End]   - Beacon en la cima");
+        plugin.getLogger().info("[Arena End] ✓ Altar central BAJO construido:");
+        plugin.getLogger().info("[Arena End]   - Plataforma escalonada 21x21 (4 niveles)");
+        plugin.getLogger().info("[Arena End]   - 8 pilares bajos con cristales (8 bloques)");
+        plugin.getLogger().info("[Arena End]   - Portal dimensional decorativo compacto");
+        plugin.getLogger().info("[Arena End]   - Obelisco flotante BAJO (altura 12 bloques)");
+        plugin.getLogger().info("[Arena End]   - Beacon en la cima (Y+20)");
     }
     
     /**
@@ -3883,41 +4202,71 @@ public class AperturaEndEvent extends EventBase {
                 World world = centro.getWorld();
                 if (world == null) return;
                 
-                // Partículas en pilares (cada 2 segundos)
-                if (ticks % 40 == 0) {
+                // Partículas ÉPICAS en pilares (cada 1 segundo) - INTENSIFICADO
+                if (ticks % 20 == 0) {
                     for (int i = 0; i < 8; i++) {
                         double angle = (i * Math.PI * 2) / 8;
                         int x = (int)(centro.getX() + Math.cos(angle) * 25);
                         int z = (int)(centro.getZ() + Math.sin(angle) * 25);
                         
                         Location pilarLoc = new Location(world, x, centro.getY() + 30, z);
-                        world.spawnParticle(Particle.END_ROD, pilarLoc, 10, 0.3, 2, 0.3, 0.05);
+                        // TRIPLICADO y añadido dragon breath
+                        world.spawnParticle(Particle.END_ROD, pilarLoc, 30, 0.5, 3, 0.5, 0.08);
+                        world.spawnParticle(Particle.DRAGON_BREATH, pilarLoc, 15, 0.3, 2, 0.3, 0.02);
+                        world.spawnParticle(Particle.PORTAL, pilarLoc, 20, 0.4, 2.5, 0.4, 0.5);
                     }
                 }
                 
-                // Espiral central (constante)
-                double radioEspiral = 3 + Math.sin(ticks * 0.1) * 1;
-                for (int i = 0; i < 10; i++) {
-                    double angulo = (ticks + i * 36) * 0.1;
+                // Espiral central MASIVA (constante) - TRIPLICADO
+                double radioEspiral = 3 + Math.sin(ticks * 0.1) * 1.5;
+                for (int i = 0; i < 30; i++) { // 10 → 30 partículas
+                    double angulo = (ticks + i * 12) * 0.15;
                     double x = centro.getX() + radioEspiral * Math.cos(angulo);
                     double z = centro.getZ() + radioEspiral * Math.sin(angulo);
-                    double y = centro.getY() + ((ticks + i * 14) % 100) * 0.15;
+                    double y = centro.getY() + ((ticks + i * 14) % 100) * 0.2;
                     
                     Location spiralLoc = new Location(world, x, y, z);
-                    world.spawnParticle(Particle.PORTAL, spiralLoc, 2, 0, 0, 0, 0);
+                    world.spawnParticle(Particle.PORTAL, spiralLoc, 5, 0, 0, 0, 0);
+                    world.spawnParticle(Particle.REVERSE_PORTAL, spiralLoc, 3, 0.1, 0.1, 0.1, 0);
                 }
                 
-                // Runas pulsantes (cada 5 segundos)
-                if (ticks % 100 == 0) {
+                // Runas pulsantes ÉPICAS (cada 3 segundos) - MÁS FRECUENTE
+                if (ticks % 60 == 0) {
                     int[] radios = {10, 17, 24};
                     for (int radio : radios) {
-                        for (double angle = 0; angle < 360; angle += 15) {
+                        for (double angle = 0; angle < 360; angle += 10) { // Más runas
                             double rad = Math.toRadians(angle);
                             int x = (int)(centro.getX() + Math.cos(rad) * radio);
                             int z = (int)(centro.getZ() + Math.sin(rad) * radio);
                             
                             Location runaLoc = new Location(world, x, centro.getY() + 1, z);
-                            world.spawnParticle(Particle.ENCHANT, runaLoc, 15, 0.3, 0.5, 0.3, 0);
+                            world.spawnParticle(Particle.ENCHANT, runaLoc, 30, 0.4, 0.8, 0.4, 0);
+                            world.spawnParticle(Particle.SOUL_FIRE_FLAME, runaLoc, 10, 0.2, 0.3, 0.2, 0.01);
+                        }
+                    }
+                }
+                
+                // NUEVO: Aura central pulsante épica
+                if (ticks % 10 == 0) {
+                    double pulseRadius = 5 + Math.sin(ticks * 0.05) * 2;
+                    for (int i = 0; i < 50; i++) {
+                        double angle = (i * Math.PI * 2) / 50;
+                        double x = centro.getX() + Math.cos(angle) * pulseRadius;
+                        double z = centro.getZ() + Math.sin(angle) * pulseRadius;
+                        Location pulseLoc = new Location(world, x, centro.getY() + 2, z);
+                        world.spawnParticle(Particle.SOUL, pulseLoc, 2, 0.1, 0.1, 0.1, 0.01);
+                    }
+                }
+                
+                // NUEVO: Rayos de energía desde pilares cada 5 segundos
+                if (ticks % 100 == 0) {
+                    for (int i = 0; i < 8; i++) {
+                        double angle = (i * Math.PI * 2) / 8;
+                        for (int dist = 25; dist > 0; dist -= 2) {
+                            int x = (int)(centro.getX() + Math.cos(angle) * dist);
+                            int z = (int)(centro.getZ() + Math.sin(angle) * dist);
+                            Location rayLoc = new Location(world, x, centro.getY() + 1, z);
+                            world.spawnParticle(Particle.END_ROD, rayLoc, 3, 0.1, 0.1, 0.1, 0.05);
                         }
                     }
                 }
@@ -4385,49 +4734,66 @@ public class AperturaEndEvent extends EventBase {
                            new Location(endWorld, 0, 80, 0);
         
         plugin.getLogger().info("[Apertura End] ⚡⚡⚡ CINEMÁTICA DE TRANSICIÓN INICIADA ⚡⚡⚡");
-        plugin.getLogger().info("[Apertura End] ⚡ Dragón vanilla derrotado, revelando la verdad...");
+        plugin.getLogger().info("[Apertura End] ⚡ Dragón vanilla derrotado, esperando 10 segundos antes de revelar la verdad...");
         
         // Marcar que el vanilla murió
         dragonVanillaMuerto = true;
         
         // ═══════════════════════════════════════════════════════════════
-        // T+0s: ELIMINAR PORTAL DEL END (el que se crea automáticamente)
+        // T+0s: VICTORIA FALSA - Dejar que los jugadores crean que ganaron (10 segundos)
         // ═══════════════════════════════════════════════════════════════
-        // Cuando muere el dragón vanilla, Minecraft crea automáticamente
-        // un portal de salida en el End. Necesitamos eliminarlo porque
-        // este no era el verdadero dragón final.
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                eliminarPortalSalidaEnd(endWorld);
-            }
-        }.runTaskLater(plugin, 20L); // 1 segundo después para dar tiempo a que se genere
+        // Los jugadores ven morir al dragón normalmente, sin intervención
+        // Se genera el portal, reciben XP, se sienten victoriosos...
+        // Pero después de 10 segundos, la verdad se revela.
         
-        // También eliminar el portal del Overworld (ya no es necesario)
-        eliminarPortalOverworld();
-        
-        // ═══════════════════════════════════════════════════════════════
-        // T+0s: SILENCIO INICIAL + PANTALLA OSCURA
-        // ═══════════════════════════════════════════════════════════════
         for (Player p : Bukkit.getOnlinePlayers()) {
             if (p.getWorld().equals(endWorld)) {
-                p.addPotionEffect(new org.bukkit.potion.PotionEffect(
-                    org.bukkit.potion.PotionEffectType.BLINDNESS, 200, 2, false, false));
-                p.sendTitle("§0 ", "§0 ", 10, 100, 20);
+                // Sonido de victoria temporal
                 p.playSound(p.getLocation(), Sound.ENTITY_ENDER_DRAGON_DEATH, 1.5f, 0.8f);
             }
         }
         
+        // Mensaje de victoria temporal
         Bukkit.broadcastMessage("");
-        Bukkit.broadcastMessage("§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        Bukkit.broadcastMessage("§a§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         Bukkit.broadcastMessage("");
-        Bukkit.broadcastMessage("§8...");
+        Bukkit.broadcastMessage("§a§l✔ ¡DRAGÓN DERROTADO!");
         Bukkit.broadcastMessage("");
-        Bukkit.broadcastMessage("§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        Bukkit.broadcastMessage("§a§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         Bukkit.broadcastMessage("");
         
         // ═══════════════════════════════════════════════════════════════
-        // T+3s: PRIMER DIÁLOGO - LA REVELACIÓN
+        // T+10s: INICIO DE LA VERDADERA CINEMÁTICA
+        // ═══════════════════════════════════════════════════════════════
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                // Eliminar el portal del End (revelar que no era el verdadero final)
+                eliminarPortalSalidaEnd(endWorld);
+                eliminarPortalOverworld();
+                
+                // SILENCIO INICIAL + PANTALLA OSCURA
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    if (p.getWorld().equals(endWorld)) {
+                        p.addPotionEffect(new org.bukkit.potion.PotionEffect(
+                            org.bukkit.potion.PotionEffectType.BLINDNESS, 200, 2, false, false));
+                        p.sendTitle("§0 ", "§0 ", 10, 100, 20);
+                        p.playSound(p.getLocation(), Sound.ENTITY_WITHER_SPAWN, 1.0f, 0.5f);
+                    }
+                }
+                
+                Bukkit.broadcastMessage("");
+                Bukkit.broadcastMessage("§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                Bukkit.broadcastMessage("");
+                Bukkit.broadcastMessage("§8...");
+                Bukkit.broadcastMessage("");
+                Bukkit.broadcastMessage("§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                Bukkit.broadcastMessage("");
+            }
+        }.runTaskLater(plugin, 200L); // 10 segundos de espera
+        
+        // ═══════════════════════════════════════════════════════════════
+        // T+15s: PRIMER DIÁLOGO - LA REVELACIÓN (10s + 5s)
         // ═══════════════════════════════════════════════════════════════
         new BukkitRunnable() {
             @Override
@@ -4442,15 +4808,15 @@ public class AperturaEndEvent extends EventBase {
                 
                 for (Player p : Bukkit.getOnlinePlayers()) {
                     if (p.getWorld().equals(endWorld)) {
-                        p.sendTitle("§8§l...", "§7¿Ese... era el dragón?", 10, 60, 20);
+                        p.sendTitle("§8§l...", "§7¿Ese... era el dragón?", 10, 80, 20);
                         p.playSound(p.getLocation(), Sound.AMBIENT_CAVE, 1.5f, 0.3f);
                     }
                 }
             }
-        }.runTaskLater(plugin, 60L);
+        }.runTaskLater(plugin, 300L); // 10s + 5s = 15s
         
         // ═══════════════════════════════════════════════════════════════
-        // T+6s: SEGUNDO DIÁLOGO - NEGACIÓN
+        // T+21s: SEGUNDO DIÁLOGO - NEGACIÓN (10s + 11s)
         // ═══════════════════════════════════════════════════════════════
         new BukkitRunnable() {
             @Override
@@ -4467,15 +4833,15 @@ public class AperturaEndEvent extends EventBase {
                 
                 for (Player p : Bukkit.getOnlinePlayers()) {
                     if (p.getWorld().equals(endWorld)) {
-                        p.sendTitle("§c§lNO", "§7Ese no era el dragón verdadero", 10, 70, 20);
+                        p.sendTitle("§c§lNO", "§7Ese no era el dragón verdadero", 10, 90, 20);
                         p.playSound(p.getLocation(), Sound.ENTITY_WITHER_AMBIENT, 1.0f, 0.5f);
                     }
                 }
             }
-        }.runTaskLater(plugin, 120L);
+        }.runTaskLater(plugin, 420L); // 10s + 11s = 21s
         
         // ═══════════════════════════════════════════════════════════════
-        // T+9s: TERCER DIÁLOGO - CONEXIÓN CON EVENTOS ECO
+        // T+28s: TERCER DIÁLOGO - CONEXIÓN CON EVENTOS ECO (10s + 18s)
         // ═══════════════════════════════════════════════════════════════
         new BukkitRunnable() {
             @Override
@@ -4494,15 +4860,15 @@ public class AperturaEndEvent extends EventBase {
                 
                 for (Player p : Bukkit.getOnlinePlayers()) {
                     if (p.getWorld().equals(endWorld)) {
-                        p.sendTitle("§5§l...", "§7Fragmentos de ESTO", 10, 60, 20);
+                        p.sendTitle("§5§l...", "§7Fragmentos de ESTO", 10, 80, 20);
                         p.playSound(p.getLocation(), Sound.BLOCK_PORTAL_AMBIENT, 1.5f, 0.4f);
                     }
                 }
             }
-        }.runTaskLater(plugin, 180L);
+        }.runTaskLater(plugin, 560L); // 10s + 18s = 28s
         
         // ═══════════════════════════════════════════════════════════════
-        // T+13s: CUARTO DIÁLOGO - MUNDOS ANTERIORES + CURACIÓN/REPARACIÓN
+        // T+35s: CUARTO DIÁLOGO - MUNDOS ANTERIORES + CURACIÓN/REPARACIÓN (10s + 25s)
         // ═══════════════════════════════════════════════════════════════
         new BukkitRunnable() {
             @Override
@@ -4521,7 +4887,7 @@ public class AperturaEndEvent extends EventBase {
                 
                 for (Player p : Bukkit.getOnlinePlayers()) {
                     if (p.getWorld().equals(endWorld)) {
-                        p.sendTitle("§5§lMUNDOS ANTERIORES", "§7Y siempre... vuelve", 10, 80, 20);
+                        p.sendTitle("§5§lMUNDOS ANTERIORES", "§7Y siempre... vuelve", 10, 100, 20);
                         p.playSound(p.getLocation(), Sound.ENTITY_ENDERMAN_SCREAM, 1.0f, 0.3f);
                     }
                 }
@@ -4624,12 +4990,12 @@ public class AperturaEndEvent extends EventBase {
                         
                         plugin.getLogger().info("[Apertura End] ⚡ Todos los jugadores curados y reparados completamente");
                     }
-                }.runTaskLater(plugin, 60L); // 3 segundos después (260+60=320 ticks)
+                }.runTaskLater(plugin, 100L); // 5 segundos después de T+35s
             }
-        }.runTaskLater(plugin, 260L);
+        }.runTaskLater(plugin, 700L); // 10s + 25s = 35s
         
         // ═══════════════════════════════════════════════════════════════
-        // T+17s: QUINTO DIÁLOGO - ADVERTENCIA FINAL (después de curación)
+        // T+46s: QUINTO DIÁLOGO - ADVERTENCIA FINAL (10s + 36s, después de curación)
         // ═══════════════════════════════════════════════════════════════
         new BukkitRunnable() {
             @Override
@@ -4648,16 +5014,16 @@ public class AperturaEndEvent extends EventBase {
                 
                 for (Player p : Bukkit.getOnlinePlayers()) {
                     if (p.getWorld().equals(endWorld)) {
-                        p.sendTitle("§c§l⚠", "§7Lo van a necesitar todo", 10, 70, 20);
+                        p.sendTitle("§c§l⚠", "§7Lo van a necesitar todo", 10, 90, 20);
                         p.playSound(p.getLocation(), Sound.ENTITY_WITHER_AMBIENT, 1.2f, 0.6f);
                         p.playSound(p.getLocation(), Sound.AMBIENT_CAVE, 1.5f, 0.4f);
                     }
                 }
             }
-        }.runTaskLater(plugin, 380L); // T+19s (380 ticks / 20 = 19 segundos)
+        }.runTaskLater(plugin, 920L); // 10s + 36s = 46s
         
         // ═══════════════════════════════════════════════════════════════
-        // T+22s: SEXTO DIÁLOGO - REVELACIÓN DEL VERDADERO
+        // T+53s: SEXTO DIÁLOGO - REVELACIÓN DEL VERDADERO (10s + 43s)
         // ═══════════════════════════════════════════════════════════════
         new BukkitRunnable() {
             @Override
@@ -4676,17 +5042,17 @@ public class AperturaEndEvent extends EventBase {
                 
                 for (Player p : Bukkit.getOnlinePlayers()) {
                     if (p.getWorld().equals(endWorld)) {
-                        p.sendTitle("§4§l⚠⚠⚠", "§c§lEL VERDADERO DRAGÓN", 10, 80, 20);
+                        p.sendTitle("§4§l⚠⚠⚠", "§c§lEL VERDADERO DRAGÓN", 10, 100, 20);
                         p.playSound(p.getLocation(), Sound.ENTITY_WITHER_SPAWN, 1.5f, 0.4f);
                         p.playSound(p.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 1.0f, 0.5f);
                         p.playSound(p.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 1.8f, 0.3f);
                     }
                 }
             }
-        }.runTaskLater(plugin, 440L); // T+22s (440 ticks / 20 = 22 segundos)
+        }.runTaskLater(plugin, 1060L); // 10s + 43s = 53s
         
         // ═══════════════════════════════════════════════════════════════
-        // T+25s: EFECTOS PRE-SPAWN MASIVOS
+        // T+60s: EFECTOS PRE-SPAWN MASIVOS (10s + 50s)
         // ═══════════════════════════════════════════════════════════════
         new BukkitRunnable() {
             @Override
@@ -4717,10 +5083,10 @@ public class AperturaEndEvent extends EventBase {
                     }
                 }
             }
-        }.runTaskLater(plugin, 500L); // T+25s (500 ticks / 20 = 25 segundos)
+        }.runTaskLater(plugin, 1200L); // 10s + 50s = 60s
         
         // ═══════════════════════════════════════════════════════════════
-        // T+28s: SPAWN DEL DRAGÓN MYTHIC (VERDADERO)
+        // T+65s: SPAWN DEL DRAGÓN MYTHIC (VERDADERO) (10s + 55s)
         // ═══════════════════════════════════════════════════════════════
         new BukkitRunnable() {
             @Override
@@ -4778,7 +5144,7 @@ public class AperturaEndEvent extends EventBase {
                 // Reiniciar tracking del dragón (ahora para el mythic)
                 iniciarTrackingDragon();
             }
-        }.runTaskLater(plugin, 560L); // T+28s (560 ticks / 20 = 28 segundos)
+        }.runTaskLater(plugin, 1300L); // 10s + 55s = 65s (1300 ticks)
     }
     
     /**
@@ -4960,6 +5326,12 @@ public class AperturaEndEvent extends EventBase {
         // Iniciar sistema de spawneo de mobs hostiles
         iniciarSpawnMobsHostiles();
         
+        // NUEVO: Iniciar sistema de desastres naturales durante la batalla
+        iniciarDesastresNaturalesBatalla();
+        
+        // NUEVO: Iniciar verificación constante de targets de mobs (cada 5 segundos)
+        iniciarVerificacionTargetsMobs();
+        
         new BukkitRunnable() {
             @Override
             public void run() {
@@ -5042,6 +5414,9 @@ public class AperturaEndEvent extends EventBase {
                 bossBar.setColor(BarColor.PURPLE);
             }
             
+            // NUEVO: Reparar toda la armadura de los jugadores en el End
+            repararArmaduraJugadores();
+            
             // Reiniciar sistema de spawneo de mobs con nuevo intervalo
             if (spawnMobsHostilesTask != null && !spawnMobsHostilesTask.isCancelled()) {
                 spawnMobsHostilesTask.cancel();
@@ -5060,6 +5435,115 @@ public class AperturaEndEvent extends EventBase {
             plugin.getLogger().info("[Apertura End] Fase del dragón: " + faseDragon + " (" + (hpPercent * 100) + "% HP)");
         } else {
             plugin.getLogger().info(String.format("[Apertura End] Sin cambio de fase - Permanece en: %s", faseDragon));
+        }
+    }
+    
+    /**
+     * ═══════════════════════════════════════════════════════════════════
+     * REPARAR ARMADURA DE TODOS LOS JUGADORES EN EL END
+     * ═══════════════════════════════════════════════════════════════════
+     * Se ejecuta cuando hay un cambio de fase del dragón
+     * Repara completamente toda la armadura equipada de cada jugador
+     */
+    private void repararArmaduraJugadores() {
+        int jugadoresReparados = 0;
+        int piezasReparadas = 0;
+        
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            // Solo jugadores en el End
+            if (p.getWorld().getEnvironment() != World.Environment.THE_END) {
+                continue;
+            }
+            
+            boolean jugadorReparado = false;
+            
+            // Reparar casco
+            org.bukkit.inventory.ItemStack helmet = p.getInventory().getHelmet();
+            if (helmet != null && helmet.getType() != Material.AIR) {
+                org.bukkit.inventory.meta.ItemMeta meta = helmet.getItemMeta();
+                if (meta instanceof org.bukkit.inventory.meta.Damageable) {
+                    org.bukkit.inventory.meta.Damageable damageable = (org.bukkit.inventory.meta.Damageable) meta;
+                    if (damageable.getDamage() > 0) {
+                        damageable.setDamage(0);
+                        helmet.setItemMeta(meta);
+                        p.getInventory().setHelmet(helmet);
+                        piezasReparadas++;
+                        jugadorReparado = true;
+                    }
+                }
+            }
+            
+            // Reparar pechera
+            org.bukkit.inventory.ItemStack chestplate = p.getInventory().getChestplate();
+            if (chestplate != null && chestplate.getType() != Material.AIR) {
+                org.bukkit.inventory.meta.ItemMeta meta = chestplate.getItemMeta();
+                if (meta instanceof org.bukkit.inventory.meta.Damageable) {
+                    org.bukkit.inventory.meta.Damageable damageable = (org.bukkit.inventory.meta.Damageable) meta;
+                    if (damageable.getDamage() > 0) {
+                        damageable.setDamage(0);
+                        chestplate.setItemMeta(meta);
+                        p.getInventory().setChestplate(chestplate);
+                        piezasReparadas++;
+                        jugadorReparado = true;
+                    }
+                }
+            }
+            
+            // Reparar pantalones
+            org.bukkit.inventory.ItemStack leggings = p.getInventory().getLeggings();
+            if (leggings != null && leggings.getType() != Material.AIR) {
+                org.bukkit.inventory.meta.ItemMeta meta = leggings.getItemMeta();
+                if (meta instanceof org.bukkit.inventory.meta.Damageable) {
+                    org.bukkit.inventory.meta.Damageable damageable = (org.bukkit.inventory.meta.Damageable) meta;
+                    if (damageable.getDamage() > 0) {
+                        damageable.setDamage(0);
+                        leggings.setItemMeta(meta);
+                        p.getInventory().setLeggings(leggings);
+                        piezasReparadas++;
+                        jugadorReparado = true;
+                    }
+                }
+            }
+            
+            // Reparar botas
+            org.bukkit.inventory.ItemStack boots = p.getInventory().getBoots();
+            if (boots != null && boots.getType() != Material.AIR) {
+                org.bukkit.inventory.meta.ItemMeta meta = boots.getItemMeta();
+                if (meta instanceof org.bukkit.inventory.meta.Damageable) {
+                    org.bukkit.inventory.meta.Damageable damageable = (org.bukkit.inventory.meta.Damageable) meta;
+                    if (damageable.getDamage() > 0) {
+                        damageable.setDamage(0);
+                        boots.setItemMeta(meta);
+                        p.getInventory().setBoots(boots);
+                        piezasReparadas++;
+                        jugadorReparado = true;
+                    }
+                }
+            }
+            
+            // Si se reparó algo, notificar al jugador
+            if (jugadorReparado) {
+                jugadoresReparados++;
+                
+                // Mensaje al jugador
+                p.sendMessage("§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                p.sendMessage("§a§l✦ ARMADURA RESTAURADA ✦");
+                p.sendMessage("§7El poder del dragón repara tu equipo");
+                p.sendMessage("§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                
+                // Efectos visuales
+                p.getWorld().spawnParticle(Particle.ENCHANT, p.getLocation().add(0, 1, 0), 50, 0.5, 1, 0.5, 0.5);
+                p.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING, p.getLocation().add(0, 1, 0), 20, 0.3, 0.5, 0.3, 0.1);
+                
+                // Sonido épico
+                p.playSound(p.getLocation(), Sound.BLOCK_ANVIL_USE, 1.0f, 1.5f);
+                p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 0.8f, 1.2f);
+            }
+        }
+        
+        if (jugadoresReparados > 0) {
+            plugin.getLogger().info(String.format("[Apertura End] ✓ Armadura reparada - Jugadores: %d | Piezas: %d", 
+                jugadoresReparados, piezasReparadas));
         }
     }
     
@@ -5692,8 +6176,8 @@ public class AperturaEndEvent extends EventBase {
         }
         
         long intervalo = getSpawnInterval();
-        plugin.getLogger().info(String.format("[Apertura End] ✓ Spawns de combate iniciados - Fase: %s, Intervalo: %d ticks (%ds) - APARECERÁN CADA %d SEGUNDOS", 
-            faseDragon, intervalo, intervalo / 20, intervalo / 20));
+        plugin.getLogger().info(String.format("[Apertura End] ✓ Spawns de combate iniciados - Fase: %s, Intervalo: %d ticks (%ds) - OLEADAS CADA 1 MINUTO", 
+            faseDragon, intervalo, intervalo / 20));
         
         spawnMobsHostilesTask = new BukkitRunnable() {
             @Override
@@ -5708,19 +6192,87 @@ public class AperturaEndEvent extends EventBase {
                     return;
                 }
                 
-                int jugadoresEnd = 0;
+                // LIMITAR: Limpiar mobs muertos antes de spawnear nuevos
+                limpiarMobsMuertos();
+                
+                // NUEVO: Verificar y eliminar mobs lejanos, respawnear cerca
+                verificarYReposicionarMobsLejanos();
+                
+                // LIMITAR: Contar mobs vivos actuales
+                int mobsVivos = contarMobsVivos();
+                int jugadoresEnd = contarJugadoresEnEnd();
+                int maxMobsPermitidos = jugadoresEnd * 8; // Máximo 8 mobs por jugador simultáneamente
+                
+                if (mobsVivos >= maxMobsPermitidos) {
+                    plugin.getLogger().info(String.format("[Apertura End] ⚠ Límite de mobs alcanzado: %d/%d - Esperando próxima oleada", 
+                        mobsVivos, maxMobsPermitidos));
+                    return; // No spawnear más hasta que mueran algunos
+                }
+                
+                // Mensaje de oleada épico
+                Bukkit.broadcastMessage("");
+                Bukkit.broadcastMessage("§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                Bukkit.broadcastMessage("§c§l⚡ OLEADA DE REFUERZOS ⚡");
+                Bukkit.broadcastMessage("§7Fase: " + obtenerNombreFase());
+                Bukkit.broadcastMessage("§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                Bukkit.broadcastMessage("");
+                
+                // 🌀 EFECTOS ÉPICOS MASIVOS PARA TODOS LOS JUGADORES EN EL END
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    if (p.getWorld().getEnvironment() != World.Environment.THE_END) continue;
+                    
+                    // DARKNESS momentáneo (3-5 segundos) - Pantalla completamente negra 🌑
+                    int duracionDarkness = 60; // 3 segundos
+                    if (faseDragon == DragonPhase.FASE_4_FURIA) duracionDarkness = 100; // 5 segundos en fase 4
+                    p.addPotionEffect(new PotionEffect(
+                        PotionEffectType.DARKNESS, duracionDarkness, 0, false, true, false));
+                    
+                    // Blindness adicional para más impacto visual
+                    p.addPotionEffect(new PotionEffect(
+                        PotionEffectType.BLINDNESS, 30, 0, false, false, false));
+                    
+                    // SONIDOS DRAMÁTICOS Y ATERRADORES 🔊
+                    p.playSound(p.getLocation(), Sound.ENTITY_WITHER_SPAWN, 1.5f, 0.5f); // Sonido de Wither profundo
+                    p.playSound(p.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 2.0f, 0.4f); // Rugido del dragón
+                    p.playSound(p.getLocation(), Sound.AMBIENT_CAVE, 1.0f, 0.3f); // Ambiente tenebroso
+                    p.playSound(p.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 0.8f, 0.6f); // Trueno
+                    
+                    // PARTÍCULAS MASIVAS cerca del jugador ✨
+                    Location playerLoc = p.getLocation();
+                    World w = p.getWorld();
+                    
+                    // Explosión de partículas oscuras
+                    w.spawnParticle(Particle.EXPLOSION, playerLoc.clone().add(0, 2, 0), 10, 3, 3, 3, 0);
+                    w.spawnParticle(Particle.SOUL, playerLoc.clone().add(0, 1, 0), 80, 4, 2, 4, 0.1);
+                    w.spawnParticle(Particle.SMOKE, playerLoc, 100, 5, 3, 5, 0.05);
+                    w.spawnParticle(Particle.LARGE_SMOKE, playerLoc, 50, 4, 2, 4, 0.02);
+                    w.spawnParticle(Particle.PORTAL, playerLoc.clone().add(0, 1, 0), 150, 3, 3, 3, 1.0);
+                    w.spawnParticle(Particle.WITCH, playerLoc, 40, 3, 2, 3, 0.1);
+                    
+                    // Fase 4: Efectos aún más extremos 🔥
+                    if (faseDragon == DragonPhase.FASE_4_FURIA) {
+                        w.spawnParticle(Particle.FLAME, playerLoc, 60, 4, 2, 4, 0.1);
+                        w.spawnParticle(Particle.LAVA, playerLoc, 30, 3, 1, 3, 0);
+                        w.spawnParticle(Particle.DRAGON_BREATH, playerLoc.clone().add(0, 1, 0), 100, 4, 3, 4, 0.05);
+                        p.playSound(p.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 0.5f);
+                    }
+                    
+                    // Mensaje individual dramático
+                    p.sendMessage("");
+                    p.sendMessage("§c§l⚠ LAS SOMBRAS SE MATERIALIZAN ⚠");
+                    p.sendMessage("§7§o" + getMensajeSpawnPorFase());
+                    p.sendMessage("");
+                }
+                
                 // Spawnear mobs para cada jugador en el End
                 for (Player p : Bukkit.getOnlinePlayers()) {
                     if (p.getWorld().getEnvironment() == World.Environment.THE_END) {
                         spawnearMobsParaJugador(p);
-                        jugadoresEnd++;
                     }
                 }
                 
-                if (jugadoresEnd > 0) {
-                    plugin.getLogger().info(String.format("[Apertura End] ✓ Spawns de combate: %d jugadores en End, Fase: %s, Intervalo: %ds", 
-                        jugadoresEnd, faseDragon, getSpawnInterval() / 20));
-                }
+                plugin.getLogger().info(String.format("[Apertura End] ✓ Oleada spawneada: %d jugadores, Fase: %s, Próxima en 1 minuto", 
+                    jugadoresEnd, faseDragon));
                 
                 mobSpawnCounter++;
             }
@@ -5729,16 +6281,11 @@ public class AperturaEndEvent extends EventBase {
     
     /**
      * Devuelve el intervalo de spawneo en ticks según la fase del dragón
-     * Más rápido = más mobs
+     * MODIFICADO: Oleadas cada 1 minuto (1200 ticks) independiente de la fase
      */
     private long getSpawnInterval() {
-        switch (faseDragon) {
-            case FASE_1_AEREO: return 300L; // Cada 15 segundos
-            case FASE_2_INVOCADOR: return 200L; // Cada 10 segundos
-            case FASE_3_DESESPERADO: return 140L; // Cada 7 segundos
-            case FASE_4_FURIA: return 100L; // Cada 5 segundos
-            default: return 300L;
-        }
+        // TODAS LAS FASES: 1 minuto (60 segundos = 1200 ticks)
+        return 1200L; // Oleadas cada 1 minuto - PRESIÓN MÁXIMA 🔥
     }
     
     /**
@@ -5797,14 +6344,15 @@ public class AperturaEndEvent extends EventBase {
     
     /**
      * Devuelve la cantidad de mobs a spawnear según la fase
+     * AUMENTADO: Más mobs para mayor presión y desafío
      */
     private int getCantidadMobsPorFase() {
         switch (faseDragon) {
-            case FASE_1_AEREO: return 2; // 2 mobs por jugador
-            case FASE_2_INVOCADOR: return 3; // 3 mobs por jugador
-            case FASE_3_DESESPERADO: return 4; // 4 mobs por jugador
-            case FASE_4_FURIA: return 5; // 5 mobs por jugador
-            default: return 2;
+            case FASE_1_AEREO: return 4; // 4 mobs por jugador
+            case FASE_2_INVOCADOR: return 5; // 5 mobs por jugador 🔥
+            case FASE_3_DESESPERADO: return 5; // 5 mobs por jugador 💀
+            case FASE_4_FURIA: return 6; // 6 mobs por jugador - CAOS TOTAL ⚡
+            default: return 4;
         }
     }
     
@@ -5880,39 +6428,39 @@ public class AperturaEndEvent extends EventBase {
                 break;
                 
             case FASE_2_INVOCADOR:
-                // Fase 2: Buffs moderados
+                // Fase 2: Buffs moderados - daño x3.9 (Strength III)
                 mob.addPotionEffect(new org.bukkit.potion.PotionEffect(
                     org.bukkit.potion.PotionEffectType.SPEED, duracion, 1, false, false));
                 mob.addPotionEffect(new org.bukkit.potion.PotionEffect(
                     org.bukkit.potion.PotionEffectType.RESISTANCE, duracion, 0, false, false));
                 mob.addPotionEffect(new org.bukkit.potion.PotionEffect(
-                    org.bukkit.potion.PotionEffectType.STRENGTH, duracion, 0, false, false));
+                    org.bukkit.potion.PotionEffectType.STRENGTH, duracion, 2, false, false)); // Strength III = +390% daño 🔥
                 // Aumentar HP
                 mob.setMaxHealth(mob.getMaxHealth() * 1.3);
                 mob.setHealth(mob.getMaxHealth());
                 break;
                 
             case FASE_3_DESESPERADO:
-                // Fase 3: Buffs fuertes
+                // Fase 3: Buffs fuertes - daño x5.2 (Strength IV)
                 mob.addPotionEffect(new org.bukkit.potion.PotionEffect(
                     org.bukkit.potion.PotionEffectType.SPEED, duracion, 2, false, false));
                 mob.addPotionEffect(new org.bukkit.potion.PotionEffect(
                     org.bukkit.potion.PotionEffectType.RESISTANCE, duracion, 1, false, false));
                 mob.addPotionEffect(new org.bukkit.potion.PotionEffect(
-                    org.bukkit.potion.PotionEffectType.STRENGTH, duracion, 1, false, false));
+                    org.bukkit.potion.PotionEffectType.STRENGTH, duracion, 3, false, false)); // Strength IV = +520% daño 💀
                 // Aumentar HP significativamente
                 mob.setMaxHealth(mob.getMaxHealth() * 1.6);
                 mob.setHealth(mob.getMaxHealth());
                 break;
                 
             case FASE_4_FURIA:
-                // Fase 4: Buffs épicos
+                // Fase 4: Buffs épicos - DAÑO EXTREMO x6.5 🔥
                 mob.addPotionEffect(new org.bukkit.potion.PotionEffect(
                     org.bukkit.potion.PotionEffectType.SPEED, duracion, 3, false, false));
                 mob.addPotionEffect(new org.bukkit.potion.PotionEffect(
                     org.bukkit.potion.PotionEffectType.RESISTANCE, duracion, 2, false, false));
                 mob.addPotionEffect(new org.bukkit.potion.PotionEffect(
-                    org.bukkit.potion.PotionEffectType.STRENGTH, duracion, 2, false, false));
+                    org.bukkit.potion.PotionEffectType.STRENGTH, duracion, 4, false, false)); // Strength V = +550% daño (x6.5 total) 💥
                 mob.addPotionEffect(new org.bukkit.potion.PotionEffect(
                     org.bukkit.potion.PotionEffectType.FIRE_RESISTANCE, duracion, 0, false, false));
                 // HP masivo
@@ -6277,39 +6825,48 @@ public class AperturaEndEvent extends EventBase {
     private void onDragonDeath() {
         faseEvento = EventPhase.VICTORIA;
         
-        plugin.getLogger().info("[Apertura End] ⚡ CINEMÁTICA ÉPICA DE MUERTE INICIADA ⚡");
+        plugin.getLogger().info("[Apertura End] 💀 Dragón eliminado - Esperando animación de muerte (5s)...");
         
         // Usar dragonEntity si está disponible, luego dragon, finalmente fallback al mundo del End
-        World endWorld = dragonEntity != null ? dragonEntity.getWorld() : 
+        final World endWorld = dragonEntity != null ? dragonEntity.getWorld() : 
                          (dragon != null ? dragon.getWorld() : 
                          Bukkit.getWorld(config.getString("evento.mundo_end", "world_the_end")));
         
-        Location deathLoc = dragonEntity != null ? dragonEntity.getLocation().clone() :
+        final Location deathLoc = dragonEntity != null ? dragonEntity.getLocation().clone() :
                            (dragon != null ? dragon.getLocation().clone() : 
                            new Location(endWorld, 0, 80, 0));
         
         // ═══════════════════════════════════════════════════════════════
-        // T+0s: EXPLOSIÓN INICIAL + CEGUERA
+        // DELAY de 5 segundos para permitir ver la animación de muerte
+        // de Model Engine/MythicMobs antes de la cinemática
         // ═══════════════════════════════════════════════════════════════
-        for (Player p : Bukkit.getOnlinePlayers()) {
-            if (p.getWorld().equals(endWorld)) {
-                // Ceguera total
-                p.addPotionEffect(new org.bukkit.potion.PotionEffect(
-                    org.bukkit.potion.PotionEffectType.BLINDNESS, 600, 2, false, false));
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                plugin.getLogger().info("[Apertura End] ⚡ CINEMÁTICA ÉPICA DE MUERTE INICIADA ⚡");
                 
-                // Título de impacto
-                p.sendTitle("§8§l⚡", "§c§lIMPACTO DIMENSIONAL", 10, 100, 20);
+                // ═══════════════════════════════════════════════════════════════
+                // T+5s: EXPLOSIÓN INICIAL + CEGUERA
+                // ═══════════════════════════════════════════════════════════════
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    if (p.getWorld().equals(endWorld)) {
+                        // Ceguera total
+                        p.addPotionEffect(new org.bukkit.potion.PotionEffect(
+                            org.bukkit.potion.PotionEffectType.BLINDNESS, 600, 2, false, false));
+                        
+                        // Título de impacto
+                        p.sendTitle("§8§l⚡", "§c§lIMPACTO DIMENSIONAL", 10, 100, 20);
+                        
+                        // Sonido de explosión masiva
+                        p.playSound(p.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 2.5f, 0.3f);
+                        p.playSound(p.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_IMPACT, 2.0f, 0.5f);
+                    }
+                }
                 
-                // Sonido de explosión masiva
-                p.playSound(p.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 2.5f, 0.3f);
-                p.playSound(p.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_IMPACT, 2.0f, 0.5f);
-            }
-        }
-        
-        // Explosión de partículas en la ubicación de muerte
-        endWorld.spawnParticle(Particle.EXPLOSION_EMITTER, deathLoc, 10, 5, 5, 5, 0);
-        endWorld.spawnParticle(Particle.FLASH, deathLoc, 5, 3, 3, 3, 0);
-        endWorld.spawnParticle(Particle.LAVA, deathLoc, 500, 10, 10, 10, 0.5);
+                // Explosión de partículas en la ubicación de muerte
+                endWorld.spawnParticle(Particle.EXPLOSION_EMITTER, deathLoc, 10, 5, 5, 5, 0);
+                endWorld.spawnParticle(Particle.FLASH, deathLoc, 5, 3, 3, 3, 0);
+                endWorld.spawnParticle(Particle.LAVA, deathLoc, 500, 10, 10, 10, 0.5);
         
         // ═══════════════════════════════════════════════════════════════
         // T+3s: PANTALLA NEGRA TOTAL + SILENCIO
@@ -6500,15 +7057,12 @@ public class AperturaEndEvent extends EventBase {
         }.runTaskLater(plugin, 660L);
         
         // ═══════════════════════════════════════════════════════════════
-        // T+38s: CLIFFHANGER FINAL
+        // CLIFFHANGER SE ACTIVARÁ AL CRUZAR EL PORTAL DE REGRESO
         // ═══════════════════════════════════════════════════════════════
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                mostrarCliffhanger();
-            }
-        }.runTaskLater(plugin, 760L);
+        // El cliffhanger ahora se activa cuando los jugadores cruzan el portal
+        // de regreso al Overworld, creando más suspenso
         
+        // ═══════════════════════════════════════════════════════════════
         // ═══════════════════════════════════════════════════════════════
         // T+35s: DISTRIBUIR RECOMPENSAS
         // ═══════════════════════════════════════════════════════════════
@@ -6518,6 +7072,9 @@ public class AperturaEndEvent extends EventBase {
                 distribuirRecompensas();
             }
         }.runTaskLater(plugin, 700L);
+                
+            } // Fin del BukkitRunnable de delay inicial
+        }.runTaskLater(plugin, 100L); // 5 segundos de delay para ver animación de muerte
     }
     
     /**
@@ -6747,7 +7304,7 @@ public class AperturaEndEvent extends EventBase {
                 Bukkit.broadcastMessage("§8Pero algo ha cambiado...");
                 Bukkit.broadcastMessage("");
                 Bukkit.broadcastMessage("§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-                Bukkit.broadcastMessage("§7Revisen sus inventarios...");
+                Bukkit.broadcastMessage("§7Usa §e/recompensas §7para reclamar tus premios");
                 Bukkit.broadcastMessage("");
                 
                 for (Player p : Bukkit.getOnlinePlayers()) {
@@ -6759,6 +7316,9 @@ public class AperturaEndEvent extends EventBase {
                 
                 // Iniciar efectos visuales permanentes del portal
                 iniciarEfectosPortalSalida(center);
+                
+                // INICIAR DETECCIÓN DE CRUCE DE PORTAL PARA CLIFFHANGER
+                iniciarDeteccionCrucePortal();
             }
         }.runTaskLater(plugin, 240L);
         
@@ -6803,21 +7363,129 @@ public class AperturaEndEvent extends EventBase {
     }
     
     /**
-     * FASE 5: Cliffhanger
+     * Detecta cuando jugadores cruzan el portal de regreso al Overworld
+     * y activa el cliffhanger con suspenso
+     */
+    private void iniciarDeteccionCrucePortal() {
+        plugin.getLogger().info("[Apertura End] Iniciando detección de cruce de portal para cliffhanger...");
+        
+        new BukkitRunnable() {
+            private Set<UUID> jugadoresQueRegresaron = new HashSet<>();
+            private boolean cliffhangerActivado = false;
+            
+            @Override
+            public void run() {
+                if (cliffhangerActivado) {
+                    cancel();
+                    return;
+                }
+                
+                // Verificar jugadores que han regresado al Overworld
+                World overworld = Bukkit.getWorld(config.getString("evento.mundo_overworld", "world"));
+                if (overworld == null) return;
+                
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    if (p.getWorld().equals(overworld) && !jugadoresQueRegresaron.contains(p.getUniqueId())) {
+                        jugadoresQueRegresaron.add(p.getUniqueId());
+                        plugin.getLogger().info("[Apertura End] Jugador " + p.getName() + " ha regresado al Overworld");
+                        
+                        // Asegurar que el Overworld esté de DÍA (normalidad)
+                        if (jugadoresQueRegresaron.size() == 1) {
+                            overworld.setTime(6000); // Mediodía
+                            overworld.setStorm(false);
+                            overworld.setThundering(false);
+                            plugin.getLogger().info("[Apertura End] ☀️ Overworld configurado a DÍA - Todo parece normal...");
+                        }
+                    }
+                }
+                
+                // Si al menos 1 jugador ha regresado, activar cliffhanger después de un tiempo
+                if (!jugadoresQueRegresaron.isEmpty() && !cliffhangerActivado) {
+                    cliffhangerActivado = true;
+                    plugin.getLogger().info("[Apertura End] ⚡ ACTIVANDO CLIFFHANGER - Jugadores han regresado");
+                    
+                    // Esperar 30-40 segundos para generar MÁXIMO SUSPENSO
+                    // Los jugadores estarán tranquilos en el Overworld pensando que todo terminó...
+                    new BukkitRunnable() {
+                        @Override
+                        public void run() {
+                            activarCliffhangerEnOverworld();
+                        }
+                    }.runTaskLater(plugin, 600L + (long)(Math.random() * 200)); // 30-40 segundos aleatorio
+                    
+                    cancel();
+                }
+            }
+        }.runTaskTimer(plugin, 40L, 20L); // Verificar cada segundo
+    }
+    
+    /**
+     * ACTIVAR CLIFFHANGER EN EL OVERWORLD
+     * Momento aterrador: Los jugadores están tranquilos en el Overworld
+     * y de repente TODO CAMBIA
+     */
+    private void activarCliffhangerEnOverworld() {
+        World overworld = Bukkit.getWorld(config.getString("evento.mundo_overworld", "world"));
+        if (overworld == null) overworld = Bukkit.getWorlds().get(0);
+        
+        final World finalOverworld = overworld;
+        
+        plugin.getLogger().info("[Apertura End] ⚡⚡⚡ CLIFFHANGER ACTIVADO EN OVERWORLD");
+        
+        // ═══════════════════════════════════════════════════════════════
+        // PARTE 1: CAMBIO SÚBITO A NOCHE (0s)
+        // ═══════════════════════════════════════════════════════════════
+        finalOverworld.setTime(18000); // Medianoche
+        finalOverworld.setStorm(false); // Sin lluvia para que se vea la oscuridad
+        
+        // Mensaje sutil inicial
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (p.getWorld().equals(finalOverworld)) {
+                p.sendMessage("§8§o(Se ha hecho de noche súbitamente...)");
+                p.playSound(p.getLocation(), Sound.AMBIENT_CAVE, 0.5f, 0.3f);
+            }
+        }
+        
+        // ═══════════════════════════════════════════════════════════════
+        // PARTE 2: SILENCIO Y SUSPENSO (5 segundos)
+        // ═══════════════════════════════════════════════════════════════
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    if (p.getWorld().equals(finalOverworld)) {
+                        // Pequeño temblor
+                        p.playSound(p.getLocation(), Sound.ENTITY_WARDEN_HEARTBEAT, 0.3f, 0.4f);
+                    }
+                }
+            }
+        }.runTaskLater(plugin, 100L);
+        
+        // ═══════════════════════════════════════════════════════════════
+        // PARTE 3: ACTIVAR SECUENCIA DE CLIFFHANGER COMPLETA (10s)
+        // ═══════════════════════════════════════════════════════════════
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                mostrarCliffhangerCompleto(finalOverworld);
+            }
+        }.runTaskLater(plugin, 200L);
+    }
+    
+    /**
+     * FASE 5: Cliffhanger COMPLETO
      * Secuencia ÉPICA y ATERRADORA de revelación final
+     * AHORA OCURRE EN EL OVERWORLD DESPUÉS DE CRUZAR EL PORTAL
      * ═══════════════════════════════════════════════════════════════════
      * DURACIÓN: ~25 SEGUNDOS DE PURO TERROR
      * ═══════════════════════════════════════════════════════════════════
      */
-    private void mostrarCliffhanger() {
+    private void mostrarCliffhangerCompleto(World mundo) {
         faseEvento = EventPhase.CLIFFHANGER;
         
-        plugin.getLogger().info("[Apertura End] Fase 5: CLIFFHANGER - SECUENCIA DE TERROR");
+        plugin.getLogger().info("[Apertura End] Fase 5: CLIFFHANGER - SECUENCIA DE TERROR EN OVERWORLD");
         
-        World endWorld = Bukkit.getWorld(config.getString("evento.mundo_end", "world_the_end"));
-        if (endWorld == null) endWorld = Bukkit.getWorlds().get(0);
-        
-        final World finalEndWorld = endWorld;
+        final World finalMundo = mundo;
         
         // ═══════════════════════════════════════════════════════════════
         // T+0s: SILENCIO TOTAL - ALGO NO ESTÁ BIEN
@@ -6901,7 +7569,7 @@ public class AperturaEndEvent extends EventBase {
             public void run() {
                 // Partículas oscuras emergiendo del suelo
                 for (Player p : Bukkit.getOnlinePlayers()) {
-                    if (p.getWorld().equals(finalEndWorld)) {
+                    if (p.getWorld().equals(finalMundo)) {
                         Location pLoc = p.getLocation();
                         
                         // Círculo de partículas oscuras
@@ -6909,10 +7577,10 @@ public class AperturaEndEvent extends EventBase {
                             double angle = (i * Math.PI * 2) / 20;
                             double x = pLoc.getX() + Math.cos(angle) * 3;
                             double z = pLoc.getZ() + Math.sin(angle) * 3;
-                            Location particleLoc = new Location(finalEndWorld, x, pLoc.getY(), z);
+                            Location particleLoc = new Location(finalMundo, x, pLoc.getY(), z);
                             
-                            finalEndWorld.spawnParticle(Particle.SQUID_INK, particleLoc, 10, 0.1, 0.5, 0.1, 0.02);
-                            finalEndWorld.spawnParticle(Particle.SMOKE, particleLoc, 5, 0.1, 0.3, 0.1, 0.01);
+                            finalMundo.spawnParticle(Particle.SQUID_INK, particleLoc, 10, 0.1, 0.5, 0.1, 0.02);
+                            finalMundo.spawnParticle(Particle.SMOKE, particleLoc, 5, 0.1, 0.3, 0.1, 0.01);
                         }
                     }
                 }
@@ -6957,7 +7625,7 @@ public class AperturaEndEvent extends EventBase {
                 
                 // "Temblor" visual con partículas caóticas
                 for (Player p : Bukkit.getOnlinePlayers()) {
-                    if (p.getWorld().equals(finalEndWorld)) {
+                    if (p.getWorld().equals(finalMundo)) {
                         Location pLoc = p.getLocation();
                         
                         // Partículas caóticas alrededor
@@ -6967,8 +7635,8 @@ public class AperturaEndEvent extends EventBase {
                             double randZ = (Math.random() - 0.5) * 10;
                             Location randLoc = pLoc.clone().add(randX, randY, randZ);
                             
-                            finalEndWorld.spawnParticle(Particle.ASH, randLoc, 3, 0.2, 0.2, 0.2, 0);
-                            finalEndWorld.spawnParticle(Particle.SMOKE, randLoc, 2, 0.1, 0.1, 0.1, 0.05);
+                            finalMundo.spawnParticle(Particle.ASH, randLoc, 3, 0.2, 0.2, 0.2, 0);
+                            finalMundo.spawnParticle(Particle.SMOKE, randLoc, 2, 0.1, 0.1, 0.1, 0.05);
                         }
                     }
                 }
@@ -7010,13 +7678,13 @@ public class AperturaEndEvent extends EventBase {
                     p.addPotionEffect(new org.bukkit.potion.PotionEffect(
                         org.bukkit.potion.PotionEffectType.BLINDNESS, 100, 2, false, false));
                     
-                    if (p.getWorld().equals(finalEndWorld)) {
+                    if (p.getWorld().equals(finalMundo)) {
                         // Explosión masiva de partículas oscuras
                         Location pLoc = p.getLocation();
-                        finalEndWorld.spawnParticle(Particle.EXPLOSION_EMITTER, pLoc, 3, 2.0, 2.0, 2.0, 0);
-                        finalEndWorld.spawnParticle(Particle.SQUID_INK, pLoc, 200, 5.0, 3.0, 5.0, 0.1);
-                        finalEndWorld.spawnParticle(Particle.SMOKE, pLoc, 150, 4.0, 2.0, 4.0, 0.2);
-                        finalEndWorld.spawnParticle(Particle.ASH, pLoc, 300, 6.0, 4.0, 6.0, 0.05);
+                        finalMundo.spawnParticle(Particle.EXPLOSION_EMITTER, pLoc, 3, 2.0, 2.0, 2.0, 0);
+                        finalMundo.spawnParticle(Particle.SQUID_INK, pLoc, 200, 5.0, 3.0, 5.0, 0.1);
+                        finalMundo.spawnParticle(Particle.SMOKE, pLoc, 150, 4.0, 2.0, 4.0, 0.2);
+                        finalMundo.spawnParticle(Particle.ASH, pLoc, 300, 6.0, 4.0, 6.0, 0.05);
                     }
                 }
             }
@@ -7033,8 +7701,8 @@ public class AperturaEndEvent extends EventBase {
                     p.sendTitle("§0.", "§0.", 0, 60, 40);
                 }
                 
-                // Solo el sonido del End
-                finalEndWorld.playSound(new Location(finalEndWorld, 0, 64, 0), Sound.AMBIENT_CAVE, 0.3f, 0.1f);
+                // Solo sonido ambiental de cueva
+                finalMundo.playSound(new Location(finalMundo, 0, 64, 0), Sound.AMBIENT_CAVE, 0.3f, 0.1f);
             }
         }.runTaskLater(plugin, 440L);
         
@@ -7084,9 +7752,9 @@ public class AperturaEndEvent extends EventBase {
                 // Partículas oscuras ocasionales
                 if (ticks % 60 == 0) { // Cada 3 segundos
                     for (Player p : Bukkit.getOnlinePlayers()) {
-                        if (p.getWorld().equals(finalEndWorld)) {
+                        if (p.getWorld().equals(finalMundo)) {
                             Location pLoc = p.getLocation();
-                            finalEndWorld.spawnParticle(Particle.ASH, pLoc, 20, 3.0, 2.0, 3.0, 0.01);
+                            finalMundo.spawnParticle(Particle.ASH, pLoc, 20, 3.0, 2.0, 3.0, 0.01);
                         }
                     }
                 }
@@ -7108,12 +7776,129 @@ public class AperturaEndEvent extends EventBase {
     private void distribuirRecompensas() {
         plugin.getLogger().info("[Apertura End] Distribuyendo recompensas...");
         
-        // TODO: Implementar sistema de recompensas
-        // - Top 3 jugadores con más daño
-        // - Recompensas de participación
-        // - Drops custom
+        if (plugin.getRewardClaimSystem() == null) {
+            plugin.getLogger().warning("[Apertura End] Sistema de recompensas no disponible");
+            return;
+        }
         
-        Bukkit.broadcastMessage("§a[Sistema] Recompensas distribuidas (WIP)");
+        // Calcular top 3 jugadores por daño
+        List<Map.Entry<UUID, Double>> topDamage = damageTracker.entrySet().stream()
+            .sorted(Map.Entry.<UUID, Double>comparingByValue().reversed())
+            .limit(3)
+            .toList();
+        
+        // Distribuir recompensas a cada participante
+        for (UUID uuid : participantes) {
+            Player player = Bukkit.getPlayer(uuid);
+            if (player == null) continue; // Jugador offline
+            
+            List<org.bukkit.inventory.ItemStack> recompensas = new ArrayList<>();
+            String rangoRecompensa = "§7Participante";
+            
+            // ═══════════════════════════════════════════════════════
+            // RECOMPENSAS TOP 3 DAÑO
+            // ═══════════════════════════════════════════════════════
+            int posicion = -1;
+            for (int i = 0; i < topDamage.size(); i++) {
+                if (topDamage.get(i).getKey().equals(uuid)) {
+                    posicion = i + 1;
+                    break;
+                }
+            }
+            
+            if (posicion == 1) {
+                // 🥇 PRIMER LUGAR
+                rangoRecompensa = "§6§l🥇 MVP - Domador del Vacío";
+                recompensas.add(crearElytraEpica());
+                recompensas.add(new org.bukkit.inventory.ItemStack(Material.DRAGON_HEAD, 1));
+                recompensas.add(new org.bukkit.inventory.ItemStack(Material.NETHERITE_INGOT, 16));
+                recompensas.add(new org.bukkit.inventory.ItemStack(Material.ENCHANTED_GOLDEN_APPLE, 8));
+                recompensas.add(new org.bukkit.inventory.ItemStack(Material.TOTEM_OF_UNDYING, 2));
+                recompensas.add(new org.bukkit.inventory.ItemStack(Material.DRAGON_BREATH, 16));
+                
+            } else if (posicion == 2) {
+                // 🥈 SEGUNDO LUGAR
+                rangoRecompensa = "§e§l🥈 Cazador del Vacío";
+                recompensas.add(crearElytraEpica());
+                recompensas.add(new org.bukkit.inventory.ItemStack(Material.NETHERITE_INGOT, 12));
+                recompensas.add(new org.bukkit.inventory.ItemStack(Material.ENCHANTED_GOLDEN_APPLE, 6));
+                recompensas.add(new org.bukkit.inventory.ItemStack(Material.TOTEM_OF_UNDYING, 1));
+                recompensas.add(new org.bukkit.inventory.ItemStack(Material.DRAGON_BREATH, 12));
+                
+            } else if (posicion == 3) {
+                // 🥉 TERCER LUGAR
+                rangoRecompensa = "§c§l🥉 Guerrero del Vacío";
+                recompensas.add(crearElytraEpica());
+                recompensas.add(new org.bukkit.inventory.ItemStack(Material.NETHERITE_INGOT, 8));
+                recompensas.add(new org.bukkit.inventory.ItemStack(Material.ENCHANTED_GOLDEN_APPLE, 4));
+                recompensas.add(new org.bukkit.inventory.ItemStack(Material.TOTEM_OF_UNDYING, 1));
+                recompensas.add(new org.bukkit.inventory.ItemStack(Material.DRAGON_BREATH, 8));
+                
+            } else {
+                // PARTICIPANTE REGULAR
+                rangoRecompensa = "§7Superviviente del Vacío";
+                recompensas.add(new org.bukkit.inventory.ItemStack(Material.ELYTRA, 1));
+                recompensas.add(new org.bukkit.inventory.ItemStack(Material.NETHERITE_INGOT, 4));
+                recompensas.add(new org.bukkit.inventory.ItemStack(Material.ENCHANTED_GOLDEN_APPLE, 2));
+                recompensas.add(new org.bukkit.inventory.ItemStack(Material.DRAGON_BREATH, 4));
+            }
+            
+            // ═══════════════════════════════════════════════════════
+            // RECOMPENSAS COMUNES PARA TODOS
+            // ═══════════════════════════════════════════════════════
+            recompensas.add(new org.bukkit.inventory.ItemStack(Material.END_STONE, 64));
+            recompensas.add(new org.bukkit.inventory.ItemStack(Material.OBSIDIAN, 32));
+            recompensas.add(new org.bukkit.inventory.ItemStack(Material.ENDER_PEARL, 16));
+            recompensas.add(new org.bukkit.inventory.ItemStack(Material.EXPERIENCE_BOTTLE, 32));
+            
+            // ═══════════════════════════════════════════════════════
+            // REGISTRAR EN SISTEMA /recompensas
+            // ═══════════════════════════════════════════════════════
+            plugin.getRewardClaimSystem().addRewards(
+                uuid,
+                "apertura_end",
+                "§5§l⚡ La Apertura del End",
+                recompensas,
+                120, // 120 minutos = 2 horas para reclamar
+                rangoRecompensa,
+                0 // Sin PS adicional (ya se otorgan durante el evento)
+            );
+        }
+        
+        Bukkit.broadcastMessage("");
+        Bukkit.broadcastMessage("§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        Bukkit.broadcastMessage("§a§l✓ Recompensas registradas");
+        Bukkit.broadcastMessage("§7Usa §e/recompensas §7para reclamarlas");
+        Bukkit.broadcastMessage("§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        Bukkit.broadcastMessage("");
+        
+        plugin.getLogger().info("[Apertura End] Recompensas distribuidas a " + participantes.size() + " jugadores");
+    }
+    
+    /**
+     * Crea una Elytra épica con encantamientos
+     */
+    private org.bukkit.inventory.ItemStack crearElytraEpica() {
+        org.bukkit.inventory.ItemStack elytra = new org.bukkit.inventory.ItemStack(Material.ELYTRA);
+        org.bukkit.inventory.meta.ItemMeta meta = elytra.getItemMeta();
+        
+        if (meta != null) {
+            meta.setDisplayName("§5§lAlas del Vacío");
+            List<String> lore = new ArrayList<>();
+            lore.add("§7Concedidas a quienes enfrentaron");
+            lore.add("§7al Desolador del Vacío y vivieron");
+            lore.add("");
+            lore.add("§8Evento: §5La Apertura del End");
+            meta.setLore(lore);
+            
+            // Encantamientos
+            meta.addEnchant(org.bukkit.enchantments.Enchantment.UNBREAKING, 3, true);
+            meta.addEnchant(org.bukkit.enchantments.Enchantment.MENDING, 1, true);
+            
+            elytra.setItemMeta(meta);
+        }
+        
+        return elytra;
     }
     
     // ═══════════════════════════════════════════════════════════════════
@@ -7411,11 +8196,11 @@ public class AperturaEndEvent extends EventBase {
     
     /**
      * Terraforma el área alrededor del portal para integración natural
-     * VERSIÓN MEJORADA: Limpia montañas y crea espacio vertical completo
+     * VERSIÓN MEJORADA: Limpia montañas y crea espacio vertical completo - ÉPICO
      */
     private void terraformarAreaPortal(World world, int baseX, int baseY, int baseZ) {
-        int radius = 30;
-        int radiusCore = 15; // Radio central donde se limpia TODO
+        int radius = 40; // AMPLIADO desde 30
+        int radiusCore = 20; // Radio central donde se limpia TODO (ampliado desde 15)
         
         plugin.getLogger().info("[Terraformación] Limpiando área de " + (radius*2) + "x" + (radius*2) + " bloques...");
         
@@ -7427,11 +8212,11 @@ public class AperturaEndEvent extends EventBase {
                 double distancia = Math.sqrt(x * x + z * z);
                 if (distancia > radius) continue;
                 
-                // LIMPIEZA AGRESIVA EN EL NÚCLEO (radio 15)
+                // LIMPIEZA AGRESIVA EN EL NÚCLEO (radio 20)
                 if (distancia < radiusCore) {
-                    // PASO 1A: Limpiar TODO desde baseY-10 hasta baseY+40
+                    // PASO 1A: Limpiar TODO desde baseY-10 hasta baseY+50 (AUMENTADO)
                     // Esto remueve montañas, árboles, TODO
-                    for (int y = baseY - 10; y <= baseY + 40; y++) {
+                    for (int y = baseY - 10; y <= baseY + 50; y++) {
                         Block block = world.getBlockAt(baseX + x, y, baseZ + z);
                         Material type = block.getType();
                         
@@ -7448,10 +8233,10 @@ public class AperturaEndEvent extends EventBase {
                         }
                     }
                 } 
-                // LIMPIEZA MODERADA EN ÁREA EXTERNA (radio 15-30)
+                // LIMPIEZA MODERADA EN ÁREA EXTERNA (radio 20-40, ampliado desde 15-30)
                 else {
                     // Limpiar vegetación y estructuras por encima del nivel base
-                    for (int y = baseY; y <= baseY + 35; y++) {
+                    for (int y = baseY; y <= baseY + 45; y++) {
                         Block block = world.getBlockAt(baseX + x, y, baseZ + z);
                         Material type = block.getType();
                         
@@ -9083,18 +9868,19 @@ public class AperturaEndEvent extends EventBase {
      * MÁS SEPARADOS para no obstruir el combate
      */
     private void construirPilaresBatallaEspaciados(World world, int centerX, int centerY, int centerZ) {
-        plugin.getLogger().info("[Arena End] Construyendo 8 pilares espaciados...");
+        plugin.getLogger().info("[Arena End] Construyendo 8 pilares MEGA espaciados...");
         
         for (int i = 0; i < 8; i++) {
             double angle = (i * Math.PI * 2) / 8;
-            int distancia = 60; // 60 bloques del centro (MÁS LEJOS)
+            int distancia = 85; // 85 bloques del centro (MEGA LEJOS)
             int x = centerX + (int)(Math.cos(angle) * distancia);
             int z = centerZ + (int)(Math.sin(angle) * distancia);
-            int altura = 30; // Altura uniforme
+            int altura = 50; // Altura MEGA ÉPICA (50 bloques)
             
-            // Base del pilar (5x5)
-            for (int xOff = -2; xOff <= 2; xOff++) {
-                for (int zOff = -2; zOff <= 2; zOff++) {
+            // Base del pilar (7x7 - MÁS GRANDE)
+            for (int xOff = -3; xOff <= 3; xOff++) {
+                for (int zOff = -3; zOff <= 3; zOff++) {
+                    world.getBlockAt(x + xOff, centerY - 3, z + zOff).setType(Material.NETHERITE_BLOCK);
                     world.getBlockAt(x + xOff, centerY - 2, z + zOff).setType(Material.POLISHED_BLACKSTONE);
                     world.getBlockAt(x + xOff, centerY - 1, z + zOff).setType(Material.CHISELED_POLISHED_BLACKSTONE);
                 }
@@ -9109,14 +9895,158 @@ public class AperturaEndEvent extends EventBase {
                         world.getBlockAt(x + xOff, centerY + y, z + zOff).setType(mat);
                     }
                 }
+                
+                // Decoración luminosa cada 10 bloques
+                if (y % 10 == 0 && y > 0) {
+                    world.getBlockAt(x + 2, centerY + y, z).setType(Material.GLOWSTONE);
+                    world.getBlockAt(x - 2, centerY + y, z).setType(Material.GLOWSTONE);
+                    world.getBlockAt(x, centerY + y, z + 2).setType(Material.GLOWSTONE);
+                    world.getBlockAt(x, centerY + y, z - 2).setType(Material.GLOWSTONE);
+                }
             }
             
-            // Faro en la cima
-            world.getBlockAt(x, centerY + altura, z).setType(Material.GLOWSTONE);
+            // Faro MASIVO en la cima (5x5)
+            for (int xOff = -2; xOff <= 2; xOff++) {
+                for (int zOff = -2; zOff <= 2; zOff++) {
+                    world.getBlockAt(x + xOff, centerY + altura, z + zOff).setType(Material.GLOWSTONE);
+                }
+            }
             world.getBlockAt(x, centerY + altura + 1, z).setType(Material.SEA_LANTERN);
+            world.getBlockAt(x, centerY + altura + 2, z).setType(Material.BEACON);
+            world.getBlockAt(x, centerY + altura + 3, z).setType(Material.END_ROD);
         }
         
-        plugin.getLogger().info("[Arena End] ✓ 8 pilares construidos");
+        plugin.getLogger().info("[Arena End] ✓ 8 pilares MEGA construidos (altura 50 bloques)");
+    }
+    
+    /**
+     * Construye 4 TORRES ESQUINERAS GIGANTES flotantes (altura 60 bloques)
+     * Torres masivas en las esquinas de la arena para dar sensación épica
+     */
+    private void construirTorresEsquinerasGigantes(World world, int centerX, int centerY, int centerZ) {
+        plugin.getLogger().info("[Arena End] Construyendo 4 TORRES ESQUINERAS GIGANTES...");
+        
+        // 4 torres en las esquinas (diagonales a 100 bloques del centro)
+        int[][] posiciones = {
+            {100, 100},   // Noreste
+            {-100, 100},  // Noroeste
+            {-100, -100}, // Suroeste
+            {100, -100}   // Sureste
+        };
+        
+        for (int[] pos : posiciones) {
+            int torreX = centerX + pos[0];
+            int torreZ = centerZ + pos[1];
+            int altura = 60; // Altura masiva
+            
+            // ═══════════════════════════════════════════════════════════
+            // PLATAFORMA FLOTANTE BASE (15x15 a Y+10)
+            // ═══════════════════════════════════════════════════════════
+            int baseY = centerY + 10;
+            for (int x = -7; x <= 7; x++) {
+                for (int z = -7; z <= 7; z++) {
+                    double dist = Math.sqrt(x * x + z * z);
+                    if (dist <= 7) {
+                        Material baseMat;
+                        if (dist < 3) {
+                            baseMat = Material.ANCIENT_DEBRIS;
+                        } else if (dist < 5) {
+                            baseMat = Material.NETHERITE_BLOCK;
+                        } else {
+                            baseMat = Material.POLISHED_BLACKSTONE;
+                        }
+                        world.getBlockAt(torreX + x, baseY, torreZ + z).setType(baseMat);
+                        world.getBlockAt(torreX + x, baseY - 1, torreZ + z).setType(Material.OBSIDIAN);
+                        world.getBlockAt(torreX + x, baseY - 2, torreZ + z).setType(Material.CRYING_OBSIDIAN);
+                    }
+                }
+            }
+            
+            // ═══════════════════════════════════════════════════════════
+            // TORRE CENTRAL (5x5 que se estrecha a 3x3)
+            // ═══════════════════════════════════════════════════════════
+            for (int y = 0; y < altura; y++) {
+                int size = (y < altura / 2) ? 2 : 1; // 5x5 abajo, 3x3 arriba
+                
+                for (int x = -size; x <= size; x++) {
+                    for (int z = -size; z <= size; z++) {
+                        Material torreMat;
+                        if (y % 10 == 0) {
+                            torreMat = Material.PURPUR_BLOCK;
+                        } else if (y % 5 == 0) {
+                            torreMat = Material.POLISHED_BLACKSTONE_BRICKS;
+                        } else {
+                            torreMat = Material.CHISELED_POLISHED_BLACKSTONE;
+                        }
+                        
+                        world.getBlockAt(torreX + x, baseY + 1 + y, torreZ + z).setType(torreMat);
+                    }
+                }
+                
+                // Decoración luminosa cada 8 bloques
+                if (y % 8 == 0 && y > 0) {
+                    int decorSize = (y < altura / 2) ? 3 : 2;
+                    world.getBlockAt(torreX + decorSize, baseY + 1 + y, torreZ).setType(Material.SEA_LANTERN);
+                    world.getBlockAt(torreX - decorSize, baseY + 1 + y, torreZ).setType(Material.SEA_LANTERN);
+                    world.getBlockAt(torreX, baseY + 1 + y, torreZ + decorSize).setType(Material.SEA_LANTERN);
+                    world.getBlockAt(torreX, baseY + 1 + y, torreZ - decorSize).setType(Material.SEA_LANTERN);
+                }
+                
+                // Ventanas cada 12 bloques
+                if (y % 12 == 6) {
+                    world.getBlockAt(torreX + 2, baseY + 1 + y, torreZ).setType(Material.PURPLE_STAINED_GLASS);
+                    world.getBlockAt(torreX - 2, baseY + 1 + y, torreZ).setType(Material.PURPLE_STAINED_GLASS);
+                    world.getBlockAt(torreX, baseY + 1 + y, torreZ + 2).setType(Material.PURPLE_STAINED_GLASS);
+                    world.getBlockAt(torreX, baseY + 1 + y, torreZ - 2).setType(Material.PURPLE_STAINED_GLASS);
+                }
+            }
+            
+            // ═══════════════════════════════════════════════════════════
+            // CIMA DE LA TORRE (plataforma de observación 7x7)
+            // ═══════════════════════════════════════════════════════════
+            int cimaY = baseY + 1 + altura;
+            for (int x = -3; x <= 3; x++) {
+                for (int z = -3; z <= 3; z++) {
+                    world.getBlockAt(torreX + x, cimaY, torreZ + z).setType(Material.PURPUR_BLOCK);
+                    
+                    // Almenas en los bordes
+                    if (Math.abs(x) == 3 || Math.abs(z) == 3) {
+                        if ((x + z) % 2 == 0) {
+                            world.getBlockAt(torreX + x, cimaY + 1, torreZ + z).setType(Material.PURPUR_PILLAR);
+                            world.getBlockAt(torreX + x, cimaY + 2, torreZ + z).setType(Material.PURPUR_PILLAR);
+                        }
+                    }
+                }
+            }
+            
+            // BEACON en el centro de la cima
+            world.getBlockAt(torreX, cimaY + 1, torreZ).setType(Material.BEACON);
+            
+            // 4 END_RODS en las esquinas de la cima
+            world.getBlockAt(torreX + 2, cimaY + 1, torreZ + 2).setType(Material.END_ROD);
+            world.getBlockAt(torreX - 2, cimaY + 1, torreZ + 2).setType(Material.END_ROD);
+            world.getBlockAt(torreX + 2, cimaY + 1, torreZ - 2).setType(Material.END_ROD);
+            world.getBlockAt(torreX - 2, cimaY + 1, torreZ - 2).setType(Material.END_ROD);
+            
+            // ═══════════════════════════════════════════════════════════
+            // CADENAS COLGANTES desde la base flotante
+            // ═══════════════════════════════════════════════════════════
+            int numCadenas = 12; // Cadenas hacia abajo
+            for (int i = 0; i < 4; i++) {
+                double chainAngle = (i * Math.PI / 2) + Math.PI / 4; // Diagonales
+                int chainDist = 5;
+                int chainX = torreX + (int)(Math.cos(chainAngle) * chainDist);
+                int chainZ = torreZ + (int)(Math.sin(chainAngle) * chainDist);
+                
+                for (int chain = 0; chain < numCadenas; chain++) {
+                    world.getBlockAt(chainX, baseY - 2 - chain, chainZ).setType(Material.CHAIN);
+                }
+                // Lámpara al final
+                world.getBlockAt(chainX, baseY - 2 - numCadenas, chainZ).setType(Material.SOUL_LANTERN);
+            }
+        }
+        
+        plugin.getLogger().info("[Arena End] ✓ 4 TORRES ESQUINERAS GIGANTES construidas (altura 60 bloques)");
     }
     
     /**
@@ -9124,25 +10054,40 @@ public class AperturaEndEvent extends EventBase {
      * Decoración mínima que no obstruye
      */
     private void construirRunasLuminosasSimples(World world, int centerX, int centerY, int centerZ) {
-        plugin.getLogger().info("[Arena End] Construyendo runas luminosas simples...");
+        plugin.getLogger().info("[Arena End] Construyendo runas luminosas ÉPICAS...");
         
-        // Solo 2 círculos de runas (en lugar de 5)
-        int[] radios = {25, 45};
+        // 3 círculos de runas (aumentado desde 2) con diferentes materiales brillantes
+        int[] radios = {30, 50, 75}; // MEGA EXPANDIDO para plataforma 180x180
+        Material[] materiales = {Material.GLOWSTONE, Material.SEA_LANTERN, Material.RESPAWN_ANCHOR};
         
-        for (int radio : radios) {
-            int numRunas = radio / 3; // Espaciado proporcional
+        for (int i = 0; i < radios.length; i++) {
+            int radio = radios[i];
+            Material mat = materiales[i];
+            int numRunas = radio / 2; // MÁS RUNAS - Espaciado más denso
             
-            for (int i = 0; i < numRunas; i++) {
-                double angle = (i * Math.PI * 2) / numRunas;
+            for (int j = 0; j < numRunas; j++) {
+                double angle = (j * Math.PI * 2) / numRunas;
                 int x = centerX + (int)(Math.cos(angle) * radio);
                 int z = centerZ + (int)(Math.sin(angle) * radio);
                 
-                // Runa simple (solo 1 bloque)
-                world.getBlockAt(x, centerY, z).setType(Material.GLOWSTONE);
+                // Runa mejorada (patrón 3x3 ÉPICO)
+                world.getBlockAt(x, centerY, z).setType(mat);
+                
+                // Patrón de cruz brillante alrededor
+                world.getBlockAt(x + 1, centerY, z).setType(Material.GLOWSTONE);
+                world.getBlockAt(x - 1, centerY, z).setType(Material.GLOWSTONE);
+                world.getBlockAt(x, centerY, z + 1).setType(Material.GLOWSTONE);
+                world.getBlockAt(x, centerY, z - 1).setType(Material.GLOWSTONE);
+                
+                // End rod vertical sobre algunas runas para efecto épico
+                if (j % 3 == 0) {
+                    world.getBlockAt(x, centerY + 1, z).setType(Material.END_ROD);
+                    world.getBlockAt(x, centerY + 2, z).setType(Material.END_ROD);
+                }
             }
         }
         
-        plugin.getLogger().info("[Arena End] ✓ Runas simples construidas");
+        plugin.getLogger().info("[Arena End] ✓ Runas épicas construidas con 3 círculos brillantes");
     }
     
     /**
@@ -9181,37 +10126,731 @@ public class AperturaEndEvent extends EventBase {
     }
     
     /**
-     * Genera cristales decorativos MÍNIMOS (solo 8 cristales en bordes)
-     * Decoración que no molesta
+     * Genera cristales decorativos ÉPICOS (12 cristales brillantes en bordes)
+     * Decoración que NO molesta pero se ve IMPRESIONANTE
      */
     private void generarCristalesMinimos(World world, int centerX, int centerY, int centerZ) {
-        plugin.getLogger().info("[Arena End] Generando cristales mínimos...");
+        plugin.getLogger().info("[Arena End] Generando cristales épicos brillantes...");
         
-        // Solo 8 cristales en las 8 direcciones cardinales
-        for (int i = 0; i < 8; i++) {
-            double angle = (i * Math.PI * 2) / 8;
+        // 12 cristales ÉPICOS en las 12 direcciones (aumentado desde 8)
+        for (int i = 0; i < 12; i++) {
+            double angle = (i * Math.PI * 2) / 12;
             int distancia = 70; // En el borde exterior
             int x = centerX + (int)(Math.cos(angle) * distancia);
             int z = centerZ + (int)(Math.sin(angle) * distancia);
             
-            // Cristal de amatista pequeño (10 bloques altura)
-            for (int y = 0; y < 10; y++) {
-                int ancho = (y < 5) ? (5 - y) : (y - 5);
+            // Cristal de amatista ÉPICO (15 bloques altura - aumentado desde 10)
+            for (int y = 0; y < 15; y++) {
+                int ancho = (y < 7) ? (7 - y) : (y - 7);
                 
                 for (int dx = -ancho; dx <= ancho; dx++) {
                     for (int dz = -ancho; dz <= ancho; dz++) {
                         if (Math.abs(dx) + Math.abs(dz) <= ancho) {
-                            world.getBlockAt(x + dx, centerY + y, z + dz).setType(Material.AMETHYST_BLOCK);
+                            // Materiales alternados para efecto más épico
+                            Material mat;
+                            if (y < 3) {
+                                mat = Material.AMETHYST_BLOCK;
+                            } else if (y < 8) {
+                                mat = Material.BUDDING_AMETHYST;
+                            } else if (y < 12) {
+                                mat = Material.PURPLE_STAINED_GLASS;
+                            } else {
+                                mat = Material.SEA_LANTERN; // Punta brillante
+                            }
+                            world.getBlockAt(x + dx, centerY + y, z + dz).setType(mat);
                         }
                     }
                 }
             }
             
-            // Punta del cristal
-            world.getBlockAt(x, centerY + 10, z).setType(Material.AMETHYST_BLOCK);
+            // Punta del cristal BRILLANTE ÉPICA
+            world.getBlockAt(x, centerY + 15, z).setType(Material.SEA_LANTERN);
+            world.getBlockAt(x, centerY + 16, z).setType(Material.END_ROD);
+            world.getBlockAt(x, centerY + 17, z).setType(Material.END_ROD);
+            
+            // Anillo de glowstone alrededor de la base
+            for (int angle2 = 0; angle2 < 360; angle2 += 45) {
+                double rad = Math.toRadians(angle2);
+                int bx = x + (int)(Math.cos(rad) * 3);
+                int bz = z + (int)(Math.sin(rad) * 3);
+                world.getBlockAt(bx, centerY, bz).setType(Material.GLOWSTONE);
+            }
         }
         
-        plugin.getLogger().info("[Arena End] ✓ 8 cristales decorativos generados");
+        plugin.getLogger().info("[Arena End] ✓ 12 cristales épicos brillantes generados");
+    }
+    
+    /**
+     * ═══════════════════════════════════════════════════════════════════
+     * GENERAR ESTRUCTURAS DECORATIVAS EN EL TERRENO
+     * ═══════════════════════════════════════════════════════════════════
+     * Añade pequeñas estructuras decorativas dispersas por el terreno:
+     * - Montículos de purpur con vegetación del End
+     * - Pequeñas ruinas con bloques rotos
+     * - Agrupaciones de cristales pequeños
+     * - Pedestales decorativos con cadenas
+     */
+    private void generarEstructurasDecorativasTerreno(World world, int centerX, int centerY, int centerZ) {
+        plugin.getLogger().info("[Arena End] Generando estructuras decorativas en terreno...");
+        
+        int estructurasGeneradas = 0;
+        int radius = 90; // Dispersar en área amplia pero fuera de la plataforma central
+        
+        // Generar 24 estructuras decorativas aleatorias
+        for (int i = 0; i < 24; i++) {
+            double angle = (i * Math.PI * 2) / 24 + (Math.random() - 0.5) * 0.3;
+            int distancia = 75 + (int)(Math.random() * 25); // Entre 75-100 bloques del centro
+            int x = centerX + (int)(Math.cos(angle) * distancia);
+            int z = centerZ + (int)(Math.sin(angle) * distancia);
+            
+            int tipo = i % 4; // 4 tipos de estructuras
+            
+            switch (tipo) {
+                case 0: // Montículo de purpur con chorus
+                    // Base del montículo (5x5)
+                    for (int dx = -2; dx <= 2; dx++) {
+                        for (int dz = -2; dz <= 2; dz++) {
+                            double distCenter = Math.sqrt(dx * dx + dz * dz);
+                            if (distCenter <= 2.5) {
+                                int altura = 3 - (int)distCenter;
+                                for (int y = 0; y <= altura; y++) {
+                                    Material mat = (y == altura) ? Material.PURPUR_BLOCK : Material.END_STONE_BRICKS;
+                                    world.getBlockAt(x + dx, centerY + y, z + dz).setType(mat);
+                                }
+                            }
+                        }
+                    }
+                    // Planta de chorus encima
+                    world.getBlockAt(x, centerY + 4, z).setType(Material.CHORUS_PLANT);
+                    world.getBlockAt(x, centerY + 5, z).setType(Material.CHORUS_FLOWER);
+                    estructurasGeneradas++;
+                    break;
+                    
+                case 1: // Ruina pequeña (bloques rotos)
+                    // Pilares rotos
+                    for (int dx = -1; dx <= 1; dx += 2) {
+                        for (int dz = -1; dz <= 1; dz += 2) {
+                            int alturaRuina = 2 + (int)(Math.random() * 3);
+                            for (int y = 0; y < alturaRuina; y++) {
+                                Material mat = (Math.random() < 0.5) ? Material.POLISHED_BLACKSTONE_BRICKS : Material.CRACKED_POLISHED_BLACKSTONE_BRICKS;
+                                world.getBlockAt(x + dx, centerY + y, z + dz).setType(mat);
+                            }
+                        }
+                    }
+                    // Suelo roto
+                    for (int dx = -2; dx <= 2; dx++) {
+                        for (int dz = -2; dz <= 2; dz++) {
+                            if (Math.random() < 0.4) {
+                                world.getBlockAt(x + dx, centerY, z + dz).setType(Material.CHISELED_POLISHED_BLACKSTONE);
+                            }
+                        }
+                    }
+                    estructurasGeneradas++;
+                    break;
+                    
+                case 2: // Agrupación de cristales pequeños
+                    // 3-5 cristales pequeños
+                    int numCristales = 3 + (int)(Math.random() * 3);
+                    for (int c = 0; c < numCristales; c++) {
+                        int offsetX = (int)(Math.random() * 5) - 2;
+                        int offsetZ = (int)(Math.random() * 5) - 2;
+                        int alturaCristal = 3 + (int)(Math.random() * 3);
+                        
+                        for (int y = 0; y < alturaCristal; y++) {
+                            Material mat = (y < 2) ? Material.AMETHYST_BLOCK : Material.BUDDING_AMETHYST;
+                            world.getBlockAt(x + offsetX, centerY + y, z + offsetZ).setType(mat);
+                        }
+                        world.getBlockAt(x + offsetX, centerY + alturaCristal, z + offsetZ).setType(Material.AMETHYST_CLUSTER);
+                    }
+                    estructurasGeneradas++;
+                    break;
+                    
+                case 3: // Pedestal decorativo con cadena
+                    // Base del pedestal (3x3)
+                    for (int dx = -1; dx <= 1; dx++) {
+                        for (int dz = -1; dz <= 1; dz++) {
+                            world.getBlockAt(x + dx, centerY, z + dz).setType(Material.POLISHED_BLACKSTONE);
+                        }
+                    }
+                    // Columna central
+                    for (int y = 1; y <= 4; y++) {
+                        world.getBlockAt(x, centerY + y, z).setType(Material.PURPUR_PILLAR);
+                    }
+                    // Cadenas colgantes
+                    world.getBlockAt(x, centerY + 5, z).setType(Material.CHAIN);
+                    world.getBlockAt(x, centerY + 6, z).setType(Material.CHAIN);
+                    world.getBlockAt(x, centerY + 7, z).setType(Material.SOUL_LANTERN);
+                    estructurasGeneradas++;
+                    break;
+            }
+        }
+        
+        plugin.getLogger().info("[Arena End] ✓ " + estructurasGeneradas + " estructuras decorativas generadas");
+    }
+    
+    /**
+     * ═══════════════════════════════════════════════════════════════════
+     * GENERAR FORMACIONES NATURALES DEL END
+     * ═══════════════════════════════════════════════════════════════════
+     * Crea formaciones que parecen naturales del End:
+     * - Columnas irregulares de end stone
+     * - Grupos de chorus plants
+     * - Fragmentos flotantes pequeños con vegetación
+     */
+    private void generarFormacionesNaturalesEnd(World world, int centerX, int centerY, int centerZ) {
+        plugin.getLogger().info("[Arena End] Generando formaciones naturales del End...");
+        
+        int formacionesGeneradas = 0;
+        
+        // 16 formaciones naturales distribuidas
+        for (int i = 0; i < 16; i++) {
+            double angle = (i * Math.PI * 2) / 16 + (Math.random() - 0.5) * 0.4;
+            int distancia = 80 + (int)(Math.random() * 40); // Entre 80-120 bloques
+            int x = centerX + (int)(Math.cos(angle) * distancia);
+            int z = centerZ + (int)(Math.sin(angle) * distancia);
+            
+            int tipo = i % 3;
+            
+            switch (tipo) {
+                case 0: // Columna irregular de end stone
+                    int altura = 8 + (int)(Math.random() * 7); // 8-15 bloques
+                    int anchoBase = 2 + (int)(Math.random() * 2); // 2-3 bloques
+                    
+                    for (int y = 0; y < altura; y++) {
+                        int ancho = anchoBase - (y / 5); // Se estrecha hacia arriba
+                        if (ancho < 1) ancho = 1;
+                        
+                        for (int dx = -ancho; dx <= ancho; dx++) {
+                            for (int dz = -ancho; dz <= ancho; dz++) {
+                                if (Math.abs(dx) + Math.abs(dz) <= ancho) {
+                                    Material mat = (Math.random() < 0.7) ? Material.END_STONE : Material.END_STONE_BRICKS;
+                                    world.getBlockAt(x + dx, centerY + y, z + dz).setType(mat);
+                                }
+                            }
+                        }
+                    }
+                    // Punta con chorus plant
+                    if (Math.random() < 0.5) {
+                        world.getBlockAt(x, centerY + altura, z).setType(Material.CHORUS_PLANT);
+                        world.getBlockAt(x, centerY + altura + 1, z).setType(Material.CHORUS_FLOWER);
+                    }
+                    formacionesGeneradas++;
+                    break;
+                    
+                case 1: // Bosquecillo de chorus plants
+                    int numPlantas = 3 + (int)(Math.random() * 4); // 3-6 plantas
+                    for (int p = 0; p < numPlantas; p++) {
+                        int offsetX = (int)(Math.random() * 7) - 3;
+                        int offsetZ = (int)(Math.random() * 7) - 3;
+                        
+                        // Base de end stone
+                        world.getBlockAt(x + offsetX, centerY, z + offsetZ).setType(Material.END_STONE);
+                        
+                        // Tallo de chorus
+                        int alturaPlanta = 4 + (int)(Math.random() * 5); // 4-8 bloques
+                        for (int y = 1; y <= alturaPlanta; y++) {
+                            world.getBlockAt(x + offsetX, centerY + y, z + offsetZ).setType(Material.CHORUS_PLANT);
+                        }
+                        world.getBlockAt(x + offsetX, centerY + alturaPlanta + 1, z + offsetZ).setType(Material.CHORUS_FLOWER);
+                        
+                        // Ramificaciones aleatorias
+                        if (alturaPlanta > 6 && Math.random() < 0.5) {
+                            int ramY = centerY + 3 + (int)(Math.random() * 3);
+                            int[][] offsets = {{1,0}, {-1,0}, {0,1}, {0,-1}};
+                            for (int dir = 0; dir < 4; dir++) {
+                                if (Math.random() < 0.3) {
+                                    int[] offset = offsets[dir];
+                                    world.getBlockAt(x + offsetX + offset[0], ramY, z + offsetZ + offset[1]).setType(Material.CHORUS_PLANT);
+                                    world.getBlockAt(x + offsetX + offset[0], ramY + 1, z + offsetZ + offset[1]).setType(Material.CHORUS_FLOWER);
+                                }
+                            }
+                        }
+                    }
+                    formacionesGeneradas++;
+                    break;
+                    
+                case 2: // Fragmento flotante pequeño con vegetación
+                    int alturaFlotante = 10 + (int)(Math.random() * 8); // 10-18 bloques arriba
+                    
+                    // Isla flotante (5x5 base)
+                    for (int dx = -2; dx <= 2; dx++) {
+                        for (int dz = -2; dz <= 2; dz++) {
+                            double distIsla = Math.sqrt(dx * dx + dz * dz);
+                            if (distIsla <= 2.5) {
+                                // Capa inferior (forma de lágrima invertida)
+                                world.getBlockAt(x + dx, centerY + alturaFlotante - 1, z + dz).setType(Material.END_STONE);
+                                
+                                // Capa superior
+                                if (distIsla <= 2) {
+                                    world.getBlockAt(x + dx, centerY + alturaFlotante, z + dz).setType(Material.END_STONE);
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Vegetación en la isla
+                    world.getBlockAt(x, centerY + alturaFlotante + 1, z).setType(Material.CHORUS_PLANT);
+                    world.getBlockAt(x, centerY + alturaFlotante + 2, z).setType(Material.CHORUS_FLOWER);
+                    
+                    // Glowstone para iluminación
+                    world.getBlockAt(x + 1, centerY + alturaFlotante, z + 1).setType(Material.GLOWSTONE);
+                    world.getBlockAt(x - 1, centerY + alturaFlotante, z - 1).setType(Material.GLOWSTONE);
+                    
+                    formacionesGeneradas++;
+                    break;
+            }
+        }
+        
+        plugin.getLogger().info("[Arena End] ✓ " + formacionesGeneradas + " formaciones naturales generadas");
+    }
+    
+    /**
+     * ═══════════════════════════════════════════════════════════════════
+     * GENERAR PATRONES DECORATIVOS EN EL SUELO
+     * ═══════════════════════════════════════════════════════════════════
+     * Añade patrones decorativos adicionales en el suelo del End:
+     * - Círculos de bloques variados
+     * - Líneas radiales decorativas
+     * - Mosaicos de diferentes materiales del End
+     */
+    private void generarPatronesDecorativosSuelo(World world, int centerX, int centerY, int centerZ) {
+        plugin.getLogger().info("[Arena End] Generando patrones decorativos en el suelo...");
+        
+        int patronesGenerados = 0;
+        
+        // PATRÓN 1: Círculos decorativos concéntricos adicionales (entre los existentes)
+        // Círculo adicional en radio 27 (entre 22 y 35)
+        for (int angle = 0; angle < 360; angle += 3) {
+            double rad = Math.toRadians(angle);
+            int x = centerX + (int)(Math.cos(rad) * 27);
+            int z = centerZ + (int)(Math.sin(rad) * 27);
+            
+            if (Math.random() < 0.3) {
+                world.getBlockAt(x, centerY, z).setType(Material.PURPUR_BLOCK);
+                patronesGenerados++;
+            }
+        }
+        
+        // Círculo adicional en radio 42 (entre 35 y 46)
+        for (int angle = 0; angle < 360; angle += 3) {
+            double rad = Math.toRadians(angle);
+            int x = centerX + (int)(Math.cos(rad) * 42);
+            int z = centerZ + (int)(Math.sin(rad) * 42);
+            
+            if (Math.random() < 0.25) {
+                world.getBlockAt(x, centerY, z).setType(Material.CHISELED_POLISHED_BLACKSTONE);
+                patronesGenerados++;
+            }
+        }
+        
+        // PATRÓN 2: Mosaicos decorativos en sectores
+        for (int sector = 0; sector < 8; sector++) {
+            double sectorAngle = (sector * Math.PI * 2) / 8;
+            
+            // Mosaico en cada sector (zona entre radios 50-65)
+            for (int i = 0; i < 12; i++) {
+                double offsetAngle = sectorAngle + (Math.random() - 0.5) * 0.3;
+                int distancia = 50 + (int)(Math.random() * 15);
+                int x = centerX + (int)(Math.cos(offsetAngle) * distancia);
+                int z = centerZ + (int)(Math.sin(offsetAngle) * distancia);
+                
+                // Pequeño patrón 3x3
+                for (int dx = -1; dx <= 1; dx++) {
+                    for (int dz = -1; dz <= 1; dz++) {
+                        Material mat;
+                        if (dx == 0 && dz == 0) {
+                            mat = Material.PURPUR_BLOCK;
+                        } else if (Math.abs(dx) == Math.abs(dz)) {
+                            mat = Material.PURPUR_PILLAR;
+                        } else {
+                            mat = Material.END_STONE_BRICKS;
+                        }
+                        world.getBlockAt(x + dx, centerY, z + dz).setType(mat);
+                    }
+                }
+                patronesGenerados++;
+            }
+        }
+        
+        // PATRÓN 3: Líneas decorativas radiales secundarias (entre las principales)
+        for (int i = 0; i < 8; i++) {
+            double lineAngle = (i * Math.PI / 4) + (Math.PI / 8); // Entre las líneas principales
+            
+            for (int dist = 25; dist < 50; dist += 2) {
+                int x = centerX + (int)(Math.cos(lineAngle) * dist);
+                int z = centerZ + (int)(Math.sin(lineAngle) * dist);
+                
+                if (Math.random() < 0.4) {
+                    world.getBlockAt(x, centerY, z).setType(Material.POLISHED_BLACKSTONE_BRICKS);
+                    patronesGenerados++;
+                }
+            }
+        }
+        
+        plugin.getLogger().info("[Arena End] ✓ " + patronesGenerados + " patrones decorativos en suelo generados");
+    }
+    
+    /**
+     * ═══════════════════════════════════════════════════════════════════
+     * GENERAR OBELISCOS DECORATIVOS EN EL PERÍMETRO
+     * ═══════════════════════════════════════════════════════════════════
+     * Crea obeliscos monumentales en el perímetro exterior:
+     * - 8 obeliscos en las direcciones cardinales e intercardinales
+     * - Altura de 20-25 bloques
+     * - Diseño elegante con purpur y obsidiana
+     * - Iluminación con glowstone
+     */
+    private void generarObeliscosDecorativosPerimetro(World world, int centerX, int centerY, int centerZ) {
+        plugin.getLogger().info("[Arena End] Generando obeliscos decorativos en perímetro...");
+        
+        int obeliscosGenerados = 0;
+        
+        // 8 obeliscos en direcciones cardinales e intercardinales
+        for (int i = 0; i < 8; i++) {
+            double angle = (i * Math.PI * 2) / 8;
+            int distancia = 130; // Bien afuera en el perímetro
+            int x = centerX + (int)(Math.cos(angle) * distancia);
+            int z = centerZ + (int)(Math.sin(angle) * distancia);
+            
+            int alturaObelisco = 20 + (int)(Math.random() * 6); // 20-25 bloques
+            
+            // BASE DEL OBELISCO (5x5)
+            for (int dx = -2; dx <= 2; dx++) {
+                for (int dz = -2; dz <= 2; dz++) {
+                    world.getBlockAt(x + dx, centerY - 1, z + dz).setType(Material.POLISHED_BLACKSTONE);
+                    world.getBlockAt(x + dx, centerY, z + dz).setType(Material.POLISHED_BLACKSTONE_BRICKS);
+                }
+            }
+            
+            // CUERPO DEL OBELISCO (se estrecha hacia arriba)
+            for (int y = 1; y <= alturaObelisco; y++) {
+                double progreso = (double)y / alturaObelisco;
+                int ancho = (int)(2 - progreso * 1.5); // Se estrecha de 2 a 0.5
+                if (ancho < 0) ancho = 0;
+                
+                for (int dx = -ancho; dx <= ancho; dx++) {
+                    for (int dz = -ancho; dz <= ancho; dz++) {
+                        Material mat;
+                        
+                        // Patrón de materiales
+                        if (y % 5 == 0) {
+                            mat = Material.CRYING_OBSIDIAN; // Bandas llorosas cada 5 bloques
+                        } else if (dx == 0 && dz == 0) {
+                            mat = Material.PURPUR_PILLAR; // Centro con purpur
+                        } else {
+                            mat = Material.POLISHED_BLACKSTONE_BRICKS;
+                        }
+                        
+                        world.getBlockAt(x + dx, centerY + y, z + dz).setType(mat);
+                        
+                        // Iluminación lateral
+                        if (y % 6 == 3 && Math.abs(dx) == ancho && dz == 0) {
+                            world.getBlockAt(x + dx + (dx > 0 ? 1 : -1), centerY + y, z).setType(Material.GLOWSTONE);
+                        }
+                        if (y % 6 == 3 && Math.abs(dz) == ancho && dx == 0) {
+                            world.getBlockAt(x, centerY + y, z + dz + (dz > 0 ? 1 : -1)).setType(Material.GLOWSTONE);
+                        }
+                    }
+                }
+            }
+            
+            // PUNTA DEL OBELISCO
+            world.getBlockAt(x, centerY + alturaObelisco + 1, z).setType(Material.PURPUR_BLOCK);
+            world.getBlockAt(x, centerY + alturaObelisco + 2, z).setType(Material.SEA_LANTERN);
+            world.getBlockAt(x, centerY + alturaObelisco + 3, z).setType(Material.END_ROD);
+            
+            // DECORACIÓN DE LA BASE: 4 pilares en las esquinas
+            int[][] esquinas = {{3, 3}, {-3, 3}, {3, -3}, {-3, -3}};
+            for (int[] esquina : esquinas) {
+                int ex = x + esquina[0];
+                int ez = z + esquina[1];
+                
+                // Pilar de esquina (6 bloques)
+                for (int y = 0; y <= 5; y++) {
+                    Material mat = (y % 2 == 0) ? Material.PURPUR_PILLAR : Material.POLISHED_BLACKSTONE_BRICKS;
+                    world.getBlockAt(ex, centerY + y, ez).setType(mat);
+                }
+                world.getBlockAt(ex, centerY + 6, ez).setType(Material.SOUL_LANTERN);
+            }
+            
+            // CADENAS DECORATIVAS desde los pilares de esquina al obelisco
+            for (int[] esquina : esquinas) {
+                int ex = x + esquina[0];
+                int ez = z + esquina[1];
+                
+                // Cadena a altura 6
+                int pasos = Math.max(Math.abs(esquina[0]), Math.abs(esquina[1]));
+                for (int paso = 1; paso < pasos; paso++) {
+                    int cx = x + (esquina[0] * paso / pasos);
+                    int cz = z + (esquina[1] * paso / pasos);
+                    world.getBlockAt(cx, centerY + 6, cz).setType(Material.CHAIN);
+                }
+            }
+            
+            obeliscosGenerados++;
+        }
+        
+        plugin.getLogger().info("[Arena End] ✓ " + obeliscosGenerados + " obeliscos decorativos generados");
+    }
+    
+    /**
+     * Genera FOSO DE LAVA DECORATIVO alrededor de la plataforma de batalla
+     * Anillo de lava en radio 95-100 (justo fuera de la plataforma de 180x180)
+     * con cascadas decorativas y efectos visuales épicos
+     */
+    private void generarFosoLavaDecorativo(World world, int centerX, int centerY, int centerZ) {
+        plugin.getLogger().info("[Arena End] Generando FOSO DE LAVA DECORATIVO épico...");
+        
+        int radioInterno = 95;  // Donde empieza el foso
+        int radioExterno = 105; // Donde termina el foso
+        int profundidad = 8;    // Profundidad del foso
+        
+        int bloquesLava = 0;
+        
+        // ═══════════════════════════════════════════════════════════════
+        // EXCAVACIÓN DEL FOSO CIRCULAR
+        // ═══════════════════════════════════════════════════════════════
+        for (int x = -radioExterno; x <= radioExterno; x++) {
+            for (int z = -radioExterno; z <= radioExterno; z++) {
+                double dist = Math.sqrt(x * x + z * z);
+                
+                // Solo dentro del anillo del foso
+                if (dist >= radioInterno && dist <= radioExterno) {
+                    // Excavar hacia abajo
+                    for (int y = 0; y > -profundidad; y--) {
+                        world.getBlockAt(centerX + x, centerY + y, centerZ + z).setType(Material.AIR);
+                    }
+                    
+                    // Piso del foso (netherrack para que la lava se vea mejor)
+                    world.getBlockAt(centerX + x, centerY - profundidad, centerZ + z).setType(Material.NETHERRACK);
+                    
+                    // Paredes del foso (blackstone)
+                    if (dist >= radioExterno - 1 || dist <= radioInterno + 1) {
+                        for (int y = -1; y > -profundidad; y--) {
+                            Material wallMat = (y % 2 == 0) ? Material.POLISHED_BLACKSTONE : Material.POLISHED_BLACKSTONE_BRICKS;
+                            world.getBlockAt(centerX + x, centerY + y, centerZ + z).setType(wallMat);
+                        }
+                    }
+                    
+                    // LAVA en el fondo del foso
+                    if (dist < radioExterno - 1 && dist > radioInterno + 1) {
+                        world.getBlockAt(centerX + x, centerY - profundidad + 1, centerZ + z).setType(Material.LAVA);
+                        bloquesLava++;
+                    }
+                }
+            }
+        }
+        
+        // ═══════════════════════════════════════════════════════════════
+        // CASCADAS DE LAVA decorativas (12 cascadas alrededor)
+        // ═══════════════════════════════════════════════════════════════
+        for (int i = 0; i < 12; i++) {
+            double angle = (i * Math.PI * 2) / 12;
+            int cascadaX = centerX + (int)(Math.cos(angle) * radioExterno);
+            int cascadaZ = centerZ + (int)(Math.sin(angle) * radioExterno);
+            
+            // Estructura para la cascada (5x5 plataforma elevada)
+            for (int dx = -2; dx <= 2; dx++) {
+                for (int dz = -2; dz <= 2; dz++) {
+                    double distPlat = Math.sqrt(dx * dx + dz * dz);
+                    if (distPlat <= 2) {
+                        world.getBlockAt(cascadaX + dx, centerY + 3, cascadaZ + dz).setType(Material.POLISHED_BLACKSTONE);
+                        world.getBlockAt(cascadaX + dx, centerY + 2, cascadaZ + dz).setType(Material.POLISHED_BLACKSTONE_BRICKS);
+                    }
+                }
+            }
+            
+            // Fuente de lava en el centro de la plataforma
+            world.getBlockAt(cascadaX, centerY + 4, cascadaZ).setType(Material.LAVA);
+            
+            // Pilar decorativo detrás de la cascada
+            for (int y = 0; y <= 8; y++) {
+                Material pilarMat = (y % 3 == 0) ? Material.PURPUR_PILLAR : Material.POLISHED_BLACKSTONE_BRICKS;
+                world.getBlockAt(cascadaX, centerY + 4 + y, cascadaZ).setType(pilarMat);
+            }
+            world.getBlockAt(cascadaX, centerY + 13, cascadaZ).setType(Material.GLOWSTONE);
+        }
+        
+        // ═══════════════════════════════════════════════════════════════
+        // PILARES DE OBSIDIANA en el borde interior del foso (decoración)
+        // ═══════════════════════════════════════════════════════════════
+        for (int i = 0; i < 16; i++) {
+            double angle = (i * Math.PI * 2) / 16;
+            int pilarX = centerX + (int)(Math.cos(angle) * (radioInterno + 2));
+            int pilarZ = centerZ + (int)(Math.sin(angle) * (radioInterno + 2));
+            
+            // Pilar de obsidiana (altura 4 bloques)
+            for (int y = 0; y <= 3; y++) {
+                Material mat = (y == 3) ? Material.CRYING_OBSIDIAN : Material.OBSIDIAN;
+                world.getBlockAt(pilarX, centerY + y, pilarZ).setType(mat);
+            }
+            
+            // Linterna en la cima
+            world.getBlockAt(pilarX, centerY + 4, pilarZ).setType(Material.SOUL_LANTERN);
+        }
+        
+        // ═══════════════════════════════════════════════════════════════
+        // BLOQUES DE MAGMA decorativos en el foso (iluminación extra)
+        // ═══════════════════════════════════════════════════════════════
+        for (int i = 0; i < 24; i++) {
+            double angle = Math.random() * Math.PI * 2;
+            double dist = radioInterno + 3 + Math.random() * (radioExterno - radioInterno - 6);
+            int magmaX = centerX + (int)(Math.cos(angle) * dist);
+            int magmaZ = centerZ + (int)(Math.sin(angle) * dist);
+            
+            world.getBlockAt(magmaX, centerY - profundidad + 1, magmaZ).setType(Material.MAGMA_BLOCK);
+        }
+        
+        plugin.getLogger().info("[Arena End] ✓ Foso de lava decorativo generado:");
+        plugin.getLogger().info("[Arena End]   - Radio: " + radioInterno + "-" + radioExterno + " bloques");
+        plugin.getLogger().info("[Arena End]   - Profundidad: " + profundidad + " bloques");
+        plugin.getLogger().info("[Arena End]   - Bloques de lava: " + bloquesLava);
+        plugin.getLogger().info("[Arena End]   - Cascadas decorativas: 12");
+        plugin.getLogger().info("[Arena End]   - Pilares decorativos: 16");
+    }
+    
+    /**
+     * Genera ISLAS FLOTANTES GIGANTES en el cielo
+     * 8-12 islas flotantes masivas (15-25 bloques de radio) a gran altura
+     * con vegetación del End, cristales, y efectos decorativos épicos
+     */
+    private void generarIslasFlotantesGigantes(World world, int centerX, int centerY, int centerZ) {
+        plugin.getLogger().info("[Arena End] Generando ISLAS FLOTANTES GIGANTES...");
+        
+        int cantidadIslas = 8 + random.nextInt(5); // 8-12 islas
+        int islasGeneradas = 0;
+        
+        for (int i = 0; i < cantidadIslas; i++) {
+            // Posición aleatoria muy arriba y lejos del centro
+            double angle = (i * Math.PI * 2 / cantidadIslas) + (Math.random() * 0.5 - 0.25);
+            double distancia = 60 + Math.random() * 40; // 60-100 bloques del centro
+            int islaX = centerX + (int)(Math.cos(angle) * distancia);
+            int islaZ = centerZ + (int)(Math.sin(angle) * distancia);
+            int islaY = centerY + 40 + random.nextInt(30); // Y+40 a Y+70 (MUY ALTO)
+            
+            // Tamaño de la isla (radio 15-25 bloques)
+            int radioIsla = 15 + random.nextInt(11);
+            
+            // ═══════════════════════════════════════════════════════════
+            // GENERAR FORMA ORGÁNICA DE LA ISLA (esfera irregular)
+            // ═══════════════════════════════════════════════════════════
+            for (int x = -radioIsla; x <= radioIsla; x++) {
+                for (int z = -radioIsla; z <= radioIsla; z++) {
+                    for (int y = -radioIsla; y <= radioIsla / 2; y++) {
+                        double dist = Math.sqrt(x * x + y * y * 1.5 + z * z); // Achatada
+                        double noise = (Math.random() - 0.5) * 3; // Irregularidad
+                        
+                        if (dist + noise < radioIsla) {
+                            Material mat;
+                            double heightRatio = (double)(y + radioIsla) / (radioIsla + radioIsla / 2);
+                            
+                            if (heightRatio < 0.3) {
+                                // Fondo de la isla: End stone oscuro
+                                mat = Math.random() < 0.8 ? Material.END_STONE : Material.POLISHED_BLACKSTONE;
+                            } else if (heightRatio < 0.7) {
+                                // Medio: End stone bricks y obsidiana
+                                if (Math.random() < 0.1) {
+                                    mat = Material.OBSIDIAN;
+                                } else {
+                                    mat = Math.random() < 0.7 ? Material.END_STONE : Material.END_STONE_BRICKS;
+                                }
+                            } else {
+                                // Superficie: End stone con vegetación
+                                mat = Material.END_STONE;
+                            }
+                            
+                            world.getBlockAt(islaX + x, islaY + y, islaZ + z).setType(mat);
+                        }
+                    }
+                }
+            }
+            
+            // ═══════════════════════════════════════════════════════════
+            // VEGETACIÓN DEL END en la superficie
+            // ═══════════════════════════════════════════════════════════
+            for (int x = -radioIsla; x <= radioIsla; x++) {
+                for (int z = -radioIsla; z <= radioIsla; z++) {
+                    double dist = Math.sqrt(x * x + z * z);
+                    if (dist < radioIsla - 2 && Math.random() < 0.15) {
+                        int vegetY = islaY + radioIsla / 2;
+                        
+                        // Chorus plants
+                        if (Math.random() < 0.6) {
+                            int alturaChorus = 2 + random.nextInt(4);
+                            for (int cy = 0; cy < alturaChorus; cy++) {
+                                world.getBlockAt(islaX + x, vegetY + cy, islaZ + z).setType(Material.CHORUS_PLANT);
+                            }
+                            world.getBlockAt(islaX + x, vegetY + alturaChorus, islaZ + z).setType(Material.CHORUS_FLOWER);
+                        } else {
+                            // Cristales de amatista
+                            world.getBlockAt(islaX + x, vegetY, islaZ + z).setType(Material.BUDDING_AMETHYST);
+                            world.getBlockAt(islaX + x, vegetY + 1, islaZ + z).setType(Material.LARGE_AMETHYST_BUD);
+                        }
+                    }
+                }
+            }
+            
+            // ═══════════════════════════════════════════════════════════
+            // PILAR CENTRAL DECORATIVO (torre pequeña en el centro)
+            // ═══════════════════════════════════════════════════════════
+            int alturaPilar = 8 + random.nextInt(6);
+            for (int y = 0; y < alturaPilar; y++) {
+                Material pilarMat = (y % 3 == 0) ? Material.PURPUR_PILLAR : Material.END_STONE_BRICKS;
+                world.getBlockAt(islaX, islaY + radioIsla / 2 + y, islaZ).setType(pilarMat);
+                
+                // Decoración lateral
+                if (y % 4 == 0 && y > 0) {
+                    world.getBlockAt(islaX + 1, islaY + radioIsla / 2 + y, islaZ).setType(Material.GLOWSTONE);
+                    world.getBlockAt(islaX - 1, islaY + radioIsla / 2 + y, islaZ).setType(Material.GLOWSTONE);
+                }
+            }
+            // Cristal en la cima del pilar
+            world.getBlockAt(islaX, islaY + radioIsla / 2 + alturaPilar, islaZ).setType(Material.SEA_LANTERN);
+            world.getBlockAt(islaX, islaY + radioIsla / 2 + alturaPilar + 1, islaZ).setType(Material.END_ROD);
+            
+            // ═══════════════════════════════════════════════════════════
+            // CADENAS COLGANTES desde la isla hacia abajo
+            // ═══════════════════════════════════════════════════════════
+            for (int c = 0; c < 6; c++) {
+                double chainAngle = (c * Math.PI * 2 / 6);
+                int chainDist = radioIsla - 3;
+                int chainX = islaX + (int)(Math.cos(chainAngle) * chainDist);
+                int chainZ = islaZ + (int)(Math.sin(chainAngle) * chainDist);
+                
+                int chainLength = 10 + random.nextInt(8);
+                for (int chain = 0; chain < chainLength; chain++) {
+                    world.getBlockAt(chainX, islaY - radioIsla - chain, chainZ).setType(Material.CHAIN);
+                }
+                // Lámpara al final
+                world.getBlockAt(chainX, islaY - radioIsla - chainLength, chainZ).setType(Material.SOUL_LANTERN);
+            }
+            
+            // ═══════════════════════════════════════════════════════════
+            // FRAGMENTOS PEQUEÑOS orbitando alrededor de la isla
+            // ═══════════════════════════════════════════════════════════
+            for (int f = 0; f < 4; f++) {
+                double fragAngle = (f * Math.PI * 2 / 4) + Math.random();
+                int fragDist = radioIsla + 8 + random.nextInt(5);
+                int fragX = islaX + (int)(Math.cos(fragAngle) * fragDist);
+                int fragZ = islaZ + (int)(Math.sin(fragAngle) * fragDist);
+                int fragY = islaY + random.nextInt(10) - 5;
+                
+                int fragSize = 2 + random.nextInt(3);
+                for (int dx = -fragSize; dx <= fragSize; dx++) {
+                    for (int dy = -fragSize; dy <= fragSize; dy++) {
+                        for (int dz = -fragSize; dz <= fragSize; dz++) {
+                            if (Math.sqrt(dx*dx + dy*dy + dz*dz) <= fragSize) {
+                                world.getBlockAt(fragX + dx, fragY + dy, fragZ + dz).setType(Material.END_STONE);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            islasGeneradas++;
+        }
+        
+        plugin.getLogger().info("[Arena End] ✓ " + islasGeneradas + " ISLAS FLOTANTES GIGANTES generadas");
     }
     
     /**
@@ -9631,6 +11270,114 @@ public class AperturaEndEvent extends EventBase {
                 }
             }
         }, plugin);
+        
+        // Listener para proteger bloques de netherite en el End durante el evento
+        Bukkit.getPluginManager().registerEvents(new org.bukkit.event.Listener() {
+            @org.bukkit.event.EventHandler(priority = org.bukkit.event.EventPriority.HIGH)
+            public void onNetheriteBreak(org.bukkit.event.block.BlockBreakEvent e) {
+                // Solo proteger si el evento está activo
+                if (faseEvento == EventPhase.INACTIVO) return;
+                
+                Player player = e.getPlayer();
+                org.bukkit.block.Block block = e.getBlock();
+                
+                // Verificar si está en el mundo del End
+                String endWorldName = config.getString("evento.mundo_end", "world_the_end");
+                if (!player.getWorld().getName().equals(endWorldName)) return;
+                
+                // Verificar si es netherite o ancient debris
+                org.bukkit.Material blockType = block.getType();
+                if (blockType == org.bukkit.Material.NETHERITE_BLOCK || 
+                    blockType == org.bukkit.Material.ANCIENT_DEBRIS) {
+                    
+                    // Cancelar el evento Y bloquear drops
+                    e.setCancelled(true);
+                    e.setDropItems(false); // CRÍTICO: No dropear items
+                    
+                    // Mensaje al jugador
+                    player.sendMessage("§c✗ No puedes romper bloques de netherite durante el evento del End");
+                    player.sendActionBar("§c⚠ Protección del End: §7Netherite bloqueada");
+                    
+                    // Efectos visuales/sonoros
+                    player.playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 0.5f, 0.8f);
+                    player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_LAND, 0.3f, 1.5f);
+                    
+                    Location blockLoc = block.getLocation().add(0.5, 0.5, 0.5);
+                    player.getWorld().spawnParticle(Particle.SMOKE, blockLoc, 20, 0.3, 0.3, 0.3, 0.02);
+                    player.getWorld().spawnParticle(Particle.CRIT, blockLoc, 10, 0.2, 0.2, 0.2, 0.1);
+                    
+                    plugin.getLogger().info("[Apertura End] Bloqueado intento de " + player.getName() + 
+                        " de romper " + blockType.name() + " en el End");
+                }
+            }
+            
+            @org.bukkit.event.EventHandler(priority = org.bukkit.event.EventPriority.HIGH)
+            public void onNetheritePlace(org.bukkit.event.block.BlockPlaceEvent e) {
+                // Solo proteger si el evento está activo
+                if (faseEvento == EventPhase.INACTIVO) return;
+                
+                Player player = e.getPlayer();
+                org.bukkit.block.Block block = e.getBlock();
+                
+                // Verificar si está en el mundo del End
+                String endWorldName = config.getString("evento.mundo_end", "world_the_end");
+                if (!player.getWorld().getName().equals(endWorldName)) return;
+                
+                // Verificar si es netherite o ancient debris
+                org.bukkit.Material blockType = block.getType();
+                if (blockType == org.bukkit.Material.NETHERITE_BLOCK || 
+                    blockType == org.bukkit.Material.ANCIENT_DEBRIS) {
+                    
+                    // Cancelar el evento
+                    e.setCancelled(true);
+                    
+                    // Mensaje al jugador
+                    player.sendMessage("§c✗ No puedes colocar bloques de netherite durante el evento del End");
+                    player.sendActionBar("§c⚠ Protección del End: §7Netherite bloqueada");
+                    
+                    // Efectos
+                    player.playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 0.5f, 0.8f);
+                    player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_LAND, 0.3f, 1.5f);
+                    
+                    plugin.getLogger().info("[Apertura End] Bloqueado intento de " + player.getName() + 
+                        " de colocar " + blockType.name() + " en el End");
+                }
+            }
+            
+            @org.bukkit.event.EventHandler(priority = org.bukkit.event.EventPriority.HIGH)
+            public void onExplosion(org.bukkit.event.entity.EntityExplodeEvent e) {
+                // Solo proteger si el evento está activo
+                if (faseEvento == EventPhase.INACTIVO) return;
+                
+                // Verificar si está en el mundo del End
+                String endWorldName = config.getString("evento.mundo_end", "world_the_end");
+                if (!e.getLocation().getWorld().getName().equals(endWorldName)) return;
+                
+                // Proteger bloques de netherite de explosiones
+                e.blockList().removeIf(block -> {
+                    org.bukkit.Material type = block.getType();
+                    return type == org.bukkit.Material.NETHERITE_BLOCK || 
+                           type == org.bukkit.Material.ANCIENT_DEBRIS;
+                });
+            }
+            
+            @org.bukkit.event.EventHandler(priority = org.bukkit.event.EventPriority.HIGH)
+            public void onBlockExplosion(org.bukkit.event.block.BlockExplodeEvent e) {
+                // Solo proteger si el evento está activo
+                if (faseEvento == EventPhase.INACTIVO) return;
+                
+                // Verificar si está en el mundo del End
+                String endWorldName = config.getString("evento.mundo_end", "world_the_end");
+                if (!e.getBlock().getWorld().getName().equals(endWorldName)) return;
+                
+                // Proteger bloques de netherite de explosiones
+                e.blockList().removeIf(block -> {
+                    org.bukkit.Material type = block.getType();
+                    return type == org.bukkit.Material.NETHERITE_BLOCK || 
+                           type == org.bukkit.Material.ANCIENT_DEBRIS;
+                });
+            }
+        }, plugin);
     }
     
     /**
@@ -9663,5 +11410,1474 @@ public class AperturaEndEvent extends EventBase {
             }.runTaskLater(plugin, 40L);
         }
     }
+    
+    /**
+     * Limpia mobs muertos de la lista de spawneados
+     */
+    private void limpiarMobsMuertos() {
+        mobsSpawneados.removeIf(uuid -> {
+            for (World world : Bukkit.getWorlds()) {
+                Entity entity = world.getEntity(uuid);
+                if (entity != null && entity instanceof LivingEntity) {
+                    return ((LivingEntity) entity).isDead();
+                }
+            }
+            return true; // Remover si no se encuentra (ya no existe)
+        });
+    }
+    
+    /**
+     * Cuenta cuántos mobs spawneados siguen vivos
+     */
+    private int contarMobsVivos() {
+        int count = 0;
+        for (UUID uuid : mobsSpawneados) {
+            for (World world : Bukkit.getWorlds()) {
+                Entity entity = world.getEntity(uuid);
+                if (entity != null && entity instanceof LivingEntity && !((LivingEntity) entity).isDead()) {
+                    count++;
+                    break;
+                }
+            }
+        }
+        return count;
+    }
+    
+    /**
+     * Cuenta cuántos jugadores están en el End
+     */
+    private int contarJugadoresEnEnd() {
+        int count = 0;
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (p.getWorld().getEnvironment() == World.Environment.THE_END) {
+                count++;
+            }
+        }
+        return count;
+    }
+    
+    /**
+     * Obtiene el nombre de la fase actual para mostrar en mensajes
+     */
+    private String obtenerNombreFase() {
+        switch (faseDragon) {
+            case FASE_1_AEREO: return "§8§l━━━ §5I §8§l━━━";
+            case FASE_2_INVOCADOR: return "§8§l━━━ §5II §8§l━━━";
+            case FASE_3_DESESPERADO: return "§8§l━━━ §5III §8§l━━━";
+            case FASE_4_FURIA: return "§8§l━━━ §4IV §8§l━━━";
+            default: return "§8§l━━━ §7? §8§l━━━";
+        }
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // SISTEMA DE VERIFICACIÓN DE PROXIMIDAD DE MOBS
+    // ═══════════════════════════════════════════════════════════════════
+    
+    /**
+     * Verifica que los mobs spawneados estén cerca de jugadores Y estén atacando
+     * Si están lejos (>50 bloques), los elimina y spawnea nuevos cerca
+     * Si NO tienen target o el target está muerto/desconectado, asigna uno nuevo
+     */
+    private void verificarYReposicionarMobsLejanos() {
+        List<Player> jugadoresEnd = new ArrayList<>();
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (p.getWorld().getEnvironment() == World.Environment.THE_END) {
+                jugadoresEnd.add(p);
+            }
+        }
+        
+        if (jugadoresEnd.isEmpty()) {
+            return; // No hay jugadores, no hacer nada
+        }
+        
+        int mobsReposicionados = 0;
+        int mobsReasignados = 0;
+        double distanciaMaxima = 50.0; // Mobs a más de 50 bloques se consideran "lejanos"
+        
+        List<UUID> mobsAEliminar = new ArrayList<>();
+        
+        // Verificar cada mob spawneado
+        for (UUID mobUUID : mobsSpawneados) {
+            Entity entity = null;
+            
+            // Buscar el mob
+            for (World world : Bukkit.getWorlds()) {
+                entity = world.getEntity(mobUUID);
+                if (entity != null) break;
+            }
+            
+            if (entity == null || !(entity instanceof LivingEntity) || ((LivingEntity)entity).isDead()) {
+                continue; // Ya está muerto o no existe
+            }
+            
+            LivingEntity mob = (LivingEntity) entity;
+            
+            // Verificar distancia al jugador más cercano
+            double distanciaMinima = Double.MAX_VALUE;
+            Player jugadorCercano = null;
+            
+            for (Player p : jugadoresEnd) {
+                if (!p.getWorld().equals(mob.getWorld())) continue;
+                
+                double dist = p.getLocation().distance(mob.getLocation());
+                if (dist < distanciaMinima) {
+                    distanciaMinima = dist;
+                    jugadorCercano = p;
+                }
+            }
+            
+            // PRIORIDAD 1: Si el mob está muy lejos, eliminarlo y respawnear
+            if (distanciaMinima > distanciaMaxima && jugadorCercano != null) {
+                mobsAEliminar.add(mobUUID);
+                
+                // Eliminar el mob lejano
+                mob.remove();
+                
+                // Respawnear cerca del jugador más cercano
+                respawnearMobCercaDeJugador(jugadorCercano, mob.getType());
+                mobsReposicionados++;
+                continue; // Ya eliminado, pasar al siguiente
+            }
+            
+            // PRIORIDAD 2: VERIFICAR QUE EL MOB ESTÉ ATACANDO A UN JUGADOR
+            if (mob instanceof Mob) {
+                Mob mobHostil = (Mob) mob;
+                LivingEntity targetActual = mobHostil.getTarget();
+                boolean necesitaNuevoTarget = false;
+                
+                // Verificar si necesita nuevo target
+                if (targetActual == null) {
+                    // No tiene target
+                    necesitaNuevoTarget = true;
+                } else if (targetActual.isDead()) {
+                    // Target está muerto
+                    necesitaNuevoTarget = true;
+                } else if (!(targetActual instanceof Player)) {
+                    // Target no es un jugador
+                    necesitaNuevoTarget = true;
+                } else {
+                    Player targetPlayer = (Player) targetActual;
+                    if (!targetPlayer.isOnline() || targetPlayer.getWorld().getEnvironment() != World.Environment.THE_END) {
+                        // Jugador desconectado o ya no está en el End
+                        necesitaNuevoTarget = true;
+                    }
+                }
+                
+                // Si necesita nuevo target, asignar el jugador más cercano
+                if (necesitaNuevoTarget && jugadorCercano != null) {
+                    mobHostil.setTarget(jugadorCercano);
+                    mobsReasignados++;
+                    
+                    // Efecto visual de "agresión"
+                    mob.getWorld().spawnParticle(Particle.ANGRY_VILLAGER, mob.getLocation().add(0, 1, 0), 3, 0.3, 0.3, 0.3, 0);
+                    
+                    // Sonido de agresión
+                    if (random.nextDouble() < 0.3) { // 30% de probabilidad para no spamear
+                        switch (mob.getType()) {
+                            case ZOMBIE:
+                                mob.getWorld().playSound(mob.getLocation(), Sound.ENTITY_ZOMBIE_AMBIENT, 0.8f, 1.0f);
+                                break;
+                            case SKELETON:
+                                mob.getWorld().playSound(mob.getLocation(), Sound.ENTITY_SKELETON_AMBIENT, 0.8f, 1.0f);
+                                break;
+                            case VINDICATOR:
+                            case PILLAGER:
+                                mob.getWorld().playSound(mob.getLocation(), Sound.ENTITY_VINDICATOR_AMBIENT, 0.8f, 1.0f);
+                                break;
+                            case RAVAGER:
+                                mob.getWorld().playSound(mob.getLocation(), Sound.ENTITY_RAVAGER_AMBIENT, 0.8f, 0.8f);
+                                break;
+                            default:
+                                mob.getWorld().playSound(mob.getLocation(), Sound.ENTITY_HOSTILE_HURT, 0.6f, 1.2f);
+                                break;
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Remover de la lista los mobs eliminados
+        mobsSpawneados.removeAll(mobsAEliminar);
+        
+        if (mobsReposicionados > 0 || mobsReasignados > 0) {
+            plugin.getLogger().info(String.format("[Apertura End] ✓ Reposicionados: %d mobs | Targets reasignados: %d mobs", 
+                mobsReposicionados, mobsReasignados));
+        }
+    }
+    
+    /**
+     * Respawnea un mob del tipo especificado cerca de un jugador
+     */
+    private void respawnearMobCercaDeJugador(Player jugador, EntityType tipoMob) {
+        World endWorld = jugador.getWorld();
+        Location jugadorLoc = jugador.getLocation();
+        
+        // Ubicación aleatoria cerca del jugador (15-25 bloques)
+        double angulo = random.nextDouble() * 2 * Math.PI;
+        double distancia = 15 + random.nextDouble() * 10; // 15-25 bloques
+        
+        int offsetX = (int) (Math.cos(angulo) * distancia);
+        int offsetZ = (int) (Math.sin(angulo) * distancia);
+        
+        Location spawnLoc = jugadorLoc.clone().add(offsetX, 0, offsetZ);
+        spawnLoc.setY(endWorld.getHighestBlockYAt(spawnLoc) + 1);
+        
+        // Spawnear mob
+        Entity mob = endWorld.spawnEntity(spawnLoc, tipoMob);
+        
+        if (mob instanceof LivingEntity) {
+            LivingEntity living = (LivingEntity) mob;
+            
+            // Aplicar buffs según fase
+            aplicarBuffsPorFase(living);
+            
+            // Hacer que ataque al jugador
+            if (living instanceof Mob) {
+                ((Mob) living).setTarget(jugador);
+            }
+            
+            // Guardar UUID para tracking
+            mobsSpawneados.add(mob.getUniqueId());
+            
+            // Efectos visuales de spawn
+            endWorld.spawnParticle(Particle.PORTAL, spawnLoc, 30, 0.5, 1, 0.5, 0.1);
+            endWorld.spawnParticle(Particle.REVERSE_PORTAL, spawnLoc, 20, 0.3, 0.5, 0.3, 0.05);
+        }
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // SISTEMA DE VERIFICACIÓN CONSTANTE DE TARGETS
+    // ═══════════════════════════════════════════════════════════════════
+    
+    private BukkitTask verificacionTargetsTask;
+    
+    /**
+     * Inicia verificación constante de que TODOS los mobs tengan un target válido
+     * Se ejecuta cada 5 segundos para mantener a los mobs siempre agresivos
+     */
+    private void iniciarVerificacionTargetsMobs() {
+        if (verificacionTargetsTask != null && !verificacionTargetsTask.isCancelled()) {
+            verificacionTargetsTask.cancel();
+        }
+        
+        plugin.getLogger().info("[Apertura End] ⚔ Sistema de verificación de targets ACTIVADO (cada 5s)");
+        
+        verificacionTargetsTask = new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (faseEvento != EventPhase.COMBATE) {
+                    cancel();
+                    return;
+                }
+                
+                // Forzar que TODOS los mobs tengan target
+                forzarTargetsEnTodosMobs();
+            }
+        }.runTaskTimer(plugin, 100L, 100L); // Cada 5 segundos (100 ticks)
+    }
+    
+    /**
+     * Fuerza que TODOS los mobs spawneados tengan un target de jugador válido
+     * Este método es más agresivo que la verificación de proximidad
+     */
+    private void forzarTargetsEnTodosMobs() {
+        List<Player> jugadoresEnd = new ArrayList<>();
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (p.getWorld().getEnvironment() == World.Environment.THE_END) {
+                jugadoresEnd.add(p);
+            }
+        }
+        
+        if (jugadoresEnd.isEmpty()) {
+            return;
+        }
+        
+        int mobsSinTarget = 0;
+        int mobsTargetCorregido = 0;
+        
+        for (UUID mobUUID : mobsSpawneados) {
+            Entity entity = null;
+            
+            // Buscar el mob
+            for (World world : Bukkit.getWorlds()) {
+                entity = world.getEntity(mobUUID);
+                if (entity != null) break;
+            }
+            
+            if (entity == null || !(entity instanceof Mob) || ((LivingEntity)entity).isDead()) {
+                continue;
+            }
+            
+            Mob mob = (Mob) entity;
+            LivingEntity targetActual = mob.getTarget();
+            boolean necesitaTarget = false;
+            
+            if (targetActual == null) {
+                necesitaTarget = true;
+                mobsSinTarget++;
+            } else if (targetActual.isDead()) {
+                necesitaTarget = true;
+                mobsTargetCorregido++;
+            } else if (!(targetActual instanceof Player)) {
+                necesitaTarget = true;
+                mobsTargetCorregido++;
+            } else {
+                Player targetPlayer = (Player) targetActual;
+                if (!targetPlayer.isOnline() || targetPlayer.getWorld().getEnvironment() != World.Environment.THE_END) {
+                    necesitaTarget = true;
+                    mobsTargetCorregido++;
+                }
+            }
+            
+            if (necesitaTarget) {
+                // Asignar jugador más cercano
+                Player jugadorCercano = encontrarJugadorMasCercano(mob, jugadoresEnd);
+                if (jugadorCercano != null) {
+                    mob.setTarget(jugadorCercano);
+                    
+                    // Efecto visual ocasional (no siempre para no spamear)
+                    if (random.nextDouble() < 0.2) { // 20% de probabilidad
+                        mob.getWorld().spawnParticle(Particle.ANGRY_VILLAGER, 
+                            mob.getLocation().add(0, 1.5, 0), 1, 0.2, 0.2, 0.2, 0);
+                    }
+                }
+            }
+        }
+        
+        if (mobsSinTarget > 0 || mobsTargetCorregido > 0) {
+            plugin.getLogger().info(String.format("[Apertura End] ⚔ Targets forzados - Sin target: %d | Corregidos: %d", 
+                mobsSinTarget, mobsTargetCorregido));
+        }
+    }
+    
+    /**
+     * Encuentra el jugador más cercano a un mob
+     */
+    private Player encontrarJugadorMasCercano(Mob mob, List<Player> jugadores) {
+        Player jugadorCercano = null;
+        double distanciaMinima = Double.MAX_VALUE;
+        
+        for (Player p : jugadores) {
+            if (!p.getWorld().equals(mob.getWorld())) continue;
+            
+            double dist = p.getLocation().distance(mob.getLocation());
+            if (dist < distanciaMinima) {
+                distanciaMinima = dist;
+                jugadorCercano = p;
+            }
+        }
+        
+        return jugadorCercano;
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // SISTEMA DE DESASTRES NATURALES DURANTE LA BATALLA
+    // ═══════════════════════════════════════════════════════════════════
+    
+    private BukkitTask desastresNaturalesTask;
+    private int desastreCounter = 0;
+    
+    /**
+     * Inicia el sistema de desastres naturales durante la batalla del End
+     * MEJORADO: Sistema de fases con intensidad escalonada según fase del dragón
+     * - Fase 1: Cada 3-4 min, intensidad 1.0x
+     * - Fase 2: Cada 2-3 min, intensidad 1.3x
+     * - Fase 3: Cada 1.5-2.5 min, intensidad 1.6x
+     * - Fase 4: Cada 1-2 min, intensidad 2.0x (EXTREMO)
+     */
+    private void iniciarDesastresNaturalesBatalla() {
+        if (desastresNaturalesTask != null && !desastresNaturalesTask.isCancelled()) {
+            desastresNaturalesTask.cancel();
+        }
+        
+        plugin.getLogger().info("[Apertura End] ⚡ Sistema de desastres naturales MEJORADO activado - Escala con fase del dragón");
+        
+        desastresNaturalesTask = new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (faseEvento != EventPhase.COMBATE) {
+                    cancel();
+                    return;
+                }
+                
+                // Lanzar un desastre aleatorio
+                lanzarDesastreAleatorio();
+                desastreCounter++;
+                
+                // Calcular próximo intervalo según fase del dragón
+                long proximoDesastre;
+                switch (faseDragon) {
+                    case FASE_1_AEREO:
+                        proximoDesastre = 3600 + (long)(random.nextDouble() * 1200); // 3-4 min
+                        break;
+                    case FASE_2_INVOCADOR:
+                        proximoDesastre = 2400 + (long)(random.nextDouble() * 1200); // 2-3 min
+                        break;
+                    case FASE_3_DESESPERADO:
+                        proximoDesastre = 1800 + (long)(random.nextDouble() * 1200); // 1.5-2.5 min
+                        break;
+                    case FASE_4_FURIA:
+                        proximoDesastre = 1200 + (long)(random.nextDouble() * 1200); // 1-2 min
+                        break;
+                    default:
+                        proximoDesastre = 2400; // Fallback 2 min
+                }
+                
+                // Re-programar
+                if (desastresNaturalesTask != null && !desastresNaturalesTask.isCancelled()) {
+                    desastresNaturalesTask.cancel();
+                }
+                
+                desastresNaturalesTask = new BukkitRunnable() {
+                    @Override
+                    public void run() {
+                        if (faseEvento != EventPhase.COMBATE) {
+                            cancel();
+                            return;
+                        }
+                        lanzarDesastreAleatorio();
+                    }
+                }.runTaskLater(plugin, proximoDesastre);
+            }
+        }.runTaskLater(plugin, 600L); // Primer desastre después de 30 segundos
+    }
+    
+    /**
+     * Lanza un desastre natural aleatorio en el End
+     * MEJORADO: Sistema avanzado con más variedad y mecánicas según fase
+     * Incluye: Advertencias visuales, efectos de fases, intensidad dinámica
+     */
+    private void lanzarDesastreAleatorio() {
+        List<Player> jugadoresEnd = new ArrayList<>();
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (p.getWorld().getEnvironment() == World.Environment.THE_END) {
+                jugadoresEnd.add(p);
+            }
+        }
+        
+        if (jugadoresEnd.isEmpty()) {
+            return;
+        }
+        
+        // Calcular intensidad según fase del dragón
+        double intensidad = 1.0;
+        switch (faseDragon) {
+            case FASE_1_AEREO:
+                intensidad = 1.0;
+                break;
+            case FASE_2_INVOCADOR:
+                intensidad = 1.3;
+                break;
+            case FASE_3_DESESPERADO:
+                intensidad = 1.6;
+                break;
+            case FASE_4_FURIA:
+                intensidad = 2.0;
+                break;
+        }
+        
+        // Seleccionar tipo de desastre según fase con mayor variedad
+        String tipoDesastre;
+        int prob = random.nextInt(100);
+        
+        switch (faseDragon) {
+            case FASE_1_AEREO:
+                // Fase 1: Solo desastres básicos
+                tipoDesastre = (prob < 60) ? "lluvia_fuego" : "terremoto";
+                break;
+                
+            case FASE_2_INVOCADOR:
+                // Fase 2: Agrega huracán
+                if (prob < 40) tipoDesastre = "lluvia_fuego";
+                else if (prob < 70) tipoDesastre = "terremoto";
+                else tipoDesastre = "huracan";
+                break;
+                
+            case FASE_3_DESESPERADO:
+                // Fase 3: Agrega lluvia de meteoritos
+                if (prob < 30) tipoDesastre = "lluvia_fuego";
+                else if (prob < 50) tipoDesastre = "terremoto";
+                else if (prob < 75) tipoDesastre = "huracan";
+                else tipoDesastre = "lluvia_meteoritos";
+                break;
+                
+            case FASE_4_FURIA:
+                // Fase 4: Desastres extremos + colapso dimensional
+                if (prob < 25) tipoDesastre = "lluvia_fuego_intensa";
+                else if (prob < 45) tipoDesastre = "terremoto_extremo";
+                else if (prob < 65) tipoDesastre = "huracan_intenso";
+                else if (prob < 85) tipoDesastre = "lluvia_meteoritos";
+                else tipoDesastre = "colapso_dimensional";
+                break;
+                
+            default:
+                tipoDesastre = "lluvia_fuego";
+        }
+        
+        // Anunciar desastre con efectos mejorados
+        String nombreDesastre = obtenerNombreDesastre(tipoDesastre);
+        String color = obtenerColorDesastre(tipoDesastre);
+        String barraIntensidad = generarBarraIntensidad(intensidad);
+        
+        Bukkit.broadcastMessage("");
+        Bukkit.broadcastMessage("§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        Bukkit.broadcastMessage("");
+        Bukkit.broadcastMessage(color + "§l⚠ " + nombreDesastre + " ⚠");
+        Bukkit.broadcastMessage("");
+        Bukkit.broadcastMessage("§7Intensidad: " + barraIntensidad);
+        Bukkit.broadcastMessage("§8[§7...§8] §7El dragón desata su furia...");
+        Bukkit.broadcastMessage("");
+        Bukkit.broadcastMessage("§8§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        Bukkit.broadcastMessage("");
+        
+        // Efectos visuales y sonoros mejorados
+        for (Player p : jugadoresEnd) {
+            // Títulos con intensidad visual
+            p.sendTitle(color + "§l⚠", color + "§l" + nombreDesastre.toUpperCase(), 10, 50, 15);
+            
+            // Sonidos según intensidad
+            if (intensidad >= 1.6) {
+                p.playSound(p.getLocation(), Sound.ENTITY_WITHER_SPAWN, 1.0f, 0.6f);
+                p.playSound(p.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 1.5f, 0.5f);
+                p.playSound(p.getLocation(), Sound.ENTITY_WARDEN_SONIC_BOOM, 0.8f, 0.7f);
+            } else {
+                p.playSound(p.getLocation(), Sound.ENTITY_WITHER_SPAWN, 0.6f, 0.8f);
+                p.playSound(p.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 1.0f, 0.6f);
+            }
+        }
+        
+        // Ejecutar desastre con intensidad
+        ejecutarDesastre(tipoDesastre, jugadoresEnd, intensidad);
+        
+        plugin.getLogger().info(String.format("[Apertura End] 🔥 Desastre: %s | Fase: %s | Intensidad: %.1fx", 
+            tipoDesastre, faseDragon, intensidad));
+    }
+    
+    /**
+     * Genera barra visual de intensidad del desastre
+     */
+    private String generarBarraIntensidad(double intensidad) {
+        int barras = (int) Math.ceil(intensidad * 5);
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 10; i++) {
+            if (i < barras) {
+                if (barras >= 8) sb.append("§c█"); // Rojo: Extremo
+                else if (barras >= 5) sb.append("§6█"); // Naranja: Alto
+                else sb.append("§e█"); // Amarillo: Moderado
+            } else {
+                sb.append("§7█"); // Gris: Vacío
+            }
+        }
+        return sb.toString();
+    }
+    
+    /**
+     * Ejecuta el desastre específico con intensidad dinámica
+     * MEJORADO: Acepta parámetro de intensidad para escalar efectos
+     */
+    private void ejecutarDesastre(String tipo, List<Player> jugadores, double intensidad) {
+        switch (tipo) {
+            case "lluvia_fuego":
+                ejecutarLluviaFuego(jugadores, intensidad);
+                break;
+            case "lluvia_fuego_intensa":
+                ejecutarLluviaFuego(jugadores, intensidad * 1.5);
+                break;
+            case "terremoto":
+                ejecutarTerremoto(jugadores, intensidad);
+                break;
+            case "terremoto_extremo":
+                ejecutarTerremotoExtremo(jugadores, intensidad);
+                break;
+            case "huracan":
+                ejecutarHuracan(jugadores, intensidad);
+                break;
+            case "huracan_intenso":
+                ejecutarHuracan(jugadores, intensidad * 1.5);
+                break;
+            case "lluvia_meteoritos":
+                ejecutarLluviaMeteorito(jugadores, intensidad);
+                break;
+            case "colapso_dimensional":
+                ejecutarColapsoDimensional(jugadores, intensidad);
+                break;
+        }
+    }
+    
+    /**
+     * MEJORADO: Lluvia de fuego avanzada con sistema de fases y meteoritos
+     * Inspirado en el sistema global de desastres
+     * 
+     * Fases:
+     * - INICIO (20%): Advertencia con partículas, intensidad 0.8x
+     * - PICO (60%): Intensidad máxima 1.4x, meteoritos grandes
+     * - DECLIVE (20%): Intensidad 0.9x, fuegos residuales
+     * 
+     * Mecánicas:
+     * - Meteoritos con advertencia visual (columnas de partículas)
+     * - Calor extremo que daña a jugadores sin techo
+     * - Transformación de terrain (End Stone → bloques quemados)
+     * - Fuegos persistentes que duran después del desastre
+     */
+    private void ejecutarLluviaFuego(List<Player> jugadores, double intensidad) {
+        final int DURACION_TOTAL = 80 * 20; // 80 segundos
+        final int FASE_INICIO = (int)(DURACION_TOTAL * 0.2);
+        final int FASE_PICO = (int)(DURACION_TOTAL * 0.6);
+        final int FASE_DECLIVE = (int)(DURACION_TOTAL * 0.2);
+        
+        final List<Location> fuegosPersistentes = new ArrayList<>();
+        final Set<Location> advertencias = new HashSet<>();
+        
+        new BukkitRunnable() {
+            int ticks = 0;
+            int proximoMeteorito = 40;
+            
+            @Override
+            public void run() {
+                if (ticks >= DURACION_TOTAL || faseEvento != EventPhase.COMBATE) {
+                    cancel();
+                    // Limpiar fuegos persistentes después de 30s
+                    new BukkitRunnable() {
+                        @Override
+                        public void run() {
+                            for (Location loc : fuegosPersistentes) {
+                                if (loc.getBlock().getType() == Material.FIRE) {
+                                    loc.getBlock().setType(Material.AIR);
+                                }
+                            }
+                        }
+                    }.runTaskLater(plugin, 600L);
+                    return;
+                }
+                
+                // Calcular fase actual e intensidad
+                double factorFase;
+                String fase;
+                if (ticks < FASE_INICIO) {
+                    factorFase = 0.8;
+                    fase = "INICIO";
+                } else if (ticks < FASE_INICIO + FASE_PICO) {
+                    factorFase = 1.4;
+                    fase = "PICO";
+                } else {
+                    factorFase = 0.9;
+                    fase = "DECLIVE";
+                }
+                
+                double intensidadActual = intensidad * factorFase;
+                
+                // Meteoritos con advertencia (solo en PICO y ocasionalmente en otras fases)
+                if ((fase.equals("PICO") || random.nextDouble() < 0.3) && ticks >= proximoMeteorito) {
+                    lanzarMeteoritoConAdvertencia(jugadores, intensidadActual, fuegosPersistentes, advertencias);
+                    proximoMeteorito = ticks + (int)(45 / intensidadActual); // Más frecuente a mayor intensidad
+                }
+                
+                // Lluvia de fuego constante
+                if (ticks % 10 == 0) {
+                    for (Player p : jugadores) {
+                        if (p.getWorld().getEnvironment() != World.Environment.THE_END) continue;
+                        
+                        int cantidad = (int)(intensidadActual * 2);
+                        for (int i = 0; i < cantidad; i++) {
+                            double offsetX = (random.nextDouble() - 0.5) * 25;
+                            double offsetZ = (random.nextDouble() - 0.5) * 25;
+                            
+                            Location target = p.getLocation().clone().add(offsetX, 15, offsetZ);
+                            Location spawnLoc = target.clone().add(0, 25, 0);
+                            
+                            // Spawn bola de fuego
+                            org.bukkit.entity.SmallFireball fireball = p.getWorld().spawn(spawnLoc, org.bukkit.entity.SmallFireball.class);
+                            fireball.setVelocity(target.toVector().subtract(spawnLoc.toVector()).normalize().multiply(0.6));
+                            fireball.setYield((float)(1.2 * intensidadActual));
+                            
+                            // Partículas de fuego
+                            p.getWorld().spawnParticle(Particle.FLAME, spawnLoc, 15, 0.2, 0.2, 0.2, 0.05);
+                            p.getWorld().spawnParticle(Particle.LAVA, spawnLoc, 3, 0.1, 0.1, 0.1, 0);
+                        }
+                    }
+                }
+                
+                // Calor extremo (daño a jugadores sin techo) - Solo en PICO
+                if (fase.equals("PICO") && ticks % 40 == 0) {
+                    for (Player p : jugadores) {
+                        if (p.getWorld().getEnvironment() != World.Environment.THE_END) continue;
+                        
+                        // Verificar si tiene techo (bloque sólido en Y+3 o superior)
+                        boolean tieneTecho = false;
+                        for (int y = 1; y <= 5; y++) {
+                            Block bloqueArriba = p.getLocation().clone().add(0, y, 0).getBlock();
+                            if (bloqueArriba.getType().isSolid()) {
+                                tieneTecho = true;
+                                break;
+                            }
+                        }
+                        
+                        if (!tieneTecho) {
+                            p.damage(intensidadActual * 2.0);
+                            p.sendMessage("§c§l⚠ §cEl calor extremo te quema - ¡Busca refugio!");
+                            p.getWorld().spawnParticle(Particle.FLAME, p.getLocation().add(0, 2, 0), 10, 0.3, 0.5, 0.3, 0.05);
+                        }
+                    }
+                }
+                
+                // Transformación de terreno ocasional (End Stone → bloques quemados)
+                if (fase.equals("PICO") && ticks % 30 == 0) {
+                    for (Player p : jugadores) {
+                        if (p.getWorld().getEnvironment() != World.Environment.THE_END) continue;
+                        
+                        int cantidad = random.nextInt(3) + 1;
+                        for (int i = 0; i < cantidad; i++) {
+                            double offsetX = (random.nextDouble() - 0.5) * 15;
+                            double offsetZ = (random.nextDouble() - 0.5) * 15;
+                            Location loc = p.getLocation().clone().add(offsetX, -1, offsetZ);
+                            Block block = loc.getBlock();
+                            
+                            if (block.getType() == Material.END_STONE) {
+                                block.setType(Material.MAGMA_BLOCK);
+                                loc.getWorld().spawnParticle(Particle.LAVA, loc.clone().add(0.5, 1, 0.5), 5, 0.3, 0.3, 0.3, 0);
+                            }
+                        }
+                    }
+                }
+                
+                ticks += 10;
+            }
+        }.runTaskTimer(plugin, 0L, 10L);
+    }
+    
+    /**
+     * Lanza un meteorito grande con advertencia visual previa
+     * Basado en el sistema de meteoritos del desastre global
+     */
+    private void lanzarMeteoritoConAdvertencia(List<Player> jugadores, double intensidad, 
+                                                List<Location> fuegosPersistentes, Set<Location> advertencias) {
+        if (jugadores.isEmpty()) return;
+        
+        Player objetivo = jugadores.get(random.nextInt(jugadores.size()));
+        if (objetivo.getWorld().getEnvironment() != World.Environment.THE_END) return;
+        
+        // Ubicación de impacto con desviación
+        double offsetX = (random.nextDouble() - 0.5) * 20;
+        double offsetZ = (random.nextDouble() - 0.5) * 20;
+        Location impacto = objetivo.getLocation().clone().add(offsetX, 0, offsetZ);
+        impacto.setY(impacto.getWorld().getHighestBlockYAt(impacto));
+        
+        // Advertencia visual - Columna de partículas durante 60 ticks (3 segundos)
+        advertencias.add(impacto.clone());
+        
+        new BukkitRunnable() {
+            int ticksAdvertencia = 0;
+            
+            @Override
+            public void run() {
+                if (ticksAdvertencia >= 60) {
+                    advertencias.remove(impacto);
+                    // Lanzar meteorito
+                    lanzarMeteoritoReal(impacto, intensidad, fuegosPersistentes);
+                    cancel();
+                    return;
+                }
+                
+                // Columna de advertencia
+                for (int y = 0; y < 30; y += 2) {
+                    Location particleLoc = impacto.clone().add(0, y, 0);
+                    impacto.getWorld().spawnParticle(Particle.FLAME, particleLoc, 3, 0.2, 0.2, 0.2, 0);
+                    impacto.getWorld().spawnParticle(Particle.SMOKE, particleLoc, 2, 0.2, 0.2, 0.2, 0);
+                }
+                
+                // Sonido de advertencia
+                if (ticksAdvertencia % 20 == 0) {
+                    impacto.getWorld().playSound(impacto, Sound.BLOCK_BEACON_AMBIENT, 1.0f, 1.5f);
+                }
+                
+                ticksAdvertencia += 5;
+            }
+        }.runTaskTimer(plugin, 0L, 5L);
+    }
+    
+    /**
+     * Lanza el meteorito real después de la advertencia
+     */
+    private void lanzarMeteoritoReal(Location impacto, double intensidad, List<Location> fuegosPersistentes) {
+        Location spawn = impacto.clone().add(0, 50, 0);
+        
+        // Spawn Fireball grande
+        org.bukkit.entity.Fireball meteorito = impacto.getWorld().spawn(spawn, org.bukkit.entity.Fireball.class);
+        meteorito.setVelocity(impacto.toVector().subtract(spawn.toVector()).normalize().multiply(1.2));
+        meteorito.setYield((float)(2.5 * intensidad)); // Explosión grande
+        meteorito.setIsIncendiary(true);
+        
+        // Efecto de impacto
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (!meteorito.isValid()) {
+                    // Impactó - Crear efectos adicionales
+                    impacto.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, impacto, 3, 0.5, 0.5, 0.5, 0);
+                    impacto.getWorld().playSound(impacto, Sound.ENTITY_GENERIC_EXPLODE, 2.0f, 0.5f);
+                    
+                    // Crear fuegos persistentes en área
+                    for (int i = 0; i < 8; i++) {
+                        double offsetX = (random.nextDouble() - 0.5) * 6;
+                        double offsetZ = (random.nextDouble() - 0.5) * 6;
+                        Location fuegoLoc = impacto.clone().add(offsetX, 0, offsetZ);
+                        fuegoLoc.setY(fuegoLoc.getWorld().getHighestBlockYAt(fuegoLoc) + 1);
+                        
+                        if (fuegoLoc.getBlock().getType() == Material.AIR) {
+                            fuegoLoc.getBlock().setType(Material.FIRE);
+                            fuegosPersistentes.add(fuegoLoc);
+                        }
+                    }
+                    
+                    cancel();
+                }
+            }
+        }.runTaskTimer(plugin, 0L, 2L);
+    }
+    
+    /**
+     * MEJORADO: Terremoto avanzado con sistema de fases y grietas
+     * Inspirado en el sistema global de desastres
+     * 
+     * Fases:
+     * - INICIO (20%): Temblores leves, advertencia
+     * - PICO (60%): Grietas en el suelo, derrumbes, intensidad máxima
+     * - DECLIVE (20%): Réplicas, efectos residuales
+     * 
+     * Mecánicas:
+     * - Grietas que generan vacío (aire/void)
+     * - Ondas sísmicas visuales
+     * - Desorientación (slowness + mining fatigue)
+     * - Derrumbes de bloques (Falling Blocks)
+     * - Réplicas periódicas durante DECLIVE
+     */
+    private void ejecutarTerremoto(List<Player> jugadores, double intensidad) {
+        final int DURACION_TOTAL = 70 * 20; // 70 segundos
+        final int FASE_INICIO = (int)(DURACION_TOTAL * 0.2);
+        final int FASE_PICO = (int)(DURACION_TOTAL * 0.6);
+        
+        final List<Location> grietas = new ArrayList<>();
+        final Set<FallingBlock> derrumbes = new HashSet<>();
+        
+        new BukkitRunnable() {
+            int ticks = 0;
+            int proximaReplica = 300; // 15 segundos
+            
+            @Override
+            public void run() {
+                if (ticks >= DURACION_TOTAL || faseEvento != EventPhase.COMBATE) {
+                    cancel();
+                    // Limpiar grietas después de 20s
+                    new BukkitRunnable() {
+                        @Override
+                        public void run() {
+                            for (Location loc : grietas) {
+                                if (loc.getBlock().getType() == Material.AIR) {
+                                    loc.getBlock().setType(Material.END_STONE);
+                                }
+                            }
+                        }
+                    }.runTaskLater(plugin, 400L);
+                    return;
+                }
+                
+                // Calcular fase actual
+                double factorFase;
+                String fase;
+                if (ticks < FASE_INICIO) {
+                    factorFase = 0.8;
+                    fase = "INICIO";
+                } else if (ticks < FASE_INICIO + FASE_PICO) {
+                    factorFase = 1.4;
+                    fase = "PICO";
+                } else {
+                    factorFase = 0.9;
+                    fase = "DECLIVE";
+                }
+                
+                double intensidadActual = intensidad * factorFase;
+                
+                // Vibración de jugadores (más intensa en PICO)
+                if (ticks % (fase.equals("PICO") ? 3 : 5) == 0) {
+                    for (Player p : jugadores) {
+                        if (p.getWorld().getEnvironment() != World.Environment.THE_END) continue;
+                        
+                        double shakeX = (random.nextDouble() - 0.5) * 0.4 * intensidadActual;
+                        double shakeZ = (random.nextDouble() - 0.5) * 0.4 * intensidadActual;
+                        double shakeY = 0.15 * intensidadActual;
+                        
+                        p.setVelocity(p.getVelocity().add(new org.bukkit.util.Vector(shakeX, shakeY, shakeZ)));
+                    }
+                }
+                
+                // Grietas en el suelo (solo en PICO)
+                if (fase.equals("PICO") && ticks % 40 == 0 && grietas.size() < 8) {
+                    crearGrieta(jugadores, intensidadActual, grietas);
+                }
+                
+                // Derrumbes (bloques caen del cielo) - PICO y DECLIVE
+                if ((fase.equals("PICO") || fase.equals("DECLIVE")) && ticks % 25 == 0) {
+                    crearDerrumbe(jugadores, intensidadActual, derrumbes);
+                }
+                
+                // Ondas sísmicas visuales
+                if (ticks % 15 == 0) {
+                    for (Player p : jugadores) {
+                        if (p.getWorld().getEnvironment() != World.Environment.THE_END) continue;
+                        
+                        // Onda expansiva de partículas
+                        for (double r = 0; r <= 8; r += 0.8) {
+                            for (double angle = 0; angle < Math.PI * 2; angle += Math.PI / 8) {
+                                double x = Math.cos(angle) * r;
+                                double z = Math.sin(angle) * r;
+                                Location particleLoc = p.getLocation().clone().add(x, 0.1, z);
+                                p.getWorld().spawnParticle(Particle.BLOCK, particleLoc, 3, 0.1, 0.1, 0.1, 0, Material.END_STONE.createBlockData());
+                            }
+                        }
+                    }
+                }
+                
+                // Desorientación (solo en PICO y DECLIVE)
+                if ((fase.equals("PICO") || fase.equals("DECLIVE")) && ticks % 60 == 0) {
+                    for (Player p : jugadores) {
+                        if (p.getWorld().getEnvironment() != World.Environment.THE_END) continue;
+                        
+                        p.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 60, (int)intensidadActual));
+                        p.addPotionEffect(new PotionEffect(PotionEffectType.MINING_FATIGUE, 60, (int)intensidadActual));
+                        p.sendMessage("§7§o[El suelo tiembla bajo tus pies...]");
+                    }
+                }
+                
+                // Daño periódico
+                if (ticks % 30 == 0) {
+                    for (Player p : jugadores) {
+                        if (p.getWorld().getEnvironment() != World.Environment.THE_END) continue;
+                        p.damage(1.5 * intensidadActual);
+                    }
+                }
+                
+                // Réplicas en DECLIVE
+                if (fase.equals("DECLIVE") && ticks >= proximaReplica) {
+                    lanzarReplica(jugadores, intensidadActual * 1.5);
+                    proximaReplica = ticks + 300; // Cada 15s
+                }
+                
+                // Sonidos sísmicos
+                if (ticks % 20 == 0) {
+                    for (Player p : jugadores) {
+                        if (p.getWorld().getEnvironment() != World.Environment.THE_END) continue;
+                        p.playSound(p.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 0.6f, 0.5f);
+                        p.playSound(p.getLocation(), Sound.ENTITY_WARDEN_DIG, 0.8f, 0.7f);
+                    }
+                }
+                
+                ticks += 5;
+            }
+        }.runTaskTimer(plugin, 0L, 5L);
+    }
+    
+    /**
+     * Crea una grieta en el suelo cerca de jugadores
+     */
+    private void crearGrieta(List<Player> jugadores, double intensidad, List<Location> grietas) {
+        if (jugadores.isEmpty()) return;
+        
+        Player objetivo = jugadores.get(random.nextInt(jugadores.size()));
+        if (objetivo.getWorld().getEnvironment() != World.Environment.THE_END) return;
+        
+        // Ubicación de grieta
+        double offsetX = (random.nextDouble() - 0.5) * 15;
+        double offsetZ = (random.nextDouble() - 0.5) * 15;
+        Location inicio = objetivo.getLocation().clone().add(offsetX, -1, offsetZ);
+        
+        // Longitud de grieta según intensidad
+        int longitud = (int)(3 + intensidad * 2);
+        double direccion = random.nextDouble() * Math.PI * 2;
+        
+        for (int i = 0; i < longitud; i++) {
+            double x = Math.cos(direccion) * i;
+            double z = Math.sin(direccion) * i;
+            Location grietaLoc = inicio.clone().add(x, 0, z);
+            
+            Block block = grietaLoc.getBlock();
+            if (block.getType() == Material.END_STONE || block.getType() == Material.OBSIDIAN) {
+                block.setType(Material.AIR); // Grieta = vacío
+                grietas.add(grietaLoc);
+                
+                // Partículas de ruptura
+                grietaLoc.getWorld().spawnParticle(Particle.BLOCK, grietaLoc.clone().add(0.5, 0.5, 0.5), 
+                    20, 0.3, 0.3, 0.3, 0.1, Material.END_STONE.createBlockData());
+                grietaLoc.getWorld().playSound(grietaLoc, Sound.ENTITY_ZOMBIE_BREAK_WOODEN_DOOR, 1.0f, 0.7f);
+            }
+        }
+    }
+    
+    /**
+     * Crea derrumbe de bloques cerca de jugadores
+     */
+    private void crearDerrumbe(List<Player> jugadores, double intensidad, Set<FallingBlock> derrumbes) {
+        if (jugadores.isEmpty()) return;
+        
+        Player objetivo = jugadores.get(random.nextInt(jugadores.size()));
+        if (objetivo.getWorld().getEnvironment() != World.Environment.THE_END) return;
+        
+        // Ubicación de derrumbe
+        double offsetX = (random.nextDouble() - 0.5) * 12;
+        double offsetZ = (random.nextDouble() - 0.5) * 12;
+        Location loc = objetivo.getLocation().clone().add(offsetX, 15, offsetZ);
+        
+        int cantidad = (int)(2 + intensidad);
+        for (int i = 0; i < cantidad; i++) {
+            double randX = (random.nextDouble() - 0.5) * 3;
+            double randZ = (random.nextDouble() - 0.5) * 3;
+            Location spawnLoc = loc.clone().add(randX, random.nextInt(5), randZ);
+            
+            // Spawn falling block
+            Material material = random.nextBoolean() ? Material.END_STONE : Material.OBSIDIAN;
+            FallingBlock falling = spawnLoc.getWorld().spawnFallingBlock(spawnLoc, material.createBlockData());
+            falling.setDropItem(false);
+            falling.setHurtEntities(true);
+            falling.setDamagePerBlock(1.0f);
+            derrumbes.add(falling);
+            
+            // Partículas
+            spawnLoc.getWorld().spawnParticle(Particle.BLOCK, spawnLoc, 10, 0.2, 0.2, 0.2, 0, material.createBlockData());
+        }
+    }
+    
+    /**
+     * Lanza réplica del terremoto (más breve pero intensa)
+     */
+    private void lanzarReplica(List<Player> jugadores, double intensidad) {
+        new BukkitRunnable() {
+            int ticks = 0;
+            
+            @Override
+            public void run() {
+                if (ticks >= 40 || faseEvento != EventPhase.COMBATE) {
+                    cancel();
+                    return;
+                }
+                
+                for (Player p : jugadores) {
+                    if (p.getWorld().getEnvironment() != World.Environment.THE_END) continue;
+                    
+                    // Vibración intensa
+                    double shakeX = (random.nextDouble() - 0.5) * 0.5;
+                    double shakeZ = (random.nextDouble() - 0.5) * 0.5;
+                    p.setVelocity(p.getVelocity().add(new org.bukkit.util.Vector(shakeX, 0.2, shakeZ)));
+                    
+                    // Partículas
+                    if (ticks % 5 == 0) {
+                        p.getWorld().spawnParticle(Particle.BLOCK, p.getLocation(), 30, 2, 0.1, 2, 0.1, 
+                            Material.END_STONE.createBlockData());
+                    }
+                }
+                
+                ticks += 5;
+            }
+        }.runTaskTimer(plugin, 0L, 5L);
+        
+        // Mensaje
+        Bukkit.broadcastMessage("§6§l⚠ §eRÉPLICA SÍSMICA");
+        for (Player p : jugadores) {
+            p.playSound(p.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 0.8f, 0.6f);
+        }
+    }
+    
+    /**
+     * Terremoto EXTREMO - Versión más destructiva para Fase 4
+     */
+    private void ejecutarTerremotoExtremo(List<Player> jugadores, double intensidad) {
+        // Ejecutar terremoto normal con intensidad x2
+        ejecutarTerremoto(jugadores, intensidad * 2.0);
+        
+        // Efectos adicionales extremos
+        Bukkit.broadcastMessage("§4§l⚠ TERREMOTO DEVASTADOR ⚠");
+        for (Player p : jugadores) {
+            if (p.getWorld().getEnvironment() != World.Environment.THE_END) continue;
+            p.addPotionEffect(new PotionEffect(PotionEffectType.NAUSEA, 200, 1));
+        }
+    }
+    
+    /**
+     * Ejecuta huracán de vacío en el End
+     */
+    /**
+     * MEJORADO: Huracán del Vacío avanzado con sistema de fases
+     * Inspirado en el sistema global de desastres
+     * 
+     * Fases:
+     * - INICIO (20%): Rachas de viento leves
+     * - PICO (60%): Objetos voladores, visibilidad reducida, vientos extremos
+     * - DECLIVE (20%): Vientos residuales
+     * 
+     * Mecánicas:
+     * - Rachas de viento que empujan a jugadores
+     * - Objetos voladores (bloques del End lanzados)
+     * - Visibilidad reducida (Blindness)
+     * - Vórtices que aspiran hacia puntos
+     */
+    private void ejecutarHuracan(List<Player> jugadores, double intensidad) {
+        final int DURACION_TOTAL = 75 * 20; // 75 segundos
+        final int FASE_INICIO = (int)(DURACION_TOTAL * 0.2);
+        final int FASE_PICO = (int)(DURACION_TOTAL * 0.6);
+        
+        final List<FallingBlock> objetosVoladores = new ArrayList<>();
+        final Map<Player, Location> centrosVortice = new HashMap<>();
+        
+        // Crear centros de vórtice para cada jugador
+        for (Player p : jugadores) {
+            if (p.getWorld().getEnvironment() == World.Environment.THE_END) {
+                double offsetX = (random.nextDouble() - 0.5) * 15;
+                double offsetZ = (random.nextDouble() - 0.5) * 15;
+                Location centro = p.getLocation().clone().add(offsetX, 5, offsetZ);
+                centrosVortice.put(p, centro);
+            }
+        }
+        
+        new BukkitRunnable() {
+            int ticks = 0;
+            
+            @Override
+            public void run() {
+                if (ticks >= DURACION_TOTAL || faseEvento != EventPhase.COMBATE) {
+                    cancel();
+                    // Limpiar objetos voladores
+                    for (FallingBlock fb : objetosVoladores) {
+                        if (fb.isValid()) fb.remove();
+                    }
+                    return;
+                }
+                
+                // Calcular fase
+                double factorFase;
+                String fase;
+                if (ticks < FASE_INICIO) {
+                    factorFase = 0.8;
+                    fase = "INICIO";
+                } else if (ticks < FASE_INICIO + FASE_PICO) {
+                    factorFase = 1.4;
+                    fase = "PICO";
+                } else {
+                    factorFase = 0.9;
+                    fase = "DECLIVE";
+                }
+                
+                double intensidadActual = intensidad * factorFase;
+                
+                for (Player p : jugadores) {
+                    if (p.getWorld().getEnvironment() != World.Environment.THE_END) continue;
+                    
+                    Location centroVortice = centrosVortice.get(p);
+                    if (centroVortice == null) continue;
+                    
+                    // Rachas de viento (empuje en espiral hacia vórtice)
+                    double angle = ticks * 0.15;
+                    org.bukkit.util.Vector dirVortice = centroVortice.toVector().subtract(p.getLocation().toVector()).normalize();
+                    
+                    double fuerzaRacha = 0.5 * intensidadActual;
+                    double forceX = Math.cos(angle) * fuerzaRacha + dirVortice.getX() * 0.2;
+                    double forceZ = Math.sin(angle) * fuerzaRacha + dirVortice.getZ() * 0.2;
+                    double forceY = Math.sin(ticks * 0.2) * 0.3;
+                    
+                    p.setVelocity(p.getVelocity().add(new org.bukkit.util.Vector(forceX, forceY, forceZ)));
+                    
+                    // Efectos visuales de viento
+                    if (ticks % 5 == 0) {
+                        p.getWorld().spawnParticle(Particle.CLOUD, p.getLocation(), 25, 2, 2, 2, 0.15);
+                        p.getWorld().spawnParticle(Particle.SOUL, p.getLocation(), 15, 2, 2, 2, 0.08);
+                        p.getWorld().spawnParticle(Particle.END_ROD, centroVortice, 10, 1, 1, 1, 0.1);
+                    }
+                    
+                    // Visibilidad reducida (solo en PICO)
+                    if (fase.equals("PICO") && ticks % 60 == 0) {
+                        p.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 80, 0));
+                        p.sendMessage("§7§o[El viento te ciega...]");
+                    }
+                    
+                    // Daño periódico
+                    if (ticks % 40 == 0) {
+                        p.damage(2.0 * intensidadActual);
+                    }
+                }
+                
+                // Objetos voladores (solo en PICO)
+                if (fase.equals("PICO") && ticks % 30 == 0 && objetosVoladores.size() < 15) {
+                    lanzarObjetoVolador(jugadores, intensidadActual, objetosVoladores);
+                }
+                
+                // Vórtice visual
+                if (ticks % 3 == 0) {
+                    for (Location centro : centrosVortice.values()) {
+                        for (double r = 0; r <= 5; r += 0.5) {
+                            double spiralAngle = ticks * 0.3 + r * 0.5;
+                            double x = Math.cos(spiralAngle) * r;
+                            double z = Math.sin(spiralAngle) * r;
+                            Location particleLoc = centro.clone().add(x, Math.sin(spiralAngle) * 2, z);
+                            centro.getWorld().spawnParticle(Particle.PORTAL, particleLoc, 1, 0, 0, 0, 0);
+                        }
+                    }
+                }
+                
+                // Sonidos de viento
+                if (ticks % 25 == 0) {
+                    for (Player p : jugadores) {
+                        if (p.getWorld().getEnvironment() != World.Environment.THE_END) continue;
+                        p.playSound(p.getLocation(), Sound.ITEM_ELYTRA_FLYING, 1.2f, 0.5f);
+                        p.playSound(p.getLocation(), Sound.ENTITY_PHANTOM_FLAP, 0.8f, 0.7f);
+                    }
+                }
+                
+                ticks += 5;
+            }
+        }.runTaskTimer(plugin, 0L, 5L);
+    }
+    
+    /**
+     * Lanza un objeto volador (bloque del End) que daña al impactar
+     */
+    private void lanzarObjetoVolador(List<Player> jugadores, double intensidad, List<FallingBlock> objetosVoladores) {
+        if (jugadores.isEmpty()) return;
+        
+        Player objetivo = jugadores.get(random.nextInt(jugadores.size()));
+        if (objetivo.getWorld().getEnvironment() != World.Environment.THE_END) return;
+        
+        // Ubicación inicial del objeto
+        double offsetX = (random.nextDouble() - 0.5) * 20;
+        double offsetZ = (random.nextDouble() - 0.5) * 20;
+        Location spawn = objetivo.getLocation().clone().add(offsetX, 8, offsetZ);
+        
+        // Tipo de bloque
+        Material[] materiales = {Material.END_STONE, Material.OBSIDIAN, Material.END_STONE_BRICKS};
+        Material material = materiales[random.nextInt(materiales.length)];
+        
+        FallingBlock objeto = spawn.getWorld().spawnFallingBlock(spawn, material.createBlockData());
+        objeto.setDropItem(false);
+        objeto.setHurtEntities(true);
+        objeto.setDamagePerBlock((float)(1.5 * intensidad));
+        
+        // Aplicar velocidad hacia jugador
+        org.bukkit.util.Vector dir = objetivo.getLocation().toVector().subtract(spawn.toVector()).normalize();
+        objeto.setVelocity(dir.multiply(0.6 + intensidad * 0.2));
+        
+        objetosVoladores.add(objeto);
+        
+        // Partículas
+        spawn.getWorld().spawnParticle(Particle.CLOUD, spawn, 15, 0.3, 0.3, 0.3, 0.1);
+    }
+    
+    /**
+     * Lluvia de Meteoritos - Desastre exclusivo de Fases 3 y 4
+     * Versión intensa de lluvia de fuego con más meteoritos grandes
+     */
+    private void ejecutarLluviaMeteorito(List<Player> jugadores, double intensidad) {
+        final int DURACION = 60 * 20; // 60 segundos
+        final List<Location> fuegosPersistentes = new ArrayList<>();
+        final Set<Location> advertencias = new HashSet<>();
+        
+        Bukkit.broadcastMessage("§c§l⚠ ALERTA: Múltiples meteoritos detectados ⚠");
+        
+        new BukkitRunnable() {
+            int ticks = 0;
+            
+            @Override
+            public void run() {
+                if (ticks >= DURACION || faseEvento != EventPhase.COMBATE) {
+                    cancel();
+                    // Limpiar fuegos después de 40s
+                    new BukkitRunnable() {
+                        @Override
+                        public void run() {
+                            for (Location loc : fuegosPersistentes) {
+                                if (loc.getBlock().getType() == Material.FIRE) {
+                                    loc.getBlock().setType(Material.AIR);
+                                }
+                            }
+                        }
+                    }.runTaskLater(plugin, 800L);
+                    return;
+                }
+                
+                // Lanzar meteoritos cada 20 ticks (más frecuente que lluvia normal)
+                if (ticks % 20 == 0) {
+                    int cantidad = (int)(1 + intensidad);
+                    for (int i = 0; i < cantidad; i++) {
+                        lanzarMeteoritoConAdvertencia(jugadores, intensidad * 1.2, fuegosPersistentes, advertencias);
+                    }
+                }
+                
+                // Lluvia constante de fuego también
+                if (ticks % 15 == 0) {
+                    for (Player p : jugadores) {
+                        if (p.getWorld().getEnvironment() != World.Environment.THE_END) continue;
+                        
+                        for (int i = 0; i < 4; i++) {
+                            double offsetX = (random.nextDouble() - 0.5) * 30;
+                            double offsetZ = (random.nextDouble() - 0.5) * 30;
+                            Location target = p.getLocation().clone().add(offsetX, 12, offsetZ);
+                            Location spawnLoc = target.clone().add(0, 20, 0);
+                            
+                            org.bukkit.entity.SmallFireball fireball = p.getWorld().spawn(spawnLoc, org.bukkit.entity.SmallFireball.class);
+                            fireball.setVelocity(target.toVector().subtract(spawnLoc.toVector()).normalize().multiply(0.8));
+                            fireball.setYield((float)(1.5 * intensidad));
+                        }
+                    }
+                }
+                
+                ticks += 5;
+            }
+        }.runTaskTimer(plugin, 0L, 5L);
+    }
+    
+    /**
+     * Colapso Dimensional - Desastre EXTREMO exclusivo de Fase 4
+     * Combina elementos de todos los desastres anteriores
+     */
+    private void ejecutarColapsoDimensional(List<Player> jugadores, double intensidad) {
+        final int DURACION = 50 * 20; // 50 segundos de caos total
+        
+        Bukkit.broadcastMessage("");
+        Bukkit.broadcastMessage("§4§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        Bukkit.broadcastMessage("§4§l      ⚠ COLAPSO DIMENSIONAL ⚠");
+        Bukkit.broadcastMessage("§c  El dragón rasga el tejido del End");
+        Bukkit.broadcastMessage("§4§l━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        Bukkit.broadcastMessage("");
+        
+        for (Player p : jugadores) {
+            p.sendTitle("§4§l⚠ COLAPSO", "§c§lDIMENSIONAL", 15, 60, 20);
+            p.playSound(p.getLocation(), Sound.ENTITY_WITHER_SPAWN, 2.0f, 0.4f);
+            p.playSound(p.getLocation(), Sound.ENTITY_ENDER_DRAGON_DEATH, 1.5f, 0.5f);
+            p.playSound(p.getLocation(), Sound.ENTITY_WARDEN_SONIC_BOOM, 1.0f, 0.6f);
+        }
+        
+        final List<Location> grietas = new ArrayList<>();
+        final List<Location> fuegos = new ArrayList<>();
+        final Set<Location> advertencias = new HashSet<>();
+        
+        new BukkitRunnable() {
+            int ticks = 0;
+            
+            @Override
+            public void run() {
+                if (ticks >= DURACION || faseEvento != EventPhase.COMBATE) {
+                    cancel();
+                    return;
+                }
+                
+                // Efectos combinados cada pocos ticks
+                
+                // 1. Meteoritos (cada 25 ticks)
+                if (ticks % 25 == 0) {
+                    lanzarMeteoritoConAdvertencia(jugadores, intensidad * 1.5, fuegos, advertencias);
+                }
+                
+                // 2. Grietas dimensionales (cada 40 ticks)
+                if (ticks % 40 == 0 && grietas.size() < 12) {
+                    crearGrieta(jugadores, intensidad * 1.3, grietas);
+                }
+                
+                // 3. Vientos caóticos (constante)
+                if (ticks % 3 == 0) {
+                    for (Player p : jugadores) {
+                        if (p.getWorld().getEnvironment() != World.Environment.THE_END) continue;
+                        
+                        double forceX = (random.nextDouble() - 0.5) * intensidad;
+                        double forceY = (random.nextDouble() - 0.3) * 0.6;
+                        double forceZ = (random.nextDouble() - 0.5) * intensidad;
+                        p.setVelocity(p.getVelocity().add(new org.bukkit.util.Vector(forceX, forceY, forceZ)));
+                    }
+                }
+                
+                // 4. Temblores (cada 5 ticks)
+                if (ticks % 5 == 0) {
+                    for (Player p : jugadores) {
+                        if (p.getWorld().getEnvironment() != World.Environment.THE_END) continue;
+                        
+                        double shakeX = (random.nextDouble() - 0.5) * 0.6;
+                        double shakeZ = (random.nextDouble() - 0.5) * 0.6;
+                        p.setVelocity(p.getVelocity().add(new org.bukkit.util.Vector(shakeX, 0.2, shakeZ)));
+                        
+                        // Partículas caóticas
+                        p.getWorld().spawnParticle(Particle.PORTAL, p.getLocation(), 30, 3, 3, 3, 0.5);
+                        p.getWorld().spawnParticle(Particle.FLAME, p.getLocation(), 15, 2, 2, 2, 0.1);
+                        p.getWorld().spawnParticle(Particle.END_ROD, p.getLocation(), 10, 2, 2, 2, 0.1);
+                    }
+                }
+                
+                // 5. Efectos negativos (cada 80 ticks)
+                if (ticks % 80 == 0) {
+                    for (Player p : jugadores) {
+                        if (p.getWorld().getEnvironment() != World.Environment.THE_END) continue;
+                        
+                        p.addPotionEffect(new PotionEffect(PotionEffectType.WITHER, 60, 1));
+                        p.addPotionEffect(new PotionEffect(PotionEffectType.NAUSEA, 100, 0));
+                        p.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 60, 1));
+                    }
+                }
+                
+                // 6. Daño constante alto
+                if (ticks % 30 == 0) {
+                    for (Player p : jugadores) {
+                        if (p.getWorld().getEnvironment() != World.Environment.THE_END) continue;
+                        p.damage(4.0 * intensidad);
+                        p.sendMessage("§4§l⚠ §cLa realidad se desgarra a tu alrededor");
+                    }
+                }
+                
+                // 7. Sonidos apocalípticos
+                if (ticks % 40 == 0) {
+                    for (Player p : jugadores) {
+                        if (p.getWorld().getEnvironment() != World.Environment.THE_END) continue;
+                        p.playSound(p.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 1.5f, 0.5f);
+                        p.playSound(p.getLocation(), Sound.ENTITY_WARDEN_ROAR, 1.0f, 0.6f);
+                        p.playSound(p.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 1.2f, 0.4f);
+                    }
+                }
+                
+                ticks += 5;
+            }
+        }.runTaskTimer(plugin, 0L, 5L);
+    }
+    
+    /**
+     * Obtiene el nombre del desastre para mostrar
+     */
+    private String obtenerNombreDesastre(String tipo) {
+        switch (tipo) {
+            case "lluvia_fuego": return "LLUVIA DE FUEGO";
+            case "lluvia_fuego_intensa": return "TORMENTA DE FUEGO INFERNAL";
+            case "terremoto": return "TERREMOTO DEL END";
+            case "terremoto_extremo": return "TERREMOTO DEVASTADOR";
+            case "huracan": return "HURACÁN DEL VACÍO";
+            case "huracan_intenso": return "TORMENTA DIMENSIONAL";
+            case "lluvia_meteoritos": return "LLUVIA DE METEORITOS";
+            case "colapso_dimensional": return "COLAPSO DIMENSIONAL";
+            default: return "DESASTRE DESCONOCIDO";
+        }
+    }
+    
+    /**
+     * Obtiene el color del desastre
+     */
+    private String obtenerColorDesastre(String tipo) {
+        switch (tipo) {
+            case "lluvia_fuego":
+            case "lluvia_fuego_intensa":
+            case "lluvia_meteoritos":
+                return "§6"; // Naranja
+            case "terremoto":
+            case "terremoto_extremo":
+                return "§c"; // Rojo
+            case "huracan":
+            case "huracan_intenso":
+                return "§b"; // Cyan
+            case "colapso_dimensional":
+                return "§4"; // Rojo oscuro
+            default:
+                return "§7";
+        }
+    }
 }
+
 
