@@ -94,7 +94,7 @@ rangos:
         - "SPEED:2"
         - "NIGHT_VISION:1"
         - "REGENERATION:1"
-        - "DAMAGE_RESISTANCE:1"
+        - "RESISTANCE:1"
     heredar_efectos_rango_normal: true
     prioridad: 100
   

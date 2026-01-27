@@ -34,12 +34,17 @@ public class AvoTabCompleter implements TabCompleter {
                 "reload", "admin", "escanear", "protecciones", "eco", "eco_sombras",
                 "evento3", "susurro", "evento4", "caminoend", "caminoalend",
                 "evento5", "aperturaend",
+                "evento6", "mundoolvidado",
                 "xp", "experience", "nivel", "level", "evasion", "evasiones",
                 "autotest", "habilidad", "habilidades", "skill", "skills",
                 "blockinfo", "bloque", "blockstats", "skillstats",
                 "newrank", "setpermrank", "removepermrank", "listpermranks",
                 "canjear", "redeem", "navidad", "menu",
-                "onboarding", "buddy", "mentor"
+                "onboarding", "buddy", "mentor",
+                "rtp", "randomtp", "wild",
+                "ciclo", "cycle", "mundo", "world",
+                "recompensas", "rewards",
+                "mochila", "backpack", "bp"
             );
             
             return subcommands.stream()
@@ -135,6 +140,15 @@ public class AvoTabCompleter implements TabCompleter {
                         .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
                         .collect(Collectors.toList());
                 
+                case "evento6":
+                case "mundoolvidado":
+                    // Sugerir subcomandos de evento6 (Cuando el Mundo Decide Olvidar)
+                    return Arrays.asList("start", "iniciar", "stop", "detener", "info", "status", 
+                                        "estado", "next", "skip", "siguiente", "auto", "automatico", 
+                                        "participantes", "players").stream()
+                        .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
+                        .collect(Collectors.toList());
+                
                 case "xp":
                 case "experience":
                     // Sugerir subcomandos de xp
@@ -220,6 +234,69 @@ public class AvoTabCompleter implements TabCompleter {
                     return Arrays.asList("match", "unmatch", "info", "list", "stats", "rewards").stream()
                         .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
                         .collect(Collectors.toList());
+                
+                case "ciclo":
+                case "cycle":
+                case "mundo":
+                case "world":
+                    // Sugerir subcomandos de ciclo
+                    return Arrays.asList("crear", "create", "nuevo", "new", "activar", "activate", "desactivar", "deactivate", "stop", 
+                                        "listar", "list", "ls", "info", "teleport", "tp", "setspawn", "fixspawn", "autocorrect", "repairspawn", "security", "seguridad", "validar", "validate", "reporte", "report").stream()
+                        .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
+                        .collect(Collectors.toList());
+                
+                case "recompensas":
+                case "rewards":
+                    // Sugerir subcomandos de recompensas
+                    return Arrays.asList("menu", "mundo", "world", "reset").stream()
+                        .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
+                        .collect(Collectors.toList());
+                
+                case "mochila":
+                case "backpack":
+                case "bp":
+                    // Sugerir: números (1-2) o jugadores (si tiene permiso)
+                    List<String> mochilaOptions = new ArrayList<>();
+                    
+                    // Números 1-2
+                    for (int i = 1; i <= 2; i++) {
+                        mochilaOptions.add(String.valueOf(i));
+                    }
+                    
+                    // Jugadores online (solo si tiene permiso de mod)
+                    if (sender.hasPermission("apocalipsis.mochila.mod")) {
+                        plugin.getServer().getOnlinePlayers().forEach(p -> mochilaOptions.add(p.getName()));
+                    }
+                    
+                    return mochilaOptions.stream()
+                        .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
+                        .collect(Collectors.toList());
+                
+                default:
+                    break;
+            }
+        }
+        
+        if (args.length == 3) {
+            String subCmd = args[0].toLowerCase();
+            
+            switch (subCmd) {
+                case "mochila":
+                case "backpack":
+                case "bp":
+                    // Tercer argumento: número de mochila (solo si tiene permiso)
+                    if (sender.hasPermission("apocalipsis.mochila.mod")) {
+                        List<String> numbers = new ArrayList<>();
+                        for (int i = 1; i <= 2; i++) {
+                            numbers.add(String.valueOf(i));
+                        }
+                        return numbers.stream()
+                            .filter(s -> s.startsWith(args[2]))
+                            .collect(Collectors.toList());
+                    }
+                    break;
+                default:
+                    break;
             }
         }
         
@@ -257,6 +334,16 @@ public class AvoTabCompleter implements TabCompleter {
                             .map(Player::getName)
                             .filter(s -> s.toLowerCase().startsWith(args[2].toLowerCase()))
                             .collect(Collectors.toList());
+                }
+            }
+            
+            // /avo recompensas mundo reset
+            if (subCmd.equals("recompensas") || subCmd.equals("rewards")) {
+                String recompensasSubCmd = args[1].toLowerCase();
+                if (recompensasSubCmd.equals("mundo")) {
+                    return Arrays.asList("reset").stream()
+                        .filter(s -> s.toLowerCase().startsWith(args[2].toLowerCase()))
+                        .collect(Collectors.toList());
                 }
             }
             
@@ -503,6 +590,31 @@ public class AvoTabCompleter implements TabCompleter {
                 }
             }
             
+            // /avo ciclo crear|nuevo|activar|desactivar|info|teleport|setspawn <mundo>
+            if (subCmd.equals("ciclo") || subCmd.equals("cycle") || subCmd.equals("mundo") || subCmd.equals("world")) {
+                String cicloSubCmd = args[1].toLowerCase();
+                
+                // Para comando crear, sugerir nombre de mundo nuevo
+                if (cicloSubCmd.equals("crear") || cicloSubCmd.equals("create")) {
+                    // No sugerir mundos existentes, permitir que el jugador escriba uno nuevo
+                    return Arrays.asList("ciclo_1", "ciclo_2", "mundo_nuevo", "world_ciclo").stream()
+                        .filter(s -> s.toLowerCase().startsWith(args[2].toLowerCase()))
+                        .collect(Collectors.toList());
+                }
+                
+                // Para comandos que requieren nombre de mundo existente
+                if (cicloSubCmd.equals("nuevo") || cicloSubCmd.equals("new") || cicloSubCmd.equals("activar") ||
+                    cicloSubCmd.equals("activate") || cicloSubCmd.equals("desactivar") || cicloSubCmd.equals("deactivate") ||
+                    cicloSubCmd.equals("stop") || cicloSubCmd.equals("info") || cicloSubCmd.equals("teleport") || cicloSubCmd.equals("tp") ||
+                    cicloSubCmd.equals("setspawn")) {
+                    // Sugerir mundos disponibles
+                    return plugin.getServer().getWorlds().stream()
+                        .map(org.bukkit.World::getName)
+                        .filter(s -> s.toLowerCase().startsWith(args[2].toLowerCase()))
+                        .collect(Collectors.toList());
+                }
+            }
+            
             // /avo habilidades info|toggle|comprar <skill_id>
             if (subCmd.equals("habilidad") || subCmd.equals("habilidades") || 
                 subCmd.equals("skill") || subCmd.equals("skills")) {
@@ -623,6 +735,49 @@ public class AvoTabCompleter implements TabCompleter {
         // args.length == 6: /avo mission give <jugador> <tipo> <objetivo> <meta>
         if (args.length == 6 && "mission".equalsIgnoreCase(args[0]) && "give".equalsIgnoreCase(args[1])) {
             return Arrays.asList("1", "5", "10", "25", "50", "100");
+        }
+        
+        // args.length == 4: /avo ciclo crear <mundo> <tipo> | /avo ciclo nuevo|activar <mundo> <teleport>
+        if (args.length == 4 && (args[0].equalsIgnoreCase("ciclo") || args[0].equalsIgnoreCase("cycle") ||
+                                 args[0].equalsIgnoreCase("mundo") || args[0].equalsIgnoreCase("world"))) {
+            String cicloSubCmd = args[1].toLowerCase();
+            
+            // Para comando crear, sugerir tipo de mundo
+            if (cicloSubCmd.equals("crear") || cicloSubCmd.equals("create")) {
+                return Arrays.asList("NORMAL", "NETHER", "THE_END").stream()
+                    .filter(s -> s.toLowerCase().startsWith(args[3].toUpperCase()))
+                    .collect(Collectors.toList());
+            }
+            
+            // Para nuevo/activar, sugerir true/false para teleport
+            if (cicloSubCmd.equals("nuevo") || cicloSubCmd.equals("new") || 
+                cicloSubCmd.equals("activar") || cicloSubCmd.equals("activate")) {
+                return Arrays.asList("true", "false").stream()
+                    .filter(s -> s.toLowerCase().startsWith(args[3].toLowerCase()))
+                    .collect(Collectors.toList());
+            }
+        }
+        
+        // args.length == 5: /avo ciclo crear <mundo> <tipo> <dificultad>
+        if (args.length == 5 && (args[0].equalsIgnoreCase("ciclo") || args[0].equalsIgnoreCase("cycle") ||
+                                 args[0].equalsIgnoreCase("mundo") || args[0].equalsIgnoreCase("world"))) {
+            String cicloSubCmd = args[1].toLowerCase();
+            if (cicloSubCmd.equals("crear") || cicloSubCmd.equals("create")) {
+                return Arrays.asList("PEACEFUL", "EASY", "NORMAL", "HARD").stream()
+                    .filter(s -> s.toLowerCase().startsWith(args[4].toUpperCase()))
+                    .collect(Collectors.toList());
+            }
+        }
+        
+        // args.length == 6: /avo ciclo crear <mundo> <tipo> <dificultad> <teleport>
+        if (args.length == 6 && (args[0].equalsIgnoreCase("ciclo") || args[0].equalsIgnoreCase("cycle") ||
+                                 args[0].equalsIgnoreCase("mundo") || args[0].equalsIgnoreCase("world"))) {
+            String cicloSubCmd = args[1].toLowerCase();
+            if (cicloSubCmd.equals("crear") || cicloSubCmd.equals("create")) {
+                return Arrays.asList("true", "false").stream()
+                    .filter(s -> s.toLowerCase().startsWith(args[5].toLowerCase()))
+                    .collect(Collectors.toList());
+            }
         }
         
         // args.length == 4: /avo xp add|set <jugador> <cantidad>

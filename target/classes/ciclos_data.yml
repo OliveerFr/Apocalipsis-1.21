@@ -1,0 +1,60 @@
+# ═══════════════════════════════════════════════════════════════════
+# DATOS PERSISTENTES DE CICLOS - Sistema de Seguridad y Recuperación
+# ═══════════════════════════════════════════════════════════════════
+# Este archivo almacena TODOS los datos de ciclos creados para:
+#   1. Recuperación completa después de actualizaciones del plugin
+#   2. Seguridad contra pérdida de datos
+#   3. Rastreo de estadísticas y uso de cada ciclo
+#   4. Validación de integridad automática
+#
+# ⚠️ NO EDITAR MANUALMENTE - Gestionado automáticamente por el plugin
+# ═══════════════════════════════════════════════════════════════════
+
+# Metadata del sistema
+metadata:
+  version: "2.0"
+  ultima_actualizacion: "2026-01-26 22:00:00"
+  total_ciclos: 0
+
+# Ciclos registrados
+# Cada ciclo contiene toda la información necesaria para:
+#   - Cargar el mundo automáticamente al iniciar
+#   - Restaurar configuraciones exactas
+#   - Mantener estadísticas de uso
+#
+# ciclos:
+#   ciclo_ejemplo:
+#     display_name: "Ciclo Ejemplo"
+#     descripcion: "Ciclo de supervivencia"
+#     activo: true
+#     existe: true
+#     
+#     # Configuración del mundo
+#     environment: "NORMAL"           # NORMAL, NETHER, THE_END
+#     world_type: "NORMAL"           # NORMAL, FLAT, LARGE_BIOMES, AMPLIFIED
+#     difficulty: "HARD"             # PEACEFUL, EASY, NORMAL, HARD
+#     seed: 1234567890
+#     generate_structures: true
+#     
+#     # Configuraciones de gameplay
+#     pvp_enabled: true
+#     spawn_monsters: true
+#     spawn_animals: true
+#     keep_spawn_in_memory: true
+#     
+#     # Ubicación del spawn
+#     spawn:
+#       x: 0.0
+#       y: 64.0
+#       z: 0.0
+#     
+#     # Fechas
+#     fecha_creacion: "2026-01-26 12:00:00"
+#     ultima_activacion: "2026-01-26 15:30:00"
+#     
+#     # Estadísticas
+#     estadisticas:
+#       jugadores_unicos: 5
+#       tiempo_jugado_minutos: 1200
+
+ciclos: {}

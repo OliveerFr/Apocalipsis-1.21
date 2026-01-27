@@ -1,7 +1,7 @@
 # 🐉 Evento 5: La Apertura del End - Changelog Completo
 
 > **Plugin:** Apocalipsis 1.21.4  
-> **Versión:** 1.22.50+ (Mejoras Épicas)  
+> **Versión:** 1.22.54 (Mejoras Épicas)  
 > **Minecraft:** 1.21.4+  
 > **Dependencies:** MythicMobs 5.10.0+, Model Engine R4.0.7+
 

@@ -1,0 +1,832 @@
+# ═══════════════════════════════════════════════════════════════════
+# EVENTO 6: CUANDO EL MUNDO DECIDE OLVIDAR
+# ═══════════════════════════════════════════════════════════════════
+# El mundo se cansa. Reiniciar es más fácil que cambiar.
+# No es un comienzo. Es una repetición.
+# Inicio: /avo evento6 start
+# ═══════════════════════════════════════════════════════════════════
+
+metadata:
+  event_id: "mundo_olvidado"
+  event_number: 6
+  nombre_display: "§8§lCuando el Mundo Decide Olvidar"
+  version: "1.0.0"
+  enabled: true
+  
+  # Sistema de ciclos requerido
+  requiere_ciclos: true
+  usa_protocolo_ciclos: true
+  
+  # Comandos
+  comandos:
+    - "evento6"
+    - "mundoolvidado"
+    - "reinicio"
+
+# ═══════════════════════════════════════════════════════════════════
+# CONFIGURACIÓN DEL EVENTO
+# ═══════════════════════════════════════════════════════════════════
+
+evento:
+  # Duración total estimada del evento (narrativa completa)
+  duracion_total_segundos: 2400  # 40 minutos
+  
+  # Jugadores
+  jugadores_minimos: 1
+  jugadores_maximos: 30
+  
+  # Mundos involucrados
+  mundo_actual: "world"  # El mundo que será "olvidado"
+  mundo_nuevo_nombre: "Ciclo_2_Los_Que_Recuerdan"  # Nombre del nuevo mundo tras el reinicio
+  
+  # Configuración del mundo nuevo (post-reinicio)
+  mundo_nuevo:
+    generador: "NORMAL"
+    dificultad: "HARD"
+    pvp_enabled: true
+    spawn_monsters: true
+    spawn_animals: true
+    mantener_nether_original: true  # El Nether NO se reinicia
+    mantener_end_original: true      # El End NO se reinicia
+  
+  # Sistema de reseteo progresivo
+  reseteo:
+    # ¿Qué se resetea con el evento?
+    resetear_inventario: true     # Los jugadores pierden sus items
+    resetear_xp: true              # Pierden XP
+    resetear_construcciones: true  # Mundo nuevo = construcciones perdidas
+    resetear_misiones: false       # Las misiones se mantienen (memoria)
+    resetear_rangos: false         # Los rangos se mantienen (identidad)
+    resetear_skills: false         # Las skills se mantienen (conocimiento)
+    
+    # Valores iniciales post-reinicio
+    xp_inicial: 0
+    nivel_inicial: 1
+    items_iniciales:  # Items que reciben al reiniciar
+      - material: "OAK_LOG"
+        cantidad: 16
+        nombre: "§7Resto del Anterior"
+        lore:
+          - "§8Evento 6: Mundo Olvidado"
+          - ""
+          - "§7Todo lo demás se fue."
+          - "§7Esto quedó."
+      - material: "BREAD"
+        cantidad: 8
+        nombre: "§ePan Persistente"
+        lore:
+          - "§8Evento 6: Mundo Olvidado"
+          - ""
+          - "§7Alimento básico."
+          - "§7Lo suficiente para empezar."
+
+# ═══════════════════════════════════════════════════════════════════
+# SISTEMA DE RECOMPENSAS PS POR PARTICIPACIÓN
+# ═══════════════════════════════════════════════════════════════════
+
+recompensas_ps:
+  base_presencia: 100           # PS por estar presente al finalizar
+  por_acto_completo: 20         # PS por cada acto narrativo completado (10 actos = 200 PS)
+  bonus_comprension: 50         # PS bonus por entender el evento (interactuar con mensajes)
+  # Participación completa = 100 + 200 + 50 = 350 PS
+
+# ═══════════════════════════════════════════════════════════════════
+# ITEMS COLECCIONABLES DEL EVENTO
+# ═══════════════════════════════════════════════════════════════════
+
+items:
+  # Item que se entrega al finalizar
+  fragmento_memoria:
+    material: "ECHO_SHARD"
+    nombre: "§d§lFragmento de Memoria"
+    lore:
+      - "§8Evento 6: Mundo Olvidado"
+      - ""
+      - "§7El mundo olvidó el lugar."
+      - "§7Pero ustedes recuerdan todo."
+      - ""
+      - "§8§o\"Reiniciar es más fácil que cambiar.\""
+    glow: true
+    drop_final_todos: true
+  
+  cicatriz_temporal:
+    material: "NETHERITE_SCRAP"
+    nombre: "§c§lCicatriz Temporal"
+    lore:
+      - "§8Evento 6: Mundo Olvidado"
+      - ""
+      - "§7Lo que está debajo no olvida."
+      - "§7El Nether permanece intacto."
+      - ""
+      - "§4§o\"Algunos lugares no se reinician.\""
+    glow: true
+    drop_final_todos: true
+  
+  eco_repeticion:
+    material: "RECOVERY_COMPASS"
+    nombre: "§8§l✦ Eco de la Repetición ✦"
+    lore:
+      - "§8Evento 6: Mundo Olvidado"
+      - ""
+      - "§7El mundo decidió olvidar."
+      - "§7Borró el lugar, no las personas."
+      - ""
+      - "§7Este no es un comienzo."
+      - "§8§lEs una repetición."
+      - ""
+      - "§d✦ Emblema de Supervivencia ✦"
+    glow: true
+    drop_final_todos: true
+
+# ═══════════════════════════════════════════════════════════════════
+# ACTOS NARRATIVOS (10 ACTOS)
+# ═══════════════════════════════════════════════════════════════════
+# El evento progresa automáticamente a través de 10 actos
+# Cada acto tiene timing específico y mensajes del Observador
+
+actos:
+  # ═══════════════════════════════════════════════════════════════
+  # ACTO 1: NORMALIDAD (0:00 - 5:00)
+  # ═══════════════════════════════════════════════════════════════
+  acto_1_normalidad:
+    nombre: "§a§lNormalidad"
+    inicio_segundos: 0
+    duracion_segundos: 300  # 5 minutos
+    
+    descripcion: "Todo comienza perfectamente normal. El día es como cualquier otro. Los jugadores trabajan, construyen, viven. Nada, absolutamente nada, parece fuera de lo común. Esta calma es real... por ahora."
+    
+    # Silencio casi total - el Observador está ausente
+    # El mundo funciona normal: mobs normales, día/noche normal, todo predecible
+    efectos_normalidad:
+      # Asegurar que todo esté 100% normal
+      tiempo_estable: true  # Ciclo día/noche funciona perfectamente
+      mobs_normales: true   # Spawn de mobs predecible y normal
+      clima_normal: true    # Sin tormentas raras
+      
+    mensajes_observador:
+      # Solo UN mensaje al inicio, extremadamente sutil
+      inicio_silencioso:
+        - delay: 180  # 3 minutos de silencio absoluto primero
+          texto: "§8[§7...§8]"
+          tipo: "chat"
+      
+      # Segundo mensaje muy al final, imperceptible
+      fin_acto:
+        - delay: 270  # 4.5 minutos - casi terminando
+          texto: "§8[§7.§8]"
+          tipo: "actionbar"  # Solo en actionbar, muy sutil
+  
+  # ═══════════════════════════════════════════════════════════════
+  # ACTO 2: LAS PRIMERAS RAREZAS (5:00 - 10:00)
+  # ═══════════════════════════════════════════════════════════════
+  acto_2_rarezas:
+    nombre: "§e§lPrimeras Rarezas"
+    inicio_segundos: 300   # 5 min
+    duracion_segundos: 300  # 5 minutos
+    
+    descripcion: "Detalles pequeños. Un trueno sin nubes. Un animal que te mira fijamente. El reloj parece atrasarse un segundo. Cosas que podrías ignorar... si quisieras. Algo no está del todo bien, pero aún puedes convencerte de que todo es normal."
+    
+    # Efectos sutiles pero progresivamente más notorios
+    efectos_aleatorios:
+      enabled: true
+      intervalo_minimo: 30  # Más frecuentes que antes
+      intervalo_maximo: 70
+      incremento_frecuencia: true  # Se vuelven más frecuentes con el tiempo
+      
+      efectos:
+        trueno_sin_lluvia:
+          tipo: "trueno_seco"
+          probabilidad: 90
+          mensaje: ""  # Sin mensaje, solo inquietud
+          
+        cambio_luz_rapido:
+          tipo: "parpadeo_luz"
+          probabilidad: 75
+          duracion_ticks: 20  # 1 segundo de oscuridad
+          mensaje: ""
+        
+        sonido_lejano:
+          tipo: "sonido_ambiente"
+          probabilidad: 80
+          sonidos_posibles:
+            - "ENTITY_WARDEN_HEARTBEAT"
+            - "BLOCK_PORTAL_AMBIENT"
+            - "ENTITY_ENDERMAN_STARE"
+            - "AMBIENT_CAVE"
+          volumen: 0.4
+          pitch: 0.6
+        
+        mob_estatico:
+          tipo: "freeze_mob"
+          probabilidad: 60
+          duracion_segundos: 8  # Más tiempo congelado
+          mensaje: ""  # Un mob se queda mirando fijamente
+          
+        particulas_raras:
+          tipo: "particulas_anomalas"
+          probabilidad: 50
+          particula: "END_ROD"
+          cantidad: 3
+          mensaje: ""  # Partículas aparecen y desaparecen
+          
+        bloque_fantasma:
+          tipo: "bloque_parpadea"
+          probabilidad: 40
+          duracion_ticks: 40
+          mensaje: ""  # Un bloque cerca parece desaparecer por un momento
+    
+    # Mensajes del Observador - Empieza a darse cuenta de ANOMALÍAS (NO del futuro)
+    mensajes_observador:
+      mensaje_1:
+        - delay: 45  # Temprano en el acto
+          texto: "§8[§7...§8]"
+          tipo: "actionbar"
+      
+      mensaje_2:
+        - delay: 120  # 2 minutos
+          texto: "§8[§7...§8] §7¿Hmm?"
+          tipo: "chat"
+      
+      mensaje_3:
+        - delay: 220  # Casi al final
+          texto: "§8[§7...§8] §7¿Qué...?"
+          tipo: "chat"
+          
+      mensaje_4_final:
+        - delay: 280  # Últimos segundos del acto
+          texto: "§8[§7...§8] §7Esto no es normal."
+          tipo: "chat"
+  
+  # ═══════════════════════════════════════════════════════════════
+  # ACTO 3: INESTABILIDAD (10:00 - 12:30)
+  # ═══════════════════════════════════════════════════════════════
+  acto_3_inestabilidad:
+    nombre: "§6§lInestabilidad"
+    inicio_segundos: 600  # 10 min
+    duracion_segundos: 150  # 2.5 minutos
+    
+    descripcion: "Ya no puedes ignorarlo. El mundo se comporta erráticamente. Bloques parpadean. El tiempo se detiene por momentos. Sonidos de portal sin portales. Los animales huyen. Las anomalías son constantes, evidentes, aterradoras. Algo definitivamente, innegablemente, está muy mal."
+    
+    # Efectos constantes y caóticos
+    efectos_constantes:
+      particulas_caos:
+        enabled: true
+        tipos_rotantes:
+          - "ASH"
+          - "ELECTRIC_SPARK"
+          - "END_ROD"
+          - "SOUL"
+        cantidad: 10
+        intervalo_ticks: 60  # Cada 3 segundos
+        radio_jugadores: 40
+        
+      lag_simulado:
+        enabled: true
+        intervalo_minimo: 20
+        intervalo_maximo: 45
+        duracion_ticks: 30  # 1.5 segundos de freeze
+        intensidad_creciente: true  # Cada vez más largo
+        
+      reloj_roto:
+        enabled: true
+        probabilidad_por_minuto: 60
+        efectos:
+          - "tiempo_atras"  # El tiempo retrocede
+          - "tiempo_rapido"  # El tiempo acelera
+          - "tiempo_congelado"  # El tiempo se detiene
+        duracion_ticks: 40
+        
+      portal_sonidos_multiples:
+        enabled: true
+        intervalo_minimo: 15
+        intervalo_maximo: 35
+        sonidos_aleatorios:
+          - "BLOCK_PORTAL_TRIGGER"
+          - "BLOCK_PORTAL_AMBIENT"
+          - "ENTITY_ENDERMAN_TELEPORT"
+          - "BLOCK_RESPAWN_ANCHOR_DEPLETE"
+        volumen: 1.0
+        
+      bloques_inestables:
+        enabled: true
+        probabilidad: 70
+        efectos:
+          - "bloque_parpadea"  # Bloques aparecen/desaparecen
+          - "bloque_flota"     # Bloques flotan temporalmente
+          - "bloque_cae"       # Bloques caen solos
+        intervalo_minimo: 25
+        
+      animales_huyendo:
+        enabled: true
+        radio: 50
+        efecto: "panico_masivo"  # Todos los animales pacíficos huyen
+        
+      cielo_inestable:
+        enabled: true
+        cambios_rapidos_clima: true
+        parpadeos_luz: true
+        intervalo_cambio: 20  # Cada segundo cambia algo
+    
+    # Mensajes del Observador - Confusión y miedo, NO predicción
+    mensajes_observador:
+      mensaje_1_inicio:
+        - delay: 10  # Inmediato al empezar el acto
+          texto: "§8[§7...§8] §7Esperen..."
+          tipo: "chat"
+          
+      mensaje_2_reconocimiento:
+        - delay: 45
+          texto: "§8[§7...§8] §e§l¿Qué está pasando?"
+          tipo: "titulo"
+          titulo: "§8§o..."
+          subtitulo: "§e§o§l¿Qué está pasando?"
+          
+      mensaje_3_urgencia:
+        - delay: 90  # 1.5 minutos
+          texto: "§8[§7...§8] §c§lAlgo está muy mal."
+          tipo: "chat"
+          
+      mensaje_4_desesperacion:
+        - delay: 130  # Casi al final
+          texto: "§8[§7...§8] §c§l¡El mundo...!"
+          tipo: "titulo"
+          titulo: "§8§o..."
+          subtitulo: "§c§o§l¡El mundo...!"
+  
+  # ═══════════════════════════════════════════════════════════════
+  # ACTO 4: EL QUIEBRE (12:30 - 14:30)
+  # ═══════════════════════════════════════════════════════════════
+  acto_4_quiebre:
+    nombre: "§c§lEl Quiebre"
+    inicio_segundos: 750  # 12.5 min
+    duracion_segundos: 120   # 2 minutos
+    
+    descripcion: "No hay advertencias. No hay cuenta atrás. El mundo simplemente... se rompe. La realidad se fractura en tiempo real. Bloques flotan. El cielo se vuelve negro. Sonidos ensordecedores. El Observador grita una última advertencia inútil. Todo colapsa. El mundo ya tomó la decisión."
+    
+    # Secuencia de quiebre intensa y rápida
+    secuencia_quiebre:
+      paso_0_advertencia_final:
+        delay: 0
+        texto: "§8[§7...§8] §c§l¡¿QUÉ—?!"
+        tipo: "titulo"
+        titulo: "§c§l¡¿QUÉ—?!"
+        subtitulo: "§8[§7Observador§8] §c¡NO PUEDO VER—!"
+        sonido: "ENTITY_WARDEN_SONIC_BOOM"
+        volumen: 2.0
+        
+      paso_1_oscuridad_total:
+        delay: 40  # 2 segundos después
+        efecto: "ceguera_total"
+        duracion_ticks: 100  # 5 segundos
+        particulas_caos:
+          tipo: "EXPLOSION_HUGE"
+          cantidad: 20
+          todos_jugadores: true
+        sonido: "ENTITY_GENERIC_EXPLODE"
+        volumen: 2.0
+        
+      paso_2_fractura_espacial:
+        delay: 60
+        efecto: "nausea_extrema"
+        duracion_ticks: 120
+        sonido: "ENTITY_WITHER_SPAWN"
+        volumen: 2.0
+        pitch: 0.3
+        todos_jugadores: true
+      
+      paso_3_colapso_visual:
+        delay: 100
+        efecto: "particulas_masivas"
+        tipos_aleatorios:
+          - "ELECTRIC_SPARK"
+          - "END_ROD"
+          - "SOUL"
+          - "ASH"
+        cantidad: 2000
+        radio: 150
+      
+      paso_4_congelacion_temporal:
+        delay: 140
+        efecto: "freeze_all"
+        duracion_ticks: 80  # 4 segundos
+        lentitud_extrema: true
+      
+      paso_5_mensaje_final:
+        delay: 200
+        texto: "§8§l[...§8§l] §cEl mundo ya tomó la decisión."
+        tipo: "titulo"
+        titulo: "§c§lEl mundo"
+        subtitulo: "§c§lya tomó la decisión."
+        sonido: "ENTITY_ENDER_DRAGON_DEATH"
+        volumen: 1.5
+        pitch: 0.5
+      
+      paso_6_silencio_muerte:
+        delay: 280
+        duracion_silencio_segundos: 30  # Silencio absoluto antes del reinicio
+        efectos_silencio:
+          - "ceguera"  # Pantalla negra total
+          - "silencio_sonidos"  # Sin sonidos del mundo
+          - "inmovilidad"  # No pueden moverse
+  
+  # ═══════════════════════════════════════════════════════════════
+  # ACTO 5: EL REINICIO (14:30 - 15:00)
+  # ═══════════════════════════════════════════════════════════════
+  acto_5_reinicio:
+    nombre: "§8§lEl Reinicio"
+    inicio_segundos: 870  # 14.5 min
+    duracion_segundos: 30    # 30 segundos
+    
+    descripcion: "Pantalla negra. Silencio total. Y entonces... todo cambia. El mundo ha sido completamente borrado y recreado desde cero. Es nuevo. Es vacío. Es el Ciclo 2. Pero ustedes... ustedes aún recuerdan."
+    
+    # Secuencia de reinicio mejorada
+    secuencia_reinicio:
+      paso_1_pantalla_negra:
+        delay: 0
+        efecto: "ceguera_total"
+        duracion_ticks: 40  # 2 segundos
+        todos_jugadores: true
+        mensaje_susurro: "§8..."
+        
+      paso_2_crear_nuevo_ciclo:
+        delay: 40
+        accion: "crear_ciclo_automatico"
+        nombre_ciclo: "Ciclo_2_Los_Que_Recuerdan"
+        # El sistema de ciclos:
+        # - Crea mundo completamente nuevo
+        # - Guarda inventarios del mundo actual en world_inventories.yml
+        # - Guarda XP, skills, PS, rangos en world_data.yml
+        # - Resetea datos según configuración
+        configuracion_ciclo:
+          generador: "NORMAL"
+          dificultad: "HARD"
+          seed_nuevo: "aleatorio"  # Mundo completamente diferente
+          mantener_nether: true
+          mantener_end: true
+        
+      paso_3_teleport_superficie:
+        delay: 50
+        accion: "teleport_ciclo_superficie"  # IMPORTANTE: Superficie, no cueva
+        destino_ciclo: "Ciclo_2_Los_Que_Recuerdan"
+        spawn_conjunto: true  # Todos juntos
+        coordenadas_spawn:
+          tipo: "superficie_segura"  # Buscar superficie plana y segura
+          y_minimo: 60  # No spawns en cuevas
+          verificar_bloques_solidos: true
+          evitar_agua: true
+          evitar_lava: true
+        
+      paso_4_efectos_spawn:
+        delay: 60
+        efecto: "particulas_spawn"
+        tipo: "END_ROD"
+        cantidad: 300
+        altura: 10  # Partículas cayendo desde arriba
+        sonido: "BLOCK_RESPAWN_ANCHOR_CHARGE"
+        volumen: 1.5
+        
+      paso_5_mensaje_llegada:
+        delay: 70
+        texto: "§8[§7CICLO 2§8] §7Los que recuerdan."
+        tipo: "titulo"
+        titulo: "§7CICLO 2"
+        subtitulo: "§8Los que recuerdan"
+        duracion: 100  # 5 segundos
+  
+  # ═══════════════════════════════════════════════════════════════
+  # ACTO 6: NUEVO MUNDO (15:00 - 20:00)
+  # ═══════════════════════════════════════════════════════════════
+  acto_6_nuevo_mundo:
+    nombre: "§a§lNuevo Mundo"
+    inicio_segundos: 900  # 15 min
+    duracion_segundos: 300   # 5 minutos
+    
+    descripcion: "El reinicio está completo. Todos aparecen juntos en superficie, en un mundo completamente virgen. Tierra sin tocar. Cielo limpio. Silencio. Sus manos están vacías — inventarios borrados. Sus casas no existen — construcciones borradas. Pero... sus mentes están intactas. Recuerdan todo. Sus rangos, sus habilidades, sus memorias del Ciclo 1. El mundo borró el LUGAR, pero no los borró a ELLOS."
+    
+    # Primer mensaje CLAVE - El Observador revela qué pasó
+    mensajes_observador:
+      mensaje_despertar:
+        - delay: 5  # Inmediato al aparecer
+          texto: "§8[§7...§8]"
+          tipo: "actionbar"
+          
+      mensaje_revelacion_1:
+        - delay: 15  # 15 segundos después de aparecer
+          texto: "§8[§7...§8] §7No los borró..."
+          tipo: "titulo"
+          titulo: "§8§o..."
+          subtitulo: "§7§oNo los borró..."
+          
+      mensaje_revelacion_2:
+        - delay: 45  # 30 segundos después
+          texto: "§8[§7...§8] §7Solo borró el lugar."
+          tipo: "chat"
+          
+      mensaje_revelacion_3:
+        - delay: 90  # 1.5 minutos
+          texto: "§8[§7...§8] §7Ustedes... aún están aquí."
+          tipo: "chat"
+          
+      mensaje_explicacion:
+        - delay: 150  # 2.5 minutos
+          texto: "§8[§7...§8] §7El mundo no quiere cambiar."
+          tipo: "titulo"
+          titulo: "§8§o..."
+          subtitulo: "§7§oEl mundo no quiere cambiar."
+          
+      mensaje_final_acto:
+        - delay: 270  # Casi al final
+          texto: "§8[§7...§8] §7Reiniciar es más fácil."
+          tipo: "chat"
+  
+  # ═══════════════════════════════════════════════════════════════
+  # ACTO 7: COMPRENSIÓN LENTA (20:00 - 25:00)
+  # ═══════════════════════════════════════════════════════════════
+  acto_7_comprension:
+    nombre: "§b§lComprensión Lenta"
+    inicio_segundos: 1200  # 20 min
+    duracion_segundos: 300   # 5 minutos
+    
+    descripcion: "Los jugadores exploran. Construyen refugios básicos. Recolectan recursos. Y lentamente... empiezan a comprender. El mundo los borró del mapa, pero conservó su esencia. No es la primera vez que esto pasa. El Observador lo sabe. Lo ha visto antes. Esto es un CICLO."
+    
+    # Mensajes progresivos que revelan la verdad
+    mensajes_observador:
+      mensaje_1_rutina:
+        - delay: 40
+          texto: "§8[§7...§8] §7El mundo hace esto..."
+          tipo: "chat"
+          
+      mensaje_2_frecuencia:
+        - delay: 100  # 1.5 minutos
+          texto: "§8[§7...§8] §7cuando se cansa de lo que hicieron."
+          tipo: "titulo"
+          titulo: "§8§o..."
+          subtitulo: "§7§ocuando se cansa de lo que hicieron."
+          
+      mensaje_3_filosofia:
+        - delay: 180  # 3 minutos
+          texto: "§8[§7...§8] §e§lReiniciar es más fácil que cambiar."
+          tipo: "chat"
+          
+      mensaje_4_revelacion:
+        - delay: 230  # 3.8 minutos
+          texto: "§8[§7...§8] §7Borrar el lugar..."
+          tipo: "chat"
+          
+      mensaje_5_verdad:
+        - delay: 270  # 4.5 minutos
+          texto: "§8[§7...§8] §cpero mantener a las personas."
+          tipo: "titulo"
+          titulo: "§8§o..."
+          subtitulo: "§c§opero mantener a las personas."
+  
+  # ═══════════════════════════════════════════════════════════════
+  # ACTO 8: LA FRACTURA (25:00 - 30:00)
+  # ═══════════════════════════════════════════════════════════════
+  acto_8_fractura:
+    nombre: "§c§lLa Fractura"
+    inicio_segundos: 1500  # 25 min
+    duracion_segundos: 300   # 5 minutos
+    
+    descripcion: "Si alguien construye un portal al Nether... descubrirá algo perturbador. El Nether NO fue reseteado. Aún conserva las estructuras, los caminos, las fortalezas del Ciclo 1. El mundo borró el Overworld, pero lo que está DEBAJO permanece. El fuego no olvida. La piedra no olvida. Solo la superficie fue borrada. Evidencia física de que esto YA PASÓ ANTES."
+    
+    # Mensajes del Observador
+    mensajes_observador:
+      mensaje_introduccion:
+        - delay: 30
+          texto: "§8[§7...§8] §7Si bajan al Nether..."
+          tipo: "chat"
+          
+      mensaje_advertencia:
+        - delay: 90
+          texto: "§8[§7...§8] §7verán que no todo fue borrado."
+          tipo: "titulo"
+          titulo: "§8§o..."
+          subtitulo: "§7§overán que no todo fue borrado."
+          
+      mensaje_evidencia:
+        - delay: 180  # 3 minutos
+          texto: "§8[§7...§8] §eLo que está debajo permanece."
+          tipo: "chat"
+          
+      mensaje_filosofico:
+        - delay: 250
+          texto: "§8[§7...§8] §7El fuego no olvida."
+          tipo: "chat"
+    
+    # Efectos especiales si entran al Nether
+    efectos_nether:
+      enabled: true
+      
+      mensaje_entrada_nether:
+        texto: "§8[§7...§8] §cLo que está debajo..."
+        tipo: "titulo"
+        titulo: "§8§o..."
+        subtitulo: "§c§oLo que está debajo..."
+        
+      mensaje_entrada_nether_2:
+        delay: 60  # 3 segundos después
+        texto: "§8[§7...§8] §cno olvida tan fácil."
+        tipo: "chat"
+      
+      # Efectos opresivos en el Nether
+      particulas_pesadas:
+        tipo: "SOUL"
+        cantidad: 15
+        intervalo_ticks: 60
+      
+      sonidos_memoria:
+        sonidos_aleatorios:
+          - "AMBIENT_BASALT_DELTAS_MOOD"
+          - "AMBIENT_NETHER_WASTES_MOOD"
+          - "BLOCK_RESPAWN_ANCHOR_AMBIENT"
+        volumen: 1.2
+        intervalo_minimo: 40
+        intervalo_maximo: 80
+  
+  # ═══════════════════════════════════════════════════════════════
+  # ACTO 9: EL END PERMANECE (30:00 - 35:00)
+  # ═══════════════════════════════════════════════════════════════
+  acto_9_end_permanece:
+    nombre: "§5§lEl End Permanece"
+    inicio_segundos: 1800  # 30 min
+    duracion_segundos: 300   # 5 minutos
+    
+    descripcion: "El End tampoco fue reseteado. Es un espacio compartido entre TODOS los ciclos. Un lugar fuera del tiempo lineal. Si derrotaron al Dragón en el Ciclo 1, sigue muerto en el Ciclo 2. Las ciudades End que exploraron siguen ahí. El End es el único lugar que OBSERVA todos los ciclos sin participar en ellos. Por eso el Observador está allí. Algunos lugares trascienden los reinicios del mundo."
+    
+    # Mensajes profundos sobre el End
+    mensajes_observador:
+      mensaje_introduccion:
+        - delay: 60
+          texto: "§8[§7...§8] §7El End..."
+          tipo: "chat"
+          
+      mensaje_revelacion:
+        - delay: 120  # 2 minutos
+          texto: "§8[§7...§8] §5§lAlgunos lugares no se reinician."
+          tipo: "titulo"
+          titulo: "§8§o..."
+          subtitulo: "§5§oAlgunos lugares no se reinician."
+          
+      mensaje_observacion:
+        - delay: 180  # 3 minutos
+          texto: "§8[§7...§8] §7Solo observan."
+          tipo: "chat"
+          
+      mensaje_identidad:
+        - delay: 240  # 4 minutos
+          texto: "§8[§7...§8] §8Por eso estoy allí."
+          tipo: "chat"
+          
+      mensaje_trascendencia:
+        - delay: 280
+          texto: "§8[§7...§8] §5Viendo cada ciclo repetirse."
+          tipo: "titulo"
+          titulo: "§8§o..."
+          subtitulo: "§5§oViendo cada ciclo repetirse."
+    
+    # Efectos especiales si jugadores van al End
+    efectos_end:
+      enabled: true
+      
+      mensaje_entrada_end:
+        texto: "§8[§7...§8] §7Bienvenidos... otra vez."
+        tipo: "titulo"
+        titulo: "§8§o..."
+        subtitulo: "§7§oBienvenidos... otra vez."
+      
+      particulas_observadoras:
+        tipo: "PORTAL"
+        cantidad: 5
+        intervalo_ticks: 80
+      
+      sensacion_vigilancia:
+        sonido: "ENTITY_ENDERMAN_STARE"
+        volumen: 0.6
+        intervalo_minimo: 60
+        intervalo_maximo: 120
+        
+      ambient_end:
+        sonido: "ENTITY_ENDER_DRAGON_AMBIENT"
+        volumen: 0.4
+        intervalo_minimo: 100
+        intervalo_maximo: 180
+  
+  # ═══════════════════════════════════════════════════════════════
+  # ACTO 10: CIERRE (35:00 - 40:00)
+  # ═══════════════════════════════════════════════════════════════
+  acto_10_cierre:
+    nombre: "§8§lCierre"
+    inicio_segundos: 2100  # 35 min
+    duracion_segundos: 300   # 5 minutos
+    
+    descripcion: "Los jugadores se adaptan al nuevo mundo. Construyen. Sobreviven. Se reorganizan en el Ciclo 2. Y entonces... el Observador revela la verdad final. Esto NO es la primera vez. No es el segundo ciclo. Es solo... otro más. El mundo ha hecho esto antes. Y lo volverá a hacer. Los ciclos se repiten. El mundo se cansa, borra el lugar, pero mantiene a las personas. Una y otra vez. Eternamente."
+    
+    # Mensaje final del Observador - La revelación completa
+    mensajes_observador:
+      mensaje_adaptacion:
+        - delay: 60
+          texto: "§8[§7...§8] §7Ya se están adaptando..."
+          tipo: "chat"
+          
+      mensaje_aceptacion:
+        - delay: 120  # 2 minutos
+          texto: "§8[§7...§8] §7Como siempre lo hacen."
+          tipo: "chat"
+          
+      mensaje_revelacion_1:
+        - delay: 180  # 3 minutos
+          texto: "§8§l[§7§l...§8§l] §7§lEste no es un comienzo."
+          tipo: "titulo"
+          titulo: "§8§l..."
+          subtitulo: "§7§oEste no es un comienzo."
+          
+      mensaje_revelacion_2:
+        - delay: 210  # 30 segundos después
+          texto: "§8§l[§7§l...§8§l] §c§lEs una repetición."
+          tipo: "titulo"
+          titulo: "§c§lEs una"
+          subtitulo: "§c§lrepetición."
+          
+      mensaje_ciclos:
+        - delay: 250  # 4 minutos
+          texto: "§8[§7...§8] §7El mundo ya hizo esto antes."
+          tipo: "chat"
+          
+      mensaje_eternidad:
+        - delay: 280  # 4.5 minutos
+          texto: "§8[§7...§8] §7Los ciclos... se repiten."
+          tipo: "titulo"
+          titulo: "§8§o..."
+          subtitulo: "§7§oLos ciclos... se repiten."
+      
+      mensaje_final_silencio:
+        - delay: 295  # Últimos 5 segundos
+          texto: "§8[§7...§8]"
+          tipo: "actionbar"
+    
+    # Entrega de recompensas al final del evento
+    recompensas_finales:
+      delay: 280  # 4.7 minutos
+      dar_items_evento: true
+      dar_ps_participacion: true
+      
+      mensajes_finales:
+        - texto: "§7Recibiste: §d§lFragmento de Memoria"
+          tipo: "chat"
+        - texto: "§7Recibiste: §c§lCicatriz Temporal"
+          tipo: "chat"
+        - texto: "§7Recibiste: §8§l✦ Eco de la Repetición ✦"
+          tipo: "chat"
+        - texto: "§a+ PS de Participación"
+          tipo: "chat"
+
+# ═══════════════════════════════════════════════════════════════════
+# MENSAJES DEL SISTEMA
+# ═══════════════════════════════════════════════════════════════════
+
+mensajes:
+  evento_iniciado: "§8[§7EVENTO 6§8] §7Cuando el Mundo Decide Olvidar §8- §7Iniciado"
+  evento_completado: "§8[§7EVENTO 6§8] §a✓ Evento completado"
+  
+  acto_iniciado: "§8[§7...§8] §7Acto {numero}: §e{nombre}"
+  acto_completado: "§8[§7...§8] §7Acto {numero} §acompleto"
+  
+  mundo_reseteado: "§8[§7CICLO§8] §7El mundo ha sido reiniciado."
+  jugadores_teleportados: "§8[§7CICLO§8] §7Todos los jugadores han sido movidos."
+  
+  recompensa_recibida: "§a+ {ps} PS §7(Participación en Evento 6)"
+  item_recibido: "§7Recibiste: {item}"
+  
+  # Mensajes de error
+  error_ciclos_desactivado: "§c✗ El sistema de ciclos está desactivado. No se puede ejecutar este evento."
+  error_ya_activo: "§c✗ El Evento 6 ya está activo."
+  error_no_permisos: "§c✗ Solo administradores pueden iniciar este evento."
+
+# ═══════════════════════════════════════════════════════════════════
+# CONFIGURACIÓN TÉCNICA
+# ═══════════════════════════════════════════════════════════════════
+
+tecnica:
+  # Guardar progreso del evento
+  guardar_progreso: true
+  archivo_progreso: "evento6_progreso.yml"
+  
+  # Backup automático antes del reinicio
+  backup_antes_reinicio: true
+  
+  # Permitir cancelación del evento (solo admin)
+  permitir_cancelacion: true
+  
+  # ¿Permitir que jugadores entren durante el evento?
+  permitir_entrada_tardía: true
+  
+  # ¿Dar items iniciales a jugadores que entran tarde?
+  dar_items_entrada_tardia: false
+  
+  # Debug mode
+  debug: false
+  
+  # Logging detallado
+  log_detallado: true
+  log_archivo: "evento6.log"

@@ -205,22 +205,32 @@ public class StreamFeaturesManager {
         ItemStack item = createStreamItem(selectedItem);
         if (item == null) return false;
         
-        // Detectar si es un token y registrarlo en la base de datos
+        // Detectar si es un token y registrarlo SOLO en la base de datos
         boolean isToken = item.getType() == Material.NETHER_STAR;
         if (isToken) {
+            // Añadir tokens a la base de datos (NO al inventario)
             addPlayerTokens(player.getUniqueId(), item.getAmount(), "Drop de mob hostil");
+            
+            // Notificar al jugador con mensaje especial para tokens
+            String mensaje = config.getString("drops_stream.mensaje_token", 
+                "§6§l[STREAM DROP] §e¡Has obtenido %cantidad% Token(s) de Stream!");
+            mensaje = mensaje.replace("&", "§");
+            mensaje = mensaje.replace("%cantidad%", String.valueOf(item.getAmount()));
+            player.sendMessage(mensaje);
+            player.sendMessage("§7Los tokens se han añadido automáticamente a tu cuenta.");
+            player.sendMessage("§7Usa §e/avo canjear §7para ver tus tokens y recompensas.");
+        } else {
+            // Dar items NO-token al inventario normalmente
+            player.getInventory().addItem(item);
+            
+            // Enviar mensaje normal para items físicos
+            String mensaje = config.getString("drops_stream.mensaje", "§6§l[STREAM DROP] §e¡Has obtenido %item%!");
+            mensaje = mensaje.replace("&", "§");
+            mensaje = mensaje.replace("%item%", item.getItemMeta().getDisplayName());
+            player.sendMessage(mensaje);
         }
         
-        // Dar el item al jugador
-        player.getInventory().addItem(item);
-        
-        // Enviar mensaje
-        String mensaje = config.getString("drops_stream.mensaje", "§6§l[STREAM DROP] §e¡Has obtenido %item%!");
-        mensaje = mensaje.replace("&", "§"); // Convertir códigos de color
-        mensaje = mensaje.replace("%item%", item.getItemMeta().getDisplayName());
-        player.sendMessage(mensaje);
-        
-        // Reproducir sonido
+        // Reproducir sonido (aplicable para ambos casos)
         String sonido = config.getString("drops_stream.sonido", "ENTITY_PLAYER_LEVELUP");
         try {
             player.playSound(player.getLocation(), org.bukkit.Sound.valueOf(sonido), 1.0f, 1.0f);

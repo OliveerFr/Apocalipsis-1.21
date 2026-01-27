@@ -1247,17 +1247,23 @@ public class SkillEffectListener implements Listener {
     private final Map<UUID, Map<String, Location>> playerWaypoints = new ConcurrentHashMap<>();
     
     /**
-     * Obtiene el límite de waypoints para un jugador según su rango permanente
+     * Obtiene el límite de waypoints para un jugador según su rango permanente y habilidades
      */
     public int getWaypointLimit(Player player) {
-        var permRank = plugin.getPermRankManager().getPlayerPermRank(player.getUniqueId());
+        UUID uuid = player.getUniqueId();
+        var permRank = plugin.getPermRankManager().getPlayerPermRank(uuid);
         
-        // Si tiene el rango hunter_adventurer, puede tener hasta 10 waypoints
+        // Si tiene el rango hunter_adventurer, puede tener hasta 10 waypoints (prioridad máxima)
         if (permRank != null && permRank.getId().equalsIgnoreCase("hunter_adventurer")) {
             return 10;
         }
         
-        // Jugadores normales: 1 waypoint
+        // Si tiene la habilidad WAYPOINT comprada, puede tener 3 waypoints
+        if (plugin.getSkillService().hasSkill(uuid, Skill.WAYPOINT)) {
+            return 3;
+        }
+        
+        // Sin habilidad comprada: 1 waypoint
         return 1;
     }
     

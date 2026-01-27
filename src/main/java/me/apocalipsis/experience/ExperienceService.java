@@ -111,14 +111,28 @@ public class ExperienceService {
      * Obtiene el nivel actual de un jugador
      */
     public int getLevel(Player player) {
-        return getData(player.getUniqueId()).getNivel();
+        return getLevel(player.getUniqueId());
+    }
+    
+    /**
+     * Obtiene el nivel actual de un jugador por UUID
+     */
+    public int getLevel(UUID uuid) {
+        return getData(uuid).getNivel();
     }
     
     /**
      * Obtiene la XP actual de un jugador
      */
     public int getXP(Player player) {
-        return getData(player.getUniqueId()).getXp();
+        return getXP(player.getUniqueId());
+    }
+    
+    /**
+     * Obtiene la XP actual de un jugador por UUID
+     */
+    public int getXP(UUID uuid) {
+        return getData(uuid).getXp();
     }
     
     /**
@@ -160,7 +174,13 @@ public class ExperienceService {
      * Establece el XP de un jugador (para comandos admin)
      */
     public void setXP(Player player, int xp) {
-        UUID uuid = player.getUniqueId();
+        setXP(player.getUniqueId(), xp);
+    }
+    
+    /**
+     * Establece el XP de un jugador por UUID (para sistema de ciclos)
+     */
+    public void setXP(UUID uuid, int xp) {
         PlayerExperienceData data = playerData.get(uuid);
         
         if (data == null) {
@@ -180,12 +200,28 @@ public class ExperienceService {
             plugin.getMissionService().setPS(uuid, xp);
         }
         
-        // Notificar si cambió de nivel
-        if (newLevel != oldLevel) {
+        // Notificar si el jugador está online y cambió de nivel
+        Player player = Bukkit.getPlayer(uuid);
+        if (player != null && player.isOnline() && newLevel != oldLevel) {
             player.sendMessage("§e§l⬆ §6¡NIVEL ACTUALIZADO! §e§l⬆");
             player.sendMessage("§7Nuevo nivel: §bNivel " + newLevel + " §8(§e" + xp + " XP§8)");
         }
         
+        saveData();
+    }
+    
+    /**
+     * Establece el nivel de un jugador directamente (para sistema de ciclos)
+     */
+    public void setLevel(UUID uuid, int level) {
+        PlayerExperienceData data = playerData.get(uuid);
+        
+        if (data == null) {
+            data = new PlayerExperienceData(0, 1);
+            playerData.put(uuid, data);
+        }
+        
+        data.setNivel(Math.max(1, level));
         saveData();
     }
     

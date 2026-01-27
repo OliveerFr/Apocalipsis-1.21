@@ -1535,6 +1535,31 @@ public class MissionService {
     }
 
     /**
+     * Resetea todas las misiones de un jugador
+     * Usado cuando un jugador entra a un mundo de ciclo nuevo
+     * 
+     * @param uuid UUID del jugador
+     */
+    public void resetPlayerMissions(UUID uuid) {
+        // Limpiar asignaciones activas
+        playerAssignments.remove(uuid);
+        
+        // Limpiar caches de contadores
+        completedCountCache.remove(uuid);
+        failedCountCache.remove(uuid);
+        
+        // Limpiar tracking de actividad
+        playerLastActiveDay.remove(uuid);
+        pendingPenalties.remove(uuid);
+        playerDailyCompleteFired.remove(uuid);
+        
+        // NO resetear PS - eso se hace en WorldDataManager
+        
+        plugin.getLogger().info("[MissionService] Misiones reseteadas para " + uuid);
+        savePlayerData();
+    }
+
+    /**
      * Añade una misión personalizada creada por admin
      * @return true si se añadió exitosamente
      */

@@ -2,14 +2,20 @@ package me.apocalipsis.skills;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
 
 import org.bukkit.Material;
 
 /**
  * Enum que define todas las habilidades disponibles en el árbol.
  * 5 ramas × ~10 skills cada una = ~50 habilidades únicas
+ * 
+ * NOTA: Algunas habilidades están DESHABILITADAS (ver DISABLED_SKILLS)
+ * pero se mantienen en el código para reactivarlas en el futuro.
  */
 public enum Skill {
+    
     // ================= ALMACENAMIENTO (7 skills) =================
     // Tier 1
     BOLSILLOS_PROFUNDOS("bolsillos_profundos", "Bolsillos Profundos", 
@@ -410,6 +416,45 @@ public enum Skill {
     private final boolean toggleable;
     private final String[] requirements;
     
+    // ================= HABILIDADES DESHABILITADAS =================
+    // IDs de skills que existen pero están desactivadas temporalmente
+    // Para reactivar: simplemente quitar el ID de esta lista
+    private static final Set<String> DISABLED_SKILLS = Set.of(
+        // UTILIDAD - Poco útiles o redundantes
+        "estomago_hierro",      // Hambre no es problema real en survival
+        "metabolismo_lento",     // Mejora del anterior, sigue siendo innecesario
+        "autosuficiente",        // Regenera hambre muy lento (0.5 cada 30s)
+        
+        // SUPERVIVENCIA - Muy situacionales
+        "resistencia_fuego",     // Solo útil en Nether, muy específico
+        "ignifugo",              // Mejora del anterior, sigue siendo situacional
+        
+        // COMBATE - Poco impacto o muy específicos
+        "piel_escamas",          // -5% daño es casi nada
+        "reflejos",              // Velocidad ataque es menor problema
+        "bloqueo_perfecto",      // Requiere escudo, muy específico
+        
+        // EXPLORACIÓN - Tramposos o redundantes
+        "brujula_interna",       // F3 ya existe, innecesario
+        "telescopio",            // Catalejo vanilla ya existe
+        "mapa_mental",           // Puede anotar coords, poco útil
+        "pisadas_silenciosas",   // Poco útil en práctica
+        "sombra",                // Mejora del anterior, sigue siendo situacional
+        "rastro_oro",            // Detector de minerales es muy tramposo
+        "detector_spawners",     // Muy específico, poco uso
+        "xray_diamantes",        // DEMASIADO tramposo, desbalanceado
+        
+        // INVOCACIÓN - Poco útiles comparados con otros
+        "gato_guardian",         // Ahuyentar creepers es muy situacional
+        "allay_recolector",      // Auto-recolección ya existe como skill
+        
+        // SINERGIAS - Demasiado específicas o complejas
+        "cazador_experto",       // Muy específico (solo carne de mobs)
+        "minero_guerrero",       // Raro usar pico en combate
+        "explorador_ligero",     // Condición muy específica (mochila llena)
+        "omnipresente"           // Ver a través de paredes es muy tramposo
+    );
+    
     Skill(String id, String displayName, String description, 
           SkillBranch branch, SkillTier tier, SkillRarity rarity, 
           int baseCost, Material icon, boolean toggleable, String[] requirements) {
@@ -436,6 +481,15 @@ public enum Skill {
     public Material getIcon() { return icon; }
     public boolean isToggleable() { return toggleable; }
     public String[] getRequirements() { return requirements; }
+    
+    /**
+     * Verifica si esta habilidad está HABILITADA.
+     * Las habilidades deshabilitadas se mantienen en el código pero no aparecen en el árbol.
+     * Para reactivar: quitar su ID de DISABLED_SKILLS.
+     */
+    public boolean isEnabled() {
+        return !DISABLED_SKILLS.contains(this.id);
+    }
     
     /**
      * Verifica si esta habilidad puede ser mejorada.
@@ -491,12 +545,12 @@ public enum Skill {
     }
     
     /**
-     * Obtiene todas las habilidades de una rama
+     * Obtiene todas las habilidades de una rama (solo habilitadas)
      */
     public static List<Skill> getByBranch(SkillBranch branch) {
         List<Skill> skills = new ArrayList<>();
         for (Skill skill : values()) {
-            if (skill.branch == branch) {
+            if (skill.branch == branch && skill.isEnabled()) {
                 skills.add(skill);
             }
         }
@@ -504,12 +558,12 @@ public enum Skill {
     }
     
     /**
-     * Obtiene todas las habilidades de un tier
+     * Obtiene todas las habilidades de un tier (solo habilitadas)
      */
     public static List<Skill> getByTier(SkillTier tier) {
         List<Skill> skills = new ArrayList<>();
         for (Skill skill : values()) {
-            if (skill.tier == tier) {
+            if (skill.tier == tier && skill.isEnabled()) {
                 skills.add(skill);
             }
         }
@@ -517,12 +571,12 @@ public enum Skill {
     }
     
     /**
-     * Obtiene habilidades de una rama y tier específicos
+     * Obtiene habilidades de una rama y tier específicos (solo habilitadas)
      */
     public static List<Skill> getByBranchAndTier(SkillBranch branch, SkillTier tier) {
         List<Skill> skills = new ArrayList<>();
         for (Skill skill : values()) {
-            if (skill.branch == branch && skill.tier == tier) {
+            if (skill.branch == branch && skill.tier == tier && skill.isEnabled()) {
                 skills.add(skill);
             }
         }
@@ -530,15 +584,33 @@ public enum Skill {
     }
     
     /**
-     * Obtiene todas las habilidades toggleables
+     * Obtiene todas las habilidades toggleables (solo habilitadas)
      */
     public static List<Skill> getToggleable() {
         List<Skill> skills = new ArrayList<>();
         for (Skill skill : values()) {
-            if (skill.toggleable) {
+            if (skill.toggleable && skill.isEnabled()) {
                 skills.add(skill);
             }
         }
         return skills;
+    }
+    
+    /**
+     * Obtiene el total de habilidades habilitadas
+     */
+    public static int getEnabledCount() {
+        int count = 0;
+        for (Skill skill : values()) {
+            if (skill.isEnabled()) count++;
+        }
+        return count;
+    }
+    
+    /**
+     * Obtiene el total de habilidades deshabilitadas
+     */
+    public static int getDisabledCount() {
+        return DISABLED_SKILLS.size();
     }
 }

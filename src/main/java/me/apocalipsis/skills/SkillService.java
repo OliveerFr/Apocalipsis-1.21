@@ -214,6 +214,13 @@ public class SkillService {
         return playerData.computeIfAbsent(uuid, k -> new PlayerSkillData());
     }
     
+    /**
+     * Obtiene los datos de skills de un jugador (público para sistema de ciclos)
+     */
+    public PlayerSkillData getPlayerData(UUID uuid) {
+        return getData(uuid);
+    }
+    
     public Set<Skill> getUnlockedSkills(Player player) {
         return getData(player.getUniqueId()).getSkills();
     }
@@ -1144,10 +1151,56 @@ public class SkillService {
     }
     
     public void resetPlayer(Player player) {
-        playerData.remove(player.getUniqueId());
-        phoenixCooldowns.remove(player.getUniqueId());
-        glideCooldowns.remove(player.getUniqueId());
-        resetPlayerAttributes(player);
+        resetPlayer(player.getUniqueId());
+    }
+    
+    /**
+     * Resetea completamente un jugador por UUID (para sistema de ciclos)
+     */
+    public void resetPlayer(UUID uuid) {
+        playerData.remove(uuid);
+        phoenixCooldowns.remove(uuid);
+        glideCooldowns.remove(uuid);
+        
+        Player player = Bukkit.getPlayer(uuid);
+        if (player != null && player.isOnline()) {
+            resetPlayerAttributes(player);
+        }
+        
+        saveData();
+    }
+    
+    /**
+     * Aplica skills a un jugador desde datos guardados (para sistema de ciclos)
+     */
+    public void applySkillData(UUID uuid, java.util.Set<String> skillIds, java.util.Map<String, Integer> skillLevels) {
+        PlayerSkillData data = getData(uuid);
+        
+        // Primero resetear sus skills actuales
+        data.getSkills().clear();
+        data.getSkillLevels().clear();
+        
+        // Aplicar las skills guardadas
+        for (String skillId : skillIds) {
+            try {
+                Skill skill = Skill.valueOf(skillId.toUpperCase());
+                data.addSkill(skill);
+                
+                // Aplicar nivel si existe
+                if (skillLevels != null && skillLevels.containsKey(skillId)) {
+                    data.setSkillLevel(skill, skillLevels.get(skillId));
+                }
+            } catch (IllegalArgumentException e) {
+                plugin.getLogger().warning("Skill desconocida al aplicar datos: " + skillId);
+            }
+        }
+        
+        // Si el jugador está online, aplicar efectos
+        Player player = Bukkit.getPlayer(uuid);
+        if (player != null && player.isOnline()) {
+            applySkillEffects(player);
+        }
+        
         saveData();
     }
     
@@ -2085,7 +2138,7 @@ public class SkillService {
     
     // ==================== CLASE INTERNA: PlayerSkillData ====================
     
-    private static class PlayerSkillData {
+    public static class PlayerSkillData {
         private final Set<Skill> skills;
         private final Set<Skill> disabledToggles;
         private final Map<Skill, SkillLevel> skillLevels; // NUEVO: niveles por skill
@@ -2132,6 +2185,19 @@ public class SkillService {
             if (skills.contains(skill)) {
                 skillLevels.put(skill, level);
             }
+        }
+        
+        /**
+         * Establece el nivel de una skill usando un entero (para sistema de ciclos)
+         */
+        public void setSkillLevel(Skill skill, int levelInt) {
+            SkillLevel level = switch (levelInt) {
+                case 1 -> SkillLevel.LEVEL_1;
+                case 2 -> SkillLevel.LEVEL_2;
+                case 3 -> SkillLevel.LEVEL_3;
+                default -> SkillLevel.LEVEL_1;
+            };
+            setSkillLevel(skill, level);
         }
         
         public boolean isToggleDisabled(Skill skill) { return disabledToggles.contains(skill); }

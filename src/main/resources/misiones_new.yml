@@ -651,7 +651,7 @@ misiones:
     recompensa_ps: 17
 
   - id: "cocinar_kelp_absoluto_facil"
-    nombre: "Secar kelp (combustible)"
+    nombre: "Cocinar algas (combustible)"
     tipo: "COCINAR"
     objetivo: "DRIED_KELP"
     cantidad: 12
@@ -992,7 +992,7 @@ misiones:
     nombre: "Farmear Endermites (granja)"
     tipo: "MATAR"
     objetivo: "ENDERMITE"
-    cantidad: 20
+    cantidad: 4
     dificultad: "DIFICIL"
     rangos: ["ABSOLUTO"]
     recompensa_ps: 160

@@ -6,7 +6,7 @@
 
     <groupId>me.apocalipsis</groupId>
     <artifactId>Apocalipsis</artifactId>
-    <version>1.22.54</version>
+    <version>1.22.56</version>
     <packaging>jar</packaging>
 
     <name>Apocalipsis</name>
@@ -105,6 +105,10 @@
             <name>Lumine Releases</name>
             <url>https://mvn.lumine.io/repository/maven-public/</url>
         </repository>
+        <repository>
+            <id>onarandombox</id>
+            <url>https://repo.onarandombox.com/content/groups/public/</url>
+        </repository>
     </repositories>
 
     <dependencies>
@@ -118,6 +122,12 @@
             <groupId>com.ticxo.modelengine</groupId>
             <artifactId>ModelEngine</artifactId>
             <version>R4.0.7</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.onarandombox.multiversecore</groupId>
+            <artifactId>Multiverse-Core</artifactId>
+            <version>4.3.12</version>
             <scope>provided</scope>
         </dependency>
         <!-- MythicMobs dependency comentada - activar si está disponible

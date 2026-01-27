@@ -115,7 +115,7 @@ public class MissionListener implements Listener {
         return space;
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onSmelt(FurnaceExtractEvent event) {
         Player player = event.getPlayer();
         Material material = event.getItemType();
@@ -124,7 +124,7 @@ public class MissionListener implements Listener {
         missionService.progressMission(player, MissionType.COCINAR, material.name(), amount);
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onConsume(PlayerItemConsumeEvent event) {
         if (event.isCancelled()) return;
 

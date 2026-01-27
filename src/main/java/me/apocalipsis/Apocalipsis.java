@@ -8,7 +8,10 @@
 package me.apocalipsis;
 
 import java.io.File;
+import java.util.List;
+import java.util.ArrayList;
 
+import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -57,6 +60,12 @@ import me.apocalipsis.utils.BlockOwnershipTracker;
 import me.apocalipsis.utils.ConfigManager;
 import me.apocalipsis.utils.OnlinePlayersCache;
 import me.apocalipsis.utils.VelocityManager;
+import me.apocalipsis.ciclos.CicloManager;
+import me.apocalipsis.ciclos.WorldChangeListener;
+import me.apocalipsis.ciclos.WorldProtectionListener;
+import me.apocalipsis.ciclos.CommandProtectionListener;
+import me.apocalipsis.ciclos.EntityProtectionListener;
+import me.apocalipsis.ciclos.PlayerRespawnListener;
 
 public final class Apocalipsis extends JavaPlugin {
 
@@ -73,6 +82,14 @@ public final class Apocalipsis extends JavaPlugin {
     private MissionService missionService;
     private RankService rankService;
     private PerformanceAdapter performanceAdapter;
+    
+    // Sistema de ciclos multi-mundo
+    private CicloManager cicloManager;
+    private me.apocalipsis.managers.ConfirmationManager confirmationManager;
+    private me.apocalipsis.managers.CooldownManager cooldownManager;
+    private me.apocalipsis.managers.CountdownManager countdownManager;
+    private me.apocalipsis.managers.CicloBossBarManager cicloBossBarManager;
+    private me.apocalipsis.ciclos.PortalRedirectionListener portalRedirectionListener;
     
     // Servicios de rangos permanentes
     private me.apocalipsis.missions.PermRankManager permRankManager;
@@ -117,6 +134,9 @@ public final class Apocalipsis extends JavaPlugin {
     private ProgressiveDifficultySystem progressiveDifficultySystem;
     private TutorialManager tutorialManager;
     private FileConfiguration tutorialConfig;
+    
+    // Evento 6: Cuando el Mundo Decide Olvidar
+    private me.apocalipsis.events.Evento6MundoOlvidado evento6;
 
     @Override
     public void onEnable() {
@@ -139,6 +159,7 @@ public final class Apocalipsis extends JavaPlugin {
         saveResource("stream_features.yml", false);
         saveResource("rangos_permanentes.yml", false);
         saveResource("navidad.yml", false);
+        saveResource("evento6_mundo_olvidado.yml", false);
 
         // Inicializar servicios
         configManager = new ConfigManager(this);
@@ -271,12 +292,20 @@ public final class Apocalipsis extends JavaPlugin {
         eventController.registerEvent(aperturaEndEvent);
         
         getLogger().info("[EventController] ✓ Eventos narrativos registrados (Eco de Brasas, Eco de Sombras, Susurro Piedra Rota, Navidad, Camino al End, Apertura del End)");
+        
+        // NOTA: Evento 6 se inicializa DESPUÉS del CicloManager (línea ~680)
+        // porque requiere que el sistema de ciclos esté cargado
 
         // Registrar comandos y tab completer
         ApocalipsisCommand avoCommand = new ApocalipsisCommand(this, stateManager, disasterController, eventController, missionService, timeService, messageBus);
         getCommand("avo").setExecutor(avoCommand);
         getCommand("avo").setTabCompleter(new AvoTabCompleter(this));
         getCommand("recompensa").setExecutor(new RecompensaCommand(this));
+        
+        // Comando de ciclos (shortcut)
+        me.apocalipsis.commands.CicloCommand cicloCommand = new me.apocalipsis.commands.CicloCommand(this);
+        getCommand("ciclo").setExecutor(cicloCommand);
+        getCommand("ciclo").setTabCompleter(cicloCommand);
         
         // Comando de tutorial
         me.apocalipsis.tutorial.TutorialCommand tutorialCommand = 
@@ -329,12 +358,81 @@ public final class Apocalipsis extends JavaPlugin {
         });
         
         getCommand("mochila").setExecutor((sender, cmd, label, args) -> {
-            if (sender instanceof org.bukkit.entity.Player player) {
-                backpackService.openBackpack(player);
-            } else {
+            if (!(sender instanceof org.bukkit.entity.Player player)) {
                 sender.sendMessage("§cEste comando solo puede ser usado por jugadores.");
+                return true;
             }
-            return true;
+            
+            // Sin argumentos: abrir mochila #1
+            if (args.length == 0) {
+                backpackService.openBackpack(player);
+                return true;
+            }
+            
+            // Con un argumento numérico: abrir mochila #N
+            try {
+                int backpackNumber = Integer.parseInt(args[0]);
+                backpackService.openBackpack(player, backpackNumber);
+                return true;
+            } catch (NumberFormatException e) {
+                // Si no es número, asumimos que es nombre de jugador (moderación)
+                if (!player.hasPermission("apocalipsis.mochila.mod")) {
+                    player.sendMessage("§c✗ No tienes permiso para ver mochilas ajenas.");
+                    return true;
+                }
+                
+                String targetName = args[0];
+                int backpackNumber = args.length > 1 ? tryParseInt(args[1], 1) : 1;
+                
+                org.bukkit.entity.Player target = Bukkit.getPlayer(targetName);
+                if (target != null) {
+                    backpackService.openBackpackAsAdmin(player, target.getUniqueId(), target.getName(), backpackNumber);
+                } else {
+                    @SuppressWarnings("deprecation")
+                    org.bukkit.OfflinePlayer offline = Bukkit.getOfflinePlayer(targetName);
+                    if (offline.hasPlayedBefore()) {
+                        String name = offline.getName() != null ? offline.getName() : targetName;
+                        backpackService.openBackpackAsAdmin(player, offline.getUniqueId(), name, backpackNumber);
+                    } else {
+                        player.sendMessage("§c✗ Jugador no encontrado: " + targetName);
+                    }
+                }
+                return true;
+            }
+        });
+        
+        // Alias /bp para /mochila (mismo comportamiento)
+        getCommand("mochila").setTabCompleter((sender, cmd, label, args) -> {
+            if (!(sender instanceof org.bukkit.entity.Player player)) return List.of();
+            
+            if (args.length == 1) {
+                List<String> suggestions = new ArrayList<>();
+                
+                // Números 1-2
+                for (int i = 1; i <= 2; i++) {
+                    suggestions.add(String.valueOf(i));
+                }
+                
+                // Nombres de jugadores (solo si tiene permiso de mod)
+                if (player.hasPermission("apocalipsis.mochila.mod")) {
+                    Bukkit.getOnlinePlayers().forEach(p -> suggestions.add(p.getName()));
+                }
+                
+                return suggestions.stream()
+                    .filter(s -> s.toLowerCase().startsWith(args[0].toLowerCase()))
+                    .collect(java.util.stream.Collectors.toList());
+            } else if (args.length == 2 && player.hasPermission("apocalipsis.mochila.mod")) {
+                // Segundo argumento: número de mochila (1-2)
+                List<String> numbers = new ArrayList<>();
+                for (int i = 1; i <= 2; i++) {
+                    numbers.add(String.valueOf(i));
+                }
+                return numbers.stream()
+                    .filter(s -> s.startsWith(args[1]))
+                    .collect(java.util.stream.Collectors.toList());
+            }
+            
+            return List.of();
         });
         
         getCommand("echest").setExecutor((sender, cmd, label, args) -> {
@@ -360,14 +458,20 @@ public final class Apocalipsis extends JavaPlugin {
                 player.sendMessage("  §f/waypoint tp <nombre> §7- Teleportarse a waypoint");
                 player.sendMessage("  §f/waypoint list §7- Ver tus waypoints");
                 player.sendMessage("  §f/waypoint delete <nombre> §7- Eliminar waypoint");
+                player.sendMessage("");
                 
                 // Mostrar límite del jugador
                 int limit = this.skillEffectListener.getWaypointLimit(player);
                 player.sendMessage("§7Límite actual: §e" + limit + " waypoint" + (limit > 1 ? "s" : ""));
                 
+                // Mostrar información de cómo mejorar el límite
                 var permRank = this.permRankManager.getPlayerPermRank(player.getUniqueId());
                 if (permRank != null && permRank.getId().equalsIgnoreCase("hunter_adventurer")) {
-                    player.sendMessage("§a✓ §7Rango §fHunter_Adventurer§7: 10 waypoints disponibles");
+                    player.sendMessage("§a✓ §7Rango §fHunter_Adventurer§7: Límite especial activo");
+                } else if (this.skillService.hasSkill(player, me.apocalipsis.skills.Skill.WAYPOINT)) {
+                    player.sendMessage("§a✓ §7Habilidad §eWaypoint §7comprada: §e3 waypoints §7disponibles");
+                } else {
+                    player.sendMessage("§7💡 Compra la habilidad §eWaypoint §7para tener hasta §e3 waypoints");
                 }
                 return true;
             }
@@ -623,6 +727,40 @@ public final class Apocalipsis extends JavaPlugin {
         // Registrar listener de cartas
         getServer().getPluginManager().registerEvents(new me.apocalipsis.listeners.CartasListener(this, cartasManager), this);
         getLogger().info("[Cartas] ✓ Sistema de cartas a Santa activado");
+        
+        // ═══════ SISTEMA DE CICLOS MULTI-MUNDO ═══════
+        // Inicializar gestor de ciclos
+        cicloManager = new CicloManager(this);
+        
+        // Inicializar managers UX para ciclos
+        confirmationManager = new me.apocalipsis.managers.ConfirmationManager(this);
+        cooldownManager = new me.apocalipsis.managers.CooldownManager(this);
+        countdownManager = new me.apocalipsis.managers.CountdownManager(this);
+        cicloBossBarManager = new me.apocalipsis.managers.CicloBossBarManager(this);
+        
+        // Registrar listeners del sistema de ciclos
+        getServer().getPluginManager().registerEvents(new WorldChangeListener(this, cicloManager), this);
+        getServer().getPluginManager().registerEvents(new WorldProtectionListener(this, cicloManager), this);
+        getServer().getPluginManager().registerEvents(new CommandProtectionListener(this, cicloManager), this);
+        getServer().getPluginManager().registerEvents(new EntityProtectionListener(this, cicloManager), this);
+        getServer().getPluginManager().registerEvents(new me.apocalipsis.ciclos.EndProtectionListener(this, cicloManager), this);
+        getServer().getPluginManager().registerEvents(new PlayerRespawnListener(this, cicloManager), this);
+        portalRedirectionListener = new me.apocalipsis.ciclos.PortalRedirectionListener(this, cicloManager);
+        getServer().getPluginManager().registerEvents(portalRedirectionListener, this);
+        getServer().getPluginManager().registerEvents(new me.apocalipsis.listeners.CicloMenuListener(this), this);
+        
+        getLogger().info("[CicloManager] ✓ Sistema de ciclos multi-mundo activado");
+        getLogger().info("[CicloManagers] ✓ Sistemas UX activados (Countdown, BossBar, Confirmación, Cooldown)");
+        getLogger().info("[EndProtection] ✓ Protección del End compartido activada");
+        getLogger().info("[PortalRedirección] ✓ Sistema de redirección de portales activado");
+        getLogger().info("[PlayerRespawn] ✓ Sistema de respawn en ciclos activado");
+        // ═══════════════════════════════════════════════
+        
+        // ═══════ EVENTO 6: CUANDO EL MUNDO DECIDE OLVIDAR ═══════
+        // Inicializar DESPUÉS del CicloManager porque lo requiere
+        evento6 = new me.apocalipsis.events.Evento6MundoOlvidado(this);
+        getLogger().info("[Evento 6] ✓ Sistema cargado - Requiere ciclos habilitados para funcionar");
+        // ═══════════════════════════════════════════════
 
         // Cargar estado
         stateManager.loadState();
@@ -633,12 +771,67 @@ public final class Apocalipsis extends JavaPlugin {
         scoreboardManager.startTask();
         tablistManager.startTask();
         
+        // ═══════════════════════════════════════════════
+        // AUTO-START: Iniciar ciclo de desastres automáticamente
+        // ═══════════════════════════════════════════════
+        getServer().getScheduler().runTaskLater(this, () -> {
+            String estado = stateManager.getEstado();
+            
+            // Solo auto-start si NO hay desastre activo y NO está en safe mode
+            if (!"ACTIVO".equalsIgnoreCase(estado) && !stateManager.isSafeModeActive()) {
+                long now = System.currentTimeMillis();
+                long cooldownMs = configManager.getCooldownFinSegundos() * 1000L;
+                int prepSeconds = configManager.getPreparacionInicialSegundos();
+                
+                stateManager.setEstado("PREPARACION");
+                stateManager.setString("desastre_actual", "");
+                stateManager.setPrepForzada(true);
+                stateManager.setLastEndEpochMs(now - cooldownMs - 1000L);
+                stateManager.setLong("start_epoch_ms", now);
+                stateManager.setLong("end_epoch_ms", now + (prepSeconds * 1000L));
+                stateManager.saveState();
+                
+                getLogger().info("[AutoStart] ✓ Ciclo de desastres iniciado automáticamente");
+                messageBus.broadcast("§a§l[AUTO-START] §fCiclo de desastres iniciado automáticamente", "autostart");
+            } else {
+                getLogger().info("[AutoStart] Desastre ya activo o en safe mode - no se auto-inicia");
+            }
+        }, 100L); // 5 segundos después de cargar el plugin
+        
+        // ═══════════════════════════════════════════════
+        // AUTO-NEWDAY: Nuevas misiones cada 24 horas
+        // ═══════════════════════════════════════════════
+        getServer().getScheduler().runTaskTimer(this, () -> {
+            try {
+                stateManager.incrementDay();
+                int day = stateManager.getCurrentDay();
+                
+                missionService.resetPlayerDailyCompleteFired();
+                missionService.assignMissionsForDay(day);
+                
+                int onlinePlayers = getServer().getOnlinePlayers().size();
+                messageBus.broadcast("§e§l⌛ §fNuevo día iniciado automáticamente: §e" + day, "auto_newday");
+                getLogger().info("[AutoNewDay] Día " + day + " iniciado - " + onlinePlayers + " jugadores online");
+                
+            } catch (Exception e) {
+                getLogger().severe("[AutoNewDay] Error al ejecutar newday automático: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }, 1728000L, 1728000L); // 24 horas = 1728000 ticks (20 ticks/seg * 60 seg * 60 min * 24 horas)
+        
         // Iniciar tick loop de eventos
         getServer().getScheduler().runTaskTimer(this, () -> {
             if (eventController != null) {
                 eventController.tick();
             }
         }, 0L, 1L); // Tick cada 1 tick (50ms)
+        
+        // Limpieza de caché del sistema de ciclos (cada 5 minutos)
+        if (cicloManager != null && cicloManager.getDataManager() != null) {
+            getServer().getScheduler().runTaskTimer(this, () -> {
+                cicloManager.getDataManager().cleanCache();
+            }, 6000L, 6000L); // 5 minutos = 6000 ticks
+        }
         
         // [DATA.YML] Scheduler para tiempo jugado (cada 60 segundos)
         // TODO: Implementar sistema de data.yml completo
@@ -690,6 +883,31 @@ public final class Apocalipsis extends JavaPlugin {
         // Detener mission height tracker
         if (missionService != null) {
             missionService.stopHeightTracker();
+        }
+        
+        // Guardar datos del sistema de ciclos
+        if (cicloManager != null) {
+            cicloManager.shutdown();
+        }
+        
+        // Guardar datos de portales (End compartido)
+        if (portalRedirectionListener != null) {
+            portalRedirectionListener.saveEndOriginData();
+            getLogger().info("[PortalRedirection] Datos de portales guardados al apagar servidor");
+        }
+        
+        // Limpiar managers UX de ciclos
+        if (confirmationManager != null) {
+            confirmationManager.shutdown();
+        }
+        if (cooldownManager != null) {
+            cooldownManager.shutdown();
+        }
+        if (countdownManager != null) {
+            countdownManager.shutdown();
+        }
+        if (cicloBossBarManager != null) {
+            cicloBossBarManager.shutdown();
         }
         
         // Guardar block tracker
@@ -884,6 +1102,17 @@ public final class Apocalipsis extends JavaPlugin {
     }
     
     /**
+     * Helper para parsear int con valor por defecto
+     */
+    private static int tryParseInt(String value, int defaultValue) {
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
+    }
+    
+    /**
      * [OPTIMIZACIÓN] Obtiene el cache de jugadores online
      * Usar en lugar de Bukkit.getOnlinePlayers() para mejor rendimiento
      */
@@ -903,6 +1132,58 @@ public final class Apocalipsis extends JavaPlugin {
      */
     public TutorialManager getTutorialManager() {
         return tutorialManager;
+    }
+    
+    /**
+     * Obtiene el gestor de ciclos multi-mundo
+     */
+    public CicloManager getCicloManager() {
+        return cicloManager;
+    }
+    
+    /**
+     * Obtiene la configuración de ciclos.yml
+     */
+    public FileConfiguration getCicloConfig() {
+        if (cicloManager != null) {
+            return cicloManager.getConfig();
+        }
+        return null;
+    }
+    
+    /**
+     * Obtiene el gestor de confirmaciones
+     */
+    public me.apocalipsis.managers.ConfirmationManager getConfirmationManager() {
+        return confirmationManager;
+    }
+    
+    /**
+     * Obtiene el gestor de cooldowns
+     */
+    public me.apocalipsis.managers.CooldownManager getCooldownManager() {
+        return cooldownManager;
+    }
+    
+    /**
+     * Obtiene el gestor de countdowns
+     */
+    public me.apocalipsis.managers.CountdownManager getCountdownManager() {
+        return countdownManager;
+    }
+    
+    /**
+     * Obtiene el gestor de BossBars de ciclos
+     */
+    public me.apocalipsis.managers.CicloBossBarManager getCicloBossBarManager() {
+        return cicloBossBarManager;
+    }
+    
+    /**
+     * Obtiene el Evento 6: Cuando el Mundo Decide Olvidar
+     */
+    public me.apocalipsis.events.Evento6MundoOlvidado getEvento6() {
+        return evento6;
     }
     
     /**

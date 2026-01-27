@@ -58,47 +58,47 @@ recompensas_diarias_completas:
     NOVATO:
       comandos:
         - "give %player% minecraft:iron_ingot 5"
-      mensaje: "&a[Bonus Novato] &7+5 Lingotes de Hierro"
+      mensaje: "&7[Bonus Perdido] &7+5 Lingotes de Hierro"
       
     EXPLORADOR:
       comandos:
         - "give %player% minecraft:iron_ingot 8"
         - "give %player% minecraft:ender_pearl 2"
-      mensaje: "&b[Bonus Explorador] &7+8 Hierro, +2 Perlas de Ender"
+      mensaje: "&a[Bonus Despertar] &7+8 Hierro, +2 Perlas de Ender"
       
     SOBREVIVIENTE:
       comandos:
         - "give %player% minecraft:diamond 2"
         - "give %player% minecraft:ender_pearl 4"
-      mensaje: "&e[Bonus Sobreviviente] &7+2 Diamantes, +4 Perlas de Ender"
+      mensaje: "&b[Bonus Resistente] &7+2 Diamantes, +4 Perlas de Ender"
       
     VETERANO:
       comandos:
         - "give %player% minecraft:diamond 3"
         - "give %player% minecraft:netherite_scrap 1"
         - "give %player% minecraft:ender_pearl 6"
-      mensaje: "&6[Bonus Veterano] &7+3 Diamantes, +1 Netherite Scrap, +6 Perlas"
+      mensaje: "&e[Bonus Perseverante] &7+3 Diamantes, +1 Netherite Scrap, +6 Perlas"
       
     LEYENDA:
       comandos:
         - "give %player% minecraft:diamond 5"
         - "give %player% minecraft:netherite_scrap 2"
         - "give %player% minecraft:enchanted_golden_apple 1"
-      mensaje: "&c[Bonus Leyenda] &7+5 Diamantes, +2 Scrap, +1 Manzana Encantada"
+      mensaje: "&6[Bonus Ascendido] &7+5 Diamantes, +2 Scrap, +1 Manzana Encantada"
       
     MAESTRO:
       comandos:
         - "give %player% minecraft:netherite_ingot 1"
         - "give %player% minecraft:enchanted_golden_apple 2"
         - "give %player% minecraft:totem_of_undying 1"
-      mensaje: "&5[Bonus Maestro] &7+1 Netherite, +2 Manzanas Encantadas, +1 Tótem"
+      mensaje: "&d[Bonus Iluminado] &7+1 Netherite, +2 Manzanas Encantadas, +1 Tótem"
       
     TITAN:
       comandos:
         - "give %player% minecraft:netherite_ingot 2"
         - "give %player% minecraft:enchanted_golden_apple 3"
         - "give %player% minecraft:nether_star 1"
-      mensaje: "&4[Bonus Titán] &7+2 Netherite, +3 Manzanas Encantadas, +1 Estrella"
+      mensaje: "&5[Bonus Trascendente] &7+2 Netherite, +3 Manzanas Encantadas, +1 Estrella"
       
     ABSOLUTO:
       comandos:
@@ -106,7 +106,7 @@ recompensas_diarias_completas:
         - "give %player% minecraft:enchanted_golden_apple 5"
         - "give %player% minecraft:nether_star 2"
         - "give %player% minecraft:elytra 1"
-      mensaje: "&f&l[Bonus Absoluto] &7+3 Netherite, +5 Manzanas Enc., +2 Estrellas, +1 Élitro"
+      mensaje: "&c&l[Bonus Eterno] &7+3 Netherite, +5 Manzanas Enc., +2 Estrellas, +1 Élitro"
   
   # Mensaje de celebración
   titulo: "&6&l¡COMPLETADO!"
@@ -203,16 +203,16 @@ xp_dinamico:
       # Cuando el jugador nuevo alcanza cada rango
       rangos:
         EXPLORADOR:
-          titulo: "§b§l¡Explorador Alcanzado!"
-          descripcion: "§e%jugador% §7alcanzó Explorador"
+          titulo: "§a§l¡Despertar Alcanzado!"
+          descripcion: "§e%jugador% §7ha DESPERTADO"
           xp: 500
           comandos:
             - "give %player% minecraft:diamond 5"
             - "give %player% minecraft:emerald 3"
         
         SOBREVIVIENTE:
-          titulo: "§e§l¡Sobreviviente Alcanzado!"
-          descripcion: "§e%jugador% §7alcanzó Sobreviviente"
+          titulo: "§b§l¡Resistente Alcanzado!"
+          descripcion: "§e%jugador% §7se volvió RESISTENTE"
           xp: 800
           comandos:
             - "give %player% minecraft:diamond 8"
@@ -220,8 +220,8 @@ xp_dinamico:
             - "ps give 15 %player% 5"
         
         VETERANO:
-          titulo: "§6§l¡Veterano Alcanzado!"
-          descripcion: "§e%jugador% §7alcanzó Veterano"
+          titulo: "§e§l¡Perseverante Alcanzado!"
+          descripcion: "§e%jugador% §7es PERSEVERANTE"
           xp: 1200
           comandos:
             - "give %player% minecraft:netherite_ingot 1"
@@ -229,8 +229,8 @@ xp_dinamico:
             - "ps give 15 %player% 10"
         
         LEYENDA:
-          titulo: "§c§l¡Leyenda Alcanzada!"
-          descripcion: "§e%jugador% §7alcanzó Leyenda"
+          titulo: "§6§l¡Ascendido Alcanzado!"
+          descripcion: "§e%jugador% §7ha ASCENDIDO"
           xp: 2000
           comandos:
             - "give %player% minecraft:netherite_ingot 2"
@@ -238,8 +238,8 @@ xp_dinamico:
             - "ps give 15 %player% 15"
         
         MAESTRO:
-          titulo: "§5§l¡Maestro Alcanzado!"
-          descripcion: "§e%jugador% §7alcanzó Maestro"
+          titulo: "§d§l¡Iluminado Alcanzado!"
+          descripcion: "§e%jugador% §7es ILUMINADO"
           xp: 3000
           comandos:
             - "give %player% minecraft:netherite_ingot 3"
@@ -247,8 +247,8 @@ xp_dinamico:
             - "give %player% minecraft:elytra 1"
         
         TITAN:
-          titulo: "§4§l¡Titán Alcanzado!"
-          descripcion: "§e%jugador% §7alcanzó Titán"
+          titulo: "§5§l¡Trascendente Alcanzado!"
+          descripcion: "§e%jugador% §7ha TRASCENDIDO"
           xp: 5000
           comandos:
             - "give %player% minecraft:netherite_ingot 5"
@@ -256,8 +256,8 @@ xp_dinamico:
             - "give %player% minecraft:enchanted_golden_apple 5"
         
         ABSOLUTO:
-          titulo: "§f§l¡ABSOLUTO ALCANZADO!"
-          descripcion: "§e%jugador% §7alcanzó §f§lABSOLUTO"
+          titulo: "§c§l¡ETERNO ALCANZADO!"
+          descripcion: "§e%jugador% §7es §c§lETERNO"
           xp: 10000
           comandos:
             - "give %player% minecraft:netherite_block 1"
@@ -380,26 +380,26 @@ xp_dinamico:
       # Total de jugadores que alcanzaron cada rango
       jugadores_por_rango:
         5_exploradores:
-          titulo: "§b¡5 Exploradores!"
+          titulo: "§a¡5 Despertares!"
           xp: 800
           comandos:
             - "give %player% minecraft:diamond 10"
         
         10_sobrevivientes:
-          titulo: "§e¡10 Sobrevivientes!"
+          titulo: "§b¡10 Resistentes!"
           xp: 2000
           comandos:
             - "give %player% minecraft:netherite_ingot 2"
         
         5_veteranos:
-          titulo: "§6¡5 Veteranos!"
+          titulo: "§e¡5 Perseverantes!"
           xp: 3000
           comandos:
             - "give %player% minecraft:netherite_ingot 3"
             - "give %player% minecraft:nether_star 1"
         
         5_leyendas:
-          titulo: "§c¡5 Leyendas!"
+          titulo: "§6¡5 Ascendidos!"
           xp: 5000
           comandos:
             - "give %player% minecraft:netherite_block 1"
@@ -802,231 +802,304 @@ fuentes_xp:
       xp: 20
 
 # ═══════════════════════════════════════════════════════════════
-# RECOMPENSAS POR SUBIDA DE RANGO (ÉPICAS - EVENTOS MEMORABLES)
+# RECOMPENSAS POR SUBIDA DE RANGO (REDISEÑADAS - MÁS ÉPICAS)
+# Sistema de ascenso temático del caos - Cada rango es memorable
 # ═══════════════════════════════════════════════════════════════
 
 recompensas_por_rango:
-  # Al alcanzar EXPLORADOR (~Día 3-5)
+  # Al alcanzar DESPERTAR (Explorador) (~Día 3-5) - El primer paso
   EXPLORADOR:
     comandos:
-      - "ps give 15 %player%"                                # 1 bloque de protección
-      - "give %player% minecraft:diamond 8"                    # 8 diamantes (antes 5)
-      - "give %player% minecraft:golden_apple 5"               # 5 manzanas doradas (antes 3)
-      - "give %player% minecraft:iron_block 16"                # 16 bloques de hierro (nuevo)
-    mensaje: "&b¡Has alcanzado el rango EXPLORADOR! &7Recompensas entregadas"
+      - "ps give 15 %player%"                                # 1 bloque protección
+      - "give %player% minecraft:diamond 6"
+      - "give %player% minecraft:golden_apple 4"
+      - "give %player% minecraft:iron_block 12"
+      - "give %player% minecraft:ender_pearl 8"
+    mensaje: "&a¡Has DESPERTADO! &7Tu viaje hacia el poder comienza..."
     
-  # Al alcanzar SOBREVIVIENTE (~Día 10-12)
+  # Al alcanzar RESISTENTE (Sobreviviente) (~Día 10-12) - La fortaleza
   SOBREVIVIENTE:
     comandos:
-      - "ps give 15 %player%"                                # 1 bloque de protección
-      - "give %player% minecraft:diamond 15"                   # 15 diamantes (antes 10)
-      - "give %player% minecraft:golden_apple 8"               # 8 manzanas doradas (antes 5)
-      - "give %player% minecraft:ender_pearl 32"               # 32 perlas de ender (antes 16)
-      - "give %player% minecraft:enchanted_book 1"             # Libro encantado (nuevo)
-    mensaje: "&e¡Has alcanzado el rango SOBREVIVIENTE! &7Recompensas entregadas"
+      - "ps give 15 %player%"                                # 1 bloque protección
+      - "give %player% minecraft:diamond 12"
+      - "give %player% minecraft:golden_apple 6"
+      - "give %player% minecraft:ender_pearl 24"
+      - "give %player% minecraft:enchanted_book 1"
+      - "give %player% minecraft:iron_block 16"
+    mensaje: "&b¡Eres RESISTENTE! &7El mundo no puede detenerte..."
     
-  # Al alcanzar VETERANO (~Día 20-25)
+  # Al alcanzar PERSEVERANTE (Veterano) (~Día 20-25) - La determinación
   VETERANO:
     comandos:
-      - "ps give 15 %player% 2"                              # 2 bloques de protección
-      - "give %player% minecraft:diamond 25"                   # 25 diamantes (antes 20)
-      - "give %player% minecraft:enchanted_golden_apple 3"     # 3 manzanas encantadas (antes 2)
-      - "give %player% minecraft:ender_pearl 64"               # 64 perlas de ender (antes 32)
-      - "give %player% minecraft:totem_of_undying 2"           # 2 tótems (antes 1)
-      - "give %player% minecraft:diamond_block 8"              # 8 bloques de diamante (nuevo)
-    mensaje: "&6¡Has alcanzado el rango VETERANO! &7Recompensas entregadas"
+      - "ps give 15 %player% 2"                              # 2 bloques protección
+      - "give %player% minecraft:diamond 20"
+      - "give %player% minecraft:enchanted_golden_apple 2"
+      - "give %player% minecraft:ender_pearl 48"
+      - "give %player% minecraft:totem_of_undying 1"
+      - "give %player% minecraft:diamond_block 6"
+      - "give %player% minecraft:netherite_scrap 2"
+    mensaje: "&e¡Tu PERSEVERANCIA es inquebrantable! &7El poder fluye en ti..."
     
-  # Al alcanzar LEYENDA (~Día 35-40)
+  # Al alcanzar ASCENDIDO (Leyenda) (~Día 35-40) - La elevación
   LEYENDA:
     comandos:
-      - "ps give 15 %player% 2"                              # 2 bloques de protección
-      - "give %player% minecraft:netherite_ingot 8"            # 8 lingotes (antes 5)
-      - "give %player% minecraft:enchanted_golden_apple 5"     # 5 manzanas encantadas (antes 3)
-      - "give %player% minecraft:totem_of_undying 3"           # 3 tótems (antes 2)
-      - "give %player% minecraft:elytra 1"                     # 1 élitro
-      - "give %player% minecraft:dragon_head 1"                # Cabeza de dragón (nuevo)
-    mensaje: "&c¡Has alcanzado el rango LEYENDA! &7Recompensas entregadas"
+      - "ps give 15 %player% 2"                              # 2 bloques protección
+      - "give %player% minecraft:netherite_ingot 6"
+      - "give %player% minecraft:enchanted_golden_apple 4"
+      - "give %player% minecraft:totem_of_undying 2"
+      - "give %player% minecraft:elytra 1"
+      - "give %player% minecraft:dragon_head 1"
+      - "give %player% minecraft:experience_bottle 32"
+    mensaje: "&6¡Has ASCENDIDO más allá de los mortales! &7La leyenda crece..."
     
-  # Al alcanzar MAESTRO (~Día 50-55)
+  # Al alcanzar ILUMINADO (Maestro) (~Día 50-55) - La sabiduría
   MAESTRO:
     comandos:
-      - "ps give 15 %player% 3"                              # 3 bloques de protección
-      - "give %player% minecraft:netherite_ingot 15"           # 15 lingotes (antes 10)
-      - "give %player% minecraft:enchanted_golden_apple 8"     # 8 manzanas encantadas (antes 5)
-      - "give %player% minecraft:totem_of_undying 5"           # 5 tótems (antes 3)
-      - "give %player% minecraft:nether_star 3"                # 3 estrellas (antes 2)
-      - "give %player% minecraft:netherite_block 4"            # 4 bloques netherite (nuevo)
-    mensaje: "&5¡Has alcanzado el rango MAESTRO! &7Recompensas entregadas"
+      - "ps give 15 %player% 3"                              # 3 bloques protección
+      - "give %player% minecraft:netherite_ingot 12"
+      - "give %player% minecraft:enchanted_golden_apple 6"
+      - "give %player% minecraft:totem_of_undying 4"
+      - "give %player% minecraft:nether_star 2"
+      - "give %player% minecraft:netherite_block 3"
+      - "give %player% minecraft:beacon 1"
+    mensaje: "&d¡La ILUMINACIÓN te ha alcanzado! &7Tu mente trasciende..."
     
-  # Al alcanzar TITAN (~Día 65-70)
+  # Al alcanzar TRASCENDENTE (Titan) (~Día 65-70) - Más allá
   TITAN:
     comandos:
-      - "ps give 15 %player% 3"                              # 3 bloques de protección
-      - "give %player% minecraft:netherite_ingot 25"           # 25 lingotes (antes 20)
-      - "give %player% minecraft:enchanted_golden_apple 12"    # 12 manzanas encantadas (antes 8)
-      - "give %player% minecraft:totem_of_undying 8"           # 8 tótems (antes 5)
-      - "give %player% minecraft:nether_star 5"                # 5 estrellas (antes 3)
-      - "give %player% minecraft:beacon 1"                     # 1 faro (nuevo)
-    mensaje: "&4¡Has alcanzado el rango TITAN! &7Recompensas entregadas"
+      - "ps give 15 %player% 3"                              # 3 bloques protección
+      - "give %player% minecraft:netherite_ingot 20"
+      - "give %player% minecraft:enchanted_golden_apple 10"
+      - "give %player% minecraft:totem_of_undying 6"
+      - "give %player% minecraft:nether_star 4"
+      - "give %player% minecraft:netherite_block 5"
+      - "give %player% minecraft:beacon 1"
+      - "give %player% minecraft:dragon_egg 1"
+    mensaje: "&5¡Has TRASCENDIDO la realidad! &7El caos se doblega ante ti..."
     
-  # Al alcanzar ABSOLUTO (~Día 75) - ¡ÉPICO!
+  # Al alcanzar ETERNO (Absoluto) (~Día 75) - ¡EL FINAL!
   ABSOLUTO:
     comandos:
-      - "ps give 15 %player% 5"                              # 5 bloques de protección
-      - "give %player% minecraft:netherite_ingot 48"           # 48 lingotes (antes 32)
-      - "give %player% minecraft:enchanted_golden_apple 32"    # 32 manzanas encantadas (antes 16)
-      - "give %player% minecraft:totem_of_undying 15"          # 15 tótems (antes 10)
-      - "give %player% minecraft:nether_star 10"               # 10 estrellas (antes 5)
-      - "give %player% minecraft:beacon 2"                     # 2 faros (antes 1)
-      - "give %player% minecraft:dragon_egg 1"                 # HUEVO DE DRAGÓN (nuevo)
-      - "give %player% minecraft:netherite_block 16"           # 16 bloques netherite (nuevo)
-    mensaje: "&f&l¡Has alcanzado el rango ABSOLUTO! &7¡Eres una leyenda viviente!"
+      - "ps give 15 %player% 5"                              # 5 bloques protección
+      - "give %player% minecraft:netherite_ingot 40"
+      - "give %player% minecraft:enchanted_golden_apple 24"
+      - "give %player% minecraft:totem_of_undying 12"
+      - "give %player% minecraft:nether_star 8"
+      - "give %player% minecraft:netherite_block 12"
+      - "give %player% minecraft:beacon 2"
+      - "give %player% minecraft:dragon_egg 1"
+      - "give %player% minecraft:elytra 2"
+    mensaje: "&c&l¡ERES ETERNO! &r&7El tiempo no tiene poder sobre ti. Has alcanzado la cima absoluta del poder."
 
 # ═══════════════════════════════════════════════════════════════
-# HABILIDADES PASIVAS POR RANGO (BALANCEADAS)
+# HABILIDADES PASIVAS POR RANGO (REDISEÑADAS - MÁS BALANCEADAS)
 # Las habilidades se activan automáticamente al tener el rango
+# Sistema progresivo: Cada rango añade nuevos efectos sin quitar los anteriores
 # ═══════════════════════════════════════════════════════════════
 
 habilidades_por_rango:
-  # Novato - Sin habilidades especiales
+  # Perdido (Novato) - El inicio del viaje
   NOVATO:
-    habilidades: []
+    habilidades:
+      - type: "NIGHT_VISION"
+        level: 1
+        descripcion: "&7Visión Nocturna &8(El primer don)"
     
-  # Explorador - Bonus leve de velocidad
+  # Despertar (Explorador) - Primeros pasos hacia el poder
   EXPLORADOR:
     habilidades:
+      - type: "NIGHT_VISION"
+        level: 1
+        descripcion: "&7Visión Nocturna"
       - type: "SPEED"
-        level: 1                 # Speed I permanente
-        descripcion: "&bVelocidad I &7permanente"
+        level: 1
+        descripcion: "&aVelocidad I &7(El despertar te hace ágil)"
     
-  # Sobreviviente - Regeneración leve + mantiene speed
+  # Resistente (Sobreviviente) - La fortaleza crece
   SOBREVIVIENTE:
     habilidades:
+      - type: "NIGHT_VISION"
+        level: 1
+        descripcion: "&7Visión Nocturna"
       - type: "SPEED"
         level: 1
-        descripcion: "&bVelocidad I &7permanente"
-      - type: "REGENERATION"
-        level: 1                 # Regeneration I permanente
-        descripcion: "&eRegeneración I &7permanente"
+        descripcion: "&aVelocidad I"
+      - type: "SATURATION"
+        level: 1
+        descripcion: "&bSaciedad &7(Resistencia mejorada)"
+      - type: "WATER_BREATHING"
+        level: 1
+        descripcion: "&9Respiración Acuática &7(Dominas el agua)"
     
-  # Veterano - Resistencia añadida
+  # Perseverante (Veterano) - La determinación se manifiesta
   VETERANO:
     habilidades:
+      - type: "NIGHT_VISION"
+        level: 1
+        descripcion: "&7Visión Nocturna"
       - type: "SPEED"
         level: 1
-        descripcion: "&bVelocidad I &7permanente"
+        descripcion: "&aVelocidad I"
+      - type: "SATURATION"
+        level: 1
+        descripcion: "&bSaciedad"
+      - type: "WATER_BREATHING"
+        level: 1
+        descripcion: "&9Respiración Acuática"
       - type: "REGENERATION"
         level: 1
-        descripcion: "&eRegeneración I &7permanente"
-      - type: "DAMAGE_RESISTANCE"
-        level: 1                 # Resistance I permanente
-        descripcion: "&6Resistencia I &7permanente"
-      - type: "SATURATION"       # No pierde hambre tan rápido
+        descripcion: "&eRegeneración I &7(Tu cuerpo se recupera)"
+      - type: "HASTE"
         level: 1
-        descripcion: "&aSaciedad mejorada"
+        descripcion: "&7Prisa I &7(Trabajas más rápido)"
     
-  # Leyenda - Fuerza añadida, Regen II
+  # Ascendido (Leyenda) - El poder emerge
   LEYENDA:
     habilidades:
+      - type: "NIGHT_VISION"
+        level: 1
+        descripcion: "&7Visión Nocturna"
       - type: "SPEED"
-        level: 1
-        descripcion: "&bVelocidad I &7permanente"
-      - type: "REGENERATION"
-        level: 2                 # Regeneration II (antes en Maestro)
-        descripcion: "&eRegeneración II &7permanente"
-      - type: "DAMAGE_RESISTANCE"
-        level: 1
-        descripcion: "&6Resistencia I &7permanente"
+        level: 2
+        descripcion: "&aVelocidad II &6(Upgrade!)"
       - type: "SATURATION"
         level: 1
-        descripcion: "&aSaciedad mejorada"
-      - type: "INCREASE_DAMAGE"
-        level: 1                 # Strength I permanente
-        descripcion: "&cFuerza I &7permanente"
+        descripcion: "&bSaciedad"
+      - type: "WATER_BREATHING"
+        level: 1
+        descripcion: "&9Respiración Acuática"
+      - type: "REGENERATION"
+        level: 1
+        descripcion: "&eRegeneración I"
+      - type: "HASTE"
+        level: 1
+        descripcion: "&7Prisa I"
+      - type: "RESISTANCE"
+        level: 1
+        descripcion: "&6Resistencia I &7(Tu piel se endurece)"
+      - type: "HEALTH_BOOST"
+        level: 2
+        descripcion: "&4Vida Extra (+4 ❤) &7(Poder vital)"
     
-  # Maestro - Speed II, Haste I
+  # Iluminado (Maestro) - La mente se expande
   MAESTRO:
     habilidades:
+      - type: "NIGHT_VISION"
+        level: 1
+        descripcion: "&7Visión Nocturna"
       - type: "SPEED"
-        level: 2                 # Speed II (upgrade)
-        descripcion: "&bVelocidad II &7permanente"
-      - type: "REGENERATION"
         level: 2
-        descripcion: "&eRegeneración II &7permanente"
-      - type: "DAMAGE_RESISTANCE"
-        level: 1                 # Resistance I (antes II)
-        descripcion: "&6Resistencia I &7permanente"
+        descripcion: "&aVelocidad II"
       - type: "SATURATION"
         level: 1
-        descripcion: "&aSaciedad mejorada"
-      - type: "INCREASE_DAMAGE"
+        descripcion: "&bSaciedad"
+      - type: "WATER_BREATHING"
         level: 1
-        descripcion: "&cFuerza I &7permanente"
-      - type: "FAST_DIGGING"     # Haste I permanente
+        descripcion: "&9Respiración Acuática"
+      - type: "REGENERATION"
+        level: 2
+        descripcion: "&eRegeneración II &6(Upgrade!)"
+      - type: "HASTE"
+        level: 2
+        descripcion: "&7Prisa II &6(Upgrade!)"
+      - type: "RESISTANCE"
         level: 1
-        descripcion: "&7Prisa I &7permanente"
+        descripcion: "&6Resistencia I"
+      - type: "HEALTH_BOOST"
+        level: 5
+        descripcion: "&4Vida Extra (+10 ❤) &6(Upgrade!)"
+      - type: "STRENGTH"
+        level: 1
+        descripcion: "&cFuerza I &7(El poder físico se manifiesta)"
+      - type: "LUCK"
+        level: 1
+        descripcion: "&aSuerte I &7(La fortuna te sonríe)"
     
-  # Titan - Resistance II, Haste II, Health Boost V
+  # Trascendente (Titan) - Más allá de lo mortal
   TITAN:
     habilidades:
+      - type: "NIGHT_VISION"
+        level: 1
+        descripcion: "&7Visión Nocturna"
       - type: "SPEED"
         level: 2
-        descripcion: "&bVelocidad II &7permanente"
-      - type: "REGENERATION"
-        level: 2                 # Regen II (antes III, más balanceado)
-        descripcion: "&eRegeneración II &7permanente"
-      - type: "DAMAGE_RESISTANCE"
-        level: 2                 # Resistance II (upgrade)
-        descripcion: "&6Resistencia II &7permanente"
+        descripcion: "&aVelocidad II"
       - type: "SATURATION"
         level: 1
-        descripcion: "&aSaciedad mejorada"
-      - type: "INCREASE_DAMAGE"
-        level: 1                 # Strength I (antes II, más balanceado)
-        descripcion: "&cFuerza I &7permanente"
-      - type: "FAST_DIGGING"
-        level: 2                 # Haste II (upgrade)
-        descripcion: "&7Prisa II &7permanente"
-      - type: "HEALTH_BOOST"     # +10 corazones permanentes
-        level: 5
-        descripcion: "&4Vida extra (+10 ❤)"
+        descripcion: "&bSaciedad"
+      - type: "WATER_BREATHING"
+        level: 1
+        descripcion: "&9Respiración Acuática"
+      - type: "REGENERATION"
+        level: 2
+        descripcion: "&eRegeneración II"
+      - type: "HASTE"
+        level: 2
+        descripcion: "&7Prisa II"
+      - type: "RESISTANCE"
+        level: 2
+        descripcion: "&6Resistencia II &6(Upgrade!)"
+      - type: "HEALTH_BOOST"
+        level: 8
+        descripcion: "&4Vida Extra (+16 ❤) &6(Upgrade!)"
+      - type: "STRENGTH"
+        level: 1
+        descripcion: "&cFuerza I"
+      - type: "LUCK"
+        level: 2
+        descripcion: "&aSuerte II &6(Upgrade!)"
+      - type: "FIRE_RESISTANCE"
+        level: 1
+        descripcion: "&cResistencia al Fuego &7(Inmune a las llamas)"
+      - type: "JUMP_BOOST"
+        level: 1
+        descripcion: "&bSalto Mejorado &7(Superas obstáculos)"
     
-  # Absoluto - El máximo poder (pero balanceado)
+  # Eterno (Absoluto) - El poder definitivo (pero balanceado)
   ABSOLUTO:
     habilidades:
+      - type: "NIGHT_VISION"
+        level: 1
+        descripcion: "&7Visión Nocturna"
       - type: "SPEED"
-        level: 2
-        descripcion: "&bVelocidad II &7permanente"
-      - type: "REGENERATION"
-        level: 3                 # Regen III (antes IV, más balanceado)
-        descripcion: "&eRegeneración III &7permanente"
-      - type: "DAMAGE_RESISTANCE"
-        level: 2                 # Resistance II (antes III, más balanceado)
-        descripcion: "&6Resistencia II &7permanente"
+        level: 3
+        descripcion: "&aVelocidad III &c(¡MÁXIMO!)"
       - type: "SATURATION"
         level: 1
-        descripcion: "&aSaciedad mejorada"
-      - type: "INCREASE_DAMAGE"
-        level: 2                 # Strength II
-        descripcion: "&cFuerza II &7permanente"
-      - type: "FAST_DIGGING"
+        descripcion: "&bSaciedad"
+      - type: "WATER_BREATHING"
+        level: 1
+        descripcion: "&9Respiración Acuática"
+      - type: "REGENERATION"
+        level: 3
+        descripcion: "&eRegeneración III &6(Upgrade!)"
+      - type: "HASTE"
         level: 2
-        descripcion: "&7Prisa II &7permanente"
+        descripcion: "&7Prisa II"
+      - type: "RESISTANCE"
+        level: 2
+        descripcion: "&6Resistencia II"
       - type: "HEALTH_BOOST"
-        level: 10                # +20 corazones permanentes
-        descripcion: "&4Vida extra (+20 ❤)"
-      - type: "FIRE_RESISTANCE"  # Inmunidad al fuego
+        level: 10
+        descripcion: "&4Vida Extra (+20 ❤) &c(¡MÁXIMO!)"
+      - type: "STRENGTH"
+        level: 2
+        descripcion: "&cFuerza II &6(Upgrade!)"
+      - type: "LUCK"
+        level: 3
+        descripcion: "&aSuerte III &c(¡MÁXIMO!)"
+      - type: "FIRE_RESISTANCE"
         level: 1
-        descripcion: "&cResistencia al fuego"
-      - type: "WATER_BREATHING"  # Respiración bajo agua
+        descripcion: "&cResistencia al Fuego"
+      - type: "JUMP_BOOST"
+        level: 2
+        descripcion: "&bSalto Mejorado II &6(Upgrade!)"
+      - type: "ABSORPTION"
+        level: 2
+        descripcion: "&6Absorción II &7(Escudo dorado permanente)"
+      - type: "CONDUIT_POWER"
         level: 1
-        descripcion: "&9Respiración acuática"
-      - type: "NIGHT_VISION"     # Visión nocturna
-        level: 1
-        descripcion: "&7Visión nocturna"
-      - type: "LUCK"             # Suerte I (nuevo)
-        level: 1
-        descripcion: "&asuerte I"
+        descripcion: "&bPoder del Conducto &7(Dominio total bajo agua)"
 
 # Configuración de aplicación de habilidades
 habilidades_config:

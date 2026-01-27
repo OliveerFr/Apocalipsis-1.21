@@ -1,0 +1,280 @@
+# ═══════════════════════════════════════════════════════════════════
+# SISTEMA DE CICLOS - MUNDOS INDEPENDIENTES
+# ═══════════════════════════════════════════════════════════════════
+# Este sistema permite crear "ciclos" - mundos completamente separados
+# donde todos los jugadores empiezan desde cero, pero mantienen su
+# progreso en el mundo original.
+# ═══════════════════════════════════════════════════════════════════
+
+# Configuración del sistema
+config:
+  # ¿Está activo el sistema de ciclos?
+  enabled: true
+  
+  # Mundo original/principal (donde está el progreso real)
+  mundo_original: "world"
+  
+  # Prefijo para mensajes del sistema
+  prefix: "&8[&bCiclo&8]&r"
+  
+  # ¿Hacer backup automático antes de activar un ciclo?
+  backup_before_cycle: true
+  
+  # ¿Debug mode? (más logs)
+  debug: false
+  
+  # Countdown antes de teleportar (segundos)
+  countdown_teleport: 5
+  
+  # Mostrar BossBar con ciclo actual
+  mostrar_bossbar: true
+  
+  # Color de la BossBar (BLUE, GREEN, PINK, PURPLE, RED, WHITE, YELLOW)
+  bossbar_color: "BLUE"
+  
+  # Estilo de la BossBar (PROGRESS, NOTCHED_6, NOTCHED_10, NOTCHED_12, NOTCHED_20)
+  bossbar_style: "PROGRESS"
+
+# Notificaciones globales
+notificaciones:
+  # Anunciar cuando se crea un ciclo nuevo
+  nuevo_ciclo_creado: true
+  
+  # Anunciar cuando se activa un ciclo
+  ciclo_activado: true
+  
+  # Anunciar cuando jugador cambia de mundo
+  jugador_cambio_mundo: false
+  
+  # Formato de anuncios (broadcast)
+  formato_broadcast: "&8[&bCICLO&8] &7{mensaje}"
+
+# Cooldowns (en segundos)
+cooldowns:
+  # Tiempo entre cambios de mundo
+  cambio_mundo: 10
+  
+  # Tiempo entre crear ciclos nuevos
+  crear_ciclo: 300  # 5 minutos
+
+# Protecciones anti-transferencia de items
+protecciones:
+  # ¿Bloquear acceso a Ender Chest vanilla en mundos de ciclo?
+  bloquear_enderchest_vanilla: true
+  
+  # ¿Bloquear colocación de Shulker Boxes entre mundos?
+  bloquear_shulker_boxes: true
+  
+  # ¿Bloquear Bundles entre mundos?
+  bloquear_bundles: true
+  
+  # ¿Sanitizar items al cambiar de mundo? (eliminar items problemáticos)
+  sanitizar_items: true
+  
+  # ¿Bloquear comandos de items entre mundos?
+  bloquear_comandos_items: true
+  
+  # ¿Prevenir drop de items antes de cambiar de mundo?
+  prevenir_drops_pre_cambio: true
+  
+  # Materiales bloqueados para transferir (se eliminarán al cambiar mundo)
+  materiales_bloqueados:
+    - "SHULKER_BOX"
+    - "WHITE_SHULKER_BOX"
+    - "ORANGE_SHULKER_BOX"
+    - "MAGENTA_SHULKER_BOX"
+    - "LIGHT_BLUE_SHULKER_BOX"
+    - "YELLOW_SHULKER_BOX"
+    - "LIME_SHULKER_BOX"
+    - "PINK_SHULKER_BOX"
+    - "GRAY_SHULKER_BOX"
+    - "LIGHT_GRAY_SHULKER_BOX"
+    - "CYAN_SHULKER_BOX"
+    - "PURPLE_SHULKER_BOX"
+    - "BLUE_SHULKER_BOX"
+    - "BROWN_SHULKER_BOX"
+    - "GREEN_SHULKER_BOX"
+    - "RED_SHULKER_BOX"
+    - "BLACK_SHULKER_BOX"
+    - "BUNDLE"
+
+# Protecciones especiales para el End compartido
+# IMPORTANTE: El End es compartido entre todos los ciclos, por lo que
+# los jugadores podrían duplicar items dejándolos en cofres en el End.
+protecciones_end:
+  # ¿Activar protección del End compartido?
+  activar_proteccion: true
+  
+  # ¿Bloquear colocación/rotura/apertura de contenedores en el End?
+  # Previene que jugadores dejen items en cofres para duplicarlos entre ciclos
+  bloquear_contenedores: true
+  
+  # ¿Bloquear drop de items en el End?
+  # Previene que jugadores dejen items en el suelo para recogerlos en otro ciclo
+  bloquear_drops: true
+  
+  # Nota: Los items del dragón (huevo, XP) están permitidos para completar el End
+
+# Datos que se resetean cuando se CREA un nuevo ciclo
+# ═══════════════════════════════════════════════════════════════
+# IMPORTANTE: Estos datos son GLOBALES por ciclo
+# 
+# - Cada mundo/ciclo mantiene su propia progresión
+# - Si vuelves al mundo original, tienes tu progreso de allí
+# - Si vas a ciclo_1, tienes tu progreso de ciclo_1
+# - Cuando se ACTIVA un nuevo ciclo, todos empiezan desde cero EN ESE CICLO
+# 
+# Ejemplo:
+#   - Mundo original: Tienes rango VETERANO y 50 skills
+#   - Se crea ciclo_1: Empiezas en NOVATO con 0 skills EN CICLO_1
+#   - Vuelves a mundo original: Sigues siendo VETERANO con 50 skills
+#   - Vuelves a ciclo_1: Mantienes tu progreso de ciclo_1
+# ═══════════════════════════════════════════════════════════════
+reseteo:
+  # ¿Resetear XP y niveles al CREAR un nuevo ciclo?
+  # (false = mantiene XP entre mundos, true = cada ciclo empieza en 0)
+  resetear_xp: true
+  
+  # ¿Resetear rangos al CREAR un nuevo ciclo?
+  # (false = rangos se comparten entre mundos, true = cada ciclo tiene sus propios rangos)
+  resetear_rangos: false
+  
+  # ¿Resetear habilidades compradas al CREAR un nuevo ciclo?
+  # (false = skills se comparten entre mundos, true = cada ciclo tiene sus propias skills)
+  resetear_skills: false
+  
+  # ¿Resetear misiones al CREAR un nuevo ciclo?
+  # (false = misiones se comparten entre mundos, true = cada ciclo tiene sus propias misiones)
+  resetear_misiones: true
+  
+  # ¿Resetear PS (Puntos de Supervivencia) al CREAR un nuevo ciclo?
+  # (false = PS se comparten entre mundos, true = cada ciclo tiene sus propios PS)
+  resetear_ps: true
+  
+  # ¿Resetear estadísticas al CREAR un nuevo ciclo?
+  # (false = stats se comparten entre mundos, true = cada ciclo tiene sus propias stats)
+  resetear_estadisticas: true
+  
+  # XP inicial en ciclo nuevo
+  xp_inicial: 0
+  
+  # Nivel inicial en ciclo nuevo
+  nivel_inicial: 1
+  
+  # PS inicial en ciclo nuevo
+  ps_inicial: 0
+
+# Definición de ciclos
+# Cada ciclo es un mundo independiente con su propio progreso
+ciclos:
+  # Mundo original (siempre existe)
+  world:
+    nombre_display: "&aWorld Original"
+    descripcion: "El mundo principal donde comenzó todo"
+    tipo: "original"
+    activo: true
+    fecha_creacion: "2025-01-01"
+    
+  # Ejemplo de ciclo nuevo (descomentar y editar para crear)
+  # world_ciclo_1:
+  #   nombre_display: "&6Ciclo 1: &eNuevo Comienzo"
+  #   descripcion: "Primer ciclo - Todos empiezan de cero"
+  #   tipo: "ciclo"
+  #   activo: false
+  #   fecha_creacion: "2026-01-25"
+  #   mundo_multiverse: "world_ciclo_1"  # Nombre en Multiverse-Core
+  #   generador: "NORMAL"  # NORMAL, FLAT, LARGE_BIOMES, AMPLIFIED, CUSTOM
+  #   dificultad: "HARD"   # PEACEFUL, EASY, NORMAL, HARD
+  #   pvp_enabled: true
+  #   spawn_monsters: true
+  #   spawn_animals: true
+
+# Mensajes del sistema
+mensajes:
+  ciclo_activado: "{prefix} &a¡Nuevo ciclo activado! &7Mundo: &e{mundo}"
+  ciclo_desactivado: "{prefix} &cCiclo desactivado: &e{mundo}"
+  
+  teleport_a_ciclo: "{prefix} &aTeleportándote al ciclo: &e{ciclo}"
+  teleport_a_original: "{prefix} &aTeleportándote al mundo original"
+  
+  cambio_mundo_entrada: "{prefix} &eEntrando a: &b{mundo}"
+  cambio_mundo_salida: "{prefix} &eGuardando datos de: &b{mundo}"
+  
+  inventario_guardado: "{prefix} &aInventario guardado para &e{mundo}"
+  inventario_restaurado: "{prefix} &aInventario restaurado de &e{mundo}"
+  
+  datos_reseteados: "{prefix} &eProgreso reseteado para este mundo"
+  datos_restaurados: "{prefix} &aProgreso restaurado de &e{mundo}"
+  
+  item_bloqueado: "{prefix} &c¡No puedes llevar ese item a otro mundo!"
+  shulker_bloqueado: "{prefix} &c¡Las Shulker Boxes no pueden usarse entre mundos!"
+  enderchest_bloqueado: "{prefix} &c¡El Ender Chest está deshabilitado en mundos de ciclo!"
+  bundle_bloqueado: "{prefix} &c¡Los Bundles no pueden usarse entre mundos!"
+  
+  # Protección del End compartido
+  end_contenedor_bloqueado: "{prefix} &c¡No puedes usar contenedores en el End!\n&7Razón: El End es compartido - prevención de duplicación."
+  end_drop_bloqueado: "{prefix} &c¡No puedes tirar items en el End!\n&7Razón: El End es compartido - prevención de duplicación."
+  
+  teleport_solo_admin: "{prefix} &c¡Solo los administradores pueden teleportarse entre ciclos diferentes!"
+  teleport_permiso_requerido: "{prefix} &7Permiso requerido: &eapocalipsis.ciclo.admin"
+  
+  backup_creado: "{prefix} &aBackup creado: &e{archivo}"
+  backup_error: "{prefix} &cError al crear backup: {error}"
+  
+  multiverse_no_encontrado: "{prefix} &c¡Multiverse-Core no está instalado!"
+  mundo_no_existe: "{prefix} &c¡El mundo &e{mundo} &cno existe!"
+  
+  # Mensajes de confirmación
+  confirmacion_requerida: "{prefix} &e⚠ ¿Seguro? Escribe &b/avo ciclo confirmar &een 30 segundos"
+  confirmacion_expirada: "{prefix} &c✗ Confirmación expirada"
+  confirmacion_exitosa: "{prefix} &a✓ Confirmado"
+  
+  # Mensajes de countdown
+  countdown_teleport: "&e⏱ Teleportando en &b{tiempo} &esegundos..."
+  
+  # Mensajes de cooldown
+  cooldown_activo: "{prefix} &cDebes esperar &e{segundos}s &cantes de hacer eso"
+  
+  # Mensajes de gestión
+  ciclo_eliminado: "{prefix} &a✓ Ciclo &e{mundo} &aeliminado"
+  ciclo_renombrado: "{prefix} &a✓ Ciclo renombrado de &e{viejo} &aa &e{nuevo}"
+  
+  sin_permisos: "{prefix} &cNo tienes permisos para usar este comando"
+  solo_jugadores: "{prefix} &cEste comando solo puede ser usado por jugadores"
+
+# Permisos del sistema
+permisos:
+  # ═══════════════════════════════════════════════════════════════
+  # JERARQUÍA DE PERMISOS
+  # ═══════════════════════════════════════════════════════════════
+  
+  # apocalipsis.admin - Acceso a comandos administrativos básicos
+  #   - Crear/desactivar ciclos
+  #   - Ver información y listados
+  #   - NO permite teleportarse entre ciclos (requiere ciclo.admin)
+  
+  # apocalipsis.ciclo.admin - Control total sobre ciclos
+  #   - Todo lo de apocalipsis.admin
+  #   - TELEPORTARSE entre ciclos diferentes
+  #   - Recomendado: Solo staff senior/owner
+  #   - Razón: Previene transferencia accidental de items
+  
+  # apocalipsis.ciclo.bypass - Bypass de protecciones
+  #   - Usar Ender Chests en mundos restringidos
+  #   - Colocar Shulker Boxes
+  #   - Usar Bundles con contenido
+  #   - ⚠️ PELIGRO: Puede romper separación de items
+  #   - Recomendado: NO otorgar a nadie o solo debugging
+  # ═══════════════════════════════════════════════════════════════
+  
+  # Permiso para administrar ciclos (crear, desactivar, ver info)
+  admin: "apocalipsis.admin"
+  
+  # Permiso para teleportarse entre ciclos DIFERENTES
+  # Solo admins con este permiso pueden cambiar entre ciclos
+  # Jugadores normales NO pueden teleportarse entre ciclos
+  teleport_admin: "apocalipsis.ciclo.admin"
+  
+  # Bypass de protecciones (puede llevar items entre mundos)
+  # ⚠️ USAR CON EXTREMA PRECAUCIÓN - rompe la separación
+  bypass: "apocalipsis.ciclo.bypass"

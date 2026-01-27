@@ -1,5 +1,5 @@
 name: Apocalipsis
-version: '1.22.54'
+version: '1.22.56'
 main: me.apocalipsis.Apocalipsis
 api-version: 1.21
 author: OliveerF
@@ -9,6 +9,7 @@ softdepend:
   - ProtectionStones
   - ModelEngine
   - MythicMobs
+  - Multiverse-Core
 
 commands:
   avo:
@@ -22,6 +23,10 @@ commands:
     description: Ver tus hitos de tutorial y progreso
     usage: /misionestuto
     aliases: [tuto, hitostuto]
+  ciclo:
+    description: Atajo para gestión de ciclos multi-mundo
+    usage: /ciclo [nuevo|crear|listar|info|menu]
+    aliases: [cycles, mundos]
   recompensa:
     description: Abre el menú de recompensas pendientes
     usage: /recompensa
@@ -84,3 +89,21 @@ permissions:
   apocalipsis.tutorial.user:
     description: Permite usar comandos básicos del tutorial
     default: true
+  apocalipsis.ciclo.admin:
+    description: Control total sobre el sistema de ciclos (crear, desactivar, teleportarse entre mundos)
+    default: op
+    children:
+      apocalipsis.admin: true
+  apocalipsis.ciclo.bypass:
+    description: Bypass de todas las protecciones del sistema de ciclos (PELIGROSO - permite transferir items)
+    default: false
+  apocalipsis.evento6.admin:
+    description: Permite iniciar y gestionar el Evento 6 - Cuando el Mundo Decide Olvidar
+    default: op
+    children:
+      apocalipsis.admin: true
+  apocalipsis.admin:
+    description: Permisos de administrador general
+    default: op
+    children:
+      avo.admin: true

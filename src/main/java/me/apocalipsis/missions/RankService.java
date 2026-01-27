@@ -5,6 +5,8 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 
+import java.util.UUID;
+
 public class RankService {
 
     private final Apocalipsis plugin;
@@ -97,20 +99,45 @@ public class RankService {
      * Obtiene la XP actual del jugador
      */
     public int getXP(Player player) {
+        return getXP(player.getUniqueId());
+    }
+    
+    /**
+     * Obtiene la XP actual del jugador por UUID
+     */
+    public int getXP(UUID uuid) {
         if (plugin.getExperienceService() != null) {
-            return plugin.getExperienceService().getXP(player);
+            return plugin.getExperienceService().getXP(uuid);
         }
         // Fallback: usar PS como XP si ExperienceService no está disponible
-        return missionService.getPlayerPs(player);
+        return missionService.getPS(uuid);
     }
 
     /**
      * Obtiene el rango actual del jugador según su XP (según rangos.yml)
      */
     public MissionRank getRank(Player player) {
+        return getRank(player.getUniqueId());
+    }
+    
+    /**
+     * Obtiene el rango actual del jugador por UUID según su XP
+     */
+    public MissionRank getRank(UUID uuid) {
         // SIEMPRE usar XP para determinar rango (según rangos.yml con umbral_acumulado: true)
-        int xp = getXP(player);
+        int xp = getXP(uuid);
         return MissionRank.fromXp(xp);
+    }
+    
+    /**
+     * Actualiza el rango del jugador basado en su XP actual (para sistema de ciclos)
+     * El rango se calcula automáticamente, no se guarda separadamente
+     */
+    public void updatePlayerRank(UUID uuid) {
+        // El rango se calcula automáticamente desde XP, no necesita actualización
+        // Este método existe para compatibilidad con WorldDataManager
+        MissionRank rank = getRank(uuid);
+        plugin.getLogger().fine("[RankService] Rango calculado para " + uuid + ": " + rank.name());
     }
 
     /**

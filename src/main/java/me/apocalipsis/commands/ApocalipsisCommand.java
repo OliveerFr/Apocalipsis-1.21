@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -173,6 +174,11 @@ public class ApocalipsisCommand implements CommandExecutor {
             case "aperturaend":
                 cmdEvento5(sender, args);
                 break;
+            case "evento6":
+            case "mundoolvidado":
+            case "reinicio":
+                cmdEvento6(sender, args);
+                break;
             case "navidad":
                 cmdNavidad(sender, args);
                 break;
@@ -235,6 +241,20 @@ public class ApocalipsisCommand implements CommandExecutor {
             case "buddy":
             case "mentor":
                 cmdBuddy(sender, args);
+                break;
+            case "rtp":
+            case "randomtp":
+            case "wild":
+                cmdRandomTeleport(sender);
+                break;
+            case "ciclo":
+            case "cycle":
+            case "mundo":
+            case "world":
+                // Extraer subcomandos: args[1..n] se convierte en args[0..n-1]
+                String[] cicloArgs = new String[args.length - 1];
+                System.arraycopy(args, 1, cicloArgs, 0, args.length - 1);
+                cmdCiclo(sender, cicloArgs);
                 break;
             default:
                 sender.sendMessage("§cSubcomando desconocido. Usa /avo para ver ayuda.");
@@ -320,6 +340,20 @@ public class ApocalipsisCommand implements CommandExecutor {
             {"  §e/avo listpermranks", "§7Lista de rangos disponibles"},
             {"  §e/avo newrank <id> <tipo>", "§7Crear nuevo rango"},
             {"§7Rangos personalizados con efectos y prefijos!", ""},
+            {"§6▸ Teleporte", ""},
+            {"  §e/avo rtp", "§7TP aleatorio (1000-5000 bloques)"},
+            
+            // Page 6: Ciclos Multi-Mundo
+            {"§6▸ Sistema de Ciclos", ""},
+            {"  §e/avo ciclo help", "§7Ayuda del sistema de ciclos"},
+            {"  §e/avo ciclo info", "§7Info ciclo actual"},
+            {"  §e/avo ciclo list", "§7Lista todos los ciclos"},
+            {"  §e/avo ciclo create <nombre>", "§7Crear nuevo ciclo"},
+            {"  §e/avo ciclo activate <nombre>", "§7Activar ciclo específico"},
+            {"  §e/avo ciclo delete <nombre>", "§7Eliminar ciclo"},
+            {"  §e/avo ciclo setspawn", "§7Set spawn del ciclo"},
+            {"  §e/avo ciclo fixspawn [mundo]", "§7Auto-corregir spawn"},
+            {"§7Sistema multi-mundo con inventarios separados!", ""},
             {"", ""},
             {"", ""}
         };
@@ -6504,6 +6538,40 @@ public class ApocalipsisCommand implements CommandExecutor {
                 
             case "recompensas":
             case "rewards":
+                // Subcomando: /avo recompensas mundo reset
+                if (args.length >= 3 && args[1].equalsIgnoreCase("mundo") && args[2].equalsIgnoreCase("reset")) {
+                    if (!sender.hasPermission("avo.admin")) {
+                        sender.sendMessage("§cNo tienes permisos.");
+                        return;
+                    }
+                    
+                    if (!(sender instanceof Player)) {
+                        sender.sendMessage("§cEste comando solo puede ejecutarlo un jugador.");
+                        return;
+                    }
+                    
+                    Player playerRewards = (Player) sender;
+                    String worldName = playerRewards.getWorld().getName();
+                    
+                    // Resetear recompensas entregadas del mundo actual
+                    if (plugin.getRewardService() != null) {
+                        java.util.UUID uuid = playerRewards.getUniqueId();
+                        plugin.getRewardService().resetPlayerRewards(uuid);
+                        
+                        sender.sendMessage("");
+                        sender.sendMessage("§6§l⚠ RESET DE RECOMPENSAS ⚠");
+                        sender.sendMessage("§7Mundo: §e" + worldName);
+                        sender.sendMessage("§a✓ §7Se han reseteado todas las recompensas entregadas");
+                        sender.sendMessage("§7Ahora puedes volver a reclamar recompensas de rangos");
+                        sender.sendMessage("");
+                        
+                        plugin.getLogger().info("[RecompensasReset] " + playerRewards.getName() + " reseteó sus recompensas en " + worldName);
+                    } else {
+                        sender.sendMessage("§cError: RewardService no está disponible");
+                    }
+                    return;
+                }
+                
                 if (!(sender instanceof Player)) {
                     sender.sendMessage("§cEste comando solo puede ejecutarlo un jugador.");
                     return;
@@ -6835,6 +6903,1117 @@ public class ApocalipsisCommand implements CommandExecutor {
                 }
             }
         }.runTaskTimer(plugin, 0L, 20L); // Cada segundo
+    }
+    
+    /**
+     * Comando principal del Evento 6: Cuando el Mundo Decide Olvidar
+     * /avo evento6 <subcomando>
+     */
+    private void cmdEvento6(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("apocalipsis.evento6.admin")) {
+            sender.sendMessage("§cNo tienes permisos.");
+            return;
+        }
+        
+        if (!(sender instanceof Player)) {
+            sender.sendMessage("§cEste comando solo puede ejecutarlo un jugador.");
+            return;
+        }
+        
+        Player player = (Player) sender;
+        me.apocalipsis.events.Evento6MundoOlvidado evento6 = plugin.getEvento6();
+        
+        if (args.length < 2) {
+            // Mostrar ayuda
+            sender.sendMessage("§8§l⚠ ═══ CUANDO EL MUNDO DECIDE OLVIDAR ═══ ⚠");
+            sender.sendMessage("§7El mundo se cansa. Reiniciar es más fácil que cambiar.");
+            sender.sendMessage("");
+            sender.sendMessage("§e▸ Control Principal:");
+            sender.sendMessage("  §f/avo evento6 start §7- Inicia el evento");
+            sender.sendMessage("  §f/avo evento6 stop §7- Detiene el evento");
+            sender.sendMessage("  §f/avo evento6 status §7- Estado del evento");
+            sender.sendMessage("  §f/avo evento6 info §7- Información detallada");
+            sender.sendMessage("");
+            sender.sendMessage("§e▸ Control de Fases:");
+            sender.sendMessage("  §f/avo evento6 next §7- Avanza al siguiente acto (modo manual)");
+            sender.sendMessage("  §f/avo evento6 skip §7- Salta al siguiente acto (modo manual)");
+            sender.sendMessage("  §f/avo evento6 auto §7- Reactiva progresión automática");
+            sender.sendMessage("  §f/avo evento6 participantes §7- Lista participantes");
+            sender.sendMessage("");
+            sender.sendMessage("§7Alias: §fmundoolvidado, reinicio");
+            sender.sendMessage("");
+            
+            if (evento6.isEventoActivo()) {
+                sender.sendMessage("§7Estado: §a✓ Activo");
+                sender.sendMessage("§7Fase: §e" + evento6.getFaseActual().getNombreDisplay());
+                sender.sendMessage("§7Modo: " + (evento6.isModoSkipActivo() ? "§e⚡ Manual" : "§a⚙ Automático"));
+                sender.sendMessage("§7Participantes: §e" + evento6.getParticipantes().size());
+                long tiempo = evento6.getTiempoTranscurridoSegundos();
+                sender.sendMessage("§7Tiempo: §e" + (tiempo / 60) + "m " + (tiempo % 60) + "s");
+            } else {
+                sender.sendMessage("§7Estado: §c✗ Inactivo");
+            }
+            
+            return;
+        }
+        
+        String subCmd = args[1].toLowerCase();
+        
+        switch (subCmd) {
+            case "start":
+            case "iniciar":
+                if (evento6.isEventoActivo()) {
+                    sender.sendMessage("§c✗ El Evento 6 ya está activo.");
+                    return;
+                }
+                
+                // Iniciar evento
+                if (evento6.iniciarEvento(player)) {
+                    sender.sendMessage("§a✓ Evento 6 iniciado correctamente.");
+                    sender.sendMessage("§7Duración estimada: §e~2 horas");
+                    sender.sendMessage("§7El mundo comenzará a olvidar en §e50 minutos§7...");
+                } else {
+                    sender.sendMessage("§c✗ No se pudo iniciar el evento.");
+                    sender.sendMessage("§7Verifica que el sistema de ciclos esté activo.");
+                }
+                break;
+                
+            case "stop":
+            case "detener":
+                if (!evento6.isEventoActivo()) {
+                    sender.sendMessage("§c✗ El Evento 6 no está activo.");
+                    return;
+                }
+                
+                evento6.detenerEvento();
+                sender.sendMessage("§a✓ Evento 6 detenido.");
+                break;
+                
+            case "status":
+            case "estado":
+                if (evento6.isEventoActivo()) {
+                    sender.sendMessage("§a✓ Evento 6 activo");
+                    sender.sendMessage("§7Fase: §e" + evento6.getFaseActual().getNombreDisplay());
+                    sender.sendMessage("§7Participantes: §e" + evento6.getParticipantes().size());
+                    long t = evento6.getTiempoTranscurridoSegundos();
+                    sender.sendMessage("§7Tiempo: §e" + (t / 60) + "m " + (t % 60) + "s");
+                } else {
+                    sender.sendMessage("§c✗ Evento 6 inactivo");
+                }
+                break;
+                
+            case "info":
+                sender.sendMessage("§8§l━━━━━━ §7EVENTO 6 §8§l━━━━━━");
+                sender.sendMessage("§7Nombre: §fCuando el Mundo Decide Olvidar");
+                sender.sendMessage("");
+                
+                if (evento6.isEventoActivo()) {
+                    sender.sendMessage("§7Estado: §a✓ Activo");
+                    sender.sendMessage("§7Fase actual: §e" + evento6.getFaseActual().getNombreDisplay());
+                    sender.sendMessage("§7Participantes: §e" + evento6.getParticipantes().size());
+                    
+                    long tiempo = evento6.getTiempoTranscurridoSegundos();
+                    int minutos = (int) (tiempo / 60);
+                    int segundos = (int) (tiempo % 60);
+                    sender.sendMessage("§7Tiempo transcurrido: §e" + minutos + "m " + segundos + "s");
+                    
+                    // Mostrar siguiente acto
+                    me.apocalipsis.events.MundoOlvidadoFase siguiente = obtenerSiguienteActo(evento6.getFaseActual());
+                    if (siguiente != null) {
+                        sender.sendMessage("§7Siguiente acto: §e" + siguiente.getNombreDisplay());
+                    }
+                } else {
+                    sender.sendMessage("§7Estado: §c✗ Inactivo");
+                }
+                
+                sender.sendMessage("§8§l━━━━━━━━━━━━━━━━━━");
+                break;
+                
+            case "next":
+            case "skip":
+            case "siguiente":
+                if (!evento6.isEventoActivo()) {
+                    sender.sendMessage("§c✗ El Evento 6 no está activo.");
+                    return;
+                }
+                
+                me.apocalipsis.events.MundoOlvidadoFase actual = evento6.getFaseActual();
+                me.apocalipsis.events.MundoOlvidadoFase siguiente = obtenerSiguienteActo(actual);
+                
+                if (siguiente == null || siguiente == me.apocalipsis.events.MundoOlvidadoFase.COMPLETADO) {
+                    sender.sendMessage("§c✗ Ya estás en el último acto.");
+                    return;
+                }
+                
+                // Activar modo skip para evitar que la progresión automática lo devuelva
+                evento6.activarModoSkip();
+                
+                // Forzar cambio de acto
+                try {
+                    java.lang.reflect.Method cambiarActo = evento6.getClass().getDeclaredMethod("cambiarAActo", me.apocalipsis.events.MundoOlvidadoFase.class);
+                    cambiarActo.setAccessible(true);
+                    cambiarActo.invoke(evento6, siguiente);
+                    
+                    sender.sendMessage("§a✓ Avanzado a: §e" + siguiente.getNombreDisplay());
+                    sender.sendMessage("§7§o(Modo manual activo - usa §f/avo evento6 auto§7§o para volver a modo automático)");
+                    Bukkit.broadcastMessage("§8[§7EVENTO 6§8] §e⚡ Avance forzado: §f" + siguiente.getNombreDisplay());
+                } catch (Exception e) {
+                    sender.sendMessage("§c✗ Error al avanzar al siguiente acto.");
+                    plugin.getLogger().warning("[Evento 6] Error en skip: " + e.getMessage());
+                }
+                break;
+                
+            case "participantes":
+            case "players":
+                if (!evento6.isEventoActivo()) {
+                    sender.sendMessage("§c✗ El Evento 6 no está activo.");
+                    return;
+                }
+                
+                Set<UUID> participantesEvento = evento6.getParticipantes();
+                sender.sendMessage("§8§l━━ §7PARTICIPANTES EVENTO 6 §8§l━━");
+                sender.sendMessage("§7Total: §e" + participantesEvento.size());
+                sender.sendMessage("");
+                
+                int online = 0;
+                for (UUID uuid : participantesEvento) {
+                    Player p = Bukkit.getPlayer(uuid);
+                    if (p != null && p.isOnline()) {
+                        sender.sendMessage("  §a✓ §f" + p.getName());
+                        online++;
+                    } else {
+                        sender.sendMessage("  §c✗ §7" + Bukkit.getOfflinePlayer(uuid).getName());
+                    }
+                }
+                
+                sender.sendMessage("");
+                sender.sendMessage("§7Online: §e" + online + "§7/§e" + participantesEvento.size());
+                sender.sendMessage("§8§l━━━━━━━━━━━━━━━━━━━━━━");
+                break;
+                
+            case "auto":
+            case "automatico":
+                if (!evento6.isEventoActivo()) {
+                    sender.sendMessage("§c✗ El Evento 6 no está activo.");
+                    return;
+                }
+                
+                if (!evento6.isModoSkipActivo()) {
+                    sender.sendMessage("§e⚠ El modo automático ya está activo.");
+                    return;
+                }
+                
+                evento6.desactivarModoSkip();
+                sender.sendMessage("§a✓ Modo automático reactivado.");
+                sender.sendMessage("§7Los actos avanzarán según el tiempo transcurrido.");
+                Bukkit.broadcastMessage("§8[§7EVENTO 6§8] §a⚙ Progresión automática reactivada");
+                break;
+                
+            default:
+                sender.sendMessage("§cSubcomando desconocido: §f" + subCmd);
+                sender.sendMessage("§7Usa §e/avo evento6 §7para ver la ayuda.");
+                break;
+        }
+    }
+    
+    /**
+     * Obtiene el siguiente acto en la secuencia
+     */
+    private me.apocalipsis.events.MundoOlvidadoFase obtenerSiguienteActo(me.apocalipsis.events.MundoOlvidadoFase actual) {
+        switch (actual) {
+            case ACTO_1_NORMALIDAD: return me.apocalipsis.events.MundoOlvidadoFase.ACTO_2_RAREZAS;
+            case ACTO_2_RAREZAS: return me.apocalipsis.events.MundoOlvidadoFase.ACTO_3_INESTABILIDAD;
+            case ACTO_3_INESTABILIDAD: return me.apocalipsis.events.MundoOlvidadoFase.ACTO_4_QUIEBRE;
+            case ACTO_4_QUIEBRE: return me.apocalipsis.events.MundoOlvidadoFase.ACTO_5_REINICIO;
+            case ACTO_5_REINICIO: return me.apocalipsis.events.MundoOlvidadoFase.ACTO_6_NUEVO_MUNDO;
+            case ACTO_6_NUEVO_MUNDO: return me.apocalipsis.events.MundoOlvidadoFase.ACTO_7_COMPRENSION;
+            case ACTO_7_COMPRENSION: return me.apocalipsis.events.MundoOlvidadoFase.ACTO_8_FRACTURA;
+            case ACTO_8_FRACTURA: return me.apocalipsis.events.MundoOlvidadoFase.ACTO_9_END_PERMANECE;
+            case ACTO_9_END_PERMANECE: return me.apocalipsis.events.MundoOlvidadoFase.ACTO_10_CIERRE;
+            case ACTO_10_CIERRE: return me.apocalipsis.events.MundoOlvidadoFase.COMPLETADO;
+            default: return null;
+        }
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // SISTEMA DE CICLOS MULTI-MUNDO
+    // ═══════════════════════════════════════════════════════════════════════════════
+    
+    /**
+     * /avo ciclo <subcomando>
+     * Gestiona el sistema de ciclos (múltiples mundos independientes)
+     * 
+     * Subcomandos:
+     * - nuevo <mundo> [teleport] - Activa un nuevo ciclo en un mundo
+     * - desactivar <mundo> - Desactiva un ciclo
+     * - listar - Lista todos los ciclos activos
+     * - info <mundo> - Muestra información de un mundo/ciclo
+     * - teleport <mundo> - Teleporta al mundo especificado
+     */
+    private void cmdCiclo(CommandSender sender, String[] args) {
+        // Verificar permisos de admin
+        if (!sender.hasPermission("apocalipsis.admin")) {
+            sender.sendMessage("§c✖ No tienes permisos para usar este comando.");
+            return;
+        }
+        
+        me.apocalipsis.ciclos.CicloManager cicloManager = plugin.getCicloManager();
+        
+        if (args.length == 0) {
+            // Mostrar ayuda
+            sender.sendMessage("§8§m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            sender.sendMessage("§b§lSISTEMA DE CICLOS §8- §7Ayuda");
+            sender.sendMessage("");
+            sender.sendMessage("§a§lCREACIÓN Y GESTIÓN:");
+            sender.sendMessage("§e/avo ciclo crear <mundo> [tipo] [dificultad]");
+            sender.sendMessage("  §7→ Crea un nuevo mundo automáticamente");
+            sender.sendMessage("  §7   Tipos: NORMAL, NETHER, THE_END");
+            sender.sendMessage("  §7   Ejemplo: §f/avo ciclo crear ciclo_1 NORMAL HARD");
+            sender.sendMessage("");
+            sender.sendMessage("§e/avo ciclo nuevo <mundo> [teleport]");
+            sender.sendMessage("  §7→ Activa un ciclo (crea mundo si no existe)");
+            sender.sendMessage("  §7   Ejemplo: §f/avo ciclo nuevo world_ciclo_1 true");
+            sender.sendMessage("");
+            sender.sendMessage("§b§lNAVEGACIÓN:");
+            sender.sendMessage("§e/avo ciclo menu");
+            sender.sendMessage("  §7→ Abrir menú gráfico de ciclos");
+            sender.sendMessage("§e/avo ciclo cambiar <mundo>");
+            sender.sendMessage("  §7→ Cambiar a otro ciclo (con countdown)");
+            sender.sendMessage("§e/avo ciclo teleport <mundo>");
+            sender.sendMessage("  §7→ Teleporte directo §c[Solo Admins]");
+            sender.sendMessage("");
+            sender.sendMessage("§c§lGESTIÓN AVANZADA:");
+            sender.sendMessage("§e/avo ciclo eliminar <mundo>");
+            sender.sendMessage("  §7→ Eliminar un ciclo §7(requiere confirmación)");
+            sender.sendMessage("§e/avo ciclo renombrar <mundo> <nuevo>");
+            sender.sendMessage("  §7→ Renombrar un ciclo §7(requiere confirmación)");
+            sender.sendMessage("§e/avo ciclo desactivar <mundo>");
+            sender.sendMessage("  §7→ Desactiva un ciclo");
+            sender.sendMessage("§e/avo ciclo setspawn [mundo]");
+            sender.sendMessage("  §7→ Establece el spawn en tu ubicación actual");
+            sender.sendMessage("");
+            sender.sendMessage("§6§lCONSULTAS:");
+            sender.sendMessage("§e/avo ciclo listar");
+            sender.sendMessage("  §7→ Lista todos los ciclos registrados");
+            sender.sendMessage("§e/avo ciclo info <mundo>");
+            sender.sendMessage("  §7→ Muestra información detallada de un ciclo");
+            sender.sendMessage("§e/avo ciclo stats <mundo>");
+            sender.sendMessage("  §7→ Estadísticas detalladas del ciclo");
+            sender.sendMessage("§e/avo ciclo reporte");
+            sender.sendMessage("  §7→ Genera reporte completo de todos los ciclos");
+            sender.sendMessage("§e/avo ciclo validar");
+            sender.sendMessage("  §7→ Valida y repara integridad de datos");
+            sender.sendMessage("");
+            sender.sendMessage("§e/avo ciclo confirmar §8- §7Confirmar acción pendiente");
+            sender.sendMessage("§e/avo ciclo cancelar §8- §7Cancelar confirmación");
+            sender.sendMessage("§8§m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            return;
+        }
+        
+        String subCmd = args[0].toLowerCase();
+        
+        switch (subCmd) {
+            case "crear":
+            case "create":
+                if (args.length < 2) {
+                    sender.sendMessage("§c✖ Uso: §e/avo ciclo crear <nombre> [NORMAL|NETHER|END] [EASY|NORMAL|HARD]");
+                    return;
+                }
+                
+                String newWorldName = args[1];
+                org.bukkit.World.Environment env = org.bukkit.World.Environment.NORMAL;
+                org.bukkit.Difficulty diff = org.bukkit.Difficulty.HARD;
+                
+                // Parsear ambiente
+                if (args.length >= 3) {
+                    try {
+                        env = org.bukkit.World.Environment.valueOf(args[2].toUpperCase());
+                    } catch (IllegalArgumentException e) {
+                        sender.sendMessage("§c✖ Ambiente inválido. Usa: NORMAL, NETHER o THE_END");
+                        return;
+                    }
+                }
+                
+                // Parsear dificultad
+                if (args.length >= 4) {
+                    try {
+                        diff = org.bukkit.Difficulty.valueOf(args[3].toUpperCase());
+                    } catch (IllegalArgumentException e) {
+                        sender.sendMessage("§c✖ Dificultad inválida. Usa: PEACEFUL, EASY, NORMAL o HARD");
+                        return;
+                    }
+                }
+                
+                sender.sendMessage("§e⚙ Creando mundo: §b" + newWorldName);
+                sender.sendMessage("§7Ambiente: §e" + env.name() + "§7, Dificultad: §e" + diff.name());
+                
+                // Por defecto SIEMPRE teletransporta (es un reinicio completo)
+                // Solo permite NO teleportar si explícitamente se pone 'false'
+                boolean teleportAfterCreate = args.length < 5 || !args[4].equalsIgnoreCase("false");
+                
+                if (cicloManager.createAndActivateCycle(newWorldName, env, diff, teleportAfterCreate)) {
+                    sender.sendMessage("§a✓ Mundo creado y ciclo activado exitosamente!");
+                    sender.sendMessage("§a✓ Todos los jugadores han sido teleportados al nuevo ciclo.");
+                } else {
+                    sender.sendMessage("§c✖ Error al crear el mundo. Revisa la consola.");
+                }
+                break;
+                
+            case "nuevo":
+            case "new":
+            case "activar":
+            case "activate":
+                if (args.length < 2) {
+                    sender.sendMessage("§c✖ Uso: §e/avo ciclo nuevo <mundo>");
+                    sender.sendMessage("§7Esto reinicia el servidor - todos serán teleportados.");
+                    return;
+                }
+                
+                String worldName = args[1];
+                // Por defecto SIEMPRE teletransporta (es un reinicio completo)
+                // Solo permite NO teleportar si explícitamente se pone 'false' como segundo argumento
+                boolean teleportAll = args.length < 3 || !args[2].equalsIgnoreCase("false");
+                
+                // Verificar si el mundo existe
+                org.bukkit.World existingWorld = org.bukkit.Bukkit.getWorld(worldName);
+                
+                if (existingWorld == null) {
+                    // Mundo no existe - ofrecer crearlo automáticamente
+                    sender.sendMessage("§e⚠ El mundo '§b" + worldName + "§e' no existe.");
+                    sender.sendMessage("§e⚙ Creando mundo automáticamente con Multiverse...");
+                    sender.sendMessage("§7→ Todos los jugadores serán teleportados al nuevo mundo.");
+                    
+                    if (!cicloManager.isMultiverseAvailable()) {
+                        sender.sendMessage("§c✖ Multiverse-Core no está instalado!");
+                        sender.sendMessage("§7Instala Multiverse-Core o crea el mundo manualmente con:");
+                        sender.sendMessage("§e/mv create " + worldName + " NORMAL");
+                        return;
+                    }
+                    
+                    // Crear mundo con configuración por defecto (siempre teletransporta)
+                    if (!cicloManager.createAndActivateCycle(worldName, 
+                            org.bukkit.World.Environment.NORMAL, 
+                            org.bukkit.Difficulty.HARD, 
+                            teleportAll)) {
+                        sender.sendMessage("§c✖ Error al crear el mundo. Revisa la consola.");
+                        return;
+                    }
+                    
+                    sender.sendMessage("§a✓ Mundo creado y ciclo activado exitosamente!");
+                    sender.sendMessage("§a✓ Todos los jugadores han sido teleportados.");
+                    return;
+                }
+                
+                // Mundo existe - solo activar ciclo
+                sender.sendMessage("§e⚙ Activando nuevo ciclo en mundo: §b" + worldName + "§e...");
+                sender.sendMessage("§7→ Reinicio completo - todos los jugadores serán teleportados.");
+                
+                if (cicloManager.activateCycle(worldName, teleportAll)) {
+                    sender.sendMessage("§a✓ Ciclo activado exitosamente!");
+                    sender.sendMessage("§a✓ Todos los jugadores han sido teleportados al nuevo ciclo.");
+                } else {
+                    sender.sendMessage("§c✖ Error al activar el ciclo. Revisa la consola.");
+                }
+                break;
+                
+            case "desactivar":
+            case "deactivate":
+            case "stop":
+                if (args.length < 2) {
+                    sender.sendMessage("§c✖ Uso: §e/avo ciclo desactivar <mundo>");
+                    return;
+                }
+                
+                String deactivateWorld = args[1];
+                
+                if (cicloManager.deactivateCycle(deactivateWorld)) {
+                    sender.sendMessage("§a✓ Ciclo desactivado: §e" + deactivateWorld);
+                } else {
+                    sender.sendMessage("§c✖ El mundo §e" + deactivateWorld + " §cno es un ciclo activo.");
+                }
+                break;
+                
+            case "listar":
+            case "list":
+            case "ls":
+                sender.sendMessage("§8§m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                sender.sendMessage("§b§lCICLOS REGISTRADOS");
+                sender.sendMessage("");
+                
+                // NUEVO: Usar sistema de persistencia
+                java.util.Collection<me.apocalipsis.ciclos.CicloData> allCiclos = cicloManager.getAllCiclos();
+                if (allCiclos.isEmpty()) {
+                    sender.sendMessage("  §7No hay ciclos registrados.");
+                } else {
+                    int activos = 0;
+                    int inactivos = 0;
+                    
+                    for (me.apocalipsis.ciclos.CicloData ciclo : allCiclos) {
+                        String cicloWorldName = ciclo.getWorldName();
+                        org.bukkit.World w = org.bukkit.Bukkit.getWorld(cicloWorldName);
+                        
+                        String status;
+                        int players = 0;
+                        
+                        if (w != null) {
+                            players = w.getPlayers().size();
+                            status = ciclo.isActivo() ? "§a●" : "§e○";
+                            activos++;
+                        } else {
+                            status = ciclo.existe() ? "§7○" : "§c✗";
+                            inactivos++;
+                        }
+                        
+                        String existeInfo = ciclo.existe() ? "" : " §8(eliminado)";
+                        sender.sendMessage("  " + status + " §e" + cicloWorldName + " §8- §7" + players + " jugador(es)" + existeInfo);
+                        sender.sendMessage("    §8└─ §7Jugadores únicos: §e" + ciclo.getJugadoresUnicos() + 
+                            " §8| §7Creado: §e" + new java.text.SimpleDateFormat("dd/MM/yyyy").format(ciclo.getFechaCreacion()));
+                    }
+                    
+                    sender.sendMessage("");
+                    sender.sendMessage("  §7Total: §e" + allCiclos.size() + " §8(§a" + activos + " cargados§8, §7" + inactivos + " sin cargar§8)");
+                }
+                
+                sender.sendMessage("");
+                sender.sendMessage("§7Mundo original: §a" + cicloManager.getOriginalWorld());
+                sender.sendMessage("§8§m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                break;
+                
+            case "info":
+                if (args.length < 2) {
+                    sender.sendMessage("§c✖ Uso: §e/avo ciclo info <mundo>");
+                    return;
+                }
+                
+                String infoWorld = args[1];
+                
+                // NUEVO: Obtener datos de persistencia
+                me.apocalipsis.ciclos.CicloData cicloData = cicloManager.getCicloData(infoWorld);
+                org.bukkit.World world = org.bukkit.Bukkit.getWorld(infoWorld);
+                
+                if (cicloData == null && world == null) {
+                    sender.sendMessage("§c✖ El mundo §e" + infoWorld + " §cno existe.");
+                    return;
+                }
+                
+                boolean isCycle = cicloManager.isCycleWorld(infoWorld);
+                boolean isOriginal = infoWorld.equals(cicloManager.getOriginalWorld());
+                
+                sender.sendMessage("§8§m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                sender.sendMessage("§b§lINFO: §f" + infoWorld);
+                sender.sendMessage("");
+                
+                if (world != null) {
+                    // Mundo está cargado - mostrar datos en vivo
+                    sender.sendMessage("  §7Estado: §a✓ Cargado en memoria");
+                    sender.sendMessage("  §7Tipo: " + (isCycle ? "§6Ciclo" : isOriginal ? "§aOriginal" : "§7Normal"));
+                    sender.sendMessage("  §7Jugadores online: §e" + world.getPlayers().size());
+                    sender.sendMessage("  §7Dificultad: §e" + world.getDifficulty());
+                    sender.sendMessage("  §7Ambiente: §e" + world.getEnvironment());
+                    sender.sendMessage("  §7PvP: " + (world.getPVP() ? "§a✓ Habilitado" : "§c✗ Deshabilitado"));
+                    sender.sendMessage("  §7Seed: §e" + world.getSeed());
+                    sender.sendMessage("  §7Spawn: §e" + world.getSpawnLocation().getBlockX() + ", " + 
+                        world.getSpawnLocation().getBlockY() + ", " + world.getSpawnLocation().getBlockZ());
+                }
+                
+                if (cicloData != null) {
+                    // Mostrar datos guardados de persistencia
+                    sender.sendMessage("");
+                    sender.sendMessage("  §8§l» Datos Guardados:");
+                    sender.sendMessage("  §7Existe en disco: " + (cicloData.existe() ? "§a✓ Sí" : "§c✗ No"));
+                    sender.sendMessage("  §7Activo: " + (cicloData.isActivo() ? "§a✓ Sí" : "§7○ No"));
+                    sender.sendMessage("  §7Jugadores únicos: §e" + cicloData.getJugadoresUnicos());
+                    sender.sendMessage("  §7Tiempo total jugado: §e" + cicloData.getTiempoTotalJugado() + " minutos");
+                    sender.sendMessage("  §7Fecha creación: §e" + 
+                        new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm").format(cicloData.getFechaCreacion()));
+                    
+                    if (cicloData.getUltimaActivacion() != null) {
+                        sender.sendMessage("  §7Última activación: §e" + 
+                            new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm").format(cicloData.getUltimaActivacion()));
+                    }
+                }
+                
+                sender.sendMessage("§8§m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                break;
+                
+            case "teleport":
+            case "tp":
+                if (!(sender instanceof org.bukkit.entity.Player)) {
+                    sender.sendMessage("§c✖ Este comando solo puede ser usado por jugadores.");
+                    return;
+                }
+                
+                if (args.length < 2) {
+                    sender.sendMessage("§c✖ Uso: §e/avo ciclo teleport <mundo>");
+                    return;
+                }
+                
+                org.bukkit.entity.Player player = (org.bukkit.entity.Player) sender;
+                String tpWorld = args[1];
+                org.bukkit.World targetWorld = org.bukkit.Bukkit.getWorld(tpWorld);
+                
+                if (targetWorld == null) {
+                    player.sendMessage("§c✖ El mundo §e" + tpWorld + " §cno existe.");
+                    return;
+                }
+                
+                // Verificar que sea un ciclo diferente al actual
+                String currentWorld = player.getWorld().getName();
+                boolean isDifferentCycle = !currentWorld.equals(tpWorld) && 
+                                          (cicloManager.isCycleWorld(currentWorld) || cicloManager.isCycleWorld(tpWorld));
+                
+                // Solo admins pueden teleportarse a ciclos diferentes
+                if (isDifferentCycle && !player.hasPermission("apocalipsis.ciclo.admin")) {
+                    player.sendMessage("§c✖ Solo los administradores pueden teleportarse entre ciclos diferentes.");
+                    player.sendMessage("§7Permiso requerido: §eapocalipsis.ciclo.admin");
+                    return;
+                }
+                
+                // El WorldChangeListener se encargará automáticamente de guardar/cargar datos
+                player.teleport(targetWorld.getSpawnLocation());
+                player.sendMessage("§a✓ Teleportado a: §e" + tpWorld);
+                break;
+                
+            case "setspawn":
+                if (!(sender instanceof org.bukkit.entity.Player)) {
+                    sender.sendMessage("§c✖ Este comando solo puede ser usado por jugadores.");
+                    return;
+                }
+                
+                if (!sender.hasPermission("apocalipsis.ciclo.admin")) {
+                    sender.sendMessage("§c✖ No tienes permiso para usar este comando.");
+                    return;
+                }
+                
+                org.bukkit.entity.Player spawnPlayer = (org.bukkit.entity.Player) sender;
+                
+                if (args.length < 2) {
+                    // Setear spawn del mundo actual
+                    String currentWorldName = spawnPlayer.getWorld().getName();
+                    org.bukkit.Location playerLoc = spawnPlayer.getLocation();
+                    
+                    boolean success = cicloManager.setSpawn(currentWorldName, playerLoc);
+                    
+                    if (success) {
+                        spawnPlayer.sendMessage("§a✓ Spawn actualizado para: §e" + currentWorldName);
+                        spawnPlayer.sendMessage("§7Coordenadas: §e" + playerLoc.getBlockX() + ", " + 
+                            playerLoc.getBlockY() + ", " + playerLoc.getBlockZ());
+                    } else {
+                        spawnPlayer.sendMessage("§c✖ Error al actualizar el spawn.");
+                    }
+                } else {
+                    // Setear spawn de un mundo específico
+                    String targetWorldName = args[1];
+                    org.bukkit.World targetSpawnWorld = org.bukkit.Bukkit.getWorld(targetWorldName);
+                    
+                    if (targetSpawnWorld == null) {
+                        spawnPlayer.sendMessage("§c✖ El mundo §e" + targetWorldName + " §cno existe o no está cargado.");
+                        return;
+                    }
+                    
+                    org.bukkit.Location playerLoc = spawnPlayer.getLocation();
+                    boolean success = cicloManager.setSpawn(targetWorldName, playerLoc);
+                    
+                    if (success) {
+                        spawnPlayer.sendMessage("§a✓ Spawn actualizado para: §e" + targetWorldName);
+                        spawnPlayer.sendMessage("§7Coordenadas: §e" + playerLoc.getBlockX() + ", " + 
+                            playerLoc.getBlockY() + ", " + playerLoc.getBlockZ());
+                    } else {
+                        spawnPlayer.sendMessage("§c✖ Error al actualizar el spawn.");
+                    }
+                }
+                break;
+                
+            case "security":
+            case "seguridad":
+                if (!sender.hasPermission("apocalipsis.ciclo.admin")) {
+                    sender.sendMessage("§c✖ No tienes permiso para usar este comando.");
+                    return;
+                }
+                
+                sender.sendMessage("§e§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+                sender.sendMessage("§6§lSEGURIDAD DE CICLOS");
+                sender.sendMessage("");
+                
+                // Validar ciclo único activo
+                boolean singleActive = cicloManager.validateSingleActiveCycle();
+                if (singleActive) {
+                    sender.sendMessage("§a✓ Ciclo activo único: CORRECTO");
+                } else {
+                    sender.sendMessage("§c✗ Ciclo activo único: FALLO");
+                    sender.sendMessage("§7  └─ Detectados múltiples ciclos activos");
+                }
+                
+                // Información del ciclo activo
+                String activeCycle = cicloManager.getActiveCycle();
+                if (activeCycle != null) {
+                    sender.sendMessage("§e◆ Ciclo activo actual: §b" + activeCycle);
+                    
+                    // Verificar spawn seguro
+                    org.bukkit.World activeWorld = org.bukkit.Bukkit.getWorld(activeCycle);
+                    if (activeWorld != null) {
+                        org.bukkit.Location spawn = activeWorld.getSpawnLocation();
+                        sender.sendMessage("§e◆ Spawn: §7" + spawn.getBlockX() + ", " + 
+                            spawn.getBlockY() + ", " + spawn.getBlockZ());
+                    }
+                } else {
+                    sender.sendMessage("§7◆ No hay ciclo activo");
+                }
+                
+                // Limpieza manual de cooldowns
+                cicloManager.cleanupCooldowns();
+                sender.sendMessage("§a✓ Cooldowns limpiados");
+                
+                sender.sendMessage("");
+                sender.sendMessage("§e§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+                break;
+                
+            case "fixspawn":
+            case "autocorrect":
+            case "repairspawn":
+                if (!sender.hasPermission("apocalipsis.ciclo.admin")) {
+                    sender.sendMessage("§c✖ No tienes permiso para usar este comando.");
+                    return;
+                }
+                
+                sender.sendMessage("§e§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+                sender.sendMessage("§6§lAUTO-CORRECCIÓN DE SPAWNS");
+                sender.sendMessage("");
+                
+                if (args.length >= 2) {
+                    // Corregir spawn de un mundo específico
+                    String fixWorldName = args[1];
+                    sender.sendMessage("§eVerificando spawn de: §b" + fixWorldName);
+                    sender.sendMessage("");
+                    
+                    boolean success = cicloManager.autoCorrectWorldSpawn(fixWorldName);
+                    
+                    if (success) {
+                        sender.sendMessage("§a✓ Spawn verificado/corregido exitosamente");
+                    } else {
+                        sender.sendMessage("§c✗ No se pudo corregir el spawn automáticamente");
+                        sender.sendMessage("§7  └─ Intenta setear spawn manualmente en ubicación segura");
+                    }
+                } else {
+                    // Corregir spawns de todos los ciclos
+                    sender.sendMessage("§eVerificando spawns de TODOS los ciclos...");
+                    sender.sendMessage("");
+                    
+                    org.bukkit.Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                        cicloManager.autoCorrectAllCycleSpawns();
+                        
+                        org.bukkit.Bukkit.getScheduler().runTask(plugin, () -> {
+                            sender.sendMessage("§a✓ Verificación completada. Revisa la consola para detalles.");
+                        });
+                    });
+                }
+                
+                sender.sendMessage("");
+                sender.sendMessage("§e§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+                break;
+                
+            case "confirmar":
+            case "confirm":
+                if (!(sender instanceof org.bukkit.entity.Player)) {
+                    sender.sendMessage("§c✖ Este comando solo puede ser usado por jugadores.");
+                    return;
+                }
+                
+                plugin.getConfirmationManager().confirmAction((org.bukkit.entity.Player) sender);
+                break;
+                
+            case "validar":
+            case "validate":
+            case "repair":
+                if (!sender.hasPermission("apocalipsis.ciclo.admin")) {
+                    sender.sendMessage("§c✖ No tienes permiso para usar este comando.");
+                    return;
+                }
+                
+                sender.sendMessage("§e⚙ Validando integridad de datos de ciclos...");
+                cicloManager.validateCiclosIntegrity();
+                sender.sendMessage("§a✓ Validación completada. Revisa la consola para más detalles.");
+                break;
+                
+            case "reporte":
+            case "report":
+                if (!sender.hasPermission("apocalipsis.ciclo.admin")) {
+                    sender.sendMessage("§c✖ No tienes permiso para usar este comando.");
+                    return;
+                }
+                
+                String report = cicloManager.generateCiclosReport();
+                sender.sendMessage("§a✓ Reporte generado:");
+                for (String line : report.split("\n")) {
+                    sender.sendMessage("§7" + line);
+                }
+                break;
+                
+            case "cancelar":
+            case "cancel":
+                if (!(sender instanceof org.bukkit.entity.Player)) {
+                    sender.sendMessage("§c✖ Este comando solo puede ser usado por jugadores.");
+                    return;
+                }
+                
+                plugin.getConfirmationManager().cancelConfirmation((org.bukkit.entity.Player) sender);
+                break;
+                
+            case "menu":
+            case "gui":
+                if (!(sender instanceof org.bukkit.entity.Player)) {
+                    sender.sendMessage("§c✖ Este comando solo puede ser usado por jugadores.");
+                    return;
+                }
+                
+                org.bukkit.entity.Player menuPlayer = (org.bukkit.entity.Player) sender;
+                me.apocalipsis.gui.CicloMenuGUI menu = new me.apocalipsis.gui.CicloMenuGUI(plugin, menuPlayer);
+                menu.open();
+                break;
+                
+            case "cambiar":
+            case "change":
+            case "switch":
+                if (!(sender instanceof org.bukkit.entity.Player)) {
+                    sender.sendMessage("§c✖ Este comando solo puede ser usado por jugadores.");
+                    return;
+                }
+                
+                if (args.length < 2) {
+                    sender.sendMessage("§c✖ Uso: §e/avo ciclo cambiar <mundo>");
+                    return;
+                }
+                
+                org.bukkit.entity.Player changePlayer = (org.bukkit.entity.Player) sender;
+                String changeWorldName = args[1];
+                org.bukkit.World changeWorld = org.bukkit.Bukkit.getWorld(changeWorldName);
+                
+                if (changeWorld == null) {
+                    changePlayer.sendMessage("§c✖ El mundo §e" + changeWorldName + " §cno existe.");
+                    return;
+                }
+                
+                // Verificar cooldown
+                if (!plugin.getCooldownManager().canUse(changePlayer, me.apocalipsis.managers.CooldownManager.CooldownType.CAMBIO_MUNDO)) {
+                    plugin.getCooldownManager().sendCooldownMessage(changePlayer, me.apocalipsis.managers.CooldownManager.CooldownType.CAMBIO_MUNDO);
+                    return;
+                }
+                
+                // Aplicar cooldown
+                plugin.getCooldownManager().applyCooldown(changePlayer, me.apocalipsis.managers.CooldownManager.CooldownType.CAMBIO_MUNDO);
+                
+                // Iniciar countdown y teleportar
+                plugin.getCountdownManager().startTeleportCountdown(changePlayer, changeWorldName, () -> {
+                    changePlayer.teleport(changeWorld.getSpawnLocation());
+                    
+                    // Mostrar BossBar
+                    plugin.getCicloBossBarManager().showCycleBossBar(changePlayer, changeWorldName);
+                });
+                break;
+                
+            case "eliminar":
+            case "delete":
+            case "remove":
+                if (args.length < 2) {
+                    sender.sendMessage("§c✖ Uso: §e/avo ciclo eliminar <mundo>");
+                    return;
+                }
+                
+                String deleteWorldName = args[1];
+                
+                // Verificar que existe
+                if (!cicloManager.isCycleWorld(deleteWorldName)) {
+                    sender.sendMessage("§c✖ El mundo §e" + deleteWorldName + " §cno es un ciclo activo.");
+                    return;
+                }
+                
+                // Solicitar confirmación
+                if (sender instanceof org.bukkit.entity.Player) {
+                    org.bukkit.entity.Player deletePlayer = (org.bukkit.entity.Player) sender;
+                    
+                    plugin.getConfirmationManager().requestConfirmation(
+                        deletePlayer,
+                        me.apocalipsis.managers.ConfirmationManager.ConfirmationType.ELIMINAR_CICLO,
+                        new String[]{deleteWorldName},
+                        () -> {
+                            if (cicloManager.deactivateCycle(deleteWorldName)) {
+                                deletePlayer.sendMessage("§a✓ Ciclo eliminado: §e" + deleteWorldName);
+                                
+                                // Broadcast si está habilitado
+                                org.bukkit.configuration.file.FileConfiguration config = plugin.getCicloConfig();
+                                if (config.getBoolean("notificaciones.ciclo_eliminado", false)) {
+                                    String mensaje = config.getString("mensajes.ciclo_eliminado", 
+                                        "&c⚠ El ciclo &e{mundo} &cha sido eliminado.")
+                                        .replace("{mundo}", deleteWorldName)
+                                        .replace("&", "§");
+                                    org.bukkit.Bukkit.broadcastMessage(mensaje);
+                                }
+                            } else {
+                                deletePlayer.sendMessage("§c✖ Error al eliminar el ciclo.");
+                            }
+                        }
+                    );
+                }
+                break;
+                
+            case "renombrar":
+            case "rename":
+                if (args.length < 3) {
+                    sender.sendMessage("§c✖ Uso: §e/avo ciclo renombrar <mundo> <nuevo_nombre>");
+                    return;
+                }
+                
+                String oldName = args[1];
+                String newName = args[2];
+                
+                // Verificar que el mundo existe
+                org.bukkit.World renameWorld = org.bukkit.Bukkit.getWorld(oldName);
+                if (renameWorld == null) {
+                    sender.sendMessage("§c✖ El mundo §e" + oldName + " §cno existe.");
+                    return;
+                }
+                
+                // Solicitar confirmación
+                if (sender instanceof org.bukkit.entity.Player) {
+                    org.bukkit.entity.Player renamePlayer = (org.bukkit.entity.Player) sender;
+                    
+                    plugin.getConfirmationManager().requestConfirmation(
+                        renamePlayer,
+                        me.apocalipsis.managers.ConfirmationManager.ConfirmationType.RENOMBRAR_CICLO,
+                        new String[]{oldName, newName},
+                        () -> {
+                            renamePlayer.sendMessage("§e⚙ Renombrando ciclo...");
+                            renamePlayer.sendMessage("§c⚠ NOTA: El mundo en disco NO cambia de nombre.");
+                            renamePlayer.sendMessage("§7Solo se actualiza la referencia en ciclos.yml");
+                            
+                            // Actualizar en configuración
+                            org.bukkit.configuration.file.FileConfiguration config = plugin.getCicloConfig();
+                            if (config.contains("ciclos." + oldName)) {
+                                config.set("ciclos." + newName, config.get("ciclos." + oldName));
+                                config.set("ciclos." + oldName, null);
+                                plugin.getCicloManager().saveConfig();
+                                
+                                renamePlayer.sendMessage("§a✓ Ciclo renombrado de §e" + oldName + " §aa §e" + newName);
+                                
+                                // Broadcast si está habilitado
+                                if (config.getBoolean("notificaciones.ciclo_renombrado", false)) {
+                                    String mensaje = config.getString("mensajes.ciclo_renombrado", 
+                                        "&bEl ciclo &e{viejo} &bha sido renombrado a &a{nuevo}")
+                                        .replace("{viejo}", oldName)
+                                        .replace("{nuevo}", newName)
+                                        .replace("&", "§");
+                                    org.bukkit.Bukkit.broadcastMessage(mensaje);
+                                }
+                            } else {
+                                renamePlayer.sendMessage("§c✖ El ciclo no está registrado en ciclos.yml");
+                            }
+                        }
+                    );
+                }
+                break;
+                
+            case "stats":
+            case "estadisticas":
+                if (args.length < 2) {
+                    sender.sendMessage("§c✖ Uso: §e/avo ciclo stats <mundo>");
+                    return;
+                }
+                
+                String statsWorldName = args[1];
+                org.bukkit.World statsWorld = org.bukkit.Bukkit.getWorld(statsWorldName);
+                
+                if (statsWorld == null) {
+                    sender.sendMessage("§c✖ El mundo §e" + statsWorldName + " §cno existe.");
+                    return;
+                }
+                
+                // Obtener datos del ciclo
+                org.bukkit.configuration.file.FileConfiguration statsConfig = plugin.getCicloConfig();
+                org.bukkit.configuration.ConfigurationSection cicloSection = statsConfig.getConfigurationSection("ciclos." + statsWorldName);
+                
+                sender.sendMessage("§8§m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                sender.sendMessage("§b§lESTADÍSTICAS: §f" + statsWorldName);
+                sender.sendMessage("");
+                
+                if (cicloSection != null) {
+                    String fecha = cicloSection.getString("fecha_creacion", "Desconocida");
+                    boolean activo = cicloSection.getBoolean("activo", false);
+                    String descripcion = cicloSection.getString("descripcion", "Sin descripción");
+                    
+                    sender.sendMessage("  §7Estado: " + (activo ? "§a✓ Activo" : "§7○ Inactivo"));
+                    sender.sendMessage("  §7Creado: §e" + fecha);
+                    sender.sendMessage("  §7Descripción: §f" + descripcion);
+                }
+                
+                sender.sendMessage("  §7Jugadores actuales: §e" + statsWorld.getPlayers().size());
+                sender.sendMessage("  §7Dificultad: §e" + statsWorld.getDifficulty());
+                sender.sendMessage("  §7Ambiente: §e" + statsWorld.getEnvironment());
+                sender.sendMessage("  §7PvP: " + (statsWorld.getPVP() ? "§a✓ Habilitado" : "§c✗ Deshabilitado"));
+                sender.sendMessage("  §7Entidades: §e" + statsWorld.getEntities().size());
+                sender.sendMessage("  §7Chunks cargados: §e" + statsWorld.getLoadedChunks().length);
+                sender.sendMessage("§8§m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                break;
+                
+            default:
+                sender.sendMessage("§c✖ Subcomando desconocido: §e" + subCmd);
+                sender.sendMessage("§7Usa §e/avo ciclo §7para ver la ayuda.");
+                break;
+        }
+    }
+    
+    /**
+     * Comando /avo rtp - Random Teleport
+     * Teletransporta al jugador a una ubicación aleatoria segura en el overworld
+     */
+    private void cmdRandomTeleport(CommandSender sender) {
+        if (!(sender instanceof org.bukkit.entity.Player)) {
+            sender.sendMessage("§c✖ Este comando solo puede ser usado por jugadores.");
+            return;
+        }
+        
+        org.bukkit.entity.Player player = (org.bukkit.entity.Player) sender;
+        
+        // Verificar que esté en overworld
+        if (player.getWorld().getEnvironment() != org.bukkit.World.Environment.NORMAL) {
+            player.sendMessage("§c✖ Solo puedes usar /rtp en el overworld.");
+            player.sendMessage("§7Vuelve a la superficie para usar este comando.");
+            return;
+        }
+        
+        // Verificar cooldown (5 minutos)
+        if (!plugin.getCooldownManager().canUse(player, me.apocalipsis.managers.CooldownManager.CooldownType.RANDOM_TP)) {
+            plugin.getCooldownManager().sendCooldownMessage(player, me.apocalipsis.managers.CooldownManager.CooldownType.RANDOM_TP);
+            return;
+        }
+        
+        player.sendMessage("§e⚙ Buscando ubicación aleatoria segura...");
+        player.sendMessage("§7Esto puede tardar unos segundos.");
+        
+        // Ejecutar búsqueda asíncrona para no congelar el servidor
+        org.bukkit.Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            org.bukkit.World world = player.getWorld();
+            org.bukkit.Location safeLoc = findRandomSafeLocation(world, player.getLocation());
+            
+            // Volver al thread principal para teleportar
+            org.bukkit.Bukkit.getScheduler().runTask(plugin, () -> {
+                if (safeLoc == null) {
+                    player.sendMessage("§c✖ No se pudo encontrar una ubicación segura.");
+                    player.sendMessage("§7Intenta de nuevo en unos momentos.");
+                    return;
+                }
+                
+                // Aplicar cooldown
+                plugin.getCooldownManager().applyCooldown(player, me.apocalipsis.managers.CooldownManager.CooldownType.RANDOM_TP);
+                
+                // Teleportar con efectos
+                player.teleport(safeLoc);
+                player.sendMessage("§a✓ ¡Teletransportado a ubicación aleatoria!");
+                player.sendMessage("§7Coordenadas: §e" + safeLoc.getBlockX() + ", " + 
+                    safeLoc.getBlockY() + ", " + safeLoc.getBlockZ());
+                
+                // Efectos visuales
+                player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 1.0f);
+                player.getWorld().spawnParticle(org.bukkit.Particle.PORTAL, safeLoc, 50, 0.5, 1, 0.5, 0.1);
+                
+                // Log para admins
+                plugin.getLogger().info("[RTP] " + player.getName() + " teleportado a " + 
+                    safeLoc.getBlockX() + ", " + safeLoc.getBlockY() + ", " + safeLoc.getBlockZ());
+            });
+        });
+    }
+    
+    /**
+     * Encuentra una ubicación aleatoria segura en el mundo
+     * @param world Mundo donde buscar
+     * @param playerLoc Ubicación actual del jugador
+     * @return Ubicación segura encontrada o null
+     */
+    private org.bukkit.Location findRandomSafeLocation(org.bukkit.World world, org.bukkit.Location playerLoc) {
+        java.util.Random random = new java.util.Random();
+        
+        // Rango de búsqueda: 1000 a 5000 bloques del spawn
+        int minRadius = 1000;
+        int maxRadius = 5000;
+        
+        // Intentar hasta 10 veces encontrar ubicación segura
+        for (int attempt = 0; attempt < 10; attempt++) {
+            // Generar coordenadas aleatorias
+            double angle = random.nextDouble() * 2 * Math.PI;
+            int distance = minRadius + random.nextInt(maxRadius - minRadius);
+            
+            int randomX = (int) (world.getSpawnLocation().getX() + distance * Math.cos(angle));
+            int randomZ = (int) (world.getSpawnLocation().getZ() + distance * Math.sin(angle));
+            
+            // Obtener bloque más alto en esas coordenadas
+            org.bukkit.Location checkLoc = world.getHighestBlockAt(randomX, randomZ).getLocation().add(0, 1, 0);
+            
+            // Verificar que la ubicación sea segura
+            if (isLocationSafeForRTP(checkLoc)) {
+                plugin.getLogger().info("[RTP] Ubicación segura encontrada en intento " + (attempt + 1));
+                return checkLoc;
+            }
+        }
+        
+        plugin.getLogger().warning("[RTP] No se encontró ubicación segura después de 10 intentos");
+        return null;
+    }
+    
+    /**
+     * Verifica si una ubicación es segura para RTP
+     * @param location Ubicación a verificar
+     * @return true si es segura
+     */
+    private boolean isLocationSafeForRTP(org.bukkit.Location location) {
+        if (location == null || location.getWorld() == null) {
+            return false;
+        }
+        
+        org.bukkit.World world = location.getWorld();
+        int x = location.getBlockX();
+        int y = location.getBlockY();
+        int z = location.getBlockZ();
+        
+        // Verificar límites de altura
+        if (y < 60 || y > world.getMaxHeight() - 10) {
+            return false;
+        }
+        
+        // Obtener bloques relevantes
+        org.bukkit.Material ground = world.getBlockAt(x, y - 1, z).getType();
+        org.bukkit.Material feet = world.getBlockAt(x, y, z).getType();
+        org.bukkit.Material head = world.getBlockAt(x, y + 1, z).getType();
+        
+        // Verificar materiales peligrosos
+        if (ground == org.bukkit.Material.LAVA || ground == org.bukkit.Material.FIRE || 
+            ground == org.bukkit.Material.MAGMA_BLOCK || ground == org.bukkit.Material.WATER ||
+            ground == org.bukkit.Material.CAMPFIRE || ground == org.bukkit.Material.SOUL_CAMPFIRE) {
+            return false;
+        }
+        
+        // Verificar que pies y cabeza estén despejados
+        if (feet.isSolid() || head.isSolid()) {
+            return false;
+        }
+        
+        // Verificar que haya suelo sólido
+        if (!ground.isSolid()) {
+            return false;
+        }
+        
+        // Verificar bioma (evitar océanos)
+        org.bukkit.block.Biome biome = world.getBiome(x, y, z);
+        if (biome.name().contains("OCEAN") || biome.name().contains("RIVER")) {
+            return false;
+        }
+        
+        // Verificar que no haya jugadores muy cerca (mínimo 200 bloques)
+        for (org.bukkit.entity.Player nearbyPlayer : world.getPlayers()) {
+            if (nearbyPlayer.getLocation().distance(location) < 200) {
+                return false;
+            }
+        }
+        
+        return true;
     }
 }
 

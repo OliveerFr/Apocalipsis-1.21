@@ -15,78 +15,81 @@ visual_por_defecto:
   display_name_style: "&f%rango%"  # cómo formatear display_name si falta
 
 # RANGOS EXISTENTES (IDs deben coincidir con MissionRank enum)
+# ═══════════════════════════════════════════════════════════════
+# SISTEMA DE RANGOS REDISEÑADO - Temática: Ascenso del Caos
+# ═══════════════════════════════════════════════════════════════
 ranks:
   NOVATO:
-    display_name: "&aNovato"
+    display_name: "&7Perdido"
     xp_required: 0
     misiones_diarias: 10
-    tab_prefix: "&a[N] "
+    tab_prefix: "&7[Perdido] "
     tab_suffix: ""
-    chat_prefix: "&aN&7| "
-    scoreboard_color: "GREEN"
+    chat_prefix: "&7P&8| "
+    scoreboard_color: "GRAY"
 
   EXPLORADOR:
-    display_name: "&bExplorador"
-    xp_required: 2450         # Nivel 8 (nueva fórmula: base 200, mult 150)
+    display_name: "&aDespertar"
+    xp_required: 2450         # Nivel 8
     misiones_diarias: 10
-    tab_prefix: "&b[E] "
+    tab_prefix: "&a[Despertar] "
     tab_suffix: ""
-    chat_prefix: "&bE&7| "
-    scoreboard_color: "AQUA"
+    chat_prefix: "&aD&7| "
+    scoreboard_color: "GREEN"
 
   SOBREVIVIENTE:
-    display_name: "&eSobreviviente"
+    display_name: "&bResistente"
     xp_required: 9800        # Nivel 15
     misiones_diarias: 8
-    tab_prefix: "&e[S] "
+    tab_prefix: "&b[Resistente] "
     tab_suffix: ""
-    chat_prefix: "&eS&7| "
-    scoreboard_color: "YELLOW"
+    chat_prefix: "&bR&7| "
+    scoreboard_color: "AQUA"
 
   VETERANO:
-    display_name: "&6Veterano"
+    display_name: "&ePerseverante"
     xp_required: 22400        # Nivel 22
     misiones_diarias: 7
-    tab_prefix: "&6[V] "
+    tab_prefix: "&e[Perseverante] "
     tab_suffix: ""
-    chat_prefix: "&6V&7| "
-    scoreboard_color: "GOLD"
+    chat_prefix: "&eP&7| "
+    scoreboard_color: "YELLOW"
 
   LEYENDA:
-    display_name: "&c&lLeyenda"
+    display_name: "&6&lAscendido"
     xp_required: 40250       # Nivel 29
     misiones_diarias: 6
-    tab_prefix: "&c[L] "
+    tab_prefix: "&6[Ascendido] "
     tab_suffix: ""
-    chat_prefix: "&cL&7| "
-    scoreboard_color: "RED"
+    chat_prefix: "&6A&7| "
+    scoreboard_color: "GOLD"
 
   MAESTRO:
-    display_name: "&5&lMaestro"
+    display_name: "&d&lIluminado"
     xp_required: 63350       # Nivel 36
     misiones_diarias: 6
-    tab_prefix: "&5[M] "
+    tab_prefix: "&d[Iluminado] "
     tab_suffix: ""
-    chat_prefix: "&5M&7| "
-    scoreboard_color: "DARK_PURPLE"
+    chat_prefix: "&dI&7| "
+    scoreboard_color: "LIGHT_PURPLE"
 
   TITAN:
-    display_name: "&4&lTitán"
+    display_name: "&5&lTrascendente"
     xp_required: 91700       # Nivel 43
     misiones_diarias: 6
-    tab_prefix: "&4[T] "
-    tab_suffix: "&4✦"
-    chat_prefix: "&4T&7| "
-    scoreboard_color: "DARK_RED"
+    tab_prefix: "&5[Trascendente] "
+    tab_suffix: "&5✦"
+    chat_prefix: "&5T&7| "
+    scoreboard_color: "DARK_PURPLE"
 
   ABSOLUTO:
-    display_name: "&f&l&oAbsoluto"
+    display_name: "&c&l&kI&c&l Eterno &c&l&kI"
     xp_required: 110075       # Nivel 50
-    misiones_diarias: 8       # Aumentado para máxima variedad
-    tab_prefix: "&f&l[A] "
-    tab_suffix: "&f&l✦✦"
-    chat_prefix: "&f&lA&7| "
-    scoreboard_color: "WHITE"
+    misiones_diarias: 4
+    tab_prefix: "&c&l[Eterno] "
+    tab_suffix: "&c&l✦✦"
+    chat_prefix: "&c&lE&7| "
+    scoreboard_color: "DARK_RED"
 
 # ════════════════════════════════════════════════════════════════════
 # NOTAS DE PROGRESIÓN (SISTEMA BALANCEADO - 2.5 MESES / 75 DÍAS)

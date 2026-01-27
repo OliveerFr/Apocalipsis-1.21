@@ -276,6 +276,44 @@ public class RewardService {
     }
     
     /**
+     * Obtiene las recompensas entregadas a un jugador específico
+     * Para uso del sistema de ciclos multi-mundo
+     * @return Set con las claves "UUID:RANGO" del jugador
+     */
+    public Set<String> getDeliveredRewards(UUID uuid) {
+        Set<String> playerRewards = new HashSet<>();
+        String prefix = uuid.toString() + ":";
+        
+        for (String reward : deliveredRewards) {
+            if (reward.startsWith(prefix)) {
+                playerRewards.add(reward);
+            }
+        }
+        
+        return playerRewards;
+    }
+    
+    /**
+     * Establece las recompensas entregadas de un jugador
+     * Para uso del sistema de ciclos multi-mundo
+     * Reemplaza todas las recompensas del jugador con las proporcionadas
+     * @param uuid UUID del jugador
+     * @param rewards Set con las claves "UUID:RANGO" a establecer
+     */
+    public void setDeliveredRewards(UUID uuid, Set<String> rewards) {
+        // Remover recompensas antiguas del jugador
+        deliveredRewards.removeIf(r -> r.startsWith(uuid.toString() + ":"));
+        
+        // Agregar las nuevas recompensas
+        if (rewards != null && !rewards.isEmpty()) {
+            deliveredRewards.addAll(rewards);
+        }
+        
+        // Guardar a disco inmediatamente
+        saveDeliveredRewards();
+    }
+    
+    /**
      * Obtiene la lista de recompensas para un rango
      */
     public RankReward getRankReward(MissionRank rank) {

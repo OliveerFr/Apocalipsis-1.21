@@ -46,11 +46,11 @@ public class SkillConfig {
         addLevelEffect("minero_eficiente", 15, 25, 35);          // % velocidad minado
         addLevelEffect("estomago_hierro", 20, 35, 50);           // % reducción hambre
         addLevelEffect("lenador_nato", 1, 2, 3);                 // árboles por activación
-        addLevelEffect("zancadas", 20, 30, 40);                  // % velocidad + salto
-        addLevelEffect("toque_fortuna", 10, 20, 30);             // % drop extra
+        addLevelEffect("zancadas", 15, 20, 25);                  // % velocidad + salto [BALANCEADO: era 20/30/40]
+        addLevelEffect("toque_fortuna", 8, 12, 15);              // % drop extra [BALANCEADO: era 10/20/30]
         addLevelEffect("metabolismo_lento", 40, 60, 80);         // % reducción hambre
-        addLevelEffect("velocista", 30, 40, 50);                 // % velocidad
-        addLevelEffect("seda_natural", 5, 10, 15);               // % silk touch
+        addLevelEffect("velocista", 25, 30, 35);                 // % velocidad [BALANCEADO: era 30/40/50]
+        addLevelEffect("seda_natural", 3, 5, 8);                 // % silk touch [BALANCEADO: era 5/10/15]
         addLevelEffect("autosuficiente", 0.5, 1.0, 1.5);         // hambre regenerada
         
         // ===== SUPERVIVENCIA =====
@@ -58,12 +58,12 @@ public class SkillConfig {
         addLevelEffect("caida_suave", 25, 40, 60);               // % reducción caída
         addLevelEffect("resistencia_fuego", 20, 35, 50);         // % reducción fuego
         addLevelEffect("nadador", 30, 50, 70);                   // % velocidad nadando
-        addLevelEffect("tanque", 4, 6, 8);                       // corazones extra (+piel)
+        addLevelEffect("tanque", 3, 5, 7);                       // corazones extra (+piel) [BALANCEADO: era 4/6/8]
         addLevelEffect("pluma", 50, 70, 90);                     // % reducción caída
         addLevelEffect("ignifugo", 40, 60, 80);                  // % reducción fuego
         addLevelEffect("branquias", 60, 120, 999);               // segundos extra (999=infinito)
         addLevelEffect("regeneracion_pasiva", 0.5, 1.0, 1.5);    // corazones cada 20s
-        addLevelEffect("inmortal", 8, 10, 14);                   // corazones extra total
+        addLevelEffect("inmortal", 6, 8, 10);                    // corazones extra total [BALANCEADO: era 8/10/14]
         addLevelEffect("vuelo_emergencia", 3, 5, 8);             // segundos de planeo
         addLevelEffect("fenix", 1, 1, 2);                        // usos por día
         addLevelEffect("anfibio", 999, 999, 999);                // respiración infinita
@@ -76,10 +76,10 @@ public class SkillConfig {
         addLevelEffect("guerrero", 10, 15, 25);                  // % daño melee
         addLevelEffect("furia", 1, 1.5, 2);                      // % daño por % vida perdida
         addLevelEffect("bloqueo_perfecto", 15, 25, 35);          // % reducción con escudo
-        addLevelEffect("francotirador", 20, 35, 50);             // % daño a distancia
-        addLevelEffect("ejecutor", 25, 40, 60);                  // % daño a enemigos bajos
-        addLevelEffect("berserker", 40, 60, 80);                 // % daño cuando bajo vida
-        addLevelEffect("vampirismo", 5, 8, 12);                  // % lifesteal
+        addLevelEffect("francotirador", 15, 25, 35);             // % daño a distancia [BALANCEADO: era 20/35/50]
+        addLevelEffect("ejecutor", 20, 30, 40);                  // % daño a enemigos bajos [BALANCEADO: era 25/40/60]
+        addLevelEffect("berserker", 30, 40, 50);                 // % daño cuando bajo vida [BALANCEADO: era 40/60/80]
+        addLevelEffect("vampirismo", 4, 6, 8);                   // % lifesteal [BALANCEADO: era 5/8/12]
         addLevelEffect("multishot", 15, 25, 35);                 // % chance flechas extra
         
         // ===== EXPLORACIÓN =====
@@ -115,21 +115,21 @@ public class SkillConfig {
         addLevelEffect("warden_temporal", 30, 45, 60);           // duración segundos
         
         // ===== SINERGIAS =====
-        addLevelEffect("cazador_sigiloso", 25, 40, 60);          // % daño extra sigilo
-        addLevelEffect("guerrero_inmortal", 30, 50, 75);         // % daño post-revive
+        addLevelEffect("cazador_sigiloso", 20, 30, 40);          // % daño extra sigilo [BALANCEADO: era 25/40/60]
+        addLevelEffect("guerrero_inmortal", 25, 35, 50);         // % daño post-revive [BALANCEADO: era 30/50/75]
         addLevelEffect("mercader_ambulante", 1, 1, 1);           // acceso a vender
-        addLevelEffect("explorador_veloz", 40, 60, 80);          // % velocidad explorar
+        addLevelEffect("explorador_veloz", 30, 40, 50);          // % velocidad explorar [BALANCEADO: era 40/60/80]
         addLevelEffect("guardian_bestial", 20, 35, 50);          // % daño mascotas
-        addLevelEffect("maestro_elemental", 30, 50, 75);         // % resistencia total
+        addLevelEffect("maestro_elemental", 25, 40, 60);         // % resistencia total [BALANCEADO: era 30/50/75]
         
         // ===== SINERGIAS (adicionales) =====
-        addLevelEffect("cazador_experto", 15, 25, 40);           // % daño extra a mobs
-        addLevelEffect("minero_guerrero", 25, 40, 60);           // % daño con pico
-        addLevelEffect("explorador_ligero", 20, 35, 50);         // % velocidad extra
-        addLevelEffect("mercader_supremo", 10, 20, 30);          // % descuento trades
+        addLevelEffect("cazador_experto", 12, 20, 30);           // % daño extra a mobs [BALANCEADO: era 15/25/40]
+        addLevelEffect("minero_guerrero", 20, 30, 40);           // % daño con pico [BALANCEADO: era 25/40/60]
+        addLevelEffect("explorador_ligero", 15, 25, 35);         // % velocidad extra [BALANCEADO: era 20/35/50]
+        addLevelEffect("mercader_supremo", 10, 15, 20);          // % descuento trades [BALANCEADO: era 10/20/30]
         addLevelEffect("domador_bestias", 20, 35, 50);           // % daño mascotas
         addLevelEffect("omnipresente", 50, 75, 100);             // rango teleport
-        addLevelEffect("avatar_caos", 30, 50, 75);               // % stats totales
+        addLevelEffect("avatar_caos", 25, 35, 50);               // % stats totales [BALANCEADO: era 30/50/75]
         
         // ===== ALMACENAMIENTO (adicional) =====
         addLevelEffect("cofre_dimensional", 1, 1, 1);            // acceso ilimitado

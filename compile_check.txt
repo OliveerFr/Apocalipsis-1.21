@@ -1,0 +1,14 @@
+﻿[INFO] Scanning for projects...
+[INFO] 
+[INFO] ---------------------< me.apocalipsis:Apocalipsis >---------------------
+[INFO] Building Apocalipsis 1.22.55
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- maven-resources-plugin:2.6:resources (default-resources) @ Apocalipsis ---
+[INFO] Using 'UTF-8' encoding to copy filtered resources.
+[INFO] Copying 24 resources
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.11.0:compile (default-compile) @ Apocalipsis ---
+[INFO] Changes detected - recompiling the module! :source
+[INFO] Compiling 162 source files with javac [forked debug target 21] to target\classes
