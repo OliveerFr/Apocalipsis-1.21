@@ -1,7 +1,11 @@
 package me.apocalipsis.ui;
 
-import me.apocalipsis.Apocalipsis;
-import me.apocalipsis.missions.StreamFeaturesManager;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Sound;
@@ -14,7 +18,8 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
-import java.util.*;
+import me.apocalipsis.Apocalipsis;
+import me.apocalipsis.missions.StreamFeaturesManager;
 
 /**
  * Menú GUI para Stream Features
@@ -139,11 +144,15 @@ public class StreamMenuGUI implements Listener {
         ItemMeta meta = item.getItemMeta();
         
         if (meta != null) {
-            meta.setDisplayName("§6§l⭐ Tus Tokens");
+            meta.setDisplayName("§6§l⭐ Tus Tokens y Fragmentos");
             
             List<String> lore = new ArrayList<>();
             lore.add("");
             lore.add("§7Tokens disponibles: §e§l" + tokens);
+            lore.add("");
+            lore.add("§a◆ Sistema de Fragmentos:");
+            lore.add("§7Los fragmentos se convierten automáticamente");
+            lore.add("§7en tokens: §a10 fragmentos §7= §61 token");
             lore.add("");
             lore.add("§7Estado del streamer:");
             if (streamerOnline) {
@@ -154,9 +163,9 @@ public class StreamMenuGUI implements Listener {
                 lore.add("§7Los drops están desactivados");
             }
             lore.add("");
-            lore.add("§7Los tokens se obtienen matando");
-            lore.add("§7mobs hostiles cuando el streamer");
-            lore.add("§7está conectado.");
+            lore.add("§7Los tokens y fragmentos se obtienen");
+            lore.add("§7matando mobs hostiles cuando el");
+            lore.add("§7streamer está conectado.");
             lore.add("");
             lore.add("§8ID: info");
             
@@ -172,22 +181,30 @@ public class StreamMenuGUI implements Listener {
         ItemMeta meta = item.getItemMeta();
         
         if (meta != null) {
-            meta.setDisplayName("§6§l💰 Maleta de Tokens");
+            int fragments = streamManager.getPlayerFragments(player.getUniqueId());
+            int fragmentsNeeded = 10 - fragments;
             
-            int tokensInWallet = countTokensInWallet(player);
+            meta.setDisplayName("§6§l💰 Fragmentos Acumulados");
             
             List<String> lore = new ArrayList<>();
             lore.add("");
-            lore.add("§7Tokens guardados: §e" + tokensInWallet);
+            lore.add("§7Fragmentos actuales: §a" + fragments + "§7/§a10");
             lore.add("");
-            lore.add("§7Guarda tus tokens físicos aquí");
-            lore.add("§7para organizarlos mejor.");
+            if (fragments > 0) {
+                if (fragmentsNeeded > 0) {
+                    lore.add("§7Te faltan §e" + fragmentsNeeded + " fragmento(s)");
+                    lore.add("§7para obtener 1 token.");
+                } else {
+                    lore.add("§a§l✓ §7¡Listos para convertir!");
+                }
+            } else {
+                lore.add("§7No tienes fragmentos acumulados.");
+                lore.add("§7Mata mobs para obtener más.");
+            }
             lore.add("");
-            lore.add("§7Al cerrar la maleta, los tokens");
-            lore.add("§7se convierten automáticamente");
-            lore.add("§7en tokens canjeables.");
+            lore.add("§7Los fragmentos se convierten");
+            lore.add("§7automáticamente cada 10.");
             lore.add("");
-            lore.add("§e▶ Click para abrir maleta");
             lore.add("§8ID: wallet");
             
             meta.setLore(lore);
@@ -328,38 +345,10 @@ public class StreamMenuGUI implements Listener {
         
         String title = event.getView().getTitle();
         
-        // Al cerrar la maleta, convertir tokens a la base de datos
+        // Ya no se usa la maleta física, fragmentos y tokens van directos a DB
+        // Este evento se mantiene por compatibilidad pero no hace nada
         if (title.equals(WALLET_TITLE)) {
-            Inventory wallet = playerWallets.get(player.getUniqueId());
-            if (wallet == null) return;
-            
-            int tokenCount = 0;
-            int fragmentCount = 0;
-            
-            // Contar y remover tokens/fragmentos
-            for (int i = 0; i < wallet.getSize(); i++) {
-                ItemStack item = wallet.getItem(i);
-                if (item == null) continue;
-                
-                if (isTokenItem(item)) {
-                    tokenCount += item.getAmount();
-                    wallet.setItem(i, null);
-                } else if (isFragmentItem(item)) {
-                    fragmentCount += item.getAmount();
-                    wallet.setItem(i, null);
-                }
-            }
-            
-            // Agregar tokens a la base de datos
-            if (tokenCount > 0) {
-                streamManager.addPlayerTokens(player.getUniqueId(), tokenCount, "Guardado desde maleta");
-                player.sendMessage("§a§l✓ §7Convertidos §e" + tokenCount + " tokens §7a tu saldo.");
-                player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 0.5f, 1.5f);
-            }
-            
-            if (fragmentCount > 0) {
-                player.sendMessage("§a§l✓ §7Guardados §a" + fragmentCount + " fragmentos §7en tu maleta.");
-            }
+            clearWallet(player.getUniqueId());
         }
     }
     

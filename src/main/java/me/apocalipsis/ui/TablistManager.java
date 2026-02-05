@@ -17,15 +17,18 @@ public class TablistManager {
     private final StateManager stateManager;
     private final PerformanceAdapter performanceAdapter;
     private final RankService rankService;
+    private final me.apocalipsis.stats.DeathTracker deathTracker;
     private final java.util.Map<java.util.UUID, String> lastTabCache = new java.util.HashMap<>(); // Cache para evitar spam
     private int taskId = -1;
 
     public TablistManager(Apocalipsis plugin, StateManager stateManager,
-                         PerformanceAdapter performanceAdapter, RankService rankService) {
+                         PerformanceAdapter performanceAdapter, RankService rankService,
+                         me.apocalipsis.stats.DeathTracker deathTracker) {
         this.plugin = plugin;
         this.stateManager = stateManager;
         this.performanceAdapter = performanceAdapter;
         this.rankService = rankService;
+        this.deathTracker = deathTracker;
     }
 
     public void startTask() {
@@ -77,81 +80,87 @@ public class TablistManager {
         
         StringBuilder header = new StringBuilder();
         
-        // Header compacto y limpio - 2 líneas
-        header.append("\n§c§l▸ APOCALIPSIS §8§l| §7Día §f").append(day)
-              .append(" §8| §7Players §b").append(online).append("§7/§f").append(max)
-              .append(" §8| §7TPS ").append(tpsColor).append(String.format("%.1f", tps));
+        // Header moderno con diseño limpio
+        header.append("\n§8§l┏━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n");
+        header.append("§8§l┃ §c§l⚔ APOCALIPSIS §r§8§l━ §7Día §f").append(day).append(" §8§l┃\n");
+        header.append("§8§l┣━━━━━━━━━━━━━━━━━━━━━━━━━━━┫\n");
         
-        // Línea 2: Estado y desastre (solo si hay desastre activo)
-        header.append("\n§8▸ ").append(stateDisplay);
+        // Info del servidor en una línea elegante
+        header.append("§8§l┃ §7Players: §b").append(online).append("§8/§f").append(max);
+        header.append(" §8│ §7TPS: ").append(tpsColor).append(String.format("%.1f", tps)).append(" §8§l┃\n");
+        
+        // Estado y desastre (destacados)
+        header.append("§8§l┃ §7Estado: ").append(stateDisplay);
         if (stateManager.getActiveDisasterId() != null) {
-            header.append(" §8| §c⚠ ").append(disasterName);
+            header.append(" §8◆ §c").append(disasterName);
         }
-        header.append("\n");
+        header.append(" §8§l┃\n");
+        header.append("§8§l┗━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n");
         
-        // Footer: diseño limpio y compacto
+        // Footer: diseño moderno y elegante
         StringBuilder footer = new StringBuilder();
-        footer.append("\n");
+        footer.append("\n§8§l┏━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n");
         
-        // Línea 1: Tiempo según estado (compacto)
+        // Tiempo según estado (con iconos)
         if (state == ServerState.ACTIVO) {
             String timeDisplay = calculateTimeFromStateYml();
-            footer.append("§a▸ §7Tiempo: §f").append(timeDisplay);
+            footer.append("§8§l┃ §a⌚ Tiempo: §f").append(timeDisplay).append(" §8§l┃\n");
         } else if (state == ServerState.PREPARACION) {
             boolean prepForzada = stateManager.isPrepForzada();
             
             if (prepForzada) {
                 String timeDisplay = calculateTimeFromStateYml();
-                footer.append("§e▸ §7Preparación: §f").append(timeDisplay);
+                footer.append("§8§l┃ §e⌚ Preparación: §f").append(timeDisplay).append(" §8§l┃\n");
             } else {
                 String cooldownDisplay = calculateCooldownFromStateYml();
                 if (!cooldownDisplay.equals("00:00")) {
-                    footer.append("§e▸ §7Cooldown: §f").append(cooldownDisplay);
+                    footer.append("§8§l┃ §e⌚ Cooldown: §f").append(cooldownDisplay).append(" §8§l┃\n");
                 } else {
                     int minJugadores = plugin.getConfigManager().getMinJugadores();
-                    footer.append("§a▸ §7Listo §8(").append(online).append("§7/§f").append(minJugadores).append("§8)");
+                    footer.append("§8§l┃ §a✓ Listo §8[").append(online).append("§7/§f").append(minJugadores).append("§8] §8§l┃\n");
                 }
             }
         } else if (state == ServerState.DETENIDO) {
-            footer.append("§7▸ §7Detenido");
+            footer.append("§8§l┃ §7● Detenido §8§l┃\n");
         } else {
-            footer.append("§8▸ §7---");
+            footer.append("§8§l┃ §8--- §8§l┃\n");
         }
         
-        footer.append("\n");
+        footer.append("§8§l┣━━━━━━━━━━━━━━━━━━━━━━━━━━━┫\n");
         
-        // Línea 2-3: Rango y XP
+        // Rango y progreso con diseño elegante
         String rankDisplay = rankService.getTabPrefix(player);
         
         if (plugin.getExperienceService() != null) {
             int currentLevel = plugin.getExperienceService().getLevel(player);
-            int currentXP = plugin.getExperienceService().getXP(player);
             
             if (!rankService.isMaxRank(player)) {
-                int xpNeeded = plugin.getExperienceService().getXPForNextLevel(player);
-                double percentage = (double) currentXP / xpNeeded * 100;
-                String progressBar = generateProgressBar(percentage, 12);  // Barra más corta
+                int nextLevelRequired = rankService.getNextRankThreshold(player);
+                int currentLevelRequired = rankService.getRank(player).getLevelRequired();
+                double percentage = ((double) (currentLevel - currentLevelRequired) / (nextLevelRequired - currentLevelRequired)) * 100;
+                String progressBar = generateProgressBar(percentage, 14);
                 
-                footer.append(rankDisplay).append(" §8| §7Nivel §b").append(currentLevel)
-                      .append(" §8(").append(String.format("%.0f", percentage)).append("%§8)");
-                footer.append("\n").append(progressBar);
-                footer.append(" §7").append(currentXP).append("§8/§f").append(xpNeeded);
+                footer.append("§8§l┃ ").append(rankDisplay).append(" §8│ §7Nivel §b§l").append(currentLevel).append(" §8§l┃\n");
+                footer.append("§8§l┃ ").append(progressBar).append(" §8§l┃\n");
+                footer.append("§8§l┃ §7Nivel §a").append(currentLevel).append("§8/§f").append(nextLevelRequired)
+                      .append(" §8(").append(String.format("%.0f", percentage)).append("%§8) §8§l┃\n");
             } else {
-                footer.append(rankDisplay).append(" §8| §6★ MÁXIMO");
-                footer.append("\n§7Nivel: §6§l").append(currentLevel);
+                footer.append("§8§l┃ ").append(rankDisplay).append(" §8│ §6§l✦ MÁXIMO ✦ §8§l┃\n");
+                footer.append("§8§l┃ §7Nivel: §6§l").append(currentLevel).append(" §8§l┃\n");
             }
         } else {
-            footer.append(rankDisplay);
+            footer.append("§8§l┃ ").append(rankDisplay);
             if (!rankService.isMaxRank(player)) {
-                int xp = rankService.getXP(player);
+                int currentLevel = rankService.getRank(player).getLevelRequired();
                 int nextThreshold = rankService.getNextRankThreshold(player);
-                footer.append("\n§7XP: §a").append(xp).append("§7/§f").append(nextThreshold);
+                footer.append(" §8§l┃\n");
+                footer.append("§8§l┃ §7Nivel: §a").append(currentLevel).append("§8/§f").append(nextThreshold).append(" §8§l┃\n");
             } else {
-                footer.append(" §8| §6★ MÁXIMO");
+                footer.append(" §8│ §6§l✦ MÁXIMO ✦ §8§l┃\n");
             }
         }
         
-        footer.append("\n");
+        footer.append("§8§l┗━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n");
         
         player.sendPlayerListHeaderAndFooter(Component.text(header.toString()), Component.text(footer.toString()));
         
@@ -210,25 +219,24 @@ public class TablistManager {
             content.append("DT:").append(calculateCooldownFromStateYml()).append("|");
         }
         
-        // [FIX] Usar nivel y XP en lugar de PS en caché
+        // [FIX] Usar nivel en lugar de PS/XP en caché
         if (plugin.getExperienceService() != null) {
             int currentLevel = plugin.getExperienceService().getLevel(player);
-            int currentXP = plugin.getExperienceService().getXP(player);
             
-            content.append("LVL:").append(currentLevel).append("|XP:").append(currentXP);
+            content.append("LVL:").append(currentLevel);
             
             if (!rankService.isMaxRank(player)) {
-                int xpNeeded = plugin.getExperienceService().getXPForNextLevel(player);
-                content.append("/").append(xpNeeded);
+                int nextLevelRequired = rankService.getNextRankThreshold(player);
+                content.append("/").append(nextLevelRequired);
             } else {
                 content.append("|MAX");
             }
         } else {
             // Fallback
             if (!rankService.isMaxRank(player)) {
-                int xp = rankService.getXP(player);
+                int currentLevel = rankService.getRank(player).getLevelRequired();
                 int nextThreshold = rankService.getNextRankThreshold(player);
-                content.append(xp).append("/").append(nextThreshold);
+                content.append("LVL:").append(currentLevel).append("/").append(nextThreshold);
             } else {
                 content.append("MAX");
             }
@@ -257,6 +265,7 @@ public class TablistManager {
      * [FIX] Aplica el prefijo de rango en TAB visible para TODOS
      * Se llama en join, rankUp y reload
      * [MEJORA] Ordena jugadores por rango usando prefijos numéricos
+     * [NUEVO] Muestra contador de muertes diarias después del nombre
      */
     public void applyTabPrefix(Player p) {
         // 1) Obtener rango y textos desde rangos.yml
@@ -264,15 +273,20 @@ public class TablistManager {
         String rawPrefix = rankService.getTabPrefix(p);
         String prefix = sanitize(rawPrefix);
 
-        // 2) Componer PlayerListName (TAB) - esto lo ven TODOS
+        // 2) Obtener muertes diarias
+        int deaths = deathTracker.getDeaths(p.getUniqueId());
+        String deathSuffix = deaths > 0 ? " §8[§c☠ §f" + deaths + "§8]" : "";
+
+        // 3) Componer PlayerListName (TAB) - esto lo ven TODOS
         // IMPORTANTE: usa el nombre real, no displayname
         String finalTab = (prefix == null || prefix.isEmpty()) ? p.getName() : prefix + p.getName();
+        finalTab += deathSuffix;
         
         // [1.21+] Usar Component API con deserialización de códigos legacy
         Component tabComponent = LegacyComponentSerializer.legacyAmpersand().deserialize(finalTab);
         p.playerListName(tabComponent);
 
-        // 3) Teams para ordenar en TAB y etiqueta sobre la cabeza
+        // 4) Teams para ordenar en TAB y etiqueta sobre la cabeza
         // [MEJORA] Usar prefijos numéricos para ordenar: 1=LEYENDA, 2=VETERANO, ..., 5=NOVATO
         String teamName = getRankedTeamName(rank);
         org.bukkit.scoreboard.Scoreboard board = getPluginMainBoard();

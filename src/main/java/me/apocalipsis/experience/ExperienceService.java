@@ -7,12 +7,14 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitTask;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Servicio de experiencia y niveles independiente del sistema de misiones.
@@ -33,11 +35,17 @@ public class ExperienceService {
     // Cooldowns para evitar spam
     private final Map<UUID, Map<String, Long>> cooldowns = new HashMap<>();
     
+    // [OPTIMIZACIÓN v1.22.68] Sistema de auto-save periódico en lugar de save por cada XP
+    private final AtomicBoolean hasUnsavedChanges = new AtomicBoolean(false);
+    private BukkitTask autoSaveTask;
+    private static final long AUTOSAVE_INTERVAL = 20L * 60 * 5; // Cada 5 minutos
+    
     public ExperienceService(Apocalipsis plugin) {
         this.plugin = plugin;
         this.dataFile = new File(plugin.getDataFolder(), "experience_data.yml");
         loadConfig();
         loadData();
+        startAutoSave();
     }
     
     /**
@@ -85,19 +93,64 @@ public class ExperienceService {
      * Guarda los datos de experiencia
      */
     public void saveData() {
+        saveData(false); // Por defecto async
+    }
+    
+    /**
+     * [MEJORADO v1.22.68] Guarda datos de experiencia con opción async
+     * @param forceSync Si true, fuerza guardado síncrono (para shutdown)
+     */
+    public void saveData(boolean forceSync) {
+        if (!hasUnsavedChanges.get() && !forceSync) {
+            return; // No hay cambios pendientes
+        }
+        
+        // Preparar datos a guardar
         FileConfiguration config = new YamlConfiguration();
-        
-        for (Map.Entry<UUID, PlayerExperienceData> entry : playerData.entrySet()) {
-            String path = "players." + entry.getKey().toString();
-            config.set(path + ".xp", entry.getValue().getXp());
-            config.set(path + ".nivel", entry.getValue().getNivel());
+        synchronized (playerData) {
+            for (Map.Entry<UUID, PlayerExperienceData> entry : playerData.entrySet()) {
+                String path = "players." + entry.getKey().toString();
+                config.set(path + ".xp", entry.getValue().getXp());
+                config.set(path + ".nivel", entry.getValue().getNivel());
+            }
         }
         
-        try {
-            config.save(dataFile);
-        } catch (IOException e) {
-            plugin.getLogger().severe("[XP] Error guardando experience_data.yml: " + e.getMessage());
+        // Ejecutar save (async o sync)
+        Runnable saveTask = () -> {
+            try {
+                config.save(dataFile);
+                hasUnsavedChanges.set(false);
+            } catch (IOException e) {
+                plugin.getLogger().severe("[XP] Error guardando experience_data.yml: " + e.getMessage());
+            }
+        };
+        
+        if (forceSync) {
+            saveTask.run(); // Sync para shutdown
+        } else {
+            Bukkit.getScheduler().runTaskAsynchronously(plugin, saveTask);
         }
+    }
+    
+    /**
+     * [NUEVO v1.22.68] Inicia el auto-save periódico
+     */
+    private void startAutoSave() {
+        autoSaveTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            if (hasUnsavedChanges.get()) {
+                saveData(false); // Async save
+            }
+        }, AUTOSAVE_INTERVAL, AUTOSAVE_INTERVAL);
+    }
+    
+    /**
+     * [NUEVO v1.22.68] Detiene el auto-save y guarda cambios pendientes
+     */
+    public void shutdown() {
+        if (autoSaveTask != null) {
+            autoSaveTask.cancel();
+        }
+        saveData(true); // Sync save al apagar
     }
     
     /**
@@ -207,7 +260,8 @@ public class ExperienceService {
             player.sendMessage("§7Nuevo nivel: §bNivel " + newLevel + " §8(§e" + xp + " XP§8)");
         }
         
-        saveData();
+        // [OPTIMIZACIÓN v1.22.68] Marcar como modificado en lugar de save inmediato
+        hasUnsavedChanges.set(true);
     }
     
     /**
@@ -222,7 +276,8 @@ public class ExperienceService {
         }
         
         data.setNivel(Math.max(1, level));
-        saveData();
+        // [OPTIMIZACIÓN v1.22.68] Marcar como modificado
+        hasUnsavedChanges.set(true);
     }
     
     /**
@@ -247,7 +302,8 @@ public class ExperienceService {
             plugin.getMissionService().setPS(uuid, data.getXp());
         }
         
-        saveData();
+        // [OPTIMIZACIÓN v1.22.68] Marcar como modificado
+        hasUnsavedChanges.set(true);
         return true;
     }
     
@@ -329,16 +385,16 @@ public class ExperienceService {
             player.sendActionBar(net.kyori.adventure.text.Component.text("§a+" + xp + " XP §7(" + source + ")"));
         }
         
-        // Guardar datos
-        saveData();
+        // [OPTIMIZACIÓN v1.22.68] Marcar como modificado
+        hasUnsavedChanges.set(true);
         
         return leveledUp;
     }
     
     /**
-     * Calcula el nivel basado en XP total
+     * Calcula el nivel basado en XP total (público para sistema de rangos)
      */
-    private int calculateLevel(int totalXP) {
+    public int calculateLevel(int totalXP) {
         int nivel = 1;
         int xpNeeded = 0;
         
@@ -625,7 +681,7 @@ public class ExperienceService {
     public void resetPlayer(UUID uuid) {
         playerData.remove(uuid);
         cooldowns.remove(uuid);
-        saveData();
+        hasUnsavedChanges.set(true);
     }
     
     /**

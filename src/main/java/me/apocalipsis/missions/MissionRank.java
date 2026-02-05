@@ -12,7 +12,8 @@ public enum MissionRank {
 
     // [RANGOS.YML] Datos configurables (se cargan desde rangos.yml)
     private String displayName;
-    private int xpRequired;  // Umbral acumulado desde rangos.yml
+    private int xpRequired;  // Umbral acumulado desde rangos.yml (deprecado, usar levelRequired)
+    private int levelRequired; // NUEVO: Nivel requerido para el rango (más fácil de controlar)
     private int misionesDiarias;
     private String tabPrefix;
     private String tabSuffix;
@@ -21,15 +22,17 @@ public enum MissionRank {
     
     // Valores por defecto hardcodeados (fallback si rangos.yml falla)
     private static final int[] DEFAULT_XP_REQUIRED = {0, 980, 3780, 8330, 14630, 22680, 32480, 44030};
+    private static final int[] DEFAULT_LEVEL_REQUIRED = {1, 5, 10, 15, 20, 25, 30, 35}; // NUEVO: Niveles requeridos
     private static final int[] DEFAULT_MISIONES_DIARIAS = {10, 8, 6, 5, 4, 3, 3, 2};
 
     /**
      * Configura los datos de este rango desde rangos.yml
      */
-    public void configure(String displayName, int xpRequired, int misionesDiarias, 
+    public void configure(String displayName, int xpRequired, int levelRequired, int misionesDiarias, 
                          String tabPrefix, String tabSuffix, String chatPrefix, String scoreboardColor) {
         this.displayName = displayName;
-        this.xpRequired = xpRequired;
+        this.xpRequired = xpRequired; // Mantenido por compatibilidad
+        this.levelRequired = levelRequired;
         this.misionesDiarias = misionesDiarias;
         this.tabPrefix = tabPrefix;
         this.tabSuffix = tabSuffix;
@@ -44,6 +47,7 @@ public enum MissionRank {
         int ord = this.ordinal();
         this.displayName = "§f" + this.name();
         this.xpRequired = DEFAULT_XP_REQUIRED[ord];
+        this.levelRequired = DEFAULT_LEVEL_REQUIRED[ord];
         this.misionesDiarias = DEFAULT_MISIONES_DIARIAS[ord];
         this.tabPrefix = "";
         this.tabSuffix = "";
@@ -58,6 +62,13 @@ public enum MissionRank {
 
     public int getXpRequired() {
         return xpRequired;
+    }
+    
+    /**
+     * Obtiene el nivel requerido para este rango (NUEVO SISTEMA - MÁS FÁCIL DE CONTROLAR)
+     */
+    public int getLevelRequired() {
+        return levelRequired;
     }
 
     public int getMisionesDiarias() {
@@ -100,18 +111,20 @@ public enum MissionRank {
     }
     
     /**
-     * Determina el rango según el nivel de XP del jugador
-     * Mapeo aproximado: cada 5 niveles = 1 rango
+     * Determina el rango según el nivel del jugador (MÉTODO PRINCIPAL)
+     * Compara con levelRequired configurado en rangos.yml
      */
     public static MissionRank fromLevel(int level) {
-        if (level < 5) return NOVATO;           // Nivel 1-4
-        if (level < 10) return EXPLORADOR;      // Nivel 5-9
-        if (level < 15) return SOBREVIVIENTE;   // Nivel 10-14
-        if (level < 20) return VETERANO;        // Nivel 15-19
-        if (level < 25) return LEYENDA;         // Nivel 20-24
-        if (level < 30) return MAESTRO;         // Nivel 25-29
-        if (level < 35) return TITAN;           // Nivel 30-34
-        return ABSOLUTO;                        // Nivel 35+
+        MissionRank result = NOVATO;
+        for (MissionRank rank : values()) {
+            // Solo asignar el rango si el nivel es MAYOR O IGUAL al requerido
+            if (level >= rank.getLevelRequired()) {
+                result = rank;
+            } else {
+                break;
+            }
+        }
+        return result;
     }
 
     /**

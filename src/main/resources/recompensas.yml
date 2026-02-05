@@ -58,47 +58,47 @@ recompensas_diarias_completas:
     NOVATO:
       comandos:
         - "give %player% minecraft:iron_ingot 5"
-      mensaje: "&7[Bonus Perdido] &7+5 Lingotes de Hierro"
+      mensaje: "&7[Bonus &7Perdido&7] &7+5 Lingotes de Hierro"
       
     EXPLORADOR:
       comandos:
         - "give %player% minecraft:iron_ingot 8"
         - "give %player% minecraft:ender_pearl 2"
-      mensaje: "&a[Bonus Despertar] &7+8 Hierro, +2 Perlas de Ender"
+      mensaje: "&a[Bonus &aDespertar&7] &7+8 Hierro, +2 Perlas de Ender"
       
     SOBREVIVIENTE:
       comandos:
         - "give %player% minecraft:diamond 2"
         - "give %player% minecraft:ender_pearl 4"
-      mensaje: "&b[Bonus Resistente] &7+2 Diamantes, +4 Perlas de Ender"
+      mensaje: "&b[Bonus &bResistente&7] &7+2 Diamantes, +4 Perlas de Ender"
       
     VETERANO:
       comandos:
         - "give %player% minecraft:diamond 3"
         - "give %player% minecraft:netherite_scrap 1"
         - "give %player% minecraft:ender_pearl 6"
-      mensaje: "&e[Bonus Perseverante] &7+3 Diamantes, +1 Netherite Scrap, +6 Perlas"
+      mensaje: "&e[Bonus &ePerseverante&7] &7+3 Diamantes, +1 Netherite Scrap, +6 Perlas"
       
     LEYENDA:
       comandos:
         - "give %player% minecraft:diamond 5"
         - "give %player% minecraft:netherite_scrap 2"
         - "give %player% minecraft:enchanted_golden_apple 1"
-      mensaje: "&6[Bonus Ascendido] &7+5 Diamantes, +2 Scrap, +1 Manzana Encantada"
+      mensaje: "&6[Bonus &6&lAscendido&7] &7+5 Diamantes, +2 Scrap, +1 Manzana Encantada"
       
     MAESTRO:
       comandos:
         - "give %player% minecraft:netherite_ingot 1"
         - "give %player% minecraft:enchanted_golden_apple 2"
         - "give %player% minecraft:totem_of_undying 1"
-      mensaje: "&d[Bonus Iluminado] &7+1 Netherite, +2 Manzanas Encantadas, +1 Tótem"
+      mensaje: "&d[Bonus &d&lIluminado&7] &7+1 Netherite, +2 Manzanas Encantadas, +1 Tótem"
       
     TITAN:
       comandos:
         - "give %player% minecraft:netherite_ingot 2"
         - "give %player% minecraft:enchanted_golden_apple 3"
         - "give %player% minecraft:nether_star 1"
-      mensaje: "&5[Bonus Trascendente] &7+2 Netherite, +3 Manzanas Encantadas, +1 Estrella"
+      mensaje: "&5[Bonus &5&lTrascendente&7] &7+2 Netherite, +3 Manzanas Encantadas, +1 Estrella"
       
     ABSOLUTO:
       comandos:
@@ -106,7 +106,7 @@ recompensas_diarias_completas:
         - "give %player% minecraft:enchanted_golden_apple 5"
         - "give %player% minecraft:nether_star 2"
         - "give %player% minecraft:elytra 1"
-      mensaje: "&c&l[Bonus Eterno] &7+3 Netherite, +5 Manzanas Enc., +2 Estrellas, +1 Élitro"
+      mensaje: "&c&l[Bonus &c&lEterno&7] &7+3 Netherite, +5 Manzanas Enc., +2 Estrellas, +1 Élitro"
   
   # Mensaje de celebración
   titulo: "&6&l¡COMPLETADO!"
@@ -204,7 +204,7 @@ xp_dinamico:
       rangos:
         EXPLORADOR:
           titulo: "§a§l¡Despertar Alcanzado!"
-          descripcion: "§e%jugador% §7ha DESPERTADO"
+          descripcion: "§e%jugador% §7ha alcanzado el rango §aDespertar"
           xp: 500
           comandos:
             - "give %player% minecraft:diamond 5"
@@ -212,7 +212,7 @@ xp_dinamico:
         
         SOBREVIVIENTE:
           titulo: "§b§l¡Resistente Alcanzado!"
-          descripcion: "§e%jugador% §7se volvió RESISTENTE"
+          descripcion: "§e%jugador% §7ha alcanzado el rango §bResistente"
           xp: 800
           comandos:
             - "give %player% minecraft:diamond 8"
@@ -221,7 +221,7 @@ xp_dinamico:
         
         VETERANO:
           titulo: "§e§l¡Perseverante Alcanzado!"
-          descripcion: "§e%jugador% §7es PERSEVERANTE"
+          descripcion: "§e%jugador% §7ha alcanzado el rango §ePerseverante"
           xp: 1200
           comandos:
             - "give %player% minecraft:netherite_ingot 1"
@@ -230,7 +230,7 @@ xp_dinamico:
         
         LEYENDA:
           titulo: "§6§l¡Ascendido Alcanzado!"
-          descripcion: "§e%jugador% §7ha ASCENDIDO"
+          descripcion: "§e%jugador% §7ha alcanzado el rango §6&lAscendido"
           xp: 2000
           comandos:
             - "give %player% minecraft:netherite_ingot 2"
@@ -239,7 +239,7 @@ xp_dinamico:
         
         MAESTRO:
           titulo: "§d§l¡Iluminado Alcanzado!"
-          descripcion: "§e%jugador% §7es ILUMINADO"
+          descripcion: "§e%jugador% §7ha alcanzado el rango §d&lIluminado"
           xp: 3000
           comandos:
             - "give %player% minecraft:netherite_ingot 3"
@@ -248,7 +248,7 @@ xp_dinamico:
         
         TITAN:
           titulo: "§5§l¡Trascendente Alcanzado!"
-          descripcion: "§e%jugador% §7ha TRASCENDIDO"
+          descripcion: "§e%jugador% §7ha alcanzado el rango §5&lTrascendente"
           xp: 5000
           comandos:
             - "give %player% minecraft:netherite_ingot 5"
@@ -257,7 +257,7 @@ xp_dinamico:
         
         ABSOLUTO:
           titulo: "§c§l¡ETERNO ALCANZADO!"
-          descripcion: "§e%jugador% §7es §c§lETERNO"
+          descripcion: "§e%jugador% §7ha alcanzado el rango §c&l&kI&c&l Eterno &c&l&kI"
           xp: 10000
           comandos:
             - "give %player% minecraft:netherite_block 1"
@@ -892,214 +892,153 @@ recompensas_por_rango:
     mensaje: "&c&l¡ERES ETERNO! &r&7El tiempo no tiene poder sobre ti. Has alcanzado la cima absoluta del poder."
 
 # ═══════════════════════════════════════════════════════════════
-# HABILIDADES PASIVAS POR RANGO (REDISEÑADAS - MÁS BALANCEADAS)
+# HABILIDADES PASIVAS POR RANGO (REBALANCEADAS v1.22.64)
 # Las habilidades se activan automáticamente al tener el rango
 # Sistema progresivo: Cada rango añade nuevos efectos sin quitar los anteriores
+# 
+# ═══════════════════════════════════════════════════════════════
+# FILOSOFÍA DEL REBALANCEO:
+# ═══════════════════════════════════════════════════════════════
+# ❌ REMOVIDAS (muy OP o en skill tree):
+#    - Night Vision: COMPRABLE en árbol (rama Exploración, 400 XP)
+#    - Dolphin's Grace: COMPRABLE como NADADOR (rama Supervivencia)
+#    - Saturation: Demasiado OP (elimina mecánica de hambre)
+#    - Hero of Village: Muy situacional (poco útil)
+#
+# ✅ AÑADIDAS (más útiles y balanceadas):
+#    - Water Breathing: Exploración acuática ilimitada
+#    - Speed: Movilidad general mejorada
+#    - Fire Resistance: Seguridad en Nether
+#
+# 🎯 PROGRESIÓN BALANCEADA:
+#    NOVATO      → Sin habilidades (inicio limpio)
+#    EXPLORADOR  → Luck I (mejor loot)
+#    SOBREVIVIENTE → +Water Breathing (océanos/minas inundadas)
+#    VETERANO    → +Speed I (movilidad básica)
+#    LEYENDA     → Luck II, +Fire Resistance (Nether seguro)
+#    MAESTRO     → +Resistance I (defensa física)
+#    TITAN       → Speed II, +Strength I (combate mejorado)
+#    ABSOLUTO    → Luck III, Resistance II, +Absorption I (tope)
 # ═══════════════════════════════════════════════════════════════
 
 habilidades_por_rango:
   # Perdido (Novato) - El inicio del viaje
   NOVATO:
-    habilidades:
-      - type: "NIGHT_VISION"
-        level: 1
-        descripcion: "&7Visión Nocturna &8(El primer don)"
+    habilidades: []
+      # Sin habilidades automáticas - los jugadores empiezan limpios
+      # Deben comprar habilidades con XP en el árbol de skills
     
   # Despertar (Explorador) - Primeros pasos hacia el poder
   EXPLORADOR:
     habilidades:
-      - type: "NIGHT_VISION"
+      - type: "LUCK"
         level: 1
-        descripcion: "&7Visión Nocturna"
-      - type: "SPEED"
-        level: 1
-        descripcion: "&aVelocidad I &7(El despertar te hace ágil)"
+        descripcion: "&aSuerte I &7(Mejor loot de cofres y mobs)"
     
-  # Resistente (Sobreviviente) - La fortaleza crece
+  # Resistente (Sobreviviente) - Exploración acuática
   SOBREVIVIENTE:
     habilidades:
-      - type: "NIGHT_VISION"
+      - type: "LUCK"
         level: 1
-        descripcion: "&7Visión Nocturna"
-      - type: "SPEED"
-        level: 1
-        descripcion: "&aVelocidad I"
-      - type: "SATURATION"
-        level: 1
-        descripcion: "&bSaciedad &7(Resistencia mejorada)"
+        descripcion: "&aSuerte I"
       - type: "WATER_BREATHING"
         level: 1
-        descripcion: "&9Respiración Acuática &7(Dominas el agua)"
+        descripcion: "&bRespiración Acuática &7(Explora océanos sin límite)"
     
-  # Perseverante (Veterano) - La determinación se manifiesta
+  # Perseverante (Veterano) - Movilidad mejorada
   VETERANO:
     habilidades:
-      - type: "NIGHT_VISION"
+      - type: "LUCK"
         level: 1
-        descripcion: "&7Visión Nocturna"
-      - type: "SPEED"
-        level: 1
-        descripcion: "&aVelocidad I"
-      - type: "SATURATION"
-        level: 1
-        descripcion: "&bSaciedad"
+        descripcion: "&aSuerte I"
       - type: "WATER_BREATHING"
         level: 1
-        descripcion: "&9Respiración Acuática"
-      - type: "REGENERATION"
+        descripcion: "&bRespiración Acuática"
+      - type: "SPEED"
         level: 1
-        descripcion: "&eRegeneración I &7(Tu cuerpo se recupera)"
-      - type: "HASTE"
-        level: 1
-        descripcion: "&7Prisa I &7(Trabajas más rápido)"
+        descripcion: "&eVelocidad I &7(Te mueves más rápido)"
     
-  # Ascendido (Leyenda) - El poder emerge
+  # Ascendido (Leyenda) - Protección elemental
   LEYENDA:
     habilidades:
-      - type: "NIGHT_VISION"
-        level: 1
-        descripcion: "&7Visión Nocturna"
-      - type: "SPEED"
+      - type: "LUCK"
         level: 2
-        descripcion: "&aVelocidad II &6(Upgrade!)"
-      - type: "SATURATION"
-        level: 1
-        descripcion: "&bSaciedad"
+        descripcion: "&aSuerte II &6(¡Upgrade! Mejor loot)"
       - type: "WATER_BREATHING"
         level: 1
-        descripcion: "&9Respiración Acuática"
-      - type: "REGENERATION"
+        descripcion: "&bRespiración Acuática"
+      - type: "SPEED"
         level: 1
-        descripcion: "&eRegeneración I"
-      - type: "HASTE"
+        descripcion: "&eVelocidad I"
+      - type: "FIRE_RESISTANCE"
         level: 1
-        descripcion: "&7Prisa I"
-      - type: "RESISTANCE"
-        level: 1
-        descripcion: "&6Resistencia I &7(Tu piel se endurece)"
-      - type: "HEALTH_BOOST"
-        level: 2
-        descripcion: "&4Vida Extra (+4 ❤) &7(Poder vital)"
+        descripcion: "&cResistencia al Fuego &7(El Nether es más seguro)"
     
-  # Iluminado (Maestro) - La mente se expande
+  # Iluminado (Maestro) - Defensa mejorada
   MAESTRO:
     habilidades:
-      - type: "NIGHT_VISION"
-        level: 1
-        descripcion: "&7Visión Nocturna"
-      - type: "SPEED"
+      - type: "LUCK"
         level: 2
-        descripcion: "&aVelocidad II"
-      - type: "SATURATION"
-        level: 1
-        descripcion: "&bSaciedad"
+        descripcion: "&aSuerte II"
       - type: "WATER_BREATHING"
         level: 1
-        descripcion: "&9Respiración Acuática"
-      - type: "REGENERATION"
+        descripcion: "&bRespiración Acuática"
+      - type: "SPEED"
+        level: 1
+        descripcion: "&eVelocidad I"
+      - type: "FIRE_RESISTANCE"
+        level: 1
+        descripcion: "&cResistencia al Fuego"
+      - type: "RESISTANCE"
+        level: 1
+        descripcion: "&6Resistencia I &7(Reduces el daño recibido)"
+    
+  # Trascendente (Titan) - Guerrero poderoso
+  TITAN:
+    habilidades:
+      - type: "LUCK"
         level: 2
-        descripcion: "&eRegeneración II &6(Upgrade!)"
-      - type: "HASTE"
+        descripcion: "&aSuerte II"
+      - type: "WATER_BREATHING"
+        level: 1
+        descripcion: "&bRespiración Acuática"
+      - type: "SPEED"
         level: 2
-        descripcion: "&7Prisa II &6(Upgrade!)"
+        descripcion: "&eVelocidad II &6(¡Upgrade! Movilidad superior)"
+      - type: "FIRE_RESISTANCE"
+        level: 1
+        descripcion: "&cResistencia al Fuego"
       - type: "RESISTANCE"
         level: 1
         descripcion: "&6Resistencia I"
-      - type: "HEALTH_BOOST"
-        level: 5
-        descripcion: "&4Vida Extra (+10 ❤) &6(Upgrade!)"
       - type: "STRENGTH"
         level: 1
-        descripcion: "&cFuerza I &7(El poder físico se manifiesta)"
-      - type: "LUCK"
-        level: 1
-        descripcion: "&aSuerte I &7(La fortuna te sonríe)"
-    
-  # Trascendente (Titan) - Más allá de lo mortal
-  TITAN:
-    habilidades:
-      - type: "NIGHT_VISION"
-        level: 1
-        descripcion: "&7Visión Nocturna"
-      - type: "SPEED"
-        level: 2
-        descripcion: "&aVelocidad II"
-      - type: "SATURATION"
-        level: 1
-        descripcion: "&bSaciedad"
-      - type: "WATER_BREATHING"
-        level: 1
-        descripcion: "&9Respiración Acuática"
-      - type: "REGENERATION"
-        level: 2
-        descripcion: "&eRegeneración II"
-      - type: "HASTE"
-        level: 2
-        descripcion: "&7Prisa II"
-      - type: "RESISTANCE"
-        level: 2
-        descripcion: "&6Resistencia II &6(Upgrade!)"
-      - type: "HEALTH_BOOST"
-        level: 8
-        descripcion: "&4Vida Extra (+16 ❤) &6(Upgrade!)"
-      - type: "STRENGTH"
-        level: 1
-        descripcion: "&cFuerza I"
-      - type: "LUCK"
-        level: 2
-        descripcion: "&aSuerte II &6(Upgrade!)"
-      - type: "FIRE_RESISTANCE"
-        level: 1
-        descripcion: "&cResistencia al Fuego &7(Inmune a las llamas)"
-      - type: "JUMP_BOOST"
-        level: 1
-        descripcion: "&bSalto Mejorado &7(Superas obstáculos)"
+        descripcion: "&4Fuerza I &7(Golpeas más fuerte en combate)"
     
   # Eterno (Absoluto) - El poder definitivo (pero balanceado)
   ABSOLUTO:
     habilidades:
-      - type: "NIGHT_VISION"
-        level: 1
-        descripcion: "&7Visión Nocturna"
-      - type: "SPEED"
-        level: 3
-        descripcion: "&aVelocidad III &c(¡MÁXIMO!)"
-      - type: "SATURATION"
-        level: 1
-        descripcion: "&bSaciedad"
-      - type: "WATER_BREATHING"
-        level: 1
-        descripcion: "&9Respiración Acuática"
-      - type: "REGENERATION"
-        level: 3
-        descripcion: "&eRegeneración III &6(Upgrade!)"
-      - type: "HASTE"
-        level: 2
-        descripcion: "&7Prisa II"
-      - type: "RESISTANCE"
-        level: 2
-        descripcion: "&6Resistencia II"
-      - type: "HEALTH_BOOST"
-        level: 10
-        descripcion: "&4Vida Extra (+20 ❤) &c(¡MÁXIMO!)"
-      - type: "STRENGTH"
-        level: 2
-        descripcion: "&cFuerza II &6(Upgrade!)"
       - type: "LUCK"
         level: 3
-        descripcion: "&aSuerte III &c(¡MÁXIMO!)"
+        descripcion: "&aSuerte III &c(¡MÁXIMO! El mejor loot posible)"
+      - type: "WATER_BREATHING"
+        level: 1
+        descripcion: "&bRespiración Acuática"
+      - type: "SPEED"
+        level: 2
+        descripcion: "&eVelocidad II"
       - type: "FIRE_RESISTANCE"
         level: 1
         descripcion: "&cResistencia al Fuego"
-      - type: "JUMP_BOOST"
+      - type: "RESISTANCE"
         level: 2
-        descripcion: "&bSalto Mejorado II &6(Upgrade!)"
-      - type: "ABSORPTION"
-        level: 2
-        descripcion: "&6Absorción II &7(Escudo dorado permanente)"
-      - type: "CONDUIT_POWER"
+        descripcion: "&6Resistencia II &6(¡Upgrade! Defensa superior)"
+      - type: "STRENGTH"
         level: 1
-        descripcion: "&bPoder del Conducto &7(Dominio total bajo agua)"
+        descripcion: "&4Fuerza I"
+      - type: "ABSORPTION"
+        level: 1
+        descripcion: "&6Absorción I &7(Corazones dorados de protección)"
 
 # Configuración de aplicación de habilidades
 habilidades_config:

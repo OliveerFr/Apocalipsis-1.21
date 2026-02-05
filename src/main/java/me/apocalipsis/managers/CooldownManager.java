@@ -118,6 +118,8 @@ public class CooldownManager {
                 return config.getLong("cooldowns.crear_ciclo", 300) * 1000;
             case RANDOM_TP:
                 return config.getLong("cooldowns.random_tp", 300) * 1000; // 5 minutos por defecto
+            case END_ESCAPE:
+                return config.getLong("cooldowns.end_escape", 30) * 1000; // 30 segundos por defecto
             default:
                 return 0;
         }
@@ -150,6 +152,7 @@ public class CooldownManager {
     public enum CooldownType {
         CAMBIO_MUNDO,    // Cambiar de mundo/ciclo
         CREAR_CICLO,     // Crear nuevo ciclo
-        RANDOM_TP        // Random Teleport (/rtp)
+        RANDOM_TP,       // Random Teleport (/rtp)
+        END_ESCAPE       // Escapar del End (/avo volver)
     }
 }

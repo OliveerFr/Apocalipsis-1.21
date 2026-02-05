@@ -3,7 +3,6 @@ package me.apocalipsis.skills;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.HashSet;
 
 import org.bukkit.Material;
 
@@ -67,15 +66,15 @@ public enum Skill {
         SkillBranch.UTILIDAD, SkillTier.TIER_1, SkillRarity.COMUN, 
         450, Material.IRON_PICKAXE, true, new String[]{}),
     
-    ESTOMAGO_HIERRO("estomago_hierro", "Estómago de Hierro", 
-        "Hambre baja 20% más lento", 
+    ORGANIZADOR("organizador", "Organizador", 
+        "Mantiene el inventario ordenado automáticamente", 
         SkillBranch.UTILIDAD, SkillTier.TIER_1, SkillRarity.COMUN, 
-        350, Material.COOKED_BEEF, false, new String[]{}),
+        350, Material.CHEST_MINECART, true, new String[]{}),
     
     LENADOR_NATO("lenador_nato", "Leñador Nato",
-        "Rompe árboles completos (cooldown 5s)",
+        "Rompe árboles completos - ¡SIN COOLDOWN!",
         SkillBranch.UTILIDAD, SkillTier.TIER_1, SkillRarity.RARO,
-        600, Material.DIAMOND_AXE, true, new String[]{}),
+        500, Material.DIAMOND_AXE, true, new String[]{}),
     
     // Tier 2
     ZANCADAS("zancadas", "Zancadas", 
@@ -88,13 +87,13 @@ public enum Skill {
         SkillBranch.UTILIDAD, SkillTier.TIER_2, SkillRarity.RARO, 
         1600, Material.DIAMOND, false, new String[]{"minero_eficiente"}),
     
-    METABOLISMO_LENTO("metabolismo_lento", "Metabolismo Lento", 
-        "Hambre baja 40% más lento", 
+    REPARACION_NATURAL("reparacion_natural", "Reparación Natural", 
+        "Herramientas se reparan lentamente al no usarlas", 
         SkillBranch.UTILIDAD, SkillTier.TIER_2, SkillRarity.RARO, 
-        1000, Material.GOLDEN_CARROT, false, new String[]{"estomago_hierro"}),
+        1000, Material.ANVIL, false, new String[]{"minero_eficiente"}),
     
     LENADOR_EXPERTO("lenador_experto", "Leñador Experto",
-        "Cooldown reducido a 2s + más bloques",
+        "¡SIN COOLDOWN! + Detecta árboles más complejos",
         SkillBranch.UTILIDAD, SkillTier.TIER_2, SkillRarity.EPICO,
         1800, Material.NETHERITE_AXE, true, new String[]{"lenador_nato"}),
     
@@ -105,14 +104,14 @@ public enum Skill {
         3500, Material.FEATHER, true, new String[]{"zancadas"}),
     
     SEDA_NATURAL("seda_natural", "Toque de Seda Natural", 
-        "5% chance de silk touch sin encantamiento", 
+        "5% chance de obtener bloque intacto al minar", 
         SkillBranch.UTILIDAD, SkillTier.TIER_3, SkillRarity.LEGENDARIO, 
         4500, Material.COBWEB, false, new String[]{"toque_fortuna"}),
     
-    AUTOSUFICIENTE("autosuficiente", "Autosuficiente", 
-        "Regenera 0.5 hambre cada 30s", 
+    MAESTRO_CRAFTEO("maestro_crafteo", "Maestro del Crafteo", 
+        "10% chance de duplicar resultado al craftear", 
         SkillBranch.UTILIDAD, SkillTier.TIER_3, SkillRarity.EPICO, 
-        3000, Material.CAKE, false, new String[]{"metabolismo_lento"}),
+        3200, Material.CRAFTING_TABLE, false, new String[]{"reparacion_natural"}),
     
     LENADOR_MAESTRO("lenador_maestro", "Leñador Maestro",
         "¡SIN COOLDOWN! + Auto-replant + XP bonus",
@@ -124,17 +123,17 @@ public enum Skill {
     PIEL_GRUESA("piel_gruesa", "Piel Gruesa", 
         "+2 corazones permanentes", 
         SkillBranch.SUPERVIVENCIA, SkillTier.TIER_1, SkillRarity.RARO, 
-        600, Material.IRON_CHESTPLATE, false, new String[]{}),
+        550, Material.IRON_CHESTPLATE, false, new String[]{}),
     
     CAIDA_SUAVE("caida_suave", "Caída Suave", 
         "-25% daño por caída", 
         SkillBranch.SUPERVIVENCIA, SkillTier.TIER_1, SkillRarity.COMUN, 
-        400, Material.FEATHER, false, new String[]{}),
+        400, Material.SLIME_BALL, false, new String[]{}),
     
-    RESISTENCIA_FUEGO("resistencia_fuego", "Resistencia al Fuego", 
-        "-20% daño por fuego/lava", 
+    PIES_CALIENTES("pies_calientes", "Pies Calientes", 
+        "Camina sobre lava por 3s sin daño (cooldown 30s)", 
         SkillBranch.SUPERVIVENCIA, SkillTier.TIER_1, SkillRarity.COMUN, 
-        500, Material.BLAZE_POWDER, false, new String[]{}),
+        500, Material.MAGMA_BLOCK, true, new String[]{}),
     
     NADADOR("nadador", "Nadador", 
         "+30% velocidad nadando", 
@@ -152,10 +151,10 @@ public enum Skill {
         SkillBranch.SUPERVIVENCIA, SkillTier.TIER_2, SkillRarity.RARO, 
         1200, Material.PHANTOM_MEMBRANE, false, new String[]{"caida_suave"}),
     
-    IGNIFUGO("ignifugo", "Ignífugo", 
-        "-40% daño fuego + inmune a pisar fuego", 
+    ESCUDO_MAGMA("escudo_magma", "Escudo de Magma", 
+        "Refleja 50% del daño de fuego a tu atacante", 
         SkillBranch.SUPERVIVENCIA, SkillTier.TIER_2, SkillRarity.RARO, 
-        1500, Material.MAGMA_CREAM, false, new String[]{"resistencia_fuego"}),
+        1400, Material.MAGMA_CREAM, true, new String[]{"pies_calientes"}),
     
     BRANQUIAS("branquias", "Branquias", 
         "+60% respiración bajo agua", 
@@ -184,9 +183,9 @@ public enum Skill {
         6000, Material.BLAZE_POWDER, false, new String[]{"regeneracion_pasiva"}),
     
     ANFIBIO("anfibio", "Anfibio", 
-        "Respiración infinita bajo agua", 
+        "Respiración infinita bajo agua (Water Breathing ∞)", 
         SkillBranch.SUPERVIVENCIA, SkillTier.TIER_3, SkillRarity.EPICO, 
-        3000, Material.HEART_OF_THE_SEA, false, new String[]{"branquias"}),
+        3200, Material.HEART_OF_THE_SEA, false, new String[]{"branquias"}),
     
     // ================= COMBATE (12 skills) =================
     // Tier 1
@@ -195,15 +194,15 @@ public enum Skill {
         SkillBranch.COMBATE, SkillTier.TIER_1, SkillRarity.COMUN,
         400, Material.IRON_SWORD, false, new String[]{}),
     
-    REFLEJOS("reflejos", "Reflejos",
-        "+10% velocidad de ataque",
+    CONTRAATAQUE("contraataque", "Contraataque",
+        "10% chance de devolver daño al ser golpeado",
         SkillBranch.COMBATE, SkillTier.TIER_1, SkillRarity.COMUN,
-        450, Material.CLOCK, false, new String[]{}),
+        450, Material.DAMAGED_ANVIL, false, new String[]{}),
     
-    PIEL_ESCAMAS("piel_escamas", "Piel de Escamas",
-        "-5% daño recibido de mobs",
+    ARMADURA_VIVIENTE("armadura_viviente", "Armadura Viviente",
+        "Armadura pierde 25% menos durabilidad",
         SkillBranch.COMBATE, SkillTier.TIER_1, SkillRarity.COMUN,
-        500, Material.TURTLE_HELMET, false, new String[]{}),
+        500, Material.CHAINMAIL_CHESTPLATE, false, new String[]{}),
     
     ARQUERO("arquero", "Arquero",
         "+10% daño con arcos",
@@ -221,10 +220,10 @@ public enum Skill {
         SkillBranch.COMBATE, SkillTier.TIER_2, SkillRarity.EPICO,
         2000, Material.NETHER_STAR, true, new String[]{"golpe_certero"}),
     
-    BLOQUEO_PERFECTO("bloqueo_perfecto", "Bloqueo Perfecto",
-        "Con escudo: -15% daño + knockback al atacante",
+    ESCUDO_TOXICO("escudo_toxico", "Escudo Tóxico",
+        "Al bloquear con escudo, aplica poison al atacante",
         SkillBranch.COMBATE, SkillTier.TIER_2, SkillRarity.RARO,
-        1400, Material.SHIELD, false, new String[]{"piel_escamas"}),
+        1400, Material.SHIELD, false, new String[]{"armadura_viviente"}),
     
     FRANCOTIRADOR("francotirador", "Francotirador",
         "+20% daño con arcos a distancia >15 bloques",
@@ -259,62 +258,62 @@ public enum Skill {
         SkillBranch.EXPLORACION, SkillTier.TIER_1, SkillRarity.COMUN,
         400, Material.GOLDEN_CARROT, true, new String[]{}),
     
-    BRUJULA_INTERNA("brujula_interna", "Brújula Interna",
-        "Muestra coordenadas en el HUD (desactivable si interfiere)",
+    ORIENTACION("orientacion", "Orientación",
+        "Brújula siempre apunta a tu última muerte",
         SkillBranch.EXPLORACION, SkillTier.TIER_1, SkillRarity.COMUN,
-        300, Material.COMPASS, true, new String[]{}),
+        300, Material.RECOVERY_COMPASS, false, new String[]{}),
     
-    RASTRO_ORO("rastro_oro", "Rastro de Oro",
-        "/avo habilidades rastro - Detecta minerales 15 bloques (10s, cd 60s)",
+    DETECTOR_TESOROS("detector_tesoros", "Detector de Tesoros",
+        "+20% items al abrir cofres de estructuras",
         SkillBranch.EXPLORACION, SkillTier.TIER_1, SkillRarity.RARO,
-        700, Material.RAW_GOLD, false, new String[]{}),
+        650, Material.CHEST, false, new String[]{}),
     
-    PISADAS_SILENCIOSAS("pisadas_silenciosas", "Pisadas Silenciosas",
-        "Mobs hostiles te detectan 30% menos",
+    PASO_FANTASMA("paso_fantasma", "Paso Fantasma",
+        "No activas placas de presión ni trampas",
         SkillBranch.EXPLORACION, SkillTier.TIER_1, SkillRarity.COMUN,
-        450, Material.LEATHER_BOOTS, false, new String[]{}),
+        450, Material.STRING, false, new String[]{}),
     
     // Tier 2
-    TELESCOPIO("telescopio", "Telescopio",
-        "Zoom permanente al usar catalejo",
+    VISTA_AGUILA("vista_aguila", "Vista de Águila",
+        "Aumenta distancia de renderizado de mobs +20 bloques",
         SkillBranch.EXPLORACION, SkillTier.TIER_2, SkillRarity.RARO,
-        1000, Material.SPYGLASS, false, new String[]{"vision_nocturna"}),
+        1000, Material.SPYGLASS, true, new String[]{"vision_nocturna"}),
     
-    MAPA_MENTAL("mapa_mental", "Mapa Mental",
-        "Recuerda ubicación de muerte por 10 min",
+    CARTOGRAFO("cartografo", "Cartógrafo",
+        "Los mapas se completan automáticamente al explorar",
         SkillBranch.EXPLORACION, SkillTier.TIER_2, SkillRarity.RARO,
-        1200, Material.FILLED_MAP, false, new String[]{"brujula_interna"}),
+        1200, Material.FILLED_MAP, true, new String[]{"orientacion"}),
     
-    DETECTOR_SPAWNERS("detector_spawners", "Detector de Spawners",
-        "/avo habilidades detector - Detecta spawners 30 bloques (15s, cd 90s)",
+    CAZADOR_DUNGEONS("cazador_dungeons", "Cazador de Dungeons",
+        "+30% XP en dungeons y estructuras",
         SkillBranch.EXPLORACION, SkillTier.TIER_2, SkillRarity.EPICO,
-        2000, Material.SPAWNER, false, new String[]{"rastro_oro"}),
+        2000, Material.SPAWNER, false, new String[]{"detector_tesoros"}),
     
-    SOMBRA("sombra", "Sombra",
-        "Mobs hostiles te ignoran 50% (sneaking)",
+    CAMUFLAJE("camuflaje", "Camuflaje",
+        "Invisibilidad por 5s al agacharse quieto (cd 1 min)",
         SkillBranch.EXPLORACION, SkillTier.TIER_2, SkillRarity.RARO,
-        1500, Material.WITHER_ROSE, false, new String[]{"pisadas_silenciosas"}),
+        1500, Material.POTION, true, new String[]{"paso_fantasma"}),
     
     // Tier 3
     OJO_AGUILA("ojo_aguila", "Ojo de Águila",
         "Marca enemigos cercanos con Glowing (desactivable)",
         SkillBranch.EXPLORACION, SkillTier.TIER_3, SkillRarity.EPICO,
-        3500, Material.ENDER_EYE, true, new String[]{"telescopio"}),
+        3500, Material.ENDER_EYE, true, new String[]{"vista_aguila"}),
     
     WAYPOINT("waypoint", "Waypoint",
         "/waypoint - Teletransporte a ubicación guardada (cooldown 5 min)",
         SkillBranch.EXPLORACION, SkillTier.TIER_3, SkillRarity.LEGENDARIO,
-        5000, Material.LODESTONE, false, new String[]{"mapa_mental"}),
+        5000, Material.LODESTONE, false, new String[]{"cartografo"}),
     
-    XRAY_DIAMANTES("xray_diamantes", "Sentido del Diamante",
-        "/avo habilidades diamantes - Detecta diamantes 12 bloques (8s, cd 120s)",
+    SENTIDO_MINERAL("sentido_mineral", "Sentido Mineral",
+        "Partículas en minerales raros cercanos (15 bloques)",
         SkillBranch.EXPLORACION, SkillTier.TIER_3, SkillRarity.LEGENDARIO,
-        6000, Material.DIAMOND_ORE, false, new String[]{"detector_spawners"}),
+        6000, Material.DIAMOND_ORE, true, new String[]{"cazador_dungeons"}),
     
     FANTASMA("fantasma", "Fantasma",
         "Invisible por 10s al recibir daño crítico (cooldown 2 min)",
         SkillBranch.EXPLORACION, SkillTier.TIER_3, SkillRarity.EPICO,
-        4000, Material.PHANTOM_MEMBRANE, false, new String[]{"sombra"}),
+        4000, Material.PHANTOM_MEMBRANE, false, new String[]{"camuflaje"}),
     
     // ================= INVOCACION (8 skills) =================
     // Tier 1 - Compañeros básicos
@@ -323,10 +322,10 @@ public enum Skill {
         SkillBranch.INVOCACION, SkillTier.TIER_1, SkillRarity.COMUN,
         600, Material.BONE, false, new String[]{}),
     
-    GATO_GUARDIAN("gato_guardian", "Gato Guardián",
-        "Invoca un gato que ahuyenta creepers y phantoms",
+    ZORRO_EXPLORADOR("zorro_explorador", "Zorro Explorador",
+        "Invoca un zorro que encuentra items cercanos",
         SkillBranch.INVOCACION, SkillTier.TIER_1, SkillRarity.COMUN,
-        500, Material.COD, false, new String[]{}),
+        500, Material.SWEET_BERRIES, false, new String[]{}),
     
     // Tier 2 - Compañeros mejorados
     MANADA_LOBOS("manada_lobos", "Manada de Lobos",
@@ -334,15 +333,15 @@ public enum Skill {
         SkillBranch.INVOCACION, SkillTier.TIER_2, SkillRarity.RARO,
         1500, Material.WOLF_ARMOR, false, new String[]{"lobo_companero"}),
     
-    ALLAY_RECOLECTOR("allay_recolector", "Allay Recolector",
-        "Invoca un allay que recoge items cercanos por ti",
+    LORO_MENSAJERO("loro_mensajero", "Loro Mensajero",
+        "Invoca un loro que alerta de enemigos (15 bloques)",
         SkillBranch.INVOCACION, SkillTier.TIER_2, SkillRarity.RARO,
-        1800, Material.AMETHYST_SHARD, false, new String[]{}),
+        1700, Material.PARROT_SPAWN_EGG, false, new String[]{"zorro_explorador"}),
     
     ABEJAS_PROTECTORAS("abejas_protectoras", "Abejas Protectoras",
         "Invoca abejas que atacan a quien te dañe",
         SkillBranch.INVOCACION, SkillTier.TIER_2, SkillRarity.EPICO,
-        2000, Material.HONEYCOMB, true, new String[]{"gato_guardian"}),
+        2000, Material.HONEYCOMB, true, new String[]{"zorro_explorador"}),
     
     // Tier 3 - Compañeros legendarios
     GOLEM_PROTECTOR("golem_protector", "Gólem Protector",
@@ -358,25 +357,25 @@ public enum Skill {
     WARDEN_TEMPORAL("warden_temporal", "Warden Temporal",
         "Invoca un mini-warden aliado por 30s (cd 30 min)",
         SkillBranch.INVOCACION, SkillTier.TIER_3, SkillRarity.LEGENDARIO,
-        8000, Material.SCULK_CATALYST, false, new String[]{"golem_protector", "vex_vengador"}),
+        7500, Material.SCULK_CATALYST, false, new String[]{"golem_protector", "vex_vengador"}),
     
     // ================= SINERGIAS (8 skills) =================
     // Requieren habilidades de múltiples ramas
     // Tier 2 - Sinergias básicas
-    CAZADOR_EXPERTO("cazador_experto", "Cazador Experto",
-        "+25% daño a mobs + doble loot de carne",
+    PESCADOR_MAESTRO("pescador_maestro", "Pescador Maestro",
+        "Pesca 2x más rápido + 20% tesoros raros",
         SkillBranch.SINERGIAS, SkillTier.TIER_2, SkillRarity.RARO,
-        2000, Material.BOW, false, new String[]{"arquero", "detector_spawners"}),
+        2000, Material.FISHING_ROD, false, new String[]{"nadador", "detector_tesoros"}),
     
-    MINERO_GUERRERO("minero_guerrero", "Minero Guerrero",
-        "Pico hace +50% daño a mobs de piedra/mineral",
+    HERRERO_EXPERTO("herrero_experto", "Herrero Experto",
+        "+1 nivel en mesa de encantamientos (máx 31)",
         SkillBranch.SINERGIAS, SkillTier.TIER_2, SkillRarity.RARO,
-        1800, Material.DIAMOND_PICKAXE, false, new String[]{"minero_eficiente", "golpe_certero"}),
+        1800, Material.ENCHANTING_TABLE, false, new String[]{"minero_eficiente", "reparacion_natural"}),
     
-    EXPLORADOR_LIGERO("explorador_ligero", "Explorador Ligero",
-        "+20% velocidad cuando llevas mochila llena",
+    AVENTURERO("aventurero", "Aventurero",
+        "Encuentra estructuras 30% más frecuentemente",
         SkillBranch.SINERGIAS, SkillTier.TIER_2, SkillRarity.RARO,
-        1500, Material.FEATHER, true, new String[]{"bolsillos_profundos", "paso_ligero"}),
+        1600, Material.EXPLORER_POTTERY_SHERD, false, new String[]{"detector_tesoros", "paso_ligero"}),
     
     // Tier 3 - Sinergias avanzadas
     GUERRERO_INMORTAL("guerrero_inmortal", "Guerrero Inmortal",
@@ -392,17 +391,17 @@ public enum Skill {
     DOMADOR_BESTIAS("domador_bestias", "Domador de Bestias",
         "Todos tus compañeros invocados son 2x más fuertes",
         SkillBranch.SINERGIAS, SkillTier.TIER_3, SkillRarity.LEGENDARIO,
-        5500, Material.LEAD, false, new String[]{"lobo_companero", "gato_guardian", "allay_recolector"}),
+        5500, Material.LEAD, false, new String[]{"lobo_companero", "zorro_explorador", "loro_mensajero"}),
     
-    OMNIPRESENTE("omnipresente", "Omnipresente",
-        "Puedes ver a través de paredes por 5s (cd 2 min)",
+    SABIO("sabio", "Sabio",
+        "Ganas +50% XP de todas las fuentes",
         SkillBranch.SINERGIAS, SkillTier.TIER_3, SkillRarity.LEGENDARIO,
-        7000, Material.SPECTRAL_ARROW, false, new String[]{"ojo_aguila", "xray_diamantes", "brujula_interna"}),
+        6500, Material.EXPERIENCE_BOTTLE, false, new String[]{"cazador_dungeons", "toque_fortuna"}),
     
     AVATAR_CAOS("avatar_caos", "Avatar del Caos",
         "Activa TODAS tus habilidades toggleables por 30s (cd 1h)",
         SkillBranch.SINERGIAS, SkillTier.TIER_3, SkillRarity.LEGENDARIO,
-        10000, Material.NETHER_STAR, false, new String[]{"guerrero_inmortal", "domador_bestias", "omnipresente"});
+        10000, Material.NETHER_STAR, false, new String[]{"guerrero_inmortal", "domador_bestias", "sabio"});
     
     // ================= PROPIEDADES =================
     private final String id;
@@ -419,41 +418,8 @@ public enum Skill {
     // ================= HABILIDADES DESHABILITADAS =================
     // IDs de skills que existen pero están desactivadas temporalmente
     // Para reactivar: simplemente quitar el ID de esta lista
-    private static final Set<String> DISABLED_SKILLS = Set.of(
-        // UTILIDAD - Poco útiles o redundantes
-        "estomago_hierro",      // Hambre no es problema real en survival
-        "metabolismo_lento",     // Mejora del anterior, sigue siendo innecesario
-        "autosuficiente",        // Regenera hambre muy lento (0.5 cada 30s)
-        
-        // SUPERVIVENCIA - Muy situacionales
-        "resistencia_fuego",     // Solo útil en Nether, muy específico
-        "ignifugo",              // Mejora del anterior, sigue siendo situacional
-        
-        // COMBATE - Poco impacto o muy específicos
-        "piel_escamas",          // -5% daño es casi nada
-        "reflejos",              // Velocidad ataque es menor problema
-        "bloqueo_perfecto",      // Requiere escudo, muy específico
-        
-        // EXPLORACIÓN - Tramposos o redundantes
-        "brujula_interna",       // F3 ya existe, innecesario
-        "telescopio",            // Catalejo vanilla ya existe
-        "mapa_mental",           // Puede anotar coords, poco útil
-        "pisadas_silenciosas",   // Poco útil en práctica
-        "sombra",                // Mejora del anterior, sigue siendo situacional
-        "rastro_oro",            // Detector de minerales es muy tramposo
-        "detector_spawners",     // Muy específico, poco uso
-        "xray_diamantes",        // DEMASIADO tramposo, desbalanceado
-        
-        // INVOCACIÓN - Poco útiles comparados con otros
-        "gato_guardian",         // Ahuyentar creepers es muy situacional
-        "allay_recolector",      // Auto-recolección ya existe como skill
-        
-        // SINERGIAS - Demasiado específicas o complejas
-        "cazador_experto",       // Muy específico (solo carne de mobs)
-        "minero_guerrero",       // Raro usar pico en combate
-        "explorador_ligero",     // Condición muy específica (mochila llena)
-        "omnipresente"           // Ver a través de paredes es muy tramposo
-    );
+    // TODAS LAS HABILIDADES ESTÁN ACTIVAS - v1.22.65
+    private static final Set<String> DISABLED_SKILLS = Set.of();
     
     Skill(String id, String displayName, String description, 
           SkillBranch branch, SkillTier tier, SkillRarity rarity, 
@@ -501,14 +467,14 @@ public enum Skill {
             case COFRE_INTERIOR,           // Acceso a ender chest - binario
                  COFRE_DIMENSIONAL,         // Acceso ilimitado - binario
                  VISION_NOCTURNA,           // Night vision on/off - binario
-                 BRUJULA_INTERNA,           // Muestra coords - binario
+                 ORIENTACION,              // Brújula a muerte - binario
                  INVENTARIO_INFINITO,       // Ya es máximo (54 slots)
                  ANFIBIO,                   // Respiración infinita - binario
                  GOLEM_PROTECTOR,           // Siempre 1 golem
                  WARDEN_TEMPORAL,           // Siempre 1 warden
                  LOBO_COMPANERO,            // Se mejora con MANADA_LOBOS
-                 GATO_GUARDIAN,             // Efecto fijo (ahuyenta mobs)
-                 ALLAY_RECOLECTOR,          // Efecto fijo (recoge items)
+                 ZORRO_EXPLORADOR,          // Efecto fijo (busca items)
+                 LORO_MENSAJERO,            // Efecto fijo (alerta enemigos)
                  FENIX,                     // Revive 1 vez/día - binario
                  WAYPOINT,                  // Teletransporte - el cooldown cambia pero es muy específico
                  AVATAR_CAOS                // Habilidad única especial

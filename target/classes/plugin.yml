@@ -1,5 +1,5 @@
 name: Apocalipsis
-version: '1.22.56'
+version: '1.22.57'
 main: me.apocalipsis.Apocalipsis
 api-version: 1.21
 author: OliveerF
@@ -44,8 +44,8 @@ commands:
     usage: /echest
     aliases: [enderchest, ec]
   waypoint:
-    description: Gestiona tus waypoints (puntos de teletransporte)
-    usage: /waypoint <set|tp|list|delete> [nombre]
+    description: Gestiona tus waypoints y teleport a cama
+    usage: /wp [nombre|set|bed|delete|list]
     aliases: [wp]
   coords:
     description: Muestra tus coordenadas actuales
@@ -75,6 +75,17 @@ commands:
     description: Sistema de tutorial para nuevos jugadores
     usage: /tutorial [progreso|reset|fase|stats]
     aliases: [tut, guia]
+  rtp:
+    description: Teletransporte aleatorio a ubicación segura
+    usage: /rtp
+    aliases: [randomtp, wild, randomteleport]
+  canjear:
+    description: Ver y canjear tokens por recompensas
+    usage: /canjear [item]
+  volver:
+    description: Escapar del End y volver al Overworld
+    usage: /volver
+    aliases: [overworld, salir, escape]
 
 permissions:
   avo.admin:
@@ -82,6 +93,9 @@ permissions:
     default: op
   avo.user:
     description: Acceso a comandos básicos
+    default: true
+  apocalipsis.rtp:
+    description: Permite usar el comando /rtp para teletransporte aleatorio
     default: true
   apocalipsis.tutorial.admin:
     description: Permite administrar el sistema de tutorial

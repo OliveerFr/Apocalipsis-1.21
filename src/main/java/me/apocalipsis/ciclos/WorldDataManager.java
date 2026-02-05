@@ -1,13 +1,20 @@
 package me.apocalipsis.ciclos;
 
-import me.apocalipsis.Apocalipsis;
-import me.riolu.apocalipsis.ciclos.CicloDataCache;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
+import me.apocalipsis.Apocalipsis;
+import me.riolu.apocalipsis.ciclos.CicloDataCache;
 
 /**
  * Gestiona los datos de progreso de jugadores separados por mundo.
@@ -224,11 +231,13 @@ public class WorldDataManager {
             }
         }
         
-        // Capturar recompensas entregadas desde RewardService
-        if (plugin.getRewardService() != null) {
-            Set<String> rewards = plugin.getRewardService().getDeliveredRewards(uuid);
-            data.setDeliveredRewards(rewards);
-        }
+        // FIX v1.22.63: NO capturar recompensas entregadas por mundo
+        // Las recompensas son GLOBALES y se persisten en rewards_delivered.yml
+        // No deben guardarse/cargarse por mundo para evitar duplicados
+        // if (plugin.getRewardService() != null) {
+        //     Set<String> rewards = plugin.getRewardService().getDeliveredRewards(uuid);
+        //     data.setDeliveredRewards(rewards);
+        // }
         
             data.setLastLogout(System.currentTimeMillis());
             
@@ -287,10 +296,12 @@ public class WorldDataManager {
             plugin.getRankService().updatePlayerRank(uuid);
         }
         
-        // Aplicar recompensas entregadas desde RewardService
-        if (plugin.getRewardService() != null && data.getDeliveredRewards() != null) {
-            plugin.getRewardService().setDeliveredRewards(uuid, data.getDeliveredRewards());
-        }
+        // FIX v1.22.63: NO aplicar recompensas entregadas por mundo
+        // Las recompensas son GLOBALES, no por mundo, para evitar duplicados
+        // Las recompensas ya están en memoria en RewardService y son globales
+        // if (plugin.getRewardService() != null && data.getDeliveredRewards() != null) {
+        //     plugin.getRewardService().setDeliveredRewards(uuid, data.getDeliveredRewards());
+        // }
         
             plugin.getLogger().info("[WorldData] Aplicado estado completo para " + uuid + 
                 " - XP: " + data.getXp() + ", Nivel: " + data.getNivel() + 
@@ -523,8 +534,9 @@ public class WorldDataManager {
                     data.setRangoActual(config.getString(path + ".rango", "NOVATO"));
                     
                     // Cargar recompensas entregadas
-                    List<String> rewards = config.getStringList(path + ".delivered_rewards");
-                    data.setDeliveredRewards(new HashSet<>(rewards));
+                    // FIX v1.22.63: Las recompensas son GLOBALES, no por mundo
+                    // List<String> rewards = config.getStringList(path + ".delivered_rewards");
+                    // data.setDeliveredRewards(new HashSet<>(rewards));
                     
                     // Cargar timestamps
                     data.setLastLogin(config.getLong(path + ".last_login", System.currentTimeMillis()));
@@ -575,8 +587,9 @@ public class WorldDataManager {
                 // Guardar rango
                 config.set(path + ".rango", data.getRangoActual());
                 
-                // Guardar recompensas entregadas
-                config.set(path + ".delivered_rewards", new ArrayList<>(data.getDeliveredRewards()));
+                // FIX v1.22.63: NO guardar recompensas entregadas por mundo
+                // Las recompensas son GLOBALES y se persisten en rewards_delivered.yml
+                // config.set(path + ".delivered_rewards", new ArrayList<>(data.getDeliveredRewards()));
                 
                 // Guardar timestamps
                 config.set(path + ".last_login", data.getLastLogin());

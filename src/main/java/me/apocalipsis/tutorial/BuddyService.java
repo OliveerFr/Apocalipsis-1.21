@@ -28,6 +28,15 @@ public class BuddyService {
     
     private final Apocalipsis plugin;
     
+    // ═══════════════════════════════════════════════════════════════
+    // CONFIGURACIÓN DINÁMICA DEL SISTEMA BUDDY
+    // ═══════════════════════════════════════════════════════════════
+    
+    // Configuración de rangos para mentor/aprendiz
+    // Estos valores se calculan dinámicamente basados en los rangos disponibles
+    private final int MIN_MENTOR_RANK_INDEX;     // Mínimo rango para ser mentor
+    private final int MAX_APPRENTICE_RANK_INDEX; // Máximo rango para ser aprendiz
+    
     // Emparejamientos activos: UUID del nuevo → UUID del mentor
     private final Map<UUID, UUID> activeBuddies;
     
@@ -118,6 +127,36 @@ public class BuddyService {
     
     public BuddyService(Apocalipsis plugin) {
         this.plugin = plugin;
+        
+        // ═══════════════════════════════════════════════════════════════
+        // INICIALIZACIÓN DINÁMICA DE RANGOS
+        // ═══════════════════════════════════════════════════════════════
+        
+        // Calcular rangos dinámicamente según la configuración disponible
+        int totalRanks = MissionRank.values().length;
+        
+        // Mentor: debe ser al menos rango 2 (tercer rango), pero no más alto que rango total-1
+        // Ejemplos: Con 8 rangos (0-7) → mínimo rango 2
+        //          Con 5 rangos (0-4) → mínimo rango 2  
+        //          Con 3 rangos (0-2) → mínimo rango 2 (último rango)
+        this.MIN_MENTOR_RANK_INDEX = Math.min(2, totalRanks - 1);
+        
+        // Aprendiz: máximo los primeros 2 rangos (0-1), pero ajustado si hay pocos rangos
+        // Ejemplos: Con 8 rangos → máximo rango 1 (NOVATO=0, EXPLORADOR=1)
+        //          Con 3 rangos → máximo rango 0 (solo primer rango puede ser aprendiz)
+        this.MAX_APPRENTICE_RANK_INDEX = Math.min(1, totalRanks - 2);
+        
+        plugin.getLogger().info("[Buddy] Configuración dinámica cargada:");
+        plugin.getLogger().info("[Buddy] - Total rangos: " + totalRanks);
+        plugin.getLogger().info("[Buddy] - Rango mínimo mentor: " + MIN_MENTOR_RANK_INDEX + " (" + 
+                                MissionRank.values()[MIN_MENTOR_RANK_INDEX].name() + ")");
+        plugin.getLogger().info("[Buddy] - Rango máximo aprendiz: " + MAX_APPRENTICE_RANK_INDEX + " (" + 
+                                MissionRank.values()[MAX_APPRENTICE_RANK_INDEX].name() + ")");
+        
+        // ═══════════════════════════════════════════════════════════════
+        // INICIALIZACIÓN DE ESTRUCTURAS DE DATOS
+        // ═══════════════════════════════════════════════════════════════
+        
         this.activeBuddies = new HashMap<>();
         this.pendingMentorRewards = new HashMap<>();
         this.buddyStartTimes = new HashMap<>();
@@ -137,10 +176,14 @@ public class BuddyService {
     public boolean tryMatchBuddy(Player newPlayer) {
         UUID newUuid = newPlayer.getUniqueId();
         
-        // Verificar que el jugador sea NOVATO o EXPLORADOR
+        // Verificar que el jugador tenga rango elegible para ser aprendiz
         MissionRank playerRank = plugin.getRankService().getRank(newPlayer);
-        if (playerRank.ordinal() > MissionRank.EXPLORADOR.ordinal()) {
-            plugin.getLogger().info("[Buddy] " + newPlayer.getName() + " tiene rango " + playerRank + ", no necesita mentor (solo NOVATO/EXPLORADOR)");
+        if (playerRank.ordinal() > MAX_APPRENTICE_RANK_INDEX) {
+            if (plugin.getConfigManager().isDebugCiclo()) {
+                plugin.getLogger().info("[Buddy] " + newPlayer.getName() + " tiene rango " + playerRank + 
+                                       ", no necesita mentor (máximo elegible: " + 
+                                       MissionRank.values()[MAX_APPRENTICE_RANK_INDEX].name() + ")");
+            }
             return false;
         }
         
@@ -187,7 +230,7 @@ public class BuddyService {
     
     private boolean isEligibleMentor(Player p) {
         MissionRank rank = plugin.getRankService().getRank(p);
-        return rank.ordinal() >= MissionRank.SOBREVIVIENTE.ordinal();
+        return rank.ordinal() >= MIN_MENTOR_RANK_INDEX;
     }
     
     private boolean isNoviceNeedingMentor(Player p) {
@@ -197,9 +240,9 @@ public class BuddyService {
             return false;
         }
         
-        // Verificar rango: solo NOVATO o EXPLORADOR
+        // Verificar rango: usar configuración dinámica
         MissionRank rank = plugin.getRankService().getRank(p);
-        if (rank.ordinal() > MissionRank.EXPLORADOR.ordinal()) {
+        if (rank.ordinal() > MAX_APPRENTICE_RANK_INDEX) {
             return false;
         }
         
@@ -233,9 +276,9 @@ public class BuddyService {
                 continue;
             }
             
-            // Verificar rango mínimo (SOBREVIVIENTE o superior para ser mentor)
+            // Verificar rango mínimo para ser mentor
             MissionRank rank = plugin.getRankService().getRank(online);
-            if (rank.ordinal() < MissionRank.SOBREVIVIENTE.ordinal()) {
+            if (rank.ordinal() < MIN_MENTOR_RANK_INDEX) {
                 continue;
             }
             
@@ -725,5 +768,78 @@ public class BuddyService {
                 } catch (IllegalArgumentException ignored) {}
             }
         }
+    }
+    
+    // ═══════════════════════════════════════════════════════════════
+    // MÉTODOS DE DIAGNÓSTICO Y VALIDACIÓN
+    // ═══════════════════════════════════════════════════════════════
+    
+    /**
+     * Obtiene información de configuración del sistema buddy para diagnóstico
+     */
+    public Map<String, Object> getDiagnosticInfo() {
+        Map<String, Object> info = new HashMap<>();
+        
+        // Información de configuración
+        info.put("totalRanks", MissionRank.values().length);
+        info.put("minMentorRankIndex", MIN_MENTOR_RANK_INDEX);
+        info.put("maxApprenticeRankIndex", MAX_APPRENTICE_RANK_INDEX);
+        info.put("minMentorRankName", MissionRank.values()[MIN_MENTOR_RANK_INDEX].name());
+        info.put("maxApprenticeRankName", MissionRank.values()[MAX_APPRENTICE_RANK_INDEX].name());
+        
+        // Estadísticas de emparejamiento
+        info.put("activeBuddies", activeBuddies.size());
+        info.put("mentorStats", mentorStats.size());
+        info.put("pendingRewards", pendingMentorRewards.size());
+        
+        // Información actual de jugadores online
+        int potentialMentors = 0;
+        int potentialApprentices = 0;
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (isEligibleMentor(p) && !isMentoringAnyone(p.getUniqueId())) {
+                potentialMentors++;
+            }
+            if (isNoviceNeedingMentor(p)) {
+                potentialApprentices++;
+            }
+        }
+        info.put("potentialMentorsOnline", potentialMentors);
+        info.put("potentialApprenticesOnline", potentialApprentices);
+        
+        return info;
+    }
+    
+    /**
+     * Valida la configuración y reporta posibles problemas
+     */
+    public List<String> validateConfiguration() {
+        List<String> issues = new ArrayList<>();
+        
+        // Verificar que hay suficientes rangos
+        int totalRanks = MissionRank.values().length;
+        if (totalRanks < 3) {
+            issues.add("CRÍTICO: Solo " + totalRanks + " rangos disponibles. Se recomiendan al menos 3 rangos para el sistema buddy.");
+        }
+        
+        // Verificar configuración coherente
+        if (MIN_MENTOR_RANK_INDEX <= MAX_APPRENTICE_RANK_INDEX) {
+            issues.add("ADVERTENCIA: Rango mínimo mentor (" + MIN_MENTOR_RANK_INDEX + 
+                      ") debe ser mayor que rango máximo aprendiz (" + MAX_APPRENTICE_RANK_INDEX + ").");
+        }
+        
+        // Verificar que hay jugadores que pueden ser mentores
+        boolean hasPotentialMentors = false;
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (isEligibleMentor(p)) {
+                hasPotentialMentors = true;
+                break;
+            }
+        }
+        if (!hasPotentialMentors) {
+            issues.add("INFO: No hay jugadores online elegibles como mentores (rango mínimo: " + 
+                      MissionRank.values()[MIN_MENTOR_RANK_INDEX].name() + ").");
+        }
+        
+        return issues;
     }
 }

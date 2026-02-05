@@ -2,7 +2,7 @@ misiones:
 
   # ========== NOVATO - FÁCIL ==========
   - id: "matar_zombies_facil"
-    nombre: "Matar zombies"
+    nombre: "Elimina 10 zombies"
     tipo: "MATAR"
     objetivo: "ZOMBIE"
     cantidad: 10
@@ -11,7 +11,7 @@ misiones:
     recompensa_ps: 16
 
   - id: "romper_madera_facil"
-    nombre: "Talar árboles"
+    nombre: "Tala 20 troncos de árbol"
     tipo: "ROMPER"
     objetivo: "ANY_LOG"
     cantidad: 20
@@ -20,7 +20,7 @@ misiones:
     recompensa_ps: 14
 
   - id: "cocinar_chuleta"
-    nombre: "Cocinar chuleta"
+    nombre: "Cocina 5 chuletas de cerdo"
     tipo: "COCINAR"
     objetivo: "COOKED_PORKCHOP"
     cantidad: 5
@@ -29,7 +29,7 @@ misiones:
     recompensa_ps: 12
 
   - id: "craftear_pico_piedra"
-    nombre: "Craftear pico de piedra"
+    nombre: "Fabrica 1 pico de piedra"
     tipo: "CRAFTEAR"
     objetivo: "STONE_PICKAXE"
     cantidad: 1
@@ -38,7 +38,7 @@ misiones:
     recompensa_ps: 10
 
   - id: "consumir_manzana"
-    nombre: "Comer manzanas"
+    nombre: "Come 3 manzanas"
     tipo: "CONSUMIR"
     objetivo: "APPLE"
     cantidad: 3
@@ -47,7 +47,7 @@ misiones:
     recompensa_ps: 8
 
   - id: "romper_tierra"
-    nombre: "Romper tierra"
+    nombre: "Excava 50 bloques de tierra"
     tipo: "ROMPER"
     objetivo: "DIRT"
     cantidad: 50
@@ -56,7 +56,7 @@ misiones:
     recompensa_ps: 10
 
   - id: "matar_pollos"
-    nombre: "Cazar pollos"
+    nombre: "Caza 8 pollos"
     tipo: "MATAR"
     objetivo: "CHICKEN"
     cantidad: 8
@@ -65,7 +65,7 @@ misiones:
     recompensa_ps: 12
 
   - id: "cocinar_pescado"
-    nombre: "Cocinar pescado"
+    nombre: "Cocina 4 salmones"
     tipo: "COCINAR"
     objetivo: "COOKED_SALMON"
     cantidad: 4
@@ -74,7 +74,7 @@ misiones:
     recompensa_ps: 13
 
   - id: "craftear_antorchas"
-    nombre: "Craftear antorchas"
+    nombre: "Fabrica 16 antorchas"
     tipo: "CRAFTEAR"
     objetivo: "TORCH"
     cantidad: 16
@@ -84,7 +84,7 @@ misiones:
 
   # Nuevo: hierro básico desde el día 1 (bajo impacto)
   - id: "fundir_hierro_basico"
-    nombre: "Fundir hierro (básico)"
+    nombre: "Funde 3 lingotes de hierro"
     tipo: "COCINAR"
     objetivo: "IRON_INGOT"
     cantidad: 3
@@ -94,7 +94,7 @@ misiones:
 
   # ========== EXPLORADOR - MEDIA ==========
   - id: "matar_esqueletos_media"
-    nombre: "Cazar esqueletos"
+    nombre: "Elimina 15 esqueletos"
     tipo: "MATAR"
     objetivo: "SKELETON"
     cantidad: 15
@@ -103,7 +103,7 @@ misiones:
     recompensa_ps: 30
 
   - id: "romper_piedra_media"
-    nombre: "Minar piedra"
+    nombre: "Mina 96 bloques de piedra"
     tipo: "ROMPER"
     objetivo: "STONE"
     cantidad: 96
@@ -113,7 +113,7 @@ misiones:
 
   # Escudo sigue en media (ya hay hierro, pero es paso lógico)
   - id: "craftear_escudo"
-    nombre: "Craftear un escudo"
+    nombre: "Fabrica 1 escudo"
     tipo: "CRAFTEAR"
     objetivo: "SHIELD"
     cantidad: 1
@@ -122,7 +122,7 @@ misiones:
     recompensa_ps: 26
 
   - id: "craftear_espada_hierro"
-    nombre: "Forjar espada de hierro"
+    nombre: "Forja 1 espada de hierro"
     tipo: "CRAFTEAR"
     objetivo: "IRON_SWORD"
     cantidad: 1
@@ -131,7 +131,7 @@ misiones:
     recompensa_ps: 24
 
   - id: "cocinar_filete_media"
-    nombre: "Cocinar filetes"
+    nombre: "Cocina 8 filetes de res"
     tipo: "COCINAR"
     objetivo: "COOKED_BEEF"
     cantidad: 8
@@ -140,7 +140,7 @@ misiones:
     recompensa_ps: 22
 
   - id: "romper_carbon"
-    nombre: "Minar carbón"
+    nombre: "Mina 24 menas de carbón"
     tipo: "ROMPER"
     objetivo: "COAL_ORE"
     cantidad: 24
@@ -149,7 +149,7 @@ misiones:
     recompensa_ps: 28
 
   - id: "fundir_hierro_lote"
-    nombre: "Fundir hierro (lote)"
+    nombre: "Funde 12 lingotes de hierro"
     tipo: "COCINAR"
     objetivo: "IRON_INGOT"
     cantidad: 12
@@ -158,7 +158,7 @@ misiones:
     recompensa_ps: 26
 
   - id: "matar_arana"
-    nombre: "Eliminar arañas"
+    nombre: "Elimina 10 arañas"
     tipo: "MATAR"
     objetivo: "SPIDER"
     cantidad: 10
@@ -167,7 +167,7 @@ misiones:
     recompensa_ps: 27
 
   - id: "consumir_pan"
-    nombre: "Comer pan"
+    nombre: "Come 5 panes"
     tipo: "CONSUMIR"
     objetivo: "BREAD"
     cantidad: 5
@@ -177,7 +177,7 @@ misiones:
 
   # ========== SOBREVIVIENTE - DIFICIL ==========
   - id: "matar_creepers_dificil"
-    nombre: "Eliminar creepers"
+    nombre: "Elimina 20 creepers"
     tipo: "MATAR"
     objetivo: "CREEPER"
     cantidad: 20
@@ -186,7 +186,7 @@ misiones:
     recompensa_ps: 60
 
   - id: "romper_obsidiana"
-    nombre: "Romper obsidiana"
+    nombre: "Rompe 10 bloques de obsidiana"
     tipo: "ROMPER"
     objetivo: "OBSIDIAN"
     cantidad: 10
@@ -195,7 +195,7 @@ misiones:
     recompensa_ps: 55
 
   - id: "craftear_cubo"
-    nombre: "Craftear un cubo"
+    nombre: "Fabrica 2 cubos de hierro"
     tipo: "CRAFTEAR"
     objetivo: "BUCKET"
     cantidad: 2
@@ -204,7 +204,7 @@ misiones:
     recompensa_ps: 50
 
   - id: "craftear_yunque"
-    nombre: "Craftear un yunque"
+    nombre: "Fabrica 1 yunque"
     tipo: "CRAFTEAR"
     objetivo: "ANVIL"
     cantidad: 1
@@ -213,7 +213,7 @@ misiones:
     recompensa_ps: 58
 
   - id: "cocinar_filete"
-    nombre: "Cocinar filetes"
+    nombre: "Cocina 16 filetes de res"
     tipo: "COCINAR"
     objetivo: "COOKED_BEEF"
     cantidad: 16
@@ -222,7 +222,7 @@ misiones:
     recompensa_ps: 50
 
   - id: "craftear_casco_hierro"
-    nombre: "Craftear casco de hierro"
+    nombre: "Fabrica 1 casco de hierro"
     tipo: "CRAFTEAR"
     objetivo: "IRON_HELMET"
     cantidad: 1
@@ -231,7 +231,7 @@ misiones:
     recompensa_ps: 48
 
   - id: "romper_hierro"
-    nombre: "Minar hierro"
+    nombre: "Mina 64 menas de hierro"
     tipo: "ROMPER"
     objetivo: "IRON_ORE"
     cantidad: 64
@@ -250,7 +250,7 @@ misiones:
     recompensa_ps: 70
 
   - id: "craftear_diamante"
-    nombre: "Forjar pechera de diamante"
+    nombre: "Forja 1 pechera de diamante"
     tipo: "CRAFTEAR"
     objetivo: "DIAMOND_CHESTPLATE"
     cantidad: 1
@@ -259,7 +259,7 @@ misiones:
     recompensa_ps: 80
 
   - id: "romper_netherrack"
-    nombre: "Minar Netherrack"
+    nombre: "Mina 256 bloques de netherrack"
     tipo: "ROMPER"
     objetivo: "NETHERRACK"
     cantidad: 256
@@ -268,7 +268,7 @@ misiones:
     recompensa_ps: 62
 
   - id: "craftear_bloques_hierro"
-    nombre: "Craftear bloques de hierro"
+    nombre: "Fabrica 8 bloques de hierro"
     tipo: "CRAFTEAR"
     objetivo: "IRON_BLOCK"
     cantidad: 8
@@ -278,7 +278,7 @@ misiones:
 
   # NUEVO: avanzar hacia End (más ojos)
   - id: "craftear_ojos_ender_vet"
-    nombre: "Craftear Ojos de Ender"
+    nombre: "Fabrica 12 ojos de ender"
     tipo: "CRAFTEAR"
     objetivo: "ENDER_EYE"
     cantidad: 12
@@ -288,7 +288,7 @@ misiones:
 
   # NUEVO: farmeo de blaze real
   - id: "matar_blaze_vet"
-    nombre: "Eliminar Blaze"
+    nombre: "Elimina 25 blazes"
     tipo: "MATAR"
     objetivo: "BLAZE"
     cantidad: 25
@@ -298,7 +298,7 @@ misiones:
 
   # NUEVO: progreso a netherite (lote medio)
   - id: "fundir_scrap_vet"
-    nombre: "Fundir Ancient Debris a scrap"
+    nombre: "Funde 12 ancient debris a scrap"
     tipo: "COCINAR"
     objetivo: "NETHERITE_SCRAP"
     cantidad: 12
@@ -308,7 +308,7 @@ misiones:
 
   # NUEVO: debris extra (romper, no solo fundir)
   - id: "romper_debris_vet"
-    nombre: "Romper Ancient Debris"
+    nombre: "Rompe 12 ancient debris"
     tipo: "ROMPER"
     objetivo: "ANCIENT_DEBRIS"
     cantidad: 12
@@ -320,7 +320,7 @@ misiones:
   # META: Gear avanzado, exploración del Nether/End, recursos premium
 
   - id: "matar_wither_skeleton"
-    nombre: "Eliminar Wither Skeleton"
+    nombre: "Elimina 15 wither skeletons"
     tipo: "MATAR"
     objetivo: "WITHER_SKELETON"
     cantidad: 15
@@ -328,17 +328,8 @@ misiones:
     rangos: ["LEYENDA", "MAESTRO"]
     recompensa_ps: 85
 
-  - id: "matar_blaze_leyenda"
-    nombre: "Eliminar Blazes"
-    tipo: "MATAR"
-    objetivo: "BLAZE"
-    cantidad: 30
-    dificultad: "DIFICIL"
-    rangos: ["LEYENDA", "MAESTRO"]
-    recompensa_ps: 80
-
   - id: "matar_enderman_leyenda"
-    nombre: "Cazar Endermen"
+    nombre: "Elimina 25 endermen"
     tipo: "MATAR"
     objetivo: "ENDERMAN"
     cantidad: 25
@@ -346,27 +337,8 @@ misiones:
     rangos: ["LEYENDA", "MAESTRO"]
     recompensa_ps: 75
 
-  # Progresión netherite
-  - id: "fundir_scrap_leyenda"
-    nombre: "Fundir Ancient Debris"
-    tipo: "COCINAR"
-    objetivo: "NETHERITE_SCRAP"
-    cantidad: 8
-    dificultad: "DIFICIL"
-    rangos: ["LEYENDA", "MAESTRO"]
-    recompensa_ps: 85
-
-  - id: "romper_debris_leyenda"
-    nombre: "Romper Ancient Debris"
-    tipo: "ROMPER"
-    objetivo: "ANCIENT_DEBRIS"
-    cantidad: 8
-    dificultad: "DIFICIL"
-    rangos: ["LEYENDA"]
-    recompensa_ps: 88
-
   - id: "romper_diamante_leyenda"
-    nombre: "Minar diamantes"
+    nombre: "Mina 16 menas de diamante"
     tipo: "ROMPER"
     objetivo: "DIAMOND_ORE"
     cantidad: 16
@@ -374,18 +346,9 @@ misiones:
     rangos: ["LEYENDA"]
     recompensa_ps: 82
 
-  - id: "craftear_beacon"
-    nombre: "Construir un Beacon"
-    tipo: "CRAFTEAR"
-    objetivo: "BEACON"
-    cantidad: 1
-    dificultad: "DIFICIL"
-    rangos: ["LEYENDA"]
-    recompensa_ps: 95
-
   # End básico
   - id: "matar_shulker_leyenda"
-    nombre: "Eliminar Shulkers"
+    nombre: "Elimina 6 shulkers"
     tipo: "MATAR"
     objetivo: "SHULKER"
     cantidad: 6
@@ -394,7 +357,7 @@ misiones:
     recompensa_ps: 82
 
   - id: "romper_end_stone"
-    nombre: "Minar End Stone"
+    nombre: "Mina 64 bloques de end stone"
     tipo: "ROMPER"
     objetivo: "END_STONE"
     cantidad: 64
@@ -404,7 +367,7 @@ misiones:
 
   # Crafteo avanzado
   - id: "craftear_pechera_diamante"
-    nombre: "Forjar pechera de Diamante"
+    nombre: "Forja 1 pechera de diamante"
     tipo: "CRAFTEAR"
     objetivo: "DIAMOND_CHESTPLATE"
     cantidad: 1
@@ -413,7 +376,7 @@ misiones:
     recompensa_ps: 78
 
   - id: "craftear_espada_diamante"
-    nombre: "Forjar espada de Diamante"
+    nombre: "Forja 1 espada de diamante"
     tipo: "CRAFTEAR"
     objetivo: "DIAMOND_SWORD"
     cantidad: 1
@@ -423,7 +386,7 @@ misiones:
 
   # Farmeo avanzado
   - id: "romper_glowstone"
-    nombre: "Romper Glowstone"
+    nombre: "Rompe 64 bloques de glowstone"
     tipo: "ROMPER"
     objetivo: "GLOWSTONE"
     cantidad: 64
@@ -435,7 +398,7 @@ misiones:
   # META: Farms establecidas, recursos en cantidad, exploración completa
 
   - id: "matar_piglin_brute"
-    nombre: "Eliminar Piglin Brutes"
+    nombre: "Elimina 20 piglin brutes"
     tipo: "MATAR"
     objetivo: "PIGLIN_BRUTE"
     cantidad: 20
@@ -444,7 +407,7 @@ misiones:
     recompensa_ps: 100
 
   - id: "matar_hoglin"
-    nombre: "Cazar Hoglins"
+    nombre: "Elimina 20 hoglins"
     tipo: "MATAR"
     objetivo: "HOGLIN"
     cantidad: 20
@@ -453,7 +416,7 @@ misiones:
     recompensa_ps: 95
 
   - id: "matar_ghast"
-    nombre: "Eliminar Ghasts"
+    nombre: "Elimina 10 ghasts"
     tipo: "MATAR"
     objetivo: "GHAST"
     cantidad: 10
@@ -461,26 +424,8 @@ misiones:
     rangos: ["MAESTRO", "TITAN"]
     recompensa_ps: 105
 
-  - id: "fundir_scrap_maestro"
-    nombre: "Fundir Ancient Debris"
-    tipo: "COCINAR"
-    objetivo: "NETHERITE_SCRAP"
-    cantidad: 16
-    dificultad: "DIFICIL"
-    rangos: ["MAESTRO"]
-    recompensa_ps: 110
-
-  - id: "romper_debris_maestro"
-    nombre: "Romper Ancient Debris"
-    tipo: "ROMPER"
-    objetivo: "ANCIENT_DEBRIS"
-    cantidad: 16
-    dificultad: "DIFICIL"
-    rangos: ["MAESTRO"]
-    recompensa_ps: 115
-
   - id: "romper_deepslate_diamante"
-    nombre: "Minar Deepslate Diamond"
+    nombre: "Mina 12 menas de diamante deepslate"
     tipo: "ROMPER"
     objetivo: "DEEPSLATE_DIAMOND_ORE"
     cantidad: 12
@@ -488,17 +433,8 @@ misiones:
     rangos: ["MAESTRO"]
     recompensa_ps: 108
 
-  - id: "matar_shulker_maestro"
-    nombre: "Eliminar Shulkers"
-    tipo: "MATAR"
-    objetivo: "SHULKER"
-    cantidad: 12
-    dificultad: "DIFICIL"
-    rangos: ["MAESTRO"]
-    recompensa_ps: 120
-
   - id: "romper_quartz"
-    nombre: "Minar Quartz del Nether"
+    nombre: "Mina 64 menas de cuarzo del nether"
     tipo: "ROMPER"
     objetivo: "NETHER_QUARTZ_ORE"
     cantidad: 64
@@ -507,7 +443,7 @@ misiones:
     recompensa_ps: 98
 
   - id: "craftear_bloques_diamante"
-    nombre: "Craftear bloques de diamante"
+    nombre: "Fabrica 2 bloques de diamante"
     tipo: "CRAFTEAR"
     objetivo: "DIAMOND_BLOCK"
     cantidad: 2
@@ -516,7 +452,7 @@ misiones:
     recompensa_ps: 118
 
   - id: "fundir_oro_maestro"
-    nombre: "Fundir oro"
+    nombre: "Funde 32 lingotes de oro"
     tipo: "COCINAR"
     objetivo: "GOLD_INGOT"
     cantidad: 32
@@ -528,7 +464,7 @@ misiones:
   # META: Proyectos masivos, farms automáticas, construcciones épicas
 
   - id: "matar_ravager"
-    nombre: "Eliminar Ravagers"
+    nombre: "Elimina 10 ravagers"
     tipo: "MATAR"
     objetivo: "RAVAGER"
     cantidad: 10
@@ -537,7 +473,7 @@ misiones:
     recompensa_ps: 135
 
   - id: "matar_vindicator"
-    nombre: "Eliminar Vindicators"
+    nombre: "Elimina 25 vindicators"
     tipo: "MATAR"
     objetivo: "VINDICATOR"
     cantidad: 25
@@ -546,7 +482,7 @@ misiones:
     recompensa_ps: 128
 
   - id: "matar_evoker"
-    nombre: "Eliminar Evokers"
+    nombre: "Elimina 8 evokers"
     tipo: "MATAR"
     objetivo: "EVOKER"
     cantidad: 8
@@ -554,26 +490,8 @@ misiones:
     rangos: ["TITAN", "ABSOLUTO"]
     recompensa_ps: 132
 
-  - id: "fundir_scrap_titan"
-    nombre: "Fundir Ancient Debris"
-    tipo: "COCINAR"
-    objetivo: "NETHERITE_SCRAP"
-    cantidad: 24
-    dificultad: "DIFICIL"
-    rangos: ["TITAN"]
-    recompensa_ps: 140
-
-  - id: "romper_debris_titan"
-    nombre: "Romper Ancient Debris"
-    tipo: "ROMPER"
-    objetivo: "ANCIENT_DEBRIS"
-    cantidad: 24
-    dificultad: "DIFICIL"
-    rangos: ["TITAN"]
-    recompensa_ps: 145
-
   - id: "craftear_beacon_titan"
-    nombre: "Construir un Beacon"
+    nombre: "Fabrica 1 faro (beacon)"
     tipo: "CRAFTEAR"
     objetivo: "BEACON"
     cantidad: 1
@@ -581,17 +499,8 @@ misiones:
     rangos: ["TITAN"]
     recompensa_ps: 155
 
-  - id: "matar_shulker_titan"
-    nombre: "Eliminar Shulkers"
-    tipo: "MATAR"
-    objetivo: "SHULKER"
-    cantidad: 20
-    dificultad: "DIFICIL"
-    rangos: ["TITAN"]
-    recompensa_ps: 138
-
   - id: "romper_end_stone_titan"
-    nombre: "Minar End Stone"
+    nombre: "Mina 128 bloques de end stone"
     tipo: "ROMPER"
     objetivo: "END_STONE"
     cantidad: 128
@@ -600,7 +509,7 @@ misiones:
     recompensa_ps: 125
 
   - id: "romper_diamante_titan"
-    nombre: "Minar diamantes"
+    nombre: "Mina 24 menas de diamante"
     tipo: "ROMPER"
     objetivo: "DIAMOND_ORE"
     cantidad: 24
@@ -609,7 +518,7 @@ misiones:
     recompensa_ps: 135
 
   - id: "fundir_hierro_titan"
-    nombre: "Fundir hierro en masa"
+    nombre: "Funde 128 lingotes de hierro"
     tipo: "COCINAR"
     objetivo: "IRON_INGOT"
     cantidad: 128
@@ -624,7 +533,7 @@ misiones:
   # ===== ABSOLUTO - MISIONES FÁCILES (10 opciones ultra variadas) =====
   
   - id: "matar_skeleton_absoluto_facil"
-    nombre: "Eliminar esqueletos (huesos)"
+    nombre: "Elimina 10 esqueletos (huesos)"
     tipo: "MATAR"
     objetivo: "SKELETON"
     cantidad: 10
@@ -633,7 +542,7 @@ misiones:
     recompensa_ps: 20
 
   - id: "craftear_papel_absoluto_facil"
-    nombre: "Craftear papel (trades/libros)"
+    nombre: "Fabrica 16 hojas de papel (trades/libros)"
     tipo: "CRAFTEAR"
     objetivo: "PAPER"
     cantidad: 16
@@ -642,7 +551,7 @@ misiones:
     recompensa_ps: 18
 
   - id: "craftear_torches_absoluto_facil"
-    nombre: "Craftear antorchas (iluminación)"
+    nombre: "Fabrica 64 antorchas (iluminación)"
     tipo: "CRAFTEAR"
     objetivo: "TORCH"
     cantidad: 64
@@ -651,7 +560,7 @@ misiones:
     recompensa_ps: 17
 
   - id: "cocinar_kelp_absoluto_facil"
-    nombre: "Cocinar algas (combustible)"
+    nombre: "Cocina 12 algas secas (combustible)"
     tipo: "COCINAR"
     objetivo: "DRIED_KELP"
     cantidad: 12
@@ -660,7 +569,7 @@ misiones:
     recompensa_ps: 16
 
   - id: "craftear_compass_absoluto_facil"
-    nombre: "Craftear brújula (navegación)"
+    nombre: "Fabrica 1 brújula (navegación)"
     tipo: "CRAFTEAR"
     objetivo: "COMPASS"
     cantidad: 1
@@ -669,7 +578,7 @@ misiones:
     recompensa_ps: 21
 
   - id: "romper_cactus_absoluto_facil"
-    nombre: "Cosechar cactus (trampas)"
+    nombre: "Rompe 16 cactus (trampas)"
     tipo: "ROMPER"
     objetivo: "CACTUS"
     cantidad: 16
@@ -678,7 +587,7 @@ misiones:
     recompensa_ps: 15
 
   - id: "matar_spider_absoluto_facil"
-    nombre: "Cazar arañas (hilos)"
+    nombre: "Elimina 12 arañas (hilos)"
     tipo: "MATAR"
     objetivo: "SPIDER"
     cantidad: 12
@@ -687,7 +596,7 @@ misiones:
     recompensa_ps: 19
 
   - id: "craftear_barrel_absoluto_facil"
-    nombre: "Craftear barriles (storage)"
+    nombre: "Fabrica 4 barriles (storage)"
     tipo: "CRAFTEAR"
     objetivo: "BARREL"
     cantidad: 4
@@ -696,7 +605,7 @@ misiones:
     recompensa_ps: 18
 
   - id: "romper_quartz_block_absoluto_facil"
-    nombre: "Romper bloques de cuarzo"
+    nombre: "Rompe 16 bloques de cuarzo"
     tipo: "ROMPER"
     objetivo: "QUARTZ_BLOCK"
     cantidad: 16
@@ -705,7 +614,7 @@ misiones:
     recompensa_ps: 16
 
   - id: "cocinar_potato_absoluto_facil"
-    nombre: "Cocinar patatas (comida rápida)"
+    nombre: "Cocina 10 patatas asadas (comida rápida)"
     tipo: "COCINAR"
     objetivo: "BAKED_POTATO"
     cantidad: 10
@@ -716,7 +625,7 @@ misiones:
   # ===== ABSOLUTO - MISIONES MEDIAS (12 opciones super dinámicas) =====
   
   - id: "matar_creepers_absoluto_media"
-    nombre: "Cazar creepers mejorados"
+    nombre: "Elimina 10 creepers mejorados"
     tipo: "MATAR"
     objetivo: "CREEPER"
     cantidad: 10
@@ -725,7 +634,7 @@ misiones:
     recompensa_ps: 42
 
   - id: "matar_drowned_absoluto_media"
-    nombre: "Cazar ahogados (tridente)"
+    nombre: "Elimina 15 ahogados (tridente)"
     tipo: "MATAR"
     objetivo: "DROWNED"
     cantidad: 15
@@ -734,7 +643,7 @@ misiones:
     recompensa_ps: 45
 
   - id: "craftear_lectern_absoluto_media"
-    nombre: "Craftear atriles (aldeanos)"
+    nombre: "Fabrica 3 atriles (aldeanos)"
     tipo: "CRAFTEAR"
     objetivo: "LECTERN"
     cantidad: 3
@@ -743,7 +652,7 @@ misiones:
     recompensa_ps: 38
 
   - id: "matar_silverfish_absoluto_media"
-    nombre: "Exterminar lepismas (stronghold)"
+    nombre: "Elimina 12 lepismas (stronghold)"
     tipo: "MATAR"
     objetivo: "SILVERFISH"
     cantidad: 12
@@ -752,7 +661,7 @@ misiones:
     recompensa_ps: 40
 
   - id: "cocinar_glass_absoluto_media"
-    nombre: "Fundir vidrio (construcción)"
+    nombre: "Funde 32 bloques de vidrio (construcción)"
     tipo: "COCINAR"
     objetivo: "GLASS"
     cantidad: 32
@@ -761,7 +670,7 @@ misiones:
     recompensa_ps: 35
 
   - id: "romper_prismarine_absoluto_media"
-    nombre: "Romper prismarino (monumento)"
+    nombre: "Rompe 24 bloques de prismarino (monumento)"
     tipo: "ROMPER"
     objetivo: "PRISMARINE"
     cantidad: 24
@@ -770,7 +679,7 @@ misiones:
     recompensa_ps: 43
 
   - id: "craftear_redstone_lamp_absoluto_media"
-    nombre: "Craftear lámparas redstone"
+    nombre: "Fabrica 6 lámparas de redstone"
     tipo: "CRAFTEAR"
     objetivo: "REDSTONE_LAMP"
     cantidad: 6
@@ -779,7 +688,7 @@ misiones:
     recompensa_ps: 37
 
   - id: "matar_guardian_absoluto_media"
-    nombre: "Eliminar guardianes (cristales)"
+    nombre: "Elimina 18 guardianes (cristales)"
     tipo: "MATAR"
     objetivo: "GUARDIAN"
     cantidad: 18
@@ -788,7 +697,7 @@ misiones:
     recompensa_ps: 46
 
   - id: "craftear_hopper_absoluto_media"
-    nombre: "Craftear tolvas (automation)"
+    nombre: "Fabrica 4 tolvas (automation)"
     tipo: "CRAFTEAR"
     objetivo: "HOPPER"
     cantidad: 4
@@ -797,7 +706,7 @@ misiones:
     recompensa_ps: 41
 
   - id: "romper_soul_sand_absoluto_media"
-    nombre: "Minar soul sand (wither)"
+    nombre: "Mina 16 bloques de soul sand (wither)"
     tipo: "ROMPER"
     objetivo: "SOUL_SAND"
     cantidad: 16
@@ -806,7 +715,7 @@ misiones:
     recompensa_ps: 39
 
   - id: "matar_husk_absoluto_media"
-    nombre: "Eliminar huéspedes (desierto)"
+    nombre: "Elimina 14 huéspedes (desierto)"
     tipo: "MATAR"
     objetivo: "HUSK"
     cantidad: 14
@@ -815,7 +724,7 @@ misiones:
     recompensa_ps: 40
 
   - id: "craftear_piston_absoluto_media"
-    nombre: "Craftear pistones (redstone)"
+    nombre: "Fabrica 6 pistones (redstone)"
     tipo: "CRAFTEAR"
     objetivo: "PISTON"
     cantidad: 6
@@ -826,7 +735,7 @@ misiones:
   # ===== ABSOLUTO - MISIONES DIFÍCILES (20 opciones extremadamente variadas) =====
   
   - id: "matar_warden_absoluto"
-    nombre: "Enfrentar Warden (Deep Dark)"
+    nombre: "Elimina 1 warden (Deep Dark)"
     tipo: "MATAR"
     objetivo: "WARDEN"
     cantidad: 1
@@ -835,7 +744,7 @@ misiones:
     recompensa_ps: 250
 
   - id: "matar_elder_guardian_absoluto"
-    nombre: "Asaltar Monumento (Elder Guardian)"
+    nombre: "Elimina 2 elder guardians (monumento)"
     tipo: "MATAR"
     objetivo: "ELDER_GUARDIAN"
     cantidad: 2
@@ -843,63 +752,8 @@ misiones:
     rangos: ["ABSOLUTO"]
     recompensa_ps: 210
 
-  - id: "fundir_scrap_absoluto"
-    nombre: "Fundir Ancient Debris"
-    tipo: "COCINAR"
-    objetivo: "NETHERITE_SCRAP"
-    cantidad: 12
-    dificultad: "DIFICIL"
-    rangos: ["ABSOLUTO"]
-    recompensa_ps: 195
-
-  - id: "romper_debris_absoluto"
-    nombre: "Minar Ancient Debris (Y:15)"
-    tipo: "ROMPER"
-    objetivo: "ANCIENT_DEBRIS"
-    cantidad: 12
-    dificultad: "DIFICIL"
-    rangos: ["ABSOLUTO"]
-    recompensa_ps: 200
-
-  - id: "craftear_beacon_absoluto"
-    nombre: "Construir Beacon"
-    tipo: "CRAFTEAR"
-    objetivo: "BEACON"
-    cantidad: 1
-    dificultad: "DIFICIL"
-    rangos: ["ABSOLUTO"]
-    recompensa_ps: 230
-
-  - id: "matar_shulker_absoluto"
-    nombre: "Raid Ciudad del End"
-    tipo: "MATAR"
-    objetivo: "SHULKER"
-    cantidad: 16
-    dificultad: "DIFICIL"
-    rangos: ["ABSOLUTO"]
-    recompensa_ps: 185
-
-  - id: "matar_wither_skeleton_absoluto"
-    nombre: "Farmear Wither Skeletons"
-    tipo: "MATAR"
-    objetivo: "WITHER_SKELETON"
-    cantidad: 12
-    dificultad: "DIFICIL"
-    rangos: ["ABSOLUTO"]
-    recompensa_ps: 178
-
-  - id: "matar_blaze_absoluto"
-    nombre: "Raid Fortaleza Nether"
-    tipo: "MATAR"
-    objetivo: "BLAZE"
-    cantidad: 18
-    dificultad: "DIFICIL"
-    rangos: ["ABSOLUTO"]
-    recompensa_ps: 175
-
-
   - id: "craftear_netherite_sword_absoluto"
-    nombre: "Forjar espada Netherite"
+    nombre: "Forja 1 espada de netherite"
     tipo: "CRAFTEAR"
     objetivo: "NETHERITE_SWORD"
     cantidad: 1
@@ -908,7 +762,7 @@ misiones:
     recompensa_ps: 220
 
   - id: "matar_vindicator_absoluto"
-    nombre: "Asaltar Woodland Mansion"
+    nombre: "Elimina 12 vindicators (woodland mansion)"
     tipo: "MATAR"
     objetivo: "VINDICATOR"
     cantidad: 12
@@ -917,7 +771,7 @@ misiones:
     recompensa_ps: 190
 
   - id: "matar_ravager_absoluto"
-    nombre: "Defender Raid (Ravager)"
+    nombre: "Elimina 3 ravagers (raid)"
     tipo: "MATAR"
     objetivo: "RAVAGER"
     cantidad: 3
@@ -926,7 +780,7 @@ misiones:
     recompensa_ps: 205
 
   - id: "craftear_lodestone_absoluto"
-    nombre: "Craftear Lodestone (navegación)"
+    nombre: "Fabrica 2 lodestones (navegación)"
     tipo: "CRAFTEAR"
     objetivo: "LODESTONE"
     cantidad: 2
@@ -935,7 +789,7 @@ misiones:
     recompensa_ps: 170
 
   - id: "romper_crying_obsidian_absoluto"
-    nombre: "Romper Crying Obsidian (ruinas)"
+    nombre: "Rompe 8 crying obsidian (ruinas)"
     tipo: "ROMPER"
     objetivo: "CRYING_OBSIDIAN"
     cantidad: 8
@@ -944,7 +798,7 @@ misiones:
     recompensa_ps: 168
 
   - id: "matar_piglin_brute_absoluto"
-    nombre: "Asaltar Bastión (Brutes)"
+    nombre: "Elimina 8 piglin brutes (bastión)"
     tipo: "MATAR"
     objetivo: "PIGLIN_BRUTE"
     cantidad: 8
@@ -953,7 +807,7 @@ misiones:
     recompensa_ps: 198
 
   - id: "craftear_conduit_absoluto"
-    nombre: "Craftear Conduit"
+    nombre: "Fabrica 1 conducto (conduit)"
     tipo: "CRAFTEAR"
     objetivo: "CONDUIT"
     cantidad: 1
@@ -962,7 +816,7 @@ misiones:
     recompensa_ps: 215
 
   - id: "matar_evoker_absoluto"
-    nombre: "Eliminar Evokers (totem)"
+    nombre: "Elimina 5 evokers (totem)"
     tipo: "MATAR"
     objetivo: "EVOKER"
     cantidad: 5
@@ -971,7 +825,7 @@ misiones:
     recompensa_ps: 192
 
   - id: "craftear_smithing_table_absoluto"
-    nombre: "Craftear mesa de herrería"
+    nombre: "Fabrica 1 mesa de herrería"
     tipo: "CRAFTEAR"
     objetivo: "SMITHING_TABLE"
     cantidad: 1
@@ -980,7 +834,7 @@ misiones:
     recompensa_ps: 165
 
   - id: "romper_gilded_blackstone_absoluto"
-    nombre: "Minar Gilded Blackstone (oro)"
+    nombre: "Rompe 12 gilded blackstone (oro)"
     tipo: "ROMPER"
     objetivo: "GILDED_BLACKSTONE"
     cantidad: 12
@@ -989,7 +843,7 @@ misiones:
     recompensa_ps: 172
 
   - id: "matar_endermite_absoluto"
-    nombre: "Farmear Endermites (granja)"
+    nombre: "Elimina 4 endermites (granja)"
     tipo: "MATAR"
     objetivo: "ENDERMITE"
     cantidad: 4

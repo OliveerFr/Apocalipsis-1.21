@@ -1,18 +1,25 @@
 package me.apocalipsis.disaster;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.World;
+import org.bukkit.block.Block;
+import org.bukkit.block.data.BlockData;
 import org.bukkit.boss.BarColor;
 import org.bukkit.boss.BarStyle;
 import org.bukkit.boss.BossBar;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 
 import me.apocalipsis.Apocalipsis;
@@ -48,6 +55,10 @@ public abstract class DisasterBase implements Disaster {
     protected BossBar disasterBossBar;
     protected int currentPhase = 1;
     protected int totalPhases = 5;
+    
+    // Sistema de tracking de bloques modificados
+    protected Map<Location, BlockData> modifiedBlocks = new ConcurrentHashMap<>();
+    protected int maxTrackedBlocks = 10000; // Límite de seguridad
 
     public DisasterBase(Apocalipsis plugin, MessageBus messageBus, SoundUtil soundUtil,
                        TimeService timeService, PerformanceAdapter performanceAdapter, String id) {
@@ -106,6 +117,7 @@ public abstract class DisasterBase implements Disaster {
         this.playerSurvivalPhases.clear();
         this.playerDeathsDuringDisaster.clear();
         this.playerDamageReceived.clear();
+        this.modifiedBlocks.clear();
         if (plugin.getConfigManager().isDebugCiclo()) {
             plugin.getLogger().info("[Disaster] START: " + id + " #" + instanceId);
         }
@@ -129,7 +141,19 @@ public abstract class DisasterBase implements Disaster {
         // Mostrar estadísticas antes de limpiar
         showDisasterStatistics();
         
+        // Limpiar bloques modificados
+        restoreModifiedBlocks();
+        
+        // Ejecutar limpieza específica del desastre
         onStop();
+        
+        // Limpieza final de metadatos y referencias
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            cleanupMetadata();
+            if (plugin.getConfigManager().isDebugCiclo()) {
+                plugin.getLogger().info("[Disaster] Limpieza completa finalizada para " + id + " #" + instanceId);
+            }
+        });
     }
 
     @Override
@@ -455,13 +479,251 @@ public abstract class DisasterBase implements Disaster {
     protected void showDisasterStatistics() {
         long totalTicks = System.currentTimeMillis() / 50 - disasterStartTick;
         
-        DisasterStatistics.showDisasterSummary(
-            getDisasterName(),
-            totalPhases,
-            totalTicks,
-            playerSurvivalPhases,
-            playerDeathsDuringDisaster,
-            playerDamageReceived
-        );
+        if (plugin.getConfigManager().isDebugCiclo()) {
+            plugin.getLogger().info("[Disaster] Estadísticas de " + id + ":");
+            plugin.getLogger().info("  Bloques modificados: " + modifiedBlocks.size());
+        }
+    }
+    
+    // ============================================
+    // SISTEMA DE TRACKING DE BLOQUES
+    // ============================================
+    
+    /**
+     * Trackea un bloque antes de modificarlo para poder restaurarlo después
+     * @param block El bloque a modificar
+     */
+    protected void trackBlock(Block block) {
+        if (block == null) return;
+        
+        Location loc = block.getLocation();
+        
+        // Solo trackear si no está ya registrado
+        if (!modifiedBlocks.containsKey(loc)) {
+            // Verificar límite de seguridad
+            if (modifiedBlocks.size() >= maxTrackedBlocks) {
+                if (plugin.getConfigManager().isDebugCiclo()) {
+                    plugin.getLogger().warning("[Disaster] Límite de bloques trackeados alcanzado: " + maxTrackedBlocks);
+                }
+                return;
+            }
+            
+            // Guardar estado original
+            modifiedBlocks.put(loc, block.getBlockData().clone());
+        }
+    }
+    
+    /**
+     * Modifica un bloque de forma segura, trackeando su estado original
+     * @param block El bloque a modificar
+     * @param newMaterial El nuevo material a establecer
+     */
+    protected void setBlockTracked(Block block, Material newMaterial) {
+        if (block == null) return;
+        
+        trackBlock(block);
+        block.setType(newMaterial);
+    }
+    
+    /**
+     * Modifica un bloque de forma segura, trackeando su estado original
+     * @param block El bloque a modificar
+     * @param newData Los nuevos datos del bloque
+     */
+    protected void setBlockTracked(Block block, BlockData newData) {
+        if (block == null) return;
+        
+        trackBlock(block);
+        block.setBlockData(newData);
+    }
+    
+    /**
+     * [MEJORA v1.22.67] Restaura bloques modificados con sistema asíncrono mejorado
+     * Incluye validación, reporte de progreso y manejo robusto de errores
+     */
+    protected void restoreModifiedBlocks() {
+        if (modifiedBlocks.isEmpty()) return;
+        
+        int totalBlocks = modifiedBlocks.size();
+        plugin.getLogger().info("[Disaster] Restaurando " + totalBlocks + " bloques modificados...");
+        
+        // Si son pocos bloques, restaurar sincrónicamente
+        if (totalBlocks <= 100) {
+            restoreBlocksSynchronous();
+            return;
+        }
+        
+        // Para muchos bloques, usar restauración asíncrona
+        restoreBlocksAsynchronous(totalBlocks);
+    }
+    
+    /**
+     * [MEJORA] Restauración síncrona para pocos bloques
+     */
+    private void restoreBlocksSynchronous() {
+        int restored = 0;
+        int failed = 0;
+        
+        for (Map.Entry<Location, BlockData> entry : modifiedBlocks.entrySet()) {
+            try {
+                Location loc = entry.getKey();
+                BlockData originalData = entry.getValue();
+                
+                // Validar que la ubicación aún es válida
+                if (loc == null || loc.getWorld() == null) {
+                    failed++;
+                    continue;
+                }
+                
+                Block block = loc.getBlock();
+                if (block != null && originalData != null) {
+                    block.setBlockData(originalData);
+                    restored++;
+                } else {
+                    failed++;
+                }
+                
+            } catch (Exception e) {
+                failed++;
+                if (plugin.getConfigManager().isDebugCiclo()) {
+                    plugin.getLogger().warning("[Disaster] Error restaurando bloque: " + e.getMessage());
+                }
+            }
+        }
+        
+        plugin.getLogger().info("[Disaster] Restauración sincrónica completada: " + restored + " exitosos, " + failed + " fallidos");
+        modifiedBlocks.clear();
+    }
+    
+    /**
+     * [MEJORA] Restauración asíncrona para muchos bloques
+     */
+    private void restoreBlocksAsynchronous(int totalBlocks) {
+        final int batchSize = 50; // Procesar en lotes de 50 bloques
+        final List<Map.Entry<Location, BlockData>> blockList = new ArrayList<>(modifiedBlocks.entrySet());
+        final AtomicInteger restored = new AtomicInteger(0);
+        final AtomicInteger failed = new AtomicInteger(0);
+        final AtomicInteger processed = new AtomicInteger(0);
+        
+        plugin.getLogger().info("[Disaster] Iniciando restauración asíncrona en lotes de " + batchSize + " bloques");
+        
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            for (int i = 0; i < blockList.size(); i += batchSize) {
+                final int startIndex = i;
+                final int endIndex = Math.min(i + batchSize, blockList.size());
+                final List<Map.Entry<Location, BlockData>> batch = blockList.subList(startIndex, endIndex);
+                
+                // Procesar cada lote en el hilo principal
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    for (Map.Entry<Location, BlockData> entry : batch) {
+                        try {
+                            Location loc = entry.getKey();
+                            BlockData originalData = entry.getValue();
+                            
+                            // Validaciones adicionales
+                            if (loc == null || loc.getWorld() == null) {
+                                failed.incrementAndGet();
+                                continue;
+                            }
+                            
+                            // Verificar que el chunk está cargado
+                            if (!loc.getWorld().isChunkLoaded(loc.getBlockX() >> 4, loc.getBlockZ() >> 4)) {
+                                failed.incrementAndGet();
+                                continue;
+                            }
+                            
+                            Block block = loc.getBlock();
+                            if (block != null && originalData != null) {
+                                block.setBlockData(originalData);
+                                restored.incrementAndGet();
+                            } else {
+                                failed.incrementAndGet();
+                            }
+                            
+                        } catch (Exception e) {
+                            failed.incrementAndGet();
+                            if (plugin.getConfigManager().isDebugCiclo()) {
+                                plugin.getLogger().warning("[Disaster] Error en lote asíncrono: " + e.getMessage());
+                            }
+                        }
+                    }
+                    
+                    int currentProcessed = processed.addAndGet(batch.size());
+                    
+                    // Reportar progreso cada 25%
+                    double progress = (double) currentProcessed / totalBlocks;
+                    if (progress >= 0.25 && progress < 0.5 && currentProcessed >= totalBlocks * 0.25) {
+                        plugin.getLogger().info("[Disaster] Progreso de restauración: 25% (" + currentProcessed + "/" + totalBlocks + ")");
+                    } else if (progress >= 0.5 && progress < 0.75 && currentProcessed >= totalBlocks * 0.5) {
+                        plugin.getLogger().info("[Disaster] Progreso de restauración: 50% (" + currentProcessed + "/" + totalBlocks + ")");
+                    } else if (progress >= 0.75 && progress < 1.0 && currentProcessed >= totalBlocks * 0.75) {
+                        plugin.getLogger().info("[Disaster] Progreso de restauración: 75% (" + currentProcessed + "/" + totalBlocks + ")");
+                    }
+                    
+                    // Si es el último lote, reportar resultado final
+                    if (currentProcessed >= totalBlocks) {
+                        plugin.getLogger().info("[Disaster] Restauración asíncrona completada: " + 
+                                               restored.get() + " exitosos, " + failed.get() + " fallidos");
+                        
+                        // Limpiar en el hilo principal
+                        Bukkit.getScheduler().runTask(plugin, () -> {
+                            modifiedBlocks.clear();
+                        });
+                    }
+                });
+                
+                // Pequeña pausa entre lotes para no sobrecargar
+                try {
+                    Thread.sleep(50);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+        });
+    }
+    
+    /**
+     * Limpia el tracking de bloques sin restaurarlos (para casos especiales)
+     */
+    protected void clearBlockTracking() {
+        modifiedBlocks.clear();
+    }
+    
+    /**
+     * Limpieza final de metadatos y referencias del desastre
+     */
+    private void cleanupMetadata() {
+        // Asegurar que no queden referencias colgantes
+        modifiedBlocks.clear();
+        
+        // Limpiar cualquier tarea pendiente específica del desastre
+        cleanupPendingTasks();
+        
+        // Remover metadatos de entidades relacionadas con este desastre
+        for (World world : Bukkit.getWorlds()) {
+            for (Entity entity : world.getEntities()) {
+                String disasterMetadata = entity.getMetadata("apocalipsis_disaster").stream()
+                    .filter(mv -> mv.getOwningPlugin() == plugin)
+                    .map(mv -> mv.asString())
+                    .findFirst()
+                    .orElse(null);
+                    
+                if (disasterMetadata != null && disasterMetadata.equals(id)) {
+                    entity.removeMetadata("apocalipsis_disaster", plugin);
+                    if (plugin.getConfigManager().isDebugCiclo()) {
+                        plugin.getLogger().info("[Disaster] Limpieza metadata de entidad: " + entity.getType());
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * Método para que los desastres limpien sus tareas específicas
+     * Override en subclases si es necesario
+     */
+    protected void cleanupPendingTasks() {
+        // Implementación base vacía - override en subclases si necesario
     }
 }

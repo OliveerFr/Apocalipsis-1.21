@@ -4,25 +4,33 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.bukkit.Bukkit;
+import org.bukkit.Chunk;
+import org.bukkit.Material;
 import org.bukkit.Sound;
+import org.bukkit.World;
+import org.bukkit.block.BlockFace;
 import org.bukkit.boss.BarColor;
 import org.bukkit.boss.BarStyle;
 import org.bukkit.boss.BossBar;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.Monster;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Projectile;
+import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitTask;
 
 import me.apocalipsis.Apocalipsis;
-import me.apocalipsis.disaster.Disaster;
 import me.apocalipsis.state.ServerState;
 import me.apocalipsis.state.StateManager;
 import me.apocalipsis.state.TimeService;
+import me.apocalipsis.tutorial.ProgressiveDifficultySystem;
 import me.apocalipsis.ui.MessageBus;
 import me.apocalipsis.ui.SoundUtil;
-import me.apocalipsis.tutorial.ProgressiveDifficultySystem;
 
 public class DisasterController {
 
@@ -516,6 +524,9 @@ public class DisasterController {
             final String disasterId = activeDisaster.getId();
             plugin.getLogger().info("[Cycle] Finalizando desastre: " + disasterId);
             
+            // [MEJORA] Limpieza mejorada y asíncrona
+            performEnhancedCleanup(disasterId);
+            
             stopCurrentDisasterTasks();
             
             // [CRÍTICO] Cancelar nextTask
@@ -616,10 +627,202 @@ public class DisasterController {
 
 
     /**
-     * Detiene todos los desastres activos
-     * @param announce Si true, anuncia la detención
-     * @param changeState Si true, cambia el estado a DETENIDO (false para switches rápidos)
+     * [MEJORA v1.22.67] Sistema de limpieza mejorado al terminar desastres
+     * [OPTIMIZADO v1.22.68] Limpieza distribuida en múltiples ticks para evitar lag
      */
+    private void performEnhancedCleanup(String disasterId) {
+        long startTime = System.currentTimeMillis();
+        plugin.getLogger().info("[Cleanup] Iniciando limpieza optimizada (distribuida) para: " + disasterId);
+        
+        final java.util.concurrent.atomic.AtomicInteger playersProcessed = new java.util.concurrent.atomic.AtomicInteger(0);
+        final java.util.concurrent.atomic.AtomicInteger entitiesRemoved = new java.util.concurrent.atomic.AtomicInteger(0);
+        final java.util.concurrent.atomic.AtomicInteger effectsCleared = new java.util.concurrent.atomic.AtomicInteger(0);
+        final java.util.concurrent.atomic.AtomicInteger fireBlocksExtinguished = new java.util.concurrent.atomic.AtomicInteger(0);
+        
+        // FASE 1: Limpiar jugadores (inmediato - crítico para UX)
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            try {
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    if (player == null || !player.isOnline()) continue;
+                    
+                    // Limpiar efectos negativos comunes de desastres
+                    if (player.hasPotionEffect(PotionEffectType.NAUSEA)) {
+                        player.removePotionEffect(PotionEffectType.NAUSEA);
+                        effectsCleared.incrementAndGet();
+                    }
+                    if (player.hasPotionEffect(PotionEffectType.BLINDNESS)) {
+                        player.removePotionEffect(PotionEffectType.BLINDNESS);
+                        effectsCleared.incrementAndGet();
+                    }
+                    if (player.hasPotionEffect(PotionEffectType.SLOWNESS)) {
+                        player.removePotionEffect(PotionEffectType.SLOWNESS);
+                        effectsCleared.incrementAndGet();
+                    }
+                    
+                    // Resetear velocidades
+                    try {
+                        if (player.getAllowFlight() && player.getFlySpeed() != 0.1f) {
+                            player.setFlySpeed(0.1f);
+                        }
+                        if (player.getWalkSpeed() != 0.2f) {
+                            player.setWalkSpeed(0.2f);
+                        }
+                    } catch (Exception e) {
+                        // Ignorar errores menores
+                    }
+                    
+                    // Apagar fuego
+                    if (player.getFireTicks() > 0) {
+                        player.setFireTicks(0);
+                    }
+                    
+                    playersProcessed.incrementAndGet();
+                }
+                
+                plugin.getLogger().info("[Cleanup] Fase 1/4: " + playersProcessed.get() + " jugadores procesados");
+            } catch (Exception e) {
+                plugin.getLogger().warning("[Cleanup] Error en Fase 1: " + e.getMessage());
+            }
+        });
+        
+        // FASE 2: Limpiar entidades (después de 2 ticks - distribuido)
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            try {
+                for (World world : Bukkit.getWorlds()) {
+                    if (world == null) continue;
+                    
+                    // Procesar entidades en lotes
+                    java.util.List<Entity> entitiesToRemove = new java.util.ArrayList<>();
+                    
+                    for (Entity entity : world.getEntities()) {
+                        if (entity == null || !entity.isValid()) continue;
+                        
+                        // Marcar entidades para remover (no remover en el loop)
+                        if (entity instanceof Monster && !(entity instanceof Player)) {
+                            if (entity.hasMetadata("disaster_spawned") || 
+                                entity.hasMetadata("apocalipsis_spawned") ||
+                                (entity.getCustomName() != null && entity.getCustomName().contains("Desastre"))) {
+                                entitiesToRemove.add(entity);
+                            }
+                        }
+                        
+                        // Proyectiles
+                        if (entity instanceof Projectile) {
+                            entitiesToRemove.add(entity);
+                        }
+                    }
+                    
+                    // Remover en lotes de 50 por tick
+                    final int BATCH_SIZE = 50;
+                    final java.util.List<Entity> finalList = entitiesToRemove;
+                    
+                    for (int i = 0; i < finalList.size(); i += BATCH_SIZE) {
+                        final int startIdx = i;
+                        final int endIdx = Math.min(i + BATCH_SIZE, finalList.size());
+                        
+                        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                            for (int j = startIdx; j < endIdx; j++) {
+                                Entity e = finalList.get(j);
+                                if (e != null && e.isValid()) {
+                                    e.remove();
+                                    entitiesRemoved.incrementAndGet();
+                                }
+                            }
+                        }, (i / BATCH_SIZE) + 2L);
+                    }
+                }
+                
+                plugin.getLogger().info("[Cleanup] Fase 2/4: " + entitiesRemoved.get() + " entidades marcadas para remoción");
+            } catch (Exception e) {
+                plugin.getLogger().warning("[Cleanup] Error en Fase 2: " + e.getMessage());
+            }
+        }, 2L);
+        
+        // FASE 3: Limpiar fuegos (después de 20 ticks - menos prioritario)
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            try {
+                for (World world : Bukkit.getWorlds()) {
+                    if (world == null) continue;
+                    
+                    // Solo procesar chunks cerca de jugadores (optimización)
+                    java.util.Set<Chunk> relevantChunks = new java.util.HashSet<>();
+                    for (Player p : world.getPlayers()) {
+                        Chunk playerChunk = p.getLocation().getChunk();
+                        // Radio de 5 chunks alrededor del jugador
+                        for (int dx = -5; dx <= 5; dx++) {
+                            for (int dz = -5; dz <= 5; dz++) {
+                                try {
+                                    relevantChunks.add(world.getChunkAt(playerChunk.getX() + dx, playerChunk.getZ() + dz));
+                                } catch (Exception e) {
+                                    // Chunk no cargado, ignorar
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Procesar solo chunks relevantes (máximo 100 bloques de fuego por tick)
+                    final int MAX_BLOCKS_PER_TICK = 100;
+                    int blocksProcessed = 0;
+                    
+                    for (Chunk chunk : relevantChunks) {
+                        if (blocksProcessed >= MAX_BLOCKS_PER_TICK) break;
+                        
+                        for (int x = 0; x < 16 && blocksProcessed < MAX_BLOCKS_PER_TICK; x++) {
+                            for (int z = 0; z < 16 && blocksProcessed < MAX_BLOCKS_PER_TICK; z++) {
+                                for (int y = world.getMinHeight(); y < world.getMaxHeight() && blocksProcessed < MAX_BLOCKS_PER_TICK; y++) {
+                                    org.bukkit.block.Block block = chunk.getBlock(x, y, z);
+                                    if (block.getType() == Material.FIRE) {
+                                        org.bukkit.block.Block below = block.getRelative(org.bukkit.block.BlockFace.DOWN);
+                                        if (below.getType() != Material.NETHERRACK && 
+                                            below.getType() != Material.MAGMA_BLOCK) {
+                                            block.setType(Material.AIR);
+                                            fireBlocksExtinguished.incrementAndGet();
+                                            blocksProcessed++;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                plugin.getLogger().info("[Cleanup] Fase 3/4: " + fireBlocksExtinguished.get() + " fuegos apagados");
+            } catch (Exception e) {
+                plugin.getLogger().warning("[Cleanup] Error en Fase 3: " + e.getMessage());
+            }
+        }, 20L);
+        
+        // FASE 4: Restaurar clima (después de 40 ticks - menos crítico)
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            try {
+                for (World world : Bukkit.getWorlds()) {
+                    if (world == null) continue;
+                    
+                    world.setStorm(false);
+                    world.setThundering(false);
+                    world.setWeatherDuration(0);
+                    world.setThunderDuration(0);
+                }
+                
+                long duration = System.currentTimeMillis() - startTime;
+                
+                // Reportar resultados finales
+                plugin.getLogger().info("[Cleanup] ═══════════════════════════════════");
+                plugin.getLogger().info("[Cleanup] Limpieza completada en " + duration + "ms");
+                plugin.getLogger().info("[Cleanup] - Jugadores procesados: " + playersProcessed.get());
+                plugin.getLogger().info("[Cleanup] - Efectos removidos: " + effectsCleared.get());
+                plugin.getLogger().info("[Cleanup] - Entidades removidas: " + entitiesRemoved.get());
+                plugin.getLogger().info("[Cleanup] - Fuegos apagados: " + fireBlocksExtinguished.get());
+                plugin.getLogger().info("[Cleanup] ═══════════════════════════════════");
+                
+                // Mensaje a jugadores
+                messageBus.broadcast("§a✓ Limpieza post-desastre completada", "cleanup_complete");
+                
+            } catch (Exception e) {
+                plugin.getLogger().warning("[Cleanup] Error en Fase 4: " + e.getMessage());
+            }
+        }, 40L);
+    }
     public void stopAllDisasters(boolean announce, boolean changeState) {
         endingDisaster.set(false);
         if (activeDisaster != null && activeDisaster.isActive()) {
@@ -853,10 +1056,20 @@ public class DisasterController {
      * Cancela el ticker de UI (usado tanto por sistema viejo como nuevo)
      */
     private void cancelUITicker() {
-        if (uiTask != null && !uiTask.isCancelled()) {
-            uiTask.cancel();
+        if (uiTask != null) {
+            try {
+                if (!uiTask.isCancelled()) {
+                    uiTask.cancel();
+                    if (plugin.getConfigManager().isDebugCiclo()) {
+                        plugin.getLogger().info("[UI] Ticker cancelado");
+                    }
+                }
+            } catch (Exception e) {
+                plugin.getLogger().warning("[UI] Error al cancelar ticker: " + e.getMessage());
+            } finally {
+                uiTask = null;
+            }
         }
-        uiTask = null;
     }
     
     /**
@@ -875,22 +1088,45 @@ public class DisasterController {
      * Asegura que existe una BossBar única (no duplicar)
      */
     private void ensureBossBar() {
-        if (bossBar == null) {
-            bossBar = Bukkit.createBossBar("§7Esperando...", BarColor.WHITE, BarStyle.SOLID);
+        // [FIX] Si ya existe una BossBar, limpiarla primero para evitar duplicados
+        if (bossBar != null) {
+            try {
+                bossBar.removeAll();
+                if (plugin.getConfigManager().isDebugCiclo()) {
+                    plugin.getLogger().info("[BossBar] Limpiando BossBar existente");
+                }
+            } catch (Exception e) {
+                plugin.getLogger().warning("[BossBar] Error al limpiar BossBar: " + e.getMessage());
+            }
+        }
+        
+        // Crear o reutilizar BossBar
+        try {
+            if (bossBar == null) {
+                bossBar = Bukkit.createBossBar("§7Esperando...", BarColor.WHITE, BarStyle.SOLID);
+            }
             bossBar.setVisible(false);
             
             // Agregar jugadores de forma segura con manejo de errores
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                for (Player p : Bukkit.getOnlinePlayers()) {
-                    try {
-                        if (p.isOnline() && bossBar != null) {
-                            bossBar.addPlayer(p);
+                if (bossBar != null) {
+                    for (Player p : Bukkit.getOnlinePlayers()) {
+                        try {
+                            if (p.isOnline()) {
+                                bossBar.addPlayer(p);
+                            }
+                        } catch (Exception e) {
+                            plugin.getLogger().warning("[BossBar] Error al agregar jugador " + p.getName() + ": " + e.getMessage());
                         }
-                    } catch (Exception e) {
-                        plugin.getLogger().warning("[BossBar] Error al agregar jugador " + p.getName() + ": " + e.getMessage());
+                    }
+                    if (plugin.getConfigManager().isDebugCiclo()) {
+                        plugin.getLogger().info("[BossBar] " + Bukkit.getOnlinePlayers().size() + " jugadores agregados");
                     }
                 }
             }, 5L); // 250ms después
+        } catch (Exception e) {
+            plugin.getLogger().severe("[BossBar] Error crítico al crear BossBar: " + e.getMessage());
+            e.printStackTrace();
         }
     }
     
@@ -1293,13 +1529,22 @@ public class DisasterController {
             // 7) ELEGIR Y LANZAR DESASTRE
             // ═══════════════════════════════════════════════════════════════
             String disasterId = elegirSegunWeight();
-            if (disasterId == null) {
-                logOnce(5000, "[CICLO] No se pudo elegir desastre (weights inválidos)");
+            if (disasterId == null || disasterId.isEmpty()) {
+                plugin.getLogger().severe("[CICLO] ¡ERROR CRÍTICO! No se pudo elegir desastre (weights inválidos o pool vacío)");
                 return;
             }
             
+            // [FIX] Verificación robusta del registry
             if (!registry.exists(disasterId)) {
-                plugin.getLogger().warning("[CICLO] Desastre no existe en registry: " + disasterId);
+                plugin.getLogger().severe("[CICLO] ¡ERROR! Desastre '" + disasterId + "' NO existe en registry");
+                plugin.getLogger().severe("[CICLO] Desastres registrados: " + String.join(", ", registry.getIds()));
+                return;
+            }
+            
+            // [FIX] Verificar que el desastre recuperado no sea null
+            Disaster testDisaster = registry.get(disasterId);
+            if (testDisaster == null) {
+                plugin.getLogger().severe("[CICLO] ¡ERROR! Desastre '" + disasterId + "' existe en registry pero retorna NULL");
                 return;
             }
             
@@ -1360,13 +1605,25 @@ public class DisasterController {
     /**
      * Elegir desastre según weights, excluyendo el último desastre jugado.
      * Si solo hay un desastre disponible, permite repetirlo.
+     * 
+     * [FIX CICLO 2] Ahora lee weights_ciclo_2 si usar_desastres_nuevos=true
      */
     private String elegirSegunWeight() {
+        // [FIX] Determinar qué tabla de weights usar según usar_desastres_nuevos
+        boolean usarNuevos = plugin.getConfig().getBoolean("ciclo.usar_desastres_nuevos", true);
+        String weightsPath = usarNuevos ? "desastres.weights_ciclo_2" : "desastres.weights";
+        
         ConfigurationSection weights = plugin.getConfigManager().getDesastresConfig()
-            .getConfigurationSection("desastres.weights");
+            .getConfigurationSection(weightsPath);
         
         if (weights == null) {
-            return "huracan"; // Fallback
+            plugin.getLogger().warning("[Cycle] No se encontró sección de weights: " + weightsPath);
+            return usarNuevos ? "tormenta_glacial" : "huracan"; // Fallback según ciclo
+        }
+        
+        if (plugin.getConfigManager().isDebugCiclo()) {
+            plugin.getLogger().info("[Cycle] Usando weights desde: " + weightsPath + 
+                " (usar_nuevos=" + usarNuevos + ")");
         }
         
         // Obtener último desastre desde state.yml
@@ -1375,14 +1632,31 @@ public class DisasterController {
         // Construir pool con pesos
         List<String> pool = new ArrayList<>();
         List<String> allKeys = new ArrayList<>();
+        int totalWeight = 0;
         
         for (String key : weights.getKeys(false)) {
             int weight = weights.getInt(key, 1);
             allKeys.add(key);
+            totalWeight += weight;
+            
+            if (plugin.getConfigManager().isDebugCiclo()) {
+                plugin.getLogger().info("[Cycle] Desastre disponible: " + key + " (weight=" + weight + ")");
+            }
+            
+            // [FIX] Excluir desastres con weight=0
+            if (weight <= 0) {
+                if (plugin.getConfigManager().isDebugCiclo()) {
+                    plugin.getLogger().info("[Cycle] Desastre excluido por weight=0: " + key);
+                }
+                continue;
+            }
             
             // Excluir último desastre si hay más de una opción
             if (ultimoDesastre != null && !ultimoDesastre.isEmpty() && 
                 key.equalsIgnoreCase(ultimoDesastre) && weights.getKeys(false).size() > 1) {
+                if (plugin.getConfigManager().isDebugCiclo()) {
+                    plugin.getLogger().info("[Cycle] Desastre excluido (fue el último): " + key);
+                }
                 continue; // Saltar el último desastre
             }
             
@@ -1391,27 +1665,45 @@ public class DisasterController {
             }
         }
         
+        // [FIX] Verificar si pool está vacío
+        if (pool.isEmpty() && totalWeight == 0) {
+            plugin.getLogger().severe("[Cycle] ¡ERROR! Todos los desastres tienen weight=0 en " + weightsPath);
+            plugin.getLogger().severe("[Cycle] Configuración inválida - no se puede iniciar ningún desastre");
+            plugin.getLogger().severe("[Cycle] Por favor, configure al menos un desastre con weight > 0");
+            return null; // No iniciar si no hay desastres válidos
+        }
+        
         // Si el pool quedó vacío (solo había un desastre y era el último), permitir repetir
         if (pool.isEmpty() && !allKeys.isEmpty()) {
-            String fallback = allKeys.get(0);
-            int weight = weights.getInt(fallback, 1);
-            for (int i = 0; i < weight; i++) {
-                pool.add(fallback);
+            // Buscar el primer desastre con weight > 0
+            String fallback = null;
+            for (String key : allKeys) {
+                int weight = weights.getInt(key, 0);
+                if (weight > 0) {
+                    fallback = key;
+                    for (int i = 0; i < weight; i++) {
+                        pool.add(fallback);
+                    }
+                    break;
+                }
             }
-            if (plugin.getConfigManager().isDebugCiclo()) {
+            
+            if (fallback != null && plugin.getConfigManager().isDebugCiclo()) {
                 plugin.getLogger().info("[Cycle] Solo un desastre disponible, permitiendo repetir: " + fallback);
             }
         }
         
         if (pool.isEmpty()) {
-            return "huracan";
+            plugin.getLogger().severe("[Cycle] ¡ERROR! Pool vacío después de filtros - no hay desastres con weight > 0");
+            return null; // Retornar null en lugar de fallback para evitar errores
         }
         
         Random random = new Random();
         String selected = pool.get(random.nextInt(pool.size()));
         
         if (plugin.getConfigManager().isDebugCiclo()) {
-            plugin.getLogger().info("[Cycle] Desastre elegido: " + selected + " (excluido: " + 
+            plugin.getLogger().info("[Cycle] ✅ Desastre elegido: " + selected + 
+                " de pool con " + pool.size() + " opciones (excluido: " + 
                 (ultimoDesastre != null ? ultimoDesastre : "ninguno") + ")");
         }
         
@@ -1624,11 +1916,22 @@ public class DisasterController {
      * [FIX DUPLICACIÓN] También cancelar el tick principal del controller
      */
     private void stopCurrentDisasterTasks() {
-        if (activeDisaster != null && activeDisaster.isActive()) {
-            if (plugin.getConfigManager().isDebugCiclo()) {
-                plugin.getLogger().info("[DisasterController] Deteniendo desastre activo: " + activeDisaster.getId());
+        if (activeDisaster != null) {
+            try {
+                if (activeDisaster.isActive()) {
+                    if (plugin.getConfigManager().isDebugCiclo()) {
+                        plugin.getLogger().info("[DisasterController] Deteniendo desastre activo: " + activeDisaster.getId());
+                    }
+                    activeDisaster.stop();
+                } else if (plugin.getConfigManager().isDebugCiclo()) {
+                    plugin.getLogger().info("[DisasterController] Desastre ya está inactivo: " + activeDisaster.getId());
+                }
+            } catch (Exception e) {
+                plugin.getLogger().warning("[DisasterController] Error al detener desastre: " + e.getMessage());
+                e.printStackTrace();
             }
-            activeDisaster.stop();
+        } else if (plugin.getConfigManager().isDebugCiclo()) {
+            plugin.getLogger().info("[DisasterController] No hay desastre activo para detener");
         }
         
         // [FIX CRÍTICO] Cancelar task principal para evitar acumulación

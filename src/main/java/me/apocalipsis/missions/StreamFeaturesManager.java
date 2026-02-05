@@ -1,12 +1,14 @@
 package me.apocalipsis.missions;
 
 import java.io.File;
-import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.Sound;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -207,6 +209,10 @@ public class StreamFeaturesManager {
         
         // Detectar si es un token y registrarlo SOLO en la base de datos
         boolean isToken = item.getType() == Material.NETHER_STAR;
+        boolean isFragment = item.getType() == Material.EMERALD && item.hasItemMeta() && 
+                             item.getItemMeta().hasDisplayName() && 
+                             item.getItemMeta().getDisplayName().contains("Fragmento del Stream");
+        
         if (isToken) {
             // Añadir tokens a la base de datos (NO al inventario)
             addPlayerTokens(player.getUniqueId(), item.getAmount(), "Drop de mob hostil");
@@ -219,8 +225,31 @@ public class StreamFeaturesManager {
             player.sendMessage(mensaje);
             player.sendMessage("§7Los tokens se han añadido automáticamente a tu cuenta.");
             player.sendMessage("§7Usa §e/avo canjear §7para ver tus tokens y recompensas.");
+        } else if (isFragment) {
+            // Añadir fragmentos a la base de datos (NO al inventario)
+            final int fragmentAmount = item.getAmount();
+            tokenDatabase.addFragments(player.getUniqueId(), fragmentAmount, "Drop de mob hostil").thenAccept(tokensConverted -> {
+                if (tokensConverted != null && tokensConverted > 0) {
+                    // Hubo conversión automática a tokens
+                    player.sendMessage("§a§l✓ §7Has obtenido §a" + fragmentAmount + " fragmento(s) del Stream!");
+                    player.sendMessage("§6§l★ §7¡" + (tokensConverted * 10) + " fragmentos convertidos en §6" + tokensConverted + " token(s)§7!");
+                    player.sendMessage("§7Fragmentos restantes: §a" + tokenDatabase.getFragments(player.getUniqueId()));
+                    player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.5f);
+                } else {
+                    // Sin conversión, solo fragmentos añadidos
+                    int totalFragments = tokenDatabase.getFragments(player.getUniqueId());
+                    int fragmentsNeeded = 10 - totalFragments;
+                    player.sendMessage("§a§l✓ §7Has obtenido §a" + fragmentAmount + " fragmento(s) del Stream!");
+                    player.sendMessage("§7Total de fragmentos: §a" + totalFragments + "§7/§10");
+                    if (fragmentsNeeded > 0) {
+                        player.sendMessage("§7Te faltan §e" + fragmentsNeeded + " fragmento(s) §7para obtener 1 token.");
+                    }
+                }
+            });
+            
+            player.sendMessage("§7Usa §e/avo canjear §7para ver tus tokens y fragmentos.");
         } else {
-            // Dar items NO-token al inventario normalmente
+            // Dar items NO-token/NO-fragment al inventario normalmente
             player.getInventory().addItem(item);
             
             // Enviar mensaje normal para items físicos
@@ -332,12 +361,31 @@ public class StreamFeaturesManager {
     }
     
     /**
+     * Obtiene los fragmentos de un jugador desde la base de datos
+     */
+    public int getPlayerFragments(UUID uuid) {
+        return tokenDatabase.getFragments(uuid);
+    }
+    
+    /**
      * Añade tokens a un jugador de forma asíncrona
      */
     public void addPlayerTokens(UUID uuid, int amount, String reason) {
         tokenDatabase.addTokens(uuid, amount, reason).thenAccept(success -> {
             if (!success) {
                 plugin.getLogger().warning("Error añadiendo " + amount + " tokens a " + uuid);
+            }
+        });
+    }
+    
+    /**
+     * Añade fragmentos a un jugador de forma asíncrona
+     * Convierte automáticamente cada 10 fragmentos en 1 token
+     */
+    public void addPlayerFragments(UUID uuid, int amount, String reason) {
+        tokenDatabase.addFragments(uuid, amount, reason).thenAccept(tokensConverted -> {
+            if (tokensConverted == null) {
+                plugin.getLogger().warning("Error añadiendo " + amount + " fragmentos a " + uuid);
             }
         });
     }
@@ -455,7 +503,7 @@ public class StreamFeaturesManager {
     }
     
     /**
-     * Muestra el menú de canje a un jugador
+     * Muestra el menú de canje a un jugador con mensajes clicables
      */
     public void showRedeemMenu(Player player) {
         if (!config.getBoolean("canje_tokens.enabled", true)) {
@@ -470,34 +518,72 @@ public class StreamFeaturesManager {
         }
         
         int tokens = getPlayerTokens(player.getUniqueId());
+        int tokensInv = countTokensInInventory(player);
+        int totalTokens = tokens + tokensInv;
         
-        player.sendMessage("§6§l═══════════════════════════════");
-        player.sendMessage("§6§l    CANJE DE TOKENS DE STREAM");
-        player.sendMessage("§6§l═══════════════════════════════");
         player.sendMessage("");
-        player.sendMessage("§7Tus tokens: §e§l" + tokens);
+        player.sendMessage("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        player.sendMessage("§6§l        🌟 TIENDA DE TOKENS DE STREAM");
+        player.sendMessage("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         player.sendMessage("");
-        player.sendMessage("§eRecompensas disponibles:");
+        player.sendMessage("§7Tus tokens: §e§l" + totalTokens + " §7(§f" + tokens + " §7en DB + §f" + tokensInv + " §7en inventario)");
+        player.sendMessage("");
+        player.sendMessage("§e§l🎯RECOMPENSAS DISPONIBLES:");
         player.sendMessage("");
         
-        for (String rewardId : recompensas.getKeys(false)) {
+        // Ordenar recompensas por costo
+        java.util.List<String> sortedKeys = new java.util.ArrayList<>(recompensas.getKeys(false));
+        sortedKeys.sort((a, b) -> {
+            int costoA = recompensas.getConfigurationSection(a).getInt("costo_tokens", 0);
+            int costoB = recompensas.getConfigurationSection(b).getInt("costo_tokens", 0);
+            return Integer.compare(costoA, costoB);
+        });
+        
+        for (String rewardId : sortedKeys) {
             ConfigurationSection reward = recompensas.getConfigurationSection(rewardId);
             if (reward == null) continue;
             
             String nombre = reward.getString("nombre", rewardId);
             String descripcion = reward.getString("descripcion", "");
+            String categoria = reward.getString("categoria", "🎁");
             int costo = reward.getInt("costo_tokens", 0);
             
-            String disponible = tokens >= costo ? "§a✓" : "§c✗";
+            boolean canBuy = totalTokens >= costo;
+            String disponible = canBuy ? "§a✓" : "§c✗";
+            String barColor = canBuy ? "§a" : "§7";
             
-            player.sendMessage(disponible + " " + nombre.replace("&", "§"));
+            // Crear barra de progreso visual
+            int progress = Math.min(100, (int)((double)totalTokens / costo * 100));
+            int bars = progress / 10;
+            String progressBar = barColor + "█".repeat(Math.max(0, bars)) + "§8" + "░".repeat(Math.max(0, 10 - bars));
+            
+            player.sendMessage(disponible + " " + categoria + " " + nombre.replace("&", "§"));
             player.sendMessage("   §7" + descripcion);
-            player.sendMessage("   §7Costo: §e" + costo + " tokens");
-            player.sendMessage("   §7Comando: §e/avo canjear " + rewardId);
+            player.sendMessage("   §7Costo: " + barColor + costo + " tokens " + progressBar);
+            
+            // Crear mensaje clicable
+            if (canBuy) {
+                net.kyori.adventure.text.Component clickable = net.kyori.adventure.text.Component.text()
+                    .append(net.kyori.adventure.text.Component.text("   ").color(net.kyori.adventure.text.format.NamedTextColor.GRAY))
+                    .append(net.kyori.adventure.text.Component.text("» CLICK AQUÍ PARA CANJEAR «")
+                        .color(net.kyori.adventure.text.format.NamedTextColor.GREEN)
+                        .decorate(net.kyori.adventure.text.format.TextDecoration.BOLD)
+                        .hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(
+                            net.kyori.adventure.text.Component.text("§aClick para canjear " + nombre.replace("&", "§"))
+                        ))
+                        .clickEvent(net.kyori.adventure.text.event.ClickEvent.runCommand("/avo canjear " + rewardId))
+                    )
+                    .build();
+                player.sendMessage(clickable);
+            } else {
+                player.sendMessage("   §c§o(Te faltan " + (costo - totalTokens) + " tokens)");
+            }
             player.sendMessage("");
         }
         
-        player.sendMessage("§6§l═══════════════════════════════");
+        player.sendMessage("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        player.sendMessage("§7§oTambién puedes usar: §e/avo canjear <nombre>");
+        player.sendMessage("");
     }
     
     /**

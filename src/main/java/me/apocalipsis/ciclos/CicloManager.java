@@ -1,7 +1,18 @@
 package me.apocalipsis.ciclos;
 
-import me.apocalipsis.Apocalipsis;
-import me.apocalipsis.ciclos.CyclePreviewSystem;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.logging.Level;
+
 import org.bukkit.Bukkit;
 import org.bukkit.Difficulty;
 import org.bukkit.Location;
@@ -12,12 +23,8 @@ import org.bukkit.WorldType;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
-import org.bukkit.plugin.Plugin;
-import org.bukkit.PortalType;
 
-import java.io.File;
-import java.util.*;
-import java.util.logging.Level;
+import me.apocalipsis.Apocalipsis;
 
 /**
  * Gestor principal del sistema de ciclos.
@@ -261,6 +268,35 @@ public class CicloManager {
             // Verificar si el jugador ya tiene datos en el ciclo activo
             boolean hasDataInActiveCycle = dataManager.hasData(uuid, activeCycle);
             
+            // [FIX CRÍTICO] Si el jugador tiene datos en ciclo activo pero está en otro mundo,
+            // teleportarlo sin cargar datos del mundo actual (previene pérdida de inventario)
+            if (hasDataInActiveCycle) {
+                plugin.getLogger().info("[CicloManager] " + player.getName() + 
+                    " tiene progreso en ciclo activo '" + activeCycle + "' pero está en '" + worldName + 
+                    "'. Teleportando a ciclo activo...");
+                
+                // Validar que el mundo activo existe
+                org.bukkit.World activeWorld = org.bukkit.Bukkit.getWorld(activeCycle);
+                if (activeWorld != null) {
+                    org.bukkit.Location spawnLoc = activeWorld.getSpawnLocation();
+                    
+                    // Teleportar después de 1 tick
+                    org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                        if (player.isOnline()) {
+                            player.teleport(spawnLoc);
+                            player.sendMessage("§e¡Bienvenido de vuelta al ciclo: §b" + activeCycle + "§e!");
+                            
+                            // Ahora sí cargar datos del ciclo activo
+                            handlePlayerEnterWorld(player, activeCycle);
+                        }
+                    }, 1L);
+                    return; // No cargar datos del mundo actual
+                } else {
+                    plugin.getLogger().severe("[SEGURIDAD] Ciclo activo '" + activeCycle + 
+                        "' no existe. Cargando datos del mundo actual.");
+                }
+            }
+            
             // Si es la primera vez en el ciclo activo, teleportarlo
             if (!hasDataInActiveCycle) {
                 // SEGURIDAD 1: Verificar cooldown de teleporte
@@ -329,10 +365,6 @@ public class CicloManager {
                 }, 1L);
                 
                 return; // No cargar datos del mundo anterior
-            } else {
-                // Jugador tiene progreso en ciclo activo pero está en mundo incorrecto
-                plugin.getLogger().info("[CicloManager] " + player.getName() + 
-                    " tiene datos en ciclo activo pero reconectó en '" + worldName + "'");
             }
         }
         
@@ -395,6 +427,14 @@ public class CicloManager {
     private void handlePlayerEnterWorld(Player player, String worldName) {
         UUID uuid = player.getUniqueId();
         
+        // [FIX] Si el jugador NO tiene inventario guardado en este mundo, 
+        // guardar su inventario actual ANTES de cargar (previene pérdida de inventario)
+        if (!inventoryManager.hasInventory(uuid, worldName)) {
+            plugin.getLogger().info("[CicloManager] Primera vez de " + player.getName() + 
+                                    " en mundo '" + worldName + "'. Guardando inventario actual primero.");
+            inventoryManager.saveInventory(player, worldName);
+        }
+        
         // 1. Cargar inventario
         inventoryManager.loadInventory(player, worldName);
         
@@ -445,30 +485,40 @@ public class CicloManager {
     }
     
     /**
-     * Obtiene el ciclo activo actual (si existe)
+     * Obtiene el ciclo activo más reciente (prioridad por última activación)
+     * MEJORADO: Retorna el ciclo activo más recientemente activado
      * SEGURIDAD: Valida que solo haya un ciclo activo
-     * @return Nombre del mundo del ciclo activo, o null si no hay ninguno
+     * @return Nombre del mundo del ciclo activo más reciente, o null si no hay ninguno
      */
     public String getActiveCycle() {
-        String activeCycle = null;
+        CicloData mostRecentCycle = null;
         int activeCycleCount = 0;
         
         for (CicloData ciclo : persistenceManager.getAllCiclos()) {
             if (ciclo.isActivo()) {
-                if (activeCycle == null) {
-                    activeCycle = ciclo.getWorldName();
-                }
                 activeCycleCount++;
+                
+                // Seleccionar el más reciente basado en última activación
+                if (mostRecentCycle == null) {
+                    mostRecentCycle = ciclo;
+                } else if (ciclo.getUltimaActivacion() != null) {
+                    // Si el ciclo actual tiene fecha de activación más reciente
+                    if (mostRecentCycle.getUltimaActivacion() == null || 
+                        ciclo.getUltimaActivacion().after(mostRecentCycle.getUltimaActivacion())) {
+                        mostRecentCycle = ciclo;
+                    }
+                }
             }
         }
         
         // SEGURIDAD: Advertir si hay múltiples ciclos activos (inconsistencia)
         if (activeCycleCount > 1) {
             plugin.getLogger().warning("[SEGURIDAD] Detectados " + activeCycleCount + 
-                " ciclos activos simultáneos. Debe haber solo uno. Revisar integridad de datos.");
+                " ciclos activos simultáneos. Debe haber solo uno. Usando el más reciente: " +
+                (mostRecentCycle != null ? mostRecentCycle.getWorldName() : "null"));
         }
         
-        return activeCycle;
+        return mostRecentCycle != null ? mostRecentCycle.getWorldName() : null;
     }
     
     /**

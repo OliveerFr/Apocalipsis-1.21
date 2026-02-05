@@ -8,14 +8,20 @@
 package me.apocalipsis;
 
 import java.io.File;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.List;
 
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import me.apocalipsis.ciclos.CicloManager;
+import me.apocalipsis.ciclos.CommandProtectionListener;
+import me.apocalipsis.ciclos.EntityProtectionListener;
+import me.apocalipsis.ciclos.PlayerRespawnListener;
+import me.apocalipsis.ciclos.WorldChangeListener;
+import me.apocalipsis.ciclos.WorldProtectionListener;
 import me.apocalipsis.commands.ApocalipsisCommand;
 import me.apocalipsis.commands.AvoTabCompleter;
 import me.apocalipsis.commands.RecompensaCommand;
@@ -23,13 +29,13 @@ import me.apocalipsis.disaster.DisasterController;
 import me.apocalipsis.disaster.DisasterEvasionTracker;
 import me.apocalipsis.disaster.DisasterRegistry;
 import me.apocalipsis.disaster.adapters.PerformanceAdapter;
+import me.apocalipsis.events.AperturaEndEvent;
+import me.apocalipsis.events.CaminoEndEvent;
 import me.apocalipsis.events.EcoBrasasEvent;
 import me.apocalipsis.events.EcoSombrasEvent;
 import me.apocalipsis.events.EventController;
 import me.apocalipsis.events.NavidadEvent;
 import me.apocalipsis.events.SusurroPiedraRotaEvent;
-import me.apocalipsis.events.CaminoEndEvent;
-import me.apocalipsis.events.AperturaEndEvent;
 import me.apocalipsis.events.testing.EventAutoTestingSystem;
 import me.apocalipsis.experience.AbilityService;
 import me.apocalipsis.experience.ExperienceService;
@@ -60,12 +66,6 @@ import me.apocalipsis.utils.BlockOwnershipTracker;
 import me.apocalipsis.utils.ConfigManager;
 import me.apocalipsis.utils.OnlinePlayersCache;
 import me.apocalipsis.utils.VelocityManager;
-import me.apocalipsis.ciclos.CicloManager;
-import me.apocalipsis.ciclos.WorldChangeListener;
-import me.apocalipsis.ciclos.WorldProtectionListener;
-import me.apocalipsis.ciclos.CommandProtectionListener;
-import me.apocalipsis.ciclos.EntityProtectionListener;
-import me.apocalipsis.ciclos.PlayerRespawnListener;
 
 public final class Apocalipsis extends JavaPlugin {
 
@@ -129,6 +129,9 @@ public final class Apocalipsis extends JavaPlugin {
     private DisasterEvasionTracker evasionTracker;
     private OnlinePlayersCache onlinePlayersCache; // [OPTIMIZACIÓN] Cache de jugadores online
     private VelocityManager velocityManager; // [FIX] Sistema anti-cheat safe para velocity
+    
+    // Stats
+    private me.apocalipsis.stats.DeathTracker deathTracker;
     
     // Tutorial system
     private ProgressiveDifficultySystem progressiveDifficultySystem;
@@ -256,9 +259,12 @@ public final class Apocalipsis extends JavaPlugin {
         autoTestSystem = new EventAutoTestingSystem(this);
         getLogger().info("[AutoTest] ✓ Sistema de autotesting inicializado");
         
+        // Inicializar sistema de estadísticas
+        deathTracker = new me.apocalipsis.stats.DeathTracker(this, stateManager);
+        
         // Inicializar UI
         scoreboardManager = new ScoreboardManager(this, stateManager, disasterController, missionService, rankService);
-        tablistManager = new TablistManager(this, stateManager, performanceAdapter, rankService);
+        tablistManager = new TablistManager(this, stateManager, performanceAdapter, rankService, deathTracker);
         
         // Inicializar sistema de recompensas reclamables
         rewardClaimSystem = new RewardClaimSystem(this);
@@ -444,44 +450,54 @@ public final class Apocalipsis extends JavaPlugin {
             return true;
         });
         
+        // Comando /rtp independiente (Random Teleport)
+        me.apocalipsis.commands.RtpCommand rtpCommand = new me.apocalipsis.commands.RtpCommand(this);
+        getCommand("rtp").setExecutor(rtpCommand);
+        getLogger().info("[RTP] ✓ Comando /rtp registrado (aliases: /randomtp, /wild)");
+        
+        // Comando /canjear independiente (Redeem Tokens)
+        getCommand("canjear").setExecutor((sender, cmd, label, args) -> {
+            // Delegar a ApocalipsisCommand con el subcomando "canjear"
+            String[] newArgs = new String[args.length + 1];
+            newArgs[0] = "canjear";
+            System.arraycopy(args, 0, newArgs, 1, args.length);
+            return avoCommand.onCommand(sender, cmd, "avo", newArgs);
+        });
+        getLogger().info("[CANJEAR] ✓ Comando /canjear registrado");
+        
+        // Comando /volver independiente (End Escape)
+        getCommand("volver").setExecutor((sender, cmd, label, args) -> {
+            // Delegar a ApocalipsisCommand con el subcomando "volver"
+            String[] newArgs = new String[args.length + 1];
+            newArgs[0] = "volver";
+            System.arraycopy(args, 0, newArgs, 1, args.length);
+            return avoCommand.onCommand(sender, cmd, "avo", newArgs);
+        });
+        getLogger().info("[VOLVER] ✓ Comando /volver registrado (aliases: /overworld, /salir, /escape)");
+        
         // Comando de waypoint (habilidad de exploración) - Soporte para múltiples waypoints
+        // MEJORADO: /wp casa = teleport directo, /wp = listar, /wp set casa = crear
         getCommand("waypoint").setExecutor((sender, cmd, label, args) -> {
             if (!(sender instanceof org.bukkit.entity.Player player)) {
                 sender.sendMessage("§cEste comando solo puede ser usado por jugadores.");
                 return true;
             }
             
-            // Sin argumentos: mostrar ayuda
+            // Sin argumentos: listar waypoints (comportamiento simplificado)
             if (args.length == 0) {
-                player.sendMessage("§e§l⚑ Waypoints - Uso:");
-                player.sendMessage("  §f/waypoint set <nombre> §7- Guardar waypoint");
-                player.sendMessage("  §f/waypoint tp <nombre> §7- Teleportarse a waypoint");
-                player.sendMessage("  §f/waypoint list §7- Ver tus waypoints");
-                player.sendMessage("  §f/waypoint delete <nombre> §7- Eliminar waypoint");
-                player.sendMessage("");
-                
-                // Mostrar límite del jugador
-                int limit = this.skillEffectListener.getWaypointLimit(player);
-                player.sendMessage("§7Límite actual: §e" + limit + " waypoint" + (limit > 1 ? "s" : ""));
-                
-                // Mostrar información de cómo mejorar el límite
-                var permRank = this.permRankManager.getPlayerPermRank(player.getUniqueId());
-                if (permRank != null && permRank.getId().equalsIgnoreCase("hunter_adventurer")) {
-                    player.sendMessage("§a✓ §7Rango §fHunter_Adventurer§7: Límite especial activo");
-                } else if (this.skillService.hasSkill(player, me.apocalipsis.skills.Skill.WAYPOINT)) {
-                    player.sendMessage("§a✓ §7Habilidad §eWaypoint §7comprada: §e3 waypoints §7disponibles");
-                } else {
-                    player.sendMessage("§7💡 Compra la habilidad §eWaypoint §7para tener hasta §e3 waypoints");
-                }
+                this.skillEffectListener.listWaypoints(player);
                 return true;
             }
             
-            String subCmd = args[0].toLowerCase();
+            String firstArg = args[0].toLowerCase();
             
-            switch (subCmd) {
+            // Detectar subcomandos vs nombres directos de waypoints
+            switch (firstArg) {
                 case "set":
+                case "guardar":
+                case "crear":
                     if (args.length < 2) {
-                        player.sendMessage("§cUso: /waypoint set <nombre>");
+                        player.sendMessage("§cUso: /wp set <nombre>");
                         return true;
                     }
                     String setName = args[1].toLowerCase();
@@ -502,8 +518,9 @@ public final class Apocalipsis extends JavaPlugin {
                     
                 case "tp":
                 case "teleport":
+                case "ir":
                     if (args.length < 2) {
-                        player.sendMessage("§cUso: /waypoint tp <nombre>");
+                        player.sendMessage("§cUso: /wp tp <nombre>");
                         return true;
                     }
                     String tpName = args[1].toLowerCase();
@@ -512,41 +529,137 @@ public final class Apocalipsis extends JavaPlugin {
                     
                 case "list":
                 case "lista":
+                case "ver":
                     this.skillEffectListener.listWaypoints(player);
                     break;
                     
                 case "delete":
                 case "del":
                 case "remove":
+                case "eliminar":
+                case "borrar":
                     if (args.length < 2) {
-                        player.sendMessage("§cUso: /waypoint delete <nombre>");
+                        player.sendMessage("§cUso: /wp delete <nombre>");
                         return true;
                     }
                     String delName = args[1].toLowerCase();
                     this.skillEffectListener.deleteWaypoint(player, delName);
                     break;
                     
+                case "help":
+                case "ayuda":
+                case "?":
+                    // Mostrar ayuda detallada
+                    player.sendMessage("§e§l⚑ Waypoints - Uso:");
+                    player.sendMessage("  §f/wp §7- Ver tus waypoints");
+                    player.sendMessage("  §f/wp <nombre> §7- Teletransportarse a waypoint");
+                    player.sendMessage("  §f/wp set <nombre> §7- Guardar waypoint");
+                    player.sendMessage("  §f/wp bed §7- Teletransportarse a tu cama");
+                    player.sendMessage("  §f/wp delete <nombre> §7- Eliminar waypoint");
+                    player.sendMessage("");
+                    
+                    // Mostrar límite del jugador
+                    int limit = this.skillEffectListener.getWaypointLimit(player);
+                    player.sendMessage("§7Límite actual: §e" + limit + " waypoint" + (limit > 1 ? "s" : "") + " §8(+cama)");
+                    
+                    // Mostrar información de cómo mejorar el límite
+                    var permRank = this.permRankManager.getPlayerPermRank(player.getUniqueId());
+                    if (permRank != null && permRank.getId().equalsIgnoreCase("hunter_adventurer")) {
+                        player.sendMessage("§a✓ §7Rango §fHunter_Adventurer§7: Límite especial activo");
+                    } else if (this.skillService.hasSkill(player, me.apocalipsis.skills.Skill.WAYPOINT)) {
+                        player.sendMessage("§a✓ §7Habilidad §eWaypoint §7comprada: §e5 waypoints §7disponibles");
+                    } else {
+                        player.sendMessage("§7💡 Compra la habilidad §eWaypoint §7para tener hasta §e5 waypoints");
+                    }
+                    break;
+                    
+                case "bed":
+                case "cama":
+                case "spawn":
+                    // NUEVO: Teleportarse a la cama
+                    this.skillEffectListener.teleportToBed(player);
+                    break;
+
+                case "wp":
+                case "waypoint":
+                    // Manejar comando waypoint con SkillEffectListener
+                    if (skillEffectListener != null) {
+                        return skillEffectListener.handleWaypointCommand(sender, null, args);
+                    } else {
+                        sender.sendMessage("§cSistema de waypoints no disponible");
+                        return true;
+                    }
+
                 default:
-                    player.sendMessage("§cSubcomando desconocido. Usa §e/waypoint §cpara ver la ayuda.");
+                    // Si no es un subcomando conocido, asumir que es el nombre de un waypoint
+                    // COMPORTAMIENTO MEJORADO: /wp casa = teleport directo
+                    String waypointName = firstArg;
+                    
+                    // Validar que el nombre sea válido antes de intentar teleport
+                    if (!waypointName.matches("[a-z0-9_-]+")) {
+                        player.sendMessage("§c✖ §7Comando desconocido. Usa §e/wp help §7para ver la ayuda.");
+                        return true;
+                    }
+                    
+                    this.skillEffectListener.teleportToWaypoint(player, waypointName);
                     break;
             }
             
             return true;
         });
+        
+        // TabCompleter mejorado: sugiere waypoints directamente + subcomandos
         getCommand("waypoint").setTabCompleter((sender, cmd, label, args) -> {
+            if (!(sender instanceof org.bukkit.entity.Player player)) {
+                return java.util.Collections.emptyList();
+            }
+            
             if (args.length == 1) {
-                return java.util.Arrays.asList("set", "tp", "list", "delete").stream()
+                // Combinar subcomandos + nombres de waypoints existentes
+                java.util.List<String> suggestions = new java.util.ArrayList<>();
+                
+                // Subcomandos principales (inglés)
+                suggestions.add("set");
+                suggestions.add("bed");
+                suggestions.add("delete");
+                suggestions.add("list");
+                suggestions.add("help");
+                
+                // Subcomandos en español
+                suggestions.add("crear");
+                suggestions.add("cama");
+                suggestions.add("guardar");
+                suggestions.add("eliminar");
+                suggestions.add("borrar");
+                suggestions.add("ver");
+                suggestions.add("lista");
+                suggestions.add("ayuda");
+                
+                // Añadir nombres de waypoints existentes para teleport directo
+                var waypoints = this.skillEffectListener.getWaypoints(player.getUniqueId());
+                if (waypoints != null && !waypoints.isEmpty()) {
+                    suggestions.addAll(waypoints.keySet());
+                }
+                
+                return suggestions.stream()
                     .filter(s -> s.startsWith(args[0].toLowerCase()))
+                    .sorted()
+                    .distinct()
                     .collect(java.util.stream.Collectors.toList());
             }
             
-            if (args.length == 2 && (args[0].equalsIgnoreCase("tp") || args[0].equalsIgnoreCase("delete"))) {
-                // Autocompletar con los nombres de waypoints del jugador
-                if (sender instanceof org.bukkit.entity.Player player) {
+            if (args.length == 2) {
+                // Para subcomandos que requieren nombre de waypoint
+                String subCmd = args[0].toLowerCase();
+                if (subCmd.equals("tp") || subCmd.equals("teleport") || 
+                    subCmd.equals("ir") || subCmd.equals("delete") || 
+                    subCmd.equals("del") || subCmd.equals("remove") ||
+                    subCmd.equals("eliminar") || subCmd.equals("borrar")) {
                     var waypoints = this.skillEffectListener.getWaypoints(player.getUniqueId());
                     if (waypoints != null) {
                         return waypoints.keySet().stream()
                             .filter(s -> s.startsWith(args[1].toLowerCase()))
+                            .sorted()
                             .collect(java.util.stream.Collectors.toList());
                     }
                 }
@@ -776,10 +889,34 @@ public final class Apocalipsis extends JavaPlugin {
         // ═══════════════════════════════════════════════
         getServer().getScheduler().runTaskLater(this, () -> {
             String estado = stateManager.getEstado();
+            long startEpoch = stateManager.getLong("start_epoch_ms", 0L);
+            long endEpoch = stateManager.getLong("end_epoch_ms", 0L);
+            long now = System.currentTimeMillis();
             
-            // Solo auto-start si NO hay desastre activo y NO está en safe mode
-            if (!"ACTIVO".equalsIgnoreCase(estado) && !stateManager.isSafeModeActive()) {
-                long now = System.currentTimeMillis();
+            // Auto-start si:
+            // 1. NO está en ACTIVO
+            // 2. NO está en safe mode
+            // 3. Los timestamps son inválidos (0 o expirados) cuando está en PREPARACION
+            boolean needsAutoStart = false;
+            
+            if ("ACTIVO".equalsIgnoreCase(estado)) {
+                getLogger().info("[AutoStart] Desastre activo detectado - no se auto-inicia");
+            } else if (stateManager.isSafeModeActive()) {
+                getLogger().info("[AutoStart] Safe mode activo - no se auto-inicia");
+            } else if ("PREPARACION".equalsIgnoreCase(estado)) {
+                // Si está en PREPARACION pero timestamps inválidos, reiniciar
+                if (startEpoch == 0L || endEpoch == 0L || endEpoch <= now) {
+                    getLogger().warning("[AutoStart] PREPARACION detectada con timestamps inválidos - reiniciando ciclo");
+                    needsAutoStart = true;
+                } else {
+                    getLogger().info("[AutoStart] PREPARACION válida en curso - no se reinicia");
+                }
+            } else {
+                // Estado DETENIDO u otro - iniciar normalmente
+                needsAutoStart = true;
+            }
+            
+            if (needsAutoStart) {
                 long cooldownMs = configManager.getCooldownFinSegundos() * 1000L;
                 int prepSeconds = configManager.getPreparacionInicialSegundos();
                 
@@ -791,33 +928,97 @@ public final class Apocalipsis extends JavaPlugin {
                 stateManager.setLong("end_epoch_ms", now + (prepSeconds * 1000L));
                 stateManager.saveState();
                 
-                getLogger().info("[AutoStart] ✓ Ciclo de desastres iniciado automáticamente");
+                getLogger().info("[AutoStart] ✓ Ciclo de desastres iniciado automáticamente (estado: " + estado + ")");
                 messageBus.broadcast("§a§l[AUTO-START] §fCiclo de desastres iniciado automáticamente", "autostart");
-            } else {
-                getLogger().info("[AutoStart] Desastre ya activo o en safe mode - no se auto-inicia");
             }
         }, 100L); // 5 segundos después de cargar el plugin
         
         // ═══════════════════════════════════════════════
-        // AUTO-NEWDAY: Nuevas misiones cada 24 horas
+        // AUTO-NEWDAY: Nuevas misiones cada 24 horas (persistente con seguridad)
         // ═══════════════════════════════════════════════
-        getServer().getScheduler().runTaskTimer(this, () -> {
+        final long MS_PER_DAY = 86400000L; // 24 horas en milisegundos
+        
+        getServer().getScheduler().runTaskLater(this, () -> {
             try {
-                stateManager.incrementDay();
-                int day = stateManager.getCurrentDay();
+                long now = System.currentTimeMillis();
+                long nextDayMs = stateManager.getNextDayEpochMs();
                 
-                missionService.resetPlayerDailyCompleteFired();
-                missionService.assignMissionsForDay(day);
+                // [SEGURIDAD] Si no existe timestamp del próximo día O ya pasó, establecer uno nuevo
+                if (nextDayMs == 0L || stateManager.isTimeForNewDay()) {
+                    // Calcular próximo día (ahora + 24 horas) - setNextDayEpochMs valida automáticamente
+                    nextDayMs = now + MS_PER_DAY;
+                    stateManager.setNextDayEpochMs(nextDayMs);
+                }
                 
-                int onlinePlayers = getServer().getOnlinePlayers().size();
-                messageBus.broadcast("§e§l⌛ §fNuevo día iniciado automáticamente: §e" + day, "auto_newday");
-                getLogger().info("[AutoNewDay] Día " + day + " iniciado - " + onlinePlayers + " jugadores online");
+                // Calcular delay hasta el próximo día (con validación)
+                long delayMs = stateManager.getTimeUntilNextDay();
+                if (delayMs <= 0) delayMs = MS_PER_DAY; // Fallback de seguridad
+                long delayTicks = Math.max(100L, delayMs / 50L); // Mínimo 5 segundos
+                
+                getLogger().info("[AutoNewDay] Sistema iniciado - Próximo día en " + (delayMs / 1000L / 60L) + " minutos");
+                
+                // [MEJORADO] Programar verificación periódica con reintentos
+                getServer().getScheduler().runTaskTimer(this, () -> {
+                    try {
+                        // Verificar si es momento de cambiar día usando método seguro
+                        if (!stateManager.isTimeForNewDay()) {
+                            return; // Aún no es momento
+                        }
+                        
+                        // [BACKUP AUTOMÁTICO] Guardar estado antes del cambio
+                        int dayBeforeChange = stateManager.getCurrentDay();
+                        getLogger().info("[AutoNewDay] Iniciando cambio de día " + dayBeforeChange + " → " + (dayBeforeChange + 1));
+                        
+                        // [SEGURO] Usar incrementDay con validaciones
+                        boolean success = stateManager.incrementDay();
+                        
+                        if (!success) {
+                            // Fallo en incremento - reintentar en 5 minutos
+                            getLogger().severe("[AutoNewDay] ⚠ Fallo al incrementar día, reintentando en 5 minutos");
+                            stateManager.setNextDayEpochMs(System.currentTimeMillis() + 300000L); // +5 min
+                            return;
+                        }
+                        
+                        // Incremento exitoso - ejecutar acciones del nuevo día
+                        int day = stateManager.getCurrentDay();
+                        
+                        try {
+                            // Resetear misiones diarias
+                            missionService.resetPlayerDailyCompleteFired();
+                            missionService.assignMissionsForDay(day);
+                            
+                            // [SEGURIDAD] Programar próximo día con validación automática
+                            long newNextDay = System.currentTimeMillis() + MS_PER_DAY;
+                            stateManager.setNextDayEpochMs(newNextDay);
+                            
+                            // Notificar a jugadores
+                            int onlinePlayers = getServer().getOnlinePlayers().size();
+                            messageBus.broadcast("§a§l✓ §fNuevo día iniciado: §e" + day + " §8(próximo en 24h)", "auto_newday");
+                            getLogger().info("[AutoNewDay] ✓ Día " + day + " iniciado exitosamente - " + onlinePlayers + " jugadores online");
+                            
+                        } catch (Exception e) {
+                            getLogger().severe("[AutoNewDay] ERROR en acciones post-cambio: " + e.getMessage());
+                            e.printStackTrace();
+                            // El día ya se incrementó, pero las misiones pueden tener problemas
+                            // No hacer rollback del día, solo registrar el error
+                        }
+                        
+                    } catch (Exception e) {
+                        getLogger().severe("[AutoNewDay] ERROR crítico en verificación de día: " + e.getMessage());
+                        e.printStackTrace();
+                    }
+                }, delayTicks, 1200L); // Verificar cada 60 segundos después del primer delay
                 
             } catch (Exception e) {
-                getLogger().severe("[AutoNewDay] Error al ejecutar newday automático: " + e.getMessage());
+                getLogger().severe("[AutoNewDay] ERROR FATAL al configurar sistema: " + e.getMessage());
                 e.printStackTrace();
+                // [FALLBACK] Reintentar inicialización en 1 minuto
+                getServer().getScheduler().runTaskLater(this, () -> {
+                    getLogger().warning("[AutoNewDay] Reintentando inicialización del sistema de días...");
+                    stateManager.setNextDayEpochMs(System.currentTimeMillis() + MS_PER_DAY);
+                }, 1200L);
             }
-        }, 1728000L, 1728000L); // 24 horas = 1728000 ticks (20 ticks/seg * 60 seg * 60 min * 24 horas)
+        }, 100L); // Iniciar 5 segundos después de cargar
         
         // Iniciar tick loop de eventos
         getServer().getScheduler().runTaskTimer(this, () -> {
@@ -850,9 +1051,9 @@ public final class Apocalipsis extends JavaPlugin {
             stateManager.saveState();
         }
         
-        // Guardar datos de experiencia
+        // [MEJORADO v1.22.68] Shutdown ExperienceService (cancela auto-save + guarda sync)
         if (experienceService != null) {
-            experienceService.saveData();
+            experienceService.shutdown();
         }
         
         // Guardar datos de recompensas
@@ -1079,6 +1280,10 @@ public final class Apocalipsis extends JavaPlugin {
     
     public RewardClaimSystem getRewardClaimSystem() {
         return rewardClaimSystem;
+    }
+    
+    public me.apocalipsis.stats.DeathTracker getDeathTracker() {
+        return deathTracker;
     }
     
     public MainMenuManager getMainMenuManager() {

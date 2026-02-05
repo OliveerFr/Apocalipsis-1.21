@@ -556,18 +556,18 @@ public class SkillTreeGUI implements Listener {
                 // Tier 1
                 positions.put(Skill.PASO_LIGERO, 19);
                 positions.put(Skill.MINERO_EFICIENTE, 28);
-                positions.put(Skill.ESTOMAGO_HIERRO, 37);
+                positions.put(/* Skill.ESTOMAGO_HIERRO */ Skill.PASO_LIGERO, 37);
                 positions.put(Skill.LENADOR_NATO, 10); // Nueva habilidad
                 
                 // Tier 2
                 positions.put(Skill.ZANCADAS, 21);
                 positions.put(Skill.TOQUE_FORTUNA, 30);
-                positions.put(Skill.METABOLISMO_LENTO, 39);
+                positions.put(/* Skill.METABOLISMO_LENTO */ Skill.MINERO_EFICIENTE, 39);
                 
                 // Tier 3
                 positions.put(Skill.VELOCISTA, 23);
                 positions.put(Skill.SEDA_NATURAL, 32);
-                positions.put(Skill.AUTOSUFICIENTE, 41);
+                positions.put(/* Skill.AUTOSUFICIENTE */ Skill.LENADOR_NATO, 41);
             }
             
             case SUPERVIVENCIA -> {
@@ -591,8 +591,8 @@ public class SkillTreeGUI implements Listener {
                 positions.put(Skill.VUELO_EMERGENCIA, 32);
                 
                 // === RAMA DE FUEGO ===
-                positions.put(Skill.RESISTENCIA_FUEGO, 37);
-                positions.put(Skill.IGNIFUGO, 39);
+                positions.put(/* Skill.RESISTENCIA_FUEGO */ Skill.PIEL_GRUESA, 37);
+                positions.put(/* Skill.IGNIFUGO */ Skill.CAIDA_SUAVE, 39);
                 
                 // === RAMA DE AGUA ===
                 positions.put(Skill.NADADOR, 41);
@@ -614,10 +614,10 @@ public class SkillTreeGUI implements Listener {
                  */
                 // Tier 1 - Rama Ofensiva
                 positions.put(Skill.GOLPE_CERTERO, 10);
-                positions.put(Skill.REFLEJOS, 12);
+                positions.put(/* Skill.REFLEJOS */ Skill.GOLPE_CERTERO, 12);
                 
                 // Tier 1 - Rama Defensiva
-                positions.put(Skill.PIEL_ESCAMAS, 28);
+                positions.put(/* Skill.PIEL_ESCAMAS */ Skill.CONTRAATAQUE, 28);
                 
                 // Tier 1 - Rama Arquero
                 positions.put(Skill.ARQUERO, 37);
@@ -625,7 +625,7 @@ public class SkillTreeGUI implements Listener {
                 // Tier 2
                 positions.put(Skill.GUERRERO, 14);
                 positions.put(Skill.FURIA, 21);
-                positions.put(Skill.BLOQUEO_PERFECTO, 30);
+                positions.put(/* Skill.BLOQUEO_PERFECTO */ Skill.ARMADURA_VIVIENTE, 30);
                 positions.put(Skill.FRANCOTIRADOR, 39);
                 
                 // Tier 3
@@ -649,20 +649,20 @@ public class SkillTreeGUI implements Listener {
                  */
                 // Tier 1
                 positions.put(Skill.VISION_NOCTURNA, 10);
-                positions.put(Skill.BRUJULA_INTERNA, 19);
-                positions.put(Skill.RASTRO_ORO, 28);
-                positions.put(Skill.PISADAS_SILENCIOSAS, 37);
+                positions.put(/* Skill.BRUJULA_INTERNA */ Skill.VISION_NOCTURNA, 19);
+                positions.put(/* Skill.RASTRO_ORO */ Skill.ORIENTACION, 28);
+                positions.put(/* Skill.PISADAS_SILENCIOSAS */ Skill.DETECTOR_TESOROS, 37);
                 
                 // Tier 2
-                positions.put(Skill.TELESCOPIO, 12);
-                positions.put(Skill.MAPA_MENTAL, 21);
-                positions.put(Skill.DETECTOR_SPAWNERS, 30);
-                positions.put(Skill.SOMBRA, 39);
+                positions.put(/* Skill.TELESCOPIO */ Skill.PASO_FANTASMA, 12);
+                positions.put(/* Skill.MAPA_MENTAL */ Skill.VISTA_AGUILA, 21);
+                positions.put(/* Skill.DETECTOR_SPAWNERS */ Skill.CARTOGRAFO, 30);
+                positions.put(/* Skill.SOMBRA */ Skill.CAZADOR_DUNGEONS, 39);
                 
                 // Tier 3
                 positions.put(Skill.OJO_AGUILA, 14);
                 positions.put(Skill.WAYPOINT, 23);
-                positions.put(Skill.XRAY_DIAMANTES, 32);
+                positions.put(/* Skill.XRAY_DIAMANTES */ Skill.CAMUFLAJE, 32);
                 positions.put(Skill.FANTASMA, 41);
             }
             
@@ -678,8 +678,8 @@ public class SkillTreeGUI implements Listener {
                  */
                 // Tier 1
                 positions.put(Skill.LOBO_COMPANERO, 10);
-                positions.put(Skill.GATO_GUARDIAN, 19);
-                positions.put(Skill.ALLAY_RECOLECTOR, 28);
+                positions.put(/* Skill.GATO_GUARDIAN */ Skill.OJO_AGUILA, 19);
+                positions.put(/* Skill.ALLAY_RECOLECTOR -> MAESTRO_RASTREO */ Skill.LOBO_COMPANERO, 28);
                 
                 // Tier 2
                 positions.put(Skill.MANADA_LOBOS, 12);
@@ -702,9 +702,9 @@ public class SkillTreeGUI implements Listener {
                  * [EXPLORADOR] ─ [MERCADER] ─── (legendario)
                  */
                 // Tier 1
-                positions.put(Skill.CAZADOR_EXPERTO, 10);
-                positions.put(Skill.MINERO_GUERRERO, 19);
-                positions.put(Skill.EXPLORADOR_LIGERO, 28);
+                positions.put(/* Skill.CAZADOR_EXPERTO -> SAQUEO_EXPERTO */ Skill.DOMADOR_BESTIAS, 10);
+                positions.put(/* Skill.MINERO_GUERRERO -> TROFEO_HUNTER */ Skill.DOMADOR_BESTIAS, 19);
+                positions.put(/* Skill.EXPLORADOR_LIGERO -> SUERTE_NATURAL */ Skill.MERCADER_SUPREMO, 28);
                 
                 // Tier 2
                 positions.put(Skill.DOMADOR_BESTIAS, 12);
@@ -713,7 +713,7 @@ public class SkillTreeGUI implements Listener {
                 
                 // Tier 3
                 positions.put(Skill.AVATAR_CAOS, 14);
-                positions.put(Skill.OMNIPRESENTE, 23);
+                positions.put(/* Skill.OMNIPRESENTE -> DOMINIO_TOTAL */ Skill.GUERRERO_INMORTAL, 23);
             }
         }
         
@@ -1037,11 +1037,16 @@ public class SkillTreeGUI implements Listener {
         boolean owned = skillService.hasSkill(player, skill);
         boolean meetsReqs = skillService.meetsRequirements(player, skill);
         boolean isEnabled = owned && skill.isToggleable() && skillService.isSkillEnabled(player, skill);
+        boolean skillEnabled = skill.isEnabled(); // Verificar si la skill está activa en el juego
         
         Material displayMat;
         String prefix;
         
-        if (owned) {
+        if (!skillEnabled) {
+            // Skill deshabilitada - usar material gris y marcarla claramente
+            displayMat = Material.BARRIER;
+            prefix = "§8§l⛔ ";
+        } else if (owned) {
             displayMat = skill.getIcon();
             prefix = "§a§l✓ ";
             if (skill.isToggleable()) {
@@ -1082,7 +1087,14 @@ public class SkillTreeGUI implements Listener {
         lore.add("");
         
         // Estado y acciones
-        if (owned) {
+        if (!skillEnabled) {
+            // Skill deshabilitada
+            lore.add("§8§l⛔ DESHABILITADA");
+            lore.add("§7Esta habilidad está temporalmente");
+            lore.add("§7desactivada por los desarrolladores.");
+            lore.add("");
+            lore.add("§c✗ No se puede comprar");
+        } else if (owned) {
             SkillLevel level = skillService.getSkillLevel(player, skill);
             String levelStars = "§6" + "★".repeat(level.getLevel()) + "§8" + "☆".repeat(3 - level.getLevel());
             lore.add("§a§l✓ DESBLOQUEADA " + levelStars);
@@ -1109,9 +1121,27 @@ public class SkillTreeGUI implements Listener {
                 lore.add("§6★ Nivel máximo");
             }
         } else if (meetsReqs) {
-            lore.add("§7Costo: §e" + skill.getBaseCost() + " XP");
+            int currentXP = plugin.getExperienceService().getXP(player);
+            int cost = skill.getBaseCost();
+            boolean canAfford = currentXP >= cost;
+            
+            // [DEBUG] Log para troubleshooting multimundo
+            plugin.getLogger().info("[SkillGUI DEBUG] Player: " + player.getName() + 
+                " | World: " + player.getWorld().getName() + 
+                " | XP: " + currentXP + 
+                " | Cost: " + cost + 
+                " | CanAfford: " + canAfford);
+            
+            lore.add("§7Costo: " + (canAfford ? "§a" : "§c") + cost + " XP");
+            lore.add("§7Tienes: " + (canAfford ? "§a" : "§c") + currentXP + " XP");
             lore.add("");
-            lore.add("§e▶ Click para comprar");
+            if (canAfford) {
+                lore.add("§a✓ Puedes comprar esta habilidad");
+                lore.add("§e▶ Click para comprar");
+            } else {
+                lore.add("§c✗ No tienes suficiente XP");
+                lore.add("§7Necesitas " + (cost - currentXP) + " XP más");
+            }
         } else {
             lore.add("§c§l✗ BLOQUEADA");
             lore.add("§7Desbloquea los requisitos primero.");

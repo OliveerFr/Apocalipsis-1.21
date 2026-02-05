@@ -101,7 +101,7 @@ public class ApocalipsisCommand implements CommandExecutor {
                 cmdTestAlert(sender, args);
                 break;
             case "newday":
-                cmdNewDay(sender);
+                cmdNewDay(sender, args);
                 break;
             case "endday":
                 cmdEndDay(sender);
@@ -247,6 +247,12 @@ public class ApocalipsisCommand implements CommandExecutor {
             case "wild":
                 cmdRandomTeleport(sender);
                 break;
+            case "volver":
+            case "overworld":
+            case "salir":
+            case "escape":
+                cmdVolver(sender);
+                break;
             case "ciclo":
             case "cycle":
             case "mundo":
@@ -292,7 +298,7 @@ public class ApocalipsisCommand implements CommandExecutor {
             {"  §e/avo nivel", "§7Ver tu nivel actual"},
             {"  §e/avo xp <get|add|set>", "§7Gestión XP (Admin)"},
             {"§6▸ Misiones", ""},
-            {"  §e/avo newday", "§7Nuevo día + misiones"},
+            {"  §e/avo newday [force]", "§7Nuevo día + misiones (force = ignorar cooldown)"},
             {"  §e/avo endday", "§7Termina día actual"},
             {"  §e/avo status [jugador]", "§7Misiones activas"},
             {"  §e/avo setxp <jugador> <xp>", "§7Ajusta XP/rango"},
@@ -342,6 +348,8 @@ public class ApocalipsisCommand implements CommandExecutor {
             {"§7Rangos personalizados con efectos y prefijos!", ""},
             {"§6▸ Teleporte", ""},
             {"  §e/avo rtp", "§7TP aleatorio (1000-5000 bloques)"},
+            {"  §e/avo volver", "§7Escapar del End al Overworld"},
+            {"§7¡Usa /avo volver si quedas atrapado en el End!", ""},
             
             // Page 6: Ciclos Multi-Mundo
             {"§6▸ Sistema de Ciclos", ""},
@@ -573,13 +581,27 @@ public class ApocalipsisCommand implements CommandExecutor {
         }
     }
 
-    private void cmdNewDay(CommandSender sender) {
+    private void cmdNewDay(CommandSender sender, String[] args) {
         if (!sender.hasPermission("avo.admin")) {
             sender.sendMessage("§cNo tienes permisos.");
             return;
         }
 
-        stateManager.incrementDay();
+        // Verificar si se quiere forzar
+        boolean force = args.length > 1 && "force".equalsIgnoreCase(args[1]);
+        if (force) {
+            sender.sendMessage("§6⚠ §eForzando nuevo día ignorando cooldown...");
+        }
+
+        // [SEGURIDAD] Usar método mejorado con validaciones
+        boolean success = stateManager.incrementDay(force);
+        
+        if (!success) {
+            sender.sendMessage("§c✖ Error: No se pudo incrementar el día (verificar logs para detalles)");
+            sender.sendMessage("§7Posibles causas: cooldown activo, límite alcanzado, o fallo de guardado");
+            return;
+        }
+        
         int day = stateManager.getCurrentDay();
         
         // [1.21.8] Resetear flags de celebración
@@ -592,9 +614,15 @@ public class ApocalipsisCommand implements CommandExecutor {
         // [FIX] assignMissionsForDay ahora limpia automáticamente las misiones anteriores
         missionService.assignMissionsForDay(day);
         
+        // [SEGURIDAD] Programar próximo día automático (+24h)
+        long nextDayMs = System.currentTimeMillis() + 86400000L; // +24h
+        stateManager.setNextDayEpochMs(nextDayMs);
+        
         int onlinePlayers = plugin.getServer().getOnlinePlayers().size();
-        messageBus.broadcast("§e§l⌛ §fNuevo día iniciado: §e" + day, "newday");
-        sender.sendMessage("§a✓ Día " + day + " iniciado. Misiones anteriores limpiadas y nuevas asignadas a " + onlinePlayers + " jugador(es).");
+        messageBus.broadcast("§a§l✓ §fNuevo día iniciado: §e" + day + " §8(próximo en 24h)", "newday");
+        sender.sendMessage("§a✓ Día " + day + " iniciado exitosamente.");
+        sender.sendMessage("§7Misiones anteriores limpiadas y nuevas asignadas a " + onlinePlayers + " jugador(es).");
+        sender.sendMessage("§7Próximo día automático: §e" + new java.util.Date(nextDayMs));
     }
 
     private void cmdEndDay(CommandSender sender) {
@@ -5244,7 +5272,7 @@ public class ApocalipsisCommand implements CommandExecutor {
                     return;
                 }
                 if (args.length < 3) {
-                    sender.sendMessage("§cUso: /avo mochila ver <jugador>");
+                    sender.sendMessage("§cUso: /avo mochila ver <jugador> [mundo] [#mochila]");
                     return;
                 }
                 if (!(sender instanceof Player player)) {
@@ -5253,17 +5281,32 @@ public class ApocalipsisCommand implements CommandExecutor {
                 }
                 
                 String targetName = args[2];
+                String worldName = args.length > 3 ? args[3] : null;
+                int backpackNumber = args.length > 4 ? tryParseInt(args[4], 1) : 1;
+                
                 Player target = Bukkit.getPlayer(targetName);
                 
                 if (target != null) {
-                    plugin.getBackpackService().openBackpackAsAdmin(player, target.getUniqueId(), target.getName());
+                    if (worldName != null) {
+                        plugin.getBackpackService().openBackpackAsAdmin(player, target.getUniqueId(), 
+                            target.getName(), backpackNumber, worldName);
+                    } else {
+                        plugin.getBackpackService().openBackpackAsAdmin(player, target.getUniqueId(), 
+                            target.getName(), backpackNumber);
+                    }
                 } else {
                     // Buscar jugador offline
                     @SuppressWarnings("deprecation")
                     org.bukkit.OfflinePlayer offline = Bukkit.getOfflinePlayer(targetName);
                     if (offline.hasPlayedBefore()) {
-                        plugin.getBackpackService().openBackpackAsAdmin(player, offline.getUniqueId(), 
-                            offline.getName() != null ? offline.getName() : targetName);
+                        String name = offline.getName() != null ? offline.getName() : targetName;
+                        if (worldName != null) {
+                            plugin.getBackpackService().openBackpackAsAdmin(player, offline.getUniqueId(), 
+                                name, backpackNumber, worldName);
+                        } else {
+                            plugin.getBackpackService().openBackpackAsAdmin(player, offline.getUniqueId(), 
+                                name, backpackNumber);
+                        }
                     } else {
                         sender.sendMessage("§c✗ Jugador no encontrado: " + targetName);
                     }
@@ -5293,7 +5336,7 @@ public class ApocalipsisCommand implements CommandExecutor {
                     return;
                 }
                 if (args.length < 3) {
-                    sender.sendMessage("§cUso: /avo mochila vaciar <jugador>");
+                    sender.sendMessage("§cUso: /avo mochila vaciar <jugador> [mundo] [#mochila]");
                     return;
                 }
                 if (!(sender instanceof Player player)) {
@@ -5302,13 +5345,25 @@ public class ApocalipsisCommand implements CommandExecutor {
                 }
                 
                 String targetName = args[2];
+                String worldName = args.length > 3 ? args[3] : null;
+                int backpackNumber = args.length > 4 ? tryParseInt(args[4], 1) : 1;
+                
                 @SuppressWarnings("deprecation")
                 org.bukkit.OfflinePlayer offline = Bukkit.getOfflinePlayer(targetName);
                 
                 if (offline.hasPlayedBefore() || offline.isOnline()) {
-                    boolean cleared = plugin.getBackpackService().clearBackpack(offline.getUniqueId(), player);
+                    boolean cleared;
+                    if (worldName != null) {
+                        cleared = plugin.getBackpackService().clearBackpack(offline.getUniqueId(), 
+                            player, backpackNumber, worldName);
+                    } else {
+                        cleared = plugin.getBackpackService().clearBackpack(offline.getUniqueId(), 
+                            player, backpackNumber);
+                    }
+                    
                     if (cleared) {
-                        sender.sendMessage("§a✓ Mochila de §e" + targetName + " §avaciada.");
+                        String worldInfo = worldName != null ? " en §b" + worldName : "";
+                        sender.sendMessage("§a✓ Mochila #" + backpackNumber + " de §e" + targetName + worldInfo + " §avaciada.");
                     } else {
                         sender.sendMessage("§c✗ La mochila de " + targetName + " está vacía o no existe.");
                     }
@@ -5321,12 +5376,13 @@ public class ApocalipsisCommand implements CommandExecutor {
                 sender.sendMessage("§cSubcomandos de mochila:");
                 sender.sendMessage("  §e/avo mochila §7- Abre tu mochila");
                 if (sender.hasPermission("apocalipsis.mochila.mod")) {
-                    sender.sendMessage("  §e/avo mochila ver <jugador> §7- Ver mochila ajena");
+                    sender.sendMessage("  §e/avo mochila ver <jugador> [mundo] [#] §7- Ver mochila ajena");
                     sender.sendMessage("  §e/avo mochila lista §7- Listar mochilas");
                 }
                 if (sender.hasPermission("apocalipsis.mochila.admin")) {
-                    sender.sendMessage("  §e/avo mochila vaciar <jugador> §7- Vaciar mochila");
+                    sender.sendMessage("  §e/avo mochila vaciar <jugador> [mundo] [#] §7- Vaciar mochila");
                 }
+                sender.sendMessage("§7El parámetro [mundo] permite ver mochilas de ciclos específicos");
             }
         }
     }
@@ -5970,7 +6026,7 @@ public class ApocalipsisCommand implements CommandExecutor {
         }
         
         if (args.length < 2) {
-            sender.sendMessage("§6Uso: /avo buddy <match|unmatch|info|list|stats|rewards> [jugador]");
+            sender.sendMessage("§6Uso: /avo buddy <match|unmatch|info|list|stats|rewards|diagnose> [jugador]");
             return;
         }
         
@@ -6017,8 +6073,11 @@ public class ApocalipsisCommand implements CommandExecutor {
                 }
                 cmdBuddyRewards(sender, args[2], buddy);
                 break;
+            case "diagnose":
+                cmdBuddyDiagnose(sender, buddy);
+                break;
             default:
-                sender.sendMessage("§cSubcomando desconocido. Usa: match, unmatch, info, list, stats, rewards");
+                sender.sendMessage("§cSubcomando desconocido. Usa: match, unmatch, info, list, stats, rewards, diagnose");
         }
     }
     
@@ -6170,6 +6229,59 @@ public class ApocalipsisCommand implements CommandExecutor {
             sender.sendMessage("§7Total acumulado:");
             sender.sendMessage("  §7PS: §e" + stats.getTotalPsEarned());
             sender.sendMessage("  §7XP: §e" + stats.getTotalXpEarned());
+        }
+        
+        sender.sendMessage("§6═══════════════════════════════════════");
+    }
+    
+    private void cmdBuddyDiagnose(CommandSender sender, me.apocalipsis.tutorial.BuddyService buddy) {
+        // Obtener información de diagnóstico
+        java.util.Map<String, Object> info = buddy.getDiagnosticInfo();
+        java.util.List<String> issues = buddy.validateConfiguration();
+        
+        sender.sendMessage("§6═══════════════════════════════════════");
+        sender.sendMessage("§e§l  Diagnóstico del Sistema Buddy");
+        sender.sendMessage("§6═══════════════════════════════════════");
+        
+        // Configuración del sistema
+        sender.sendMessage("§7Configuración de rangos:");
+        sender.sendMessage("  §7Total rangos: §f" + info.get("totalRanks"));
+        sender.sendMessage("  §7Rango mínimo mentor: §a" + info.get("minMentorRankName") + 
+                           " §7(índice " + info.get("minMentorRankIndex") + ")");
+        sender.sendMessage("  §7Rango máximo aprendiz: §b" + info.get("maxApprenticeRankName") + 
+                           " §7(índice " + info.get("maxApprenticeRankIndex") + ")");
+        
+        sender.sendMessage("§6─────────────────────────────────────");
+        
+        // Estado actual
+        sender.sendMessage("§7Estado actual:");
+        sender.sendMessage("  §7Pares activos: §f" + info.get("activeBuddies"));
+        sender.sendMessage("  §7Mentores con estadísticas: §f" + info.get("mentorStats"));
+        sender.sendMessage("  §7Recompensas pendientes: §f" + info.get("pendingRewards"));
+        
+        sender.sendMessage("§6─────────────────────────────────────");
+        
+        // Jugadores online elegibles
+        sender.sendMessage("§7Jugadores online elegibles:");
+        sender.sendMessage("  §7Mentores disponibles: §a" + info.get("potentialMentorsOnline"));
+        sender.sendMessage("  §7Aprendices potenciales: §b" + info.get("potentialApprenticesOnline"));
+        
+        sender.sendMessage("§6─────────────────────────────────────");
+        
+        // Validación y problemas
+        if (issues.isEmpty()) {
+            sender.sendMessage("§a✓ Configuración válida, no se detectaron problemas");
+        } else {
+            sender.sendMessage("§c⚠ Problemas detectados:");
+            for (String issue : issues) {
+                if (issue.startsWith("CRÍTICO")) {
+                    sender.sendMessage("  §c" + issue);
+                } else if (issue.startsWith("ADVERTENCIA")) {
+                    sender.sendMessage("  §e" + issue);
+                } else {
+                    sender.sendMessage("  §7" + issue);
+                }
+            }
         }
         
         sender.sendMessage("§6═══════════════════════════════════════");
@@ -8014,6 +8126,95 @@ public class ApocalipsisCommand implements CommandExecutor {
         }
         
         return true;
+    }
+    
+    /**
+     * Comando /avo volver - Permite escapar del End y volver al Overworld
+     * Útil cuando jugadores quedan atrapados sin portal
+     */
+    private void cmdVolver(CommandSender sender) {
+        if (!(sender instanceof org.bukkit.entity.Player)) {
+            sender.sendMessage("§c✖ Este comando solo puede ser usado por jugadores.");
+            return;
+        }
+        
+        org.bukkit.entity.Player player = (org.bukkit.entity.Player) sender;
+        
+        // Verificar que esté en el End (NO en Overworld ni Nether)
+        org.bukkit.World.Environment environment = player.getWorld().getEnvironment();
+        if (environment != org.bukkit.World.Environment.THE_END) {
+            player.sendMessage("§c✖ Este comando solo puede usarse en el End.");
+            player.sendMessage("§7Solo funciona si estás atrapado en la dimensión del End.");
+            
+            // Mensaje específico según la dimensión actual
+            if (environment == org.bukkit.World.Environment.NETHER) {
+                player.sendMessage("§7Usa un portal de Nether para volver al Overworld.");
+            } else if (environment == org.bukkit.World.Environment.NORMAL) {
+                player.sendMessage("§7Ya estás en el Overworld.");
+            }
+            return;
+        }
+        
+        // Verificar cooldown (30 segundos para evitar abuso)
+        if (!plugin.getCooldownManager().canUse(player, me.apocalipsis.managers.CooldownManager.CooldownType.END_ESCAPE)) {
+            plugin.getCooldownManager().sendCooldownMessage(player, me.apocalipsis.managers.CooldownManager.CooldownType.END_ESCAPE);
+            return;
+        }
+        
+        // Obtener el ciclo activo del jugador
+        String activeCycle = plugin.getCicloManager().getActiveCycle();
+        
+        if (activeCycle == null) {
+            player.sendMessage("§c✖ No hay un ciclo activo disponible.");
+            player.sendMessage("§7Contacta a un administrador.");
+            plugin.getLogger().warning("[VOLVER] " + player.getName() + " intentó volver pero no hay ciclo activo");
+            return;
+        }
+        
+        // Obtener el mundo del ciclo activo
+        org.bukkit.World targetWorld = org.bukkit.Bukkit.getWorld(activeCycle);
+        
+        if (targetWorld == null || targetWorld.getEnvironment() != org.bukkit.World.Environment.NORMAL) {
+            player.sendMessage("§c✖ El mundo del ciclo activo no está disponible.");
+            player.sendMessage("§7Contacta a un administrador.");
+            plugin.getLogger().severe("[VOLVER] Ciclo activo '" + activeCycle + "' no existe o no es overworld");
+            return;
+        }
+        
+        // Obtener spawn seguro
+        org.bukkit.Location spawnLoc = targetWorld.getSpawnLocation();
+        
+        // Aplicar cooldown
+        plugin.getCooldownManager().applyCooldown(player, me.apocalipsis.managers.CooldownManager.CooldownType.END_ESCAPE);
+        
+        // Teleportar al jugador
+        player.teleport(spawnLoc);
+        
+        // Mensajes de feedback
+        player.sendMessage("§a✓ ¡Has regresado al Overworld!");
+        player.sendMessage("§7Fuiste teletransportado al spawn de §e" + activeCycle);
+        
+        // Efectos visuales y sonoros
+        player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 0.8f);
+        player.getWorld().spawnParticle(org.bukkit.Particle.PORTAL, spawnLoc, 100, 1, 2, 1, 0.3);
+        
+        // Log para administradores
+        plugin.getLogger().info("[VOLVER] " + player.getName() + " escapó del End y volvió a " + 
+            activeCycle + " (spawn: " + spawnLoc.getBlockX() + ", " + 
+            spawnLoc.getBlockY() + ", " + spawnLoc.getBlockZ() + ")");
+    }
+    
+    // ==================== MÉTODOS AUXILIARES ====================
+    
+    /**
+     * Helper para parsear int con valor por defecto
+     */
+    private static int tryParseInt(String value, int defaultValue) {
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
     }
 }
 

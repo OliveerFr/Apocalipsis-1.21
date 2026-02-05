@@ -63,6 +63,9 @@ public class TutorialManager {
     // Verificación de cambios de fase
     private final Map<UUID, BukkitTask> phaseCheckTasks;
     
+    // [FIX] Task para refrescar buffs cada 10 minutos
+    private final Map<UUID, BukkitTask> buffRefreshTasks;
+    
     private boolean enabled;
     private boolean verboseLogging;
     private int tutorialDelayMinutes;
@@ -135,6 +138,7 @@ public class TutorialManager {
         this.actionBarTasks = new HashMap<>();
         this.rankDemoTasks = new HashMap<>();
         this.phaseCheckTasks = new HashMap<>();
+        this.buffRefreshTasks = new HashMap<>();
         
         loadConfig();
         
@@ -328,6 +332,12 @@ public class TutorialManager {
      * Método público para uso por TutorialCommand y TutorialListener.
      */
     public void updateTutorialBuffs(Player player) {
+        // [FIX] Validar que el jugador está online antes de aplicar efectos
+        if (player == null || !player.isOnline()) {
+            return;
+        }
+        
+        UUID uuid = player.getUniqueId();
         DifficultyPhase phase = difficultySystem.getPlayerPhase(player);
         
         // Quitar todos los buffs anteriores
@@ -337,9 +347,17 @@ public class TutorialManager {
         player.removePotionEffect(PotionEffectType.STRENGTH);
         player.removePotionEffect(PotionEffectType.RESISTANCE);
         
+        // Cancelar task de refresco previo si existe
+        BukkitTask existingTask = buffRefreshTasks.get(uuid);
+        if (existingTask != null) {
+            existingTask.cancel();
+            buffRefreshTasks.remove(uuid);
+        }
+        
         // Si la fase tiene regeneración pasiva habilitada, aplicarla
         if (phase.hasPassiveRegeneration()) {
-            int duration = Integer.MAX_VALUE;
+            // [FIX] Duración de 10 minutos en lugar de infinita (12000 ticks = 10 min)
+            int duration = 12000;
             
             // FASE 1: Máximo apoyo (muy fácil)
             if (phase.getPhaseNumber() == 1) {
@@ -386,6 +404,23 @@ public class TutorialManager {
                     ));
                 }
             }
+            
+            // [FIX] Iniciar task para refrescar buffs cada 9 minutos (antes de que expiren)
+            BukkitTask refreshTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+                if (player.isOnline()) {
+                    updateTutorialBuffs(player);
+                } else {
+                    // Si el jugador está offline, cancelar el task
+                    BukkitTask task = buffRefreshTasks.get(uuid);
+                    if (task != null) {
+                        task.cancel();
+                        buffRefreshTasks.remove(uuid);
+                    }
+                }
+            }, 10800L, 10800L); // 10800 ticks = 9 minutos
+            
+            buffRefreshTasks.put(uuid, refreshTask);
+            
         } else {
             // Sin regeneración pasiva (fases 3 en adelante)
             if (verboseLogging && !phase.isGlobalDifficulty()) {
@@ -417,58 +452,82 @@ public class TutorialManager {
         }
         
         // Verificar cada 30 segundos (600 ticks)
-        BukkitTask task = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
-            if (!player.isOnline()) {
-                return;
-            }
-            
-            TutorialState playerState = tutorialStates.get(uuid);
-            if (playerState == null) {
-                return;
-            }
-            
-            DifficultyPhase currentPhase = difficultySystem.getPlayerPhase(player);
-            int lastPhase = playerState.getLastPhaseNumber();
-            
-            // Si cambió de fase, actualizar buffs y notificar
-            if (currentPhase.getPhaseNumber() != lastPhase) {
-                if (verboseLogging) {
-                    plugin.getLogger().info(String.format(
-                        "[Tutorial] %s cambió de fase %d a %d",
-                        player.getName(), lastPhase, currentPhase.getPhaseNumber()
-                    ));
+        BukkitTask task = Bukkit.getScheduler().runTaskTimer(plugin, new Runnable() {
+            @Override
+            public void run() {
+                // [FIX] Si el jugador no está online, cancelar la tarea
+                if (!player.isOnline()) {
+                    if (phaseCheckTasks.containsKey(uuid)) {
+                        BukkitTask currentTask = phaseCheckTasks.get(uuid);
+                        if (currentTask != null && !currentTask.isCancelled()) {
+                            currentTask.cancel();
+                        }
+                        phaseCheckTasks.remove(uuid);
+                    }
+                    return;
                 }
                 
-                // Actualizar buffs según nueva fase
-                updateTutorialBuffs(player);
+                TutorialState playerState = tutorialStates.get(uuid);
+                if (playerState == null) {
+                    // Estado no existe, cancelar tarea
+                    if (phaseCheckTasks.containsKey(uuid)) {
+                        BukkitTask currentTask = phaseCheckTasks.get(uuid);
+                        if (currentTask != null && !currentTask.isCancelled()) {
+                            currentTask.cancel();
+                        }
+                        phaseCheckTasks.remove(uuid);
+                    }
+                    return;
+                }
                 
-                // Notificar cambio si es relevante
-                if (currentPhase.getPhaseNumber() > lastPhase) {
-                    notifyBuffChange(player, currentPhase);
-                    
-                    // Verificar logros por fase
-                    if (currentPhase.getPhaseNumber() == 3) {
-                        achievements.unlockAchievement(player, "alcanzar_fase_3");
+                DifficultyPhase currentPhase = difficultySystem.getPlayerPhase(player);
+                int lastPhase = playerState.getLastPhaseNumber();
+                
+                // Si cambió de fase, actualizar buffs y notificar
+                if (currentPhase.getPhaseNumber() != lastPhase) {
+                    if (verboseLogging) {
+                        plugin.getLogger().info(String.format(
+                            "[Tutorial] %s cambió de fase %d a %d",
+                            player.getName(), lastPhase, currentPhase.getPhaseNumber()
+                        ));
                     }
                     
-                    // Guardar progreso
-                    savePlayerProgress(player);
+                    // [FIX] Validar que jugador sigue online antes de aplicar buffs
+                    if (player.isOnline()) {
+                        // Actualizar buffs según nueva fase
+                        updateTutorialBuffs(player);
+                        
+                        // Notificar cambio si es relevante
+                        if (currentPhase.getPhaseNumber() > lastPhase) {
+                            notifyBuffChange(player, currentPhase);
+                            
+                            // Verificar logros por fase
+                            if (currentPhase.getPhaseNumber() == 3) {
+                                achievements.unlockAchievement(player, "alcanzar_fase_3");
+                            }
+                            
+                            // Guardar progreso
+                            savePlayerProgress(player);
+                        }
+                    }
+                    
+                    playerState.setLastPhaseNumber(currentPhase.getPhaseNumber());
                 }
                 
-                playerState.setLastPhaseNumber(currentPhase.getPhaseNumber());
-            }
-            
-            // Verificar logro de 30 minutos
-            long playedMinutes = difficultySystem.getPlayedTimeMinutes(player);
-            if (playedMinutes >= 30 && !achievements.hasAchievement(uuid, "treinta_minutos_supervivencia")) {
-                achievements.unlockAchievement(player, "treinta_minutos_supervivencia");
-            }
-            
-            // Si alcanzó dificultad global, detener monitorización
-            if (currentPhase.isGlobalDifficulty()) {
-                if (phaseCheckTasks.containsKey(uuid)) {
-                    phaseCheckTasks.get(uuid).cancel();
-                    phaseCheckTasks.remove(uuid);
+                // Verificar logro de 30 minutos
+                long playedMinutes = difficultySystem.getPlayedTimeMinutes(player);
+                if (playedMinutes >= 30 && !achievements.hasAchievement(uuid, "treinta_minutos_supervivencia")) {
+                    if (player.isOnline()) {
+                        achievements.unlockAchievement(player, "treinta_minutos_supervivencia");
+                    }
+                }
+                
+                // Si alcanzó dificultad global, detener monitorización
+                if (currentPhase.isGlobalDifficulty()) {
+                    if (phaseCheckTasks.containsKey(uuid)) {
+                        phaseCheckTasks.get(uuid).cancel();
+                        phaseCheckTasks.remove(uuid);
+                    }
                 }
             }
         }, 600L, 600L); // Cada 30 segundos
@@ -646,8 +705,20 @@ public class TutorialManager {
         }
         
         // Programar tips periódicos
-        BukkitTask task = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
-            if (player.isOnline()) {
+        BukkitTask task = Bukkit.getScheduler().runTaskTimer(plugin, new Runnable() {
+            @Override
+            public void run() {
+                // [FIX] Si el jugador no está online, cancelar la tarea
+                if (!player.isOnline()) {
+                    if (tipTasks.containsKey(uuid)) {
+                        BukkitTask currentTask = tipTasks.get(uuid);
+                        if (currentTask != null && !currentTask.isCancelled()) {
+                            currentTask.cancel();
+                        }
+                        tipTasks.remove(uuid);
+                    }
+                    return;
+                }
                 showNextTip(player);
             }
         }, intervalMinutes * 20L * 60L, intervalMinutes * 20L * 60L);
@@ -660,6 +731,11 @@ public class TutorialManager {
      * Muestra el siguiente tip apropiado según el tiempo jugado
      */
     private void showNextTip(Player player) {
+        // [FIX] Validar que el jugador esté online
+        if (player == null || !player.isOnline()) {
+            return;
+        }
+        
         ConfigurationSection tipsSection = config.getConfigurationSection("tips_progresivos");
         if (tipsSection == null) return;
         
@@ -727,8 +803,20 @@ public class TutorialManager {
             actionBarTasks.get(uuid).cancel();
         }
         
-        BukkitTask task = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
-            if (player.isOnline()) {
+        BukkitTask task = Bukkit.getScheduler().runTaskTimer(plugin, new Runnable() {
+            @Override
+            public void run() {
+                // [FIX] Si el jugador no está online, cancelar la tarea
+                if (!player.isOnline()) {
+                    if (actionBarTasks.containsKey(uuid)) {
+                        BukkitTask currentTask = actionBarTasks.get(uuid);
+                        if (currentTask != null && !currentTask.isCancelled()) {
+                            currentTask.cancel();
+                        }
+                        actionBarTasks.remove(uuid);
+                    }
+                    return;
+                }
                 showProgressActionBar(player);
             }
         }, intervalMinutes * 20L * 60L, intervalMinutes * 20L * 60L);
@@ -740,6 +828,11 @@ public class TutorialManager {
      * Muestra el ActionBar de progreso
      */
     private void showProgressActionBar(Player player) {
+        // [FIX] Validar que el jugador esté online
+        if (player == null || !player.isOnline()) {
+            return;
+        }
+        
         DifficultyPhase phase = difficultySystem.getPlayerPhase(player);
         if (phase.isGlobalDifficulty()) return; // Ya alcanzó dificultad global
         
@@ -911,6 +1004,12 @@ public class TutorialManager {
         if (phaseCheckTasks.containsKey(uuid)) {
             phaseCheckTasks.get(uuid).cancel();
             phaseCheckTasks.remove(uuid);
+        }
+        
+        // [FIX] Cancelar task de refresco de buffs
+        if (buffRefreshTasks.containsKey(uuid)) {
+            buffRefreshTasks.get(uuid).cancel();
+            buffRefreshTasks.remove(uuid);
         }
         
         // Guardar progreso de onboarding y buddy antes de desconectar

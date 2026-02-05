@@ -191,12 +191,55 @@ canje_tokens:
   enabled: true
   comando: "/avo canjear"
   
-  # Recompensas disponibles
+  # Recompensas disponibles - ACTUALIZADO CON MÁS VARIEDAD
   recompensas:
+    # ═════════════════════════════════════════════════════════
+    # 💎 CATEGORÍA: RECURSOS BÁSICOS (1-5 tokens)
+    # ═════════════════════════════════════════════════════════
+    
+    pack_comida:
+      nombre: "&a&lPack de Comida"
+      descripcion: "64 Bistecs + 32 Manzanas Doradas"
+      categoria: "🍖"
+      costo_tokens: 3
+      items:
+        - "give %player% minecraft:cooked_beef 64"
+        - "give %player% minecraft:golden_apple 32"
+    
+    pack_flechas:
+      nombre: "&f&lPack de Arquero"
+      descripcion: "5 Stacks de flechas + Arco Power V"
+      categoria: "🏹"
+      costo_tokens: 4
+      items:
+        - "give %player% minecraft:arrow 320"
+        - "give %player% minecraft:bow{Enchantments:[{id:\"minecraft:power\",lvl:5},{id:\"minecraft:infinity\",lvl:1}]} 1"
+    
+    pack_xp:
+      nombre: "&b&lPack de Experiencia"
+      descripcion: "32 Botellas de XP"
+      categoria: "⭐"
+      costo_tokens: 5
+      items:
+        - "give %player% minecraft:experience_bottle 32"
+    
+    # ═════════════════════════════════════════════════════════
+    # ⚔️ CATEGORÍA: EQUIPAMIENTO (6-12 tokens)
+    # ═════════════════════════════════════════════════════════
+    
+    cohetes_elytra:
+      nombre: "&b&lCohetes para Élitras"
+      descripcion: "64 cohetes de fuegos artificiales para volar"
+      categoria: "🚀"
+      costo_tokens: 6
+      items:
+        - "give %player% minecraft:firework_rocket 64"
+    
     kit_diamante:
       nombre: "&b&lKit Diamante"
       descripcion: "Armadura completa de diamante + herramientas"
-      costo_tokens: 8   # Aumentado de 5 para mayor dificultad
+      categoria: "💎"
+      costo_tokens: 8
       items:
         - "give %player% minecraft:diamond_helmet 1"
         - "give %player% minecraft:diamond_chestplate 1"
@@ -204,43 +247,129 @@ canje_tokens:
         - "give %player% minecraft:diamond_boots 1"
         - "give %player% minecraft:diamond_sword 1"
         - "give %player% minecraft:diamond_pickaxe 1"
+        - "give %player% minecraft:diamond_axe 1"
+        - "give %player% minecraft:diamond_shovel 1"
+    
+    pack_encantamientos:
+      nombre: "&d&lPack de Encantamientos"
+      descripcion: "64 Lapislázuli + Mesa de Encantamientos + 16 Estanterías"
+      categoria: "📚"
+      costo_tokens: 10
+      items:
+        - "give %player% minecraft:lapis_lazuli 64"
+        - "give %player% minecraft:enchanting_table 1"
+        - "give %player% minecraft:bookshelf 16"
+        - "give %player% minecraft:anvil 1"
+    
+    bloque_proteccion:
+      nombre: "&a&lBloques de Protección x3"
+      descripcion: "3 bloques de protección de terreno"
+      categoria: "🛡️"
+      costo_tokens: 12
+      items:
+        - "ps give 15 %player% 3"
+    
+    # ═════════════════════════════════════════════════════════
+    # 🌟 CATEGORÍA: ÉPICO (13-20 tokens)
+    # ═════════════════════════════════════════════════════════
+    
+    elytra_especial:
+      nombre: "&d&lÉlitro del Stream"
+      descripcion: "Élitro + 128 cohetes"
+      categoria: "🦅"
+      costo_tokens: 15
+      items:
+        - "give %player% minecraft:elytra 1"
+        - "give %player% minecraft:firework_rocket 128"
+    
+    pack_shulker:
+      nombre: "&5&lPack de Shulker Boxes"
+      descripcion: "8 Shulker Boxes de colores variados"
+      categoria: "📦"
+      costo_tokens: 16
+      items:
+        - "give %player% minecraft:white_shulker_box 1"
+        - "give %player% minecraft:orange_shulker_box 1"
+        - "give %player% minecraft:magenta_shulker_box 1"
+        - "give %player% minecraft:light_blue_shulker_box 1"
+        - "give %player% minecraft:yellow_shulker_box 1"
+        - "give %player% minecraft:lime_shulker_box 1"
+        - "give %player% minecraft:pink_shulker_box 1"
+        - "give %player% minecraft:purple_shulker_box 1"
+    
+    pack_beacon:
+      nombre: "&e&lPack de Beacon"
+      descripcion: "1 Beacon + 164 Bloques de Hierro para pirámide completa"
+      categoria: "🔱"
+      costo_tokens: 18
+      items:
+        - "give %player% minecraft:beacon 1"
+        - "give %player% minecraft:iron_block 164"
+    
+    kit_end:
+      nombre: "&5&lKit del End"
+      descripcion: "16 Perlas de Ender + 12 Ojos de Ender + Enderchest"
+      categoria: "👁️"
+      costo_tokens: 20
+      items:
+        - "give %player% minecraft:ender_pearl 16"
+        - "give %player% minecraft:ender_eye 12"
+        - "give %player% minecraft:ender_chest 1"
+    
+    # ═════════════════════════════════════════════════════════
+    # 🔥 CATEGORÍA: LEGENDARIO (21-35 tokens)
+    # ═════════════════════════════════════════════════════════
     
     kit_netherite:
       nombre: "&c&lKit Netherite"
       descripcion: "Armadura completa de netherite"
-      costo_tokens: 25  # Aumentado de 15 para mayor dificultad
+      categoria: "🔥"
+      costo_tokens: 25
       items:
         - "give %player% minecraft:netherite_helmet 1"
         - "give %player% minecraft:netherite_chestplate 1"
         - "give %player% minecraft:netherite_leggings 1"
         - "give %player% minecraft:netherite_boots 1"
     
-    elytra_especial:
-      nombre: "&d&lÉlitro del Stream"
-      descripcion: "Élitro + 64 cohetes"
-      costo_tokens: 15  # Aumentado de 10
+    pack_totems:
+      nombre: "&6&lPack de Tótems"
+      descripcion: "3 Tótems de la Inmortalidad"
+      categoria: "🗿"
+      costo_tokens: 28
       items:
-        - "give %player% minecraft:elytra 1"
-        - "give %player% minecraft:firework_rocket 64"
-
-    cohetes_elytra:
-      nombre: "&b&lCohetes para Élitras"
-      descripcion: "64 cohetes de fuegos artificiales para volar"
-      costo_tokens: 6
-      items:
-        - "give %player% minecraft:firework_rocket 64"
+        - "give %player% minecraft:totem_of_undying 3"
     
-    bloque_proteccion:
-      nombre: "&a&lBloque de Protección x3"
-      descripcion: "3 bloques de protección de terreno"
-      costo_tokens: 12  # Aumentado de 8
+    kit_constructor:
+      nombre: "&e&lKit Constructor Maestro"
+      descripcion: "Materiales de construcción variados + herramientas"
+      categoria: "🏗️"
+      costo_tokens: 30
       items:
-        - "ps give 15 %player% 3"
+        - "give %player% minecraft:stone 320"
+        - "give %player% minecraft:oak_planks 320"
+        - "give %player% minecraft:glass 128"
+        - "give %player% minecraft:quartz_block 64"
+        - "give %player% minecraft:glowstone 64"
+        - "give %player% minecraft:sea_lantern 32"
+        - "give %player% minecraft:netherite_pickaxe{Enchantments:[{id:\"minecraft:efficiency\",lvl:5}]} 1"
+    
+    pack_manzanas_encantadas:
+      nombre: "&6&lPack de Manzanas Encantadas"
+      descripcion: "16 Manzanas Doradas Encantadas"
+      categoria: "🍎"
+      costo_tokens: 32
+      items:
+        - "give %player% minecraft:enchanted_golden_apple 16"
+    
+    # ═════════════════════════════════════════════════════════
+    # 💫 CATEGORÍA: MÍTICO (36+ tokens)
+    # ═════════════════════════════════════════════════════════
     
     mega_pack:
       nombre: "&6&l⭐ MEGA PACK ÉPICO"
       descripcion: "Pack completo de items legendarios"
-      costo_tokens: 40  # Aumentado de 25 para mayor dificultad
+      categoria: "💫"
+      costo_tokens: 40
       items:
         - "give %player% minecraft:netherite_ingot 20"
         - "give %player% minecraft:diamond 32"
@@ -248,6 +377,34 @@ canje_tokens:
         - "give %player% minecraft:totem_of_undying 3"
         - "give %player% minecraft:nether_star 5"
         - "ps give 15 %player% 5"
+    
+    pack_nether_stars:
+      nombre: "&f&lPack de Estrellas del Nether"
+      descripcion: "10 Estrellas del Nether para Beacons"
+      categoria: "⭐"
+      costo_tokens: 45
+      items:
+        - "give %player% minecraft:nether_star 10"
+    
+    pack_supremo:
+      nombre: "&c&l🔥 PACK SUPREMO DEL STREAM 🔥"
+      descripcion: "El pack definitivo: Kit Netherite Full + Extras"
+      categoria: "👑"
+      costo_tokens: 60
+      items:
+        - "give %player% minecraft:netherite_helmet{Enchantments:[{id:\"minecraft:protection\",lvl:4},{id:\"minecraft:unbreaking\",lvl:3},{id:\"minecraft:mending\",lvl:1}]} 1"
+        - "give %player% minecraft:netherite_chestplate{Enchantments:[{id:\"minecraft:protection\",lvl:4},{id:\"minecraft:unbreaking\",lvl:3},{id:\"minecraft:mending\",lvl:1}]} 1"
+        - "give %player% minecraft:netherite_leggings{Enchantments:[{id:\"minecraft:protection\",lvl:4},{id:\"minecraft:unbreaking\",lvl:3},{id:\"minecraft:mending\",lvl:1}]} 1"
+        - "give %player% minecraft:netherite_boots{Enchantments:[{id:\"minecraft:protection\",lvl:4},{id:\"minecraft:unbreaking\",lvl:3},{id:\"minecraft:mending\",lvl:1},{id:\"minecraft:feather_falling\",lvl:4}]} 1"
+        - "give %player% minecraft:netherite_sword{Enchantments:[{id:\"minecraft:sharpness\",lvl:5},{id:\"minecraft:unbreaking\",lvl:3},{id:\"minecraft:mending\",lvl:1},{id:\"minecraft:looting\",lvl:3}]} 1"
+        - "give %player% minecraft:netherite_pickaxe{Enchantments:[{id:\"minecraft:efficiency\",lvl:5},{id:\"minecraft:unbreaking\",lvl:3},{id:\"minecraft:mending\",lvl:1},{id:\"minecraft:fortune\",lvl:3}]} 1"
+        - "give %player% minecraft:elytra{Enchantments:[{id:\"minecraft:unbreaking\",lvl:3},{id:\"minecraft:mending\",lvl:1}]} 1"
+        - "give %player% minecraft:enchanted_golden_apple 32"
+        - "give %player% minecraft:totem_of_undying 5"
+        - "give %player% minecraft:nether_star 10"
+        - "give %player% minecraft:firework_rocket 256"
+        - "ps give 15 %player% 10"
+
 
 # ═══════════════════════════════════════════════════════════════
 # 📊 ESTADÍSTICAS Y RANKING DE STREAM

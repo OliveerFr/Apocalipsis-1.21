@@ -133,7 +133,7 @@ protecciones_end:
 reseteo:
   # ¿Resetear XP y niveles al CREAR un nuevo ciclo?
   # (false = mantiene XP entre mundos, true = cada ciclo empieza en 0)
-  resetear_xp: true
+  resetear_xp: false
   
   # ¿Resetear rangos al CREAR un nuevo ciclo?
   # (false = rangos se comparten entre mundos, true = cada ciclo tiene sus propios rangos)

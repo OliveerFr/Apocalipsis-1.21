@@ -109,8 +109,21 @@ public class AbilityService {
         }
         
         taskId = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
-            for (Player player : Bukkit.getOnlinePlayers()) {
-                applyAbilities(player, false);
+            // [OPTIMIZACIÓN v1.22.68] Convertir a lista para evitar ConcurrentModificationException
+            // y validar isOnline() para prevenir excepciones con jugadores desconectándose
+            List<Player> players = new ArrayList<>(Bukkit.getOnlinePlayers());
+            
+            for (Player player : players) {
+                // Validar que el jugador sigue online antes de aplicar habilidades
+                if (!player.isOnline()) {
+                    continue;
+                }
+                
+                try {
+                    applyAbilities(player, false);
+                } catch (Exception e) {
+                    plugin.getLogger().warning("[AbilityService] Error aplicando habilidades a " + player.getName() + ": " + e.getMessage());
+                }
             }
         }, intervaloRenovacion, intervaloRenovacion).getTaskId();
     }
@@ -130,6 +143,11 @@ public class AbilityService {
      * @param notify Si debe notificar al jugador
      */
     public void applyAbilities(Player player, boolean notify) {
+        // [PROTECCIÓN v1.22.68] Validar que el jugador esté online
+        if (player == null || !player.isOnline()) {
+            return;
+        }
+        
         UUID uuid = player.getUniqueId();
         
         // [OPTIMIZACIÓN] Verificar cooldown antes de aplicar
@@ -209,10 +227,21 @@ public class AbilityService {
         loadAbilities();
         startTask();
         
-        // Re-aplicar a todos los jugadores online
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            applyAbilities(player, false);
+        // Re-aplicar a todos los jugadores online con protección
+        List<Player> players = new ArrayList<>(Bukkit.getOnlinePlayers());
+        for (Player player : players) {
+            if (player.isOnline()) {
+                applyAbilities(player, false);
+            }
         }
+    }
+    
+    /**
+     * [NUEVO v1.22.68] Limpia datos en memoria de un jugador desconectado
+     * Llamar desde PlayerQuitEvent para prevenir memory leaks
+     */
+    public void cleanupPlayer(UUID playerId) {
+        applyCooldowns.remove(playerId);
     }
     
     /**

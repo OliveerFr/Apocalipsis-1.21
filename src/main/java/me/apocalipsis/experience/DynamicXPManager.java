@@ -240,6 +240,15 @@ public class DynamicXPManager {
     }
     
     /**
+     * [NUEVO v1.22.68] Limpia completamente los datos de un jugador desconectado
+     * Previene memory leaks removiendo el tracker del map
+     */
+    public void cleanupPlayer(UUID playerId) {
+        playerTrackers.remove(playerId);
+        highRankNotificationCooldown.remove(playerId);
+    }
+    
+    /**
      * Otorga XP dinámico con todos los multiplicadores y bonificaciones
      */
     public XPResult giveXP(Player player, XPSource source, String detail) {

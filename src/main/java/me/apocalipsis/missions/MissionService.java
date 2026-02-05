@@ -465,6 +465,7 @@ public class MissionService {
         List<MissionCatalog> selected = new ArrayList<>();
         List<MissionCatalog> available = new ArrayList<>(pool);
         Random random = new Random();
+        Set<String> usedObjectives = new HashSet<>();  // [FIX] Evitar misiones duplicadas por objetivo
         
         for (int i = 0; i < count && !available.isEmpty(); i++) {
             int totalWeight = available.stream()
@@ -484,8 +485,22 @@ public class MissionService {
             }
             
             if (chosen != null) {
+                final String chosenObjective = chosen.getObjetivo();  // [FIX] Variable final para uso en lambda
+                
+                // [FIX] Verificar si ya se seleccionó una misión con el mismo objetivo
+                if (usedObjectives.contains(chosenObjective)) {
+                    // Ya hay una misión con este objetivo, buscar otra
+                    // Remover todas las misiones con el mismo objetivo del pool
+                    available.removeIf(m -> m.getObjetivo().equals(chosenObjective));
+                    i--;  // Reintentar esta iteración
+                    continue;
+                }
+                
                 selected.add(chosen);
+                usedObjectives.add(chosenObjective);
                 available.remove(chosen);
+                // [FIX] Remover todas las misiones con el mismo objetivo para evitar duplicados
+                available.removeIf(m -> m.getObjetivo().equals(chosenObjective));
             }
         }
         

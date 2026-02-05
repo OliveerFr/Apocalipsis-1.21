@@ -67,6 +67,7 @@ public class RankService {
                 }
                 
                 int psRequired = rankSection.getInt("ps_required", rank.getPsRequired());
+                int levelRequired = rankSection.getInt("level_required", rank.getLevelRequired()); // NUEVO: Leer nivel requerido
                 int misionesDiarias = rankSection.getInt("misiones_diarias", rank.getMisionesDiarias());
                 String tabPrefix = rankSection.getString("tab_prefix", defaultTabPrefix);
                 String tabSuffix = rankSection.getString("tab_suffix", defaultTabSuffix);
@@ -74,7 +75,7 @@ public class RankService {
                 String scoreboardColor = rankSection.getString("scoreboard_color", defaultScoreboardColor);
                 
                 // Configurar el rango
-                rank.configure(displayName, psRequired, misionesDiarias, tabPrefix, tabSuffix, chatPrefix, scoreboardColor);
+                rank.configure(displayName, psRequired, levelRequired, misionesDiarias, tabPrefix, tabSuffix, chatPrefix, scoreboardColor);
                 loaded++;
                 
             } catch (IllegalArgumentException e) {
@@ -114,46 +115,51 @@ public class RankService {
     }
 
     /**
-     * Obtiene el rango actual del jugador según su XP (según rangos.yml)
+     * Obtiene el rango actual del jugador según su NIVEL (NUEVO SISTEMA - MÁS FÁCIL)
      */
     public MissionRank getRank(Player player) {
         return getRank(player.getUniqueId());
     }
     
     /**
-     * Obtiene el rango actual del jugador por UUID según su XP
+     * Obtiene el rango actual del jugador por UUID según su NIVEL
      */
     public MissionRank getRank(UUID uuid) {
-        // SIEMPRE usar XP para determinar rango (según rangos.yml con umbral_acumulado: true)
+        // NUEVO: Usar NIVEL en vez de XP para determinar rango (más fácil de controlar)
+        if (plugin.getExperienceService() != null) {
+            int level = plugin.getExperienceService().getLevel(uuid);
+            return MissionRank.fromLevel(level);
+        }
+        // Fallback: usar XP si ExperienceService no está disponible
         int xp = getXP(uuid);
         return MissionRank.fromXp(xp);
     }
     
     /**
-     * Actualiza el rango del jugador basado en su XP actual (para sistema de ciclos)
-     * El rango se calcula automáticamente, no se guarda separadamente
+     * Actualiza el rango del jugador basado en su NIVEL actual (para sistema de ciclos)
+     * El rango se calcula automáticamente desde el nivel, no se guarda separadamente
      */
     public void updatePlayerRank(UUID uuid) {
-        // El rango se calcula automáticamente desde XP, no necesita actualización
+        // El rango se calcula automáticamente desde NIVEL, no necesita actualización
         // Este método existe para compatibilidad con WorldDataManager
         MissionRank rank = getRank(uuid);
         plugin.getLogger().fine("[RankService] Rango calculado para " + uuid + ": " + rank.name());
     }
 
     /**
-     * Obtiene el umbral del siguiente rango
-     * Si ya está en el rango máximo, devuelve el umbral del rango máximo
+     * Obtiene el nivel requerido del siguiente rango
+     * Si ya está en el rango máximo, devuelve el nivel del rango máximo
      */
     public int getNextRankThreshold(Player player) {
         MissionRank current = getRank(player);
         MissionRank next = current.getNext();
         
         if (next == null) {
-            // Ya es el máximo, devolver valor muy alto
+            // Ya es el máximo, devolver nivel muy alto
             return Integer.MAX_VALUE;
         }
         
-        return next.getXpRequired();
+        return next.getLevelRequired();
     }
 
     /**
@@ -165,14 +171,14 @@ public class RankService {
     }
 
     /**
-     * Obtiene el progreso hacia el siguiente rango (0.0 a 1.0) basado en XP
+     * Obtiene el progreso hacia el siguiente rango (0.0 a 1.0) basado en NIVEL
      */
     public double getProgressToNextRank(Player player) {
         if (isMaxRank(player)) {
             return 1.0;
         }
 
-        // Usar XP para calcular progreso de rango (según rangos.yml)
+        // Usar NIVEL para calcular progreso de rango (nuevo sistema)
         MissionRank current = getRank(player);
         MissionRank next = current.getNext();
         
@@ -180,15 +186,16 @@ public class RankService {
             return 1.0;
         }
         
-        int xp = getXP(player);
-        int currentMin = current.getXpRequired();
-        int nextMin = next.getXpRequired();
+        int currentLevel = plugin.getExperienceService() != null ? 
+                          plugin.getExperienceService().getLevel(player) : 1;
+        int currentMin = current.getLevelRequired();
+        int nextMin = next.getLevelRequired();
 
         if (nextMin <= currentMin) {
             return 1.0;
         }
 
-        double progress = (double) (xp - currentMin) / (nextMin - currentMin);
+        double progress = (double) (currentLevel - currentMin) / (nextMin - currentMin);
         return Math.max(0.0, Math.min(1.0, progress));
     }
 
@@ -225,18 +232,36 @@ public class RankService {
     
     /**
      * Obtiene el XP requerido para un rango específico
-     * Útil para comandos admin que asignan rangos directamente
+     * @deprecated Usar getLevelForRank() - Sistema de niveles es más fácil de controlar
      */
+    @Deprecated
     public int getXpForRank(MissionRank rank) {
         return rank.getXpRequired();
     }
     
     /**
-     * Obtiene el rango que correspondería a una cantidad de XP
-     * Útil para previsualizar compras de habilidades
+     * Obtiene el NIVEL requerido para un rango específico (NUEVO SISTEMA)
+     * Útil para comandos admin y visualización
      */
+    public int getLevelForRank(MissionRank rank) {
+        return rank.getLevelRequired();
+    }
+    
+    /**
+     * Obtiene el rango que correspondería a una cantidad de XP
+     * @deprecated Usar getRankForLevel() - Sistema de niveles es más fácil de controlar
+     */
+    @Deprecated
     public MissionRank getRankForXP(int xp) {
         return MissionRank.fromXp(xp);
+    }
+    
+    /**
+     * Obtiene el rango que correspondería a un nivel (NUEVO SISTEMA - MÁS FÁCIL)
+     * Útil para previsualizar compras de habilidades
+     */
+    public MissionRank getRankForLevel(int level) {
+        return MissionRank.fromLevel(level);
     }
 
     /**

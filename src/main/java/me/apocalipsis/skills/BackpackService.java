@@ -1,6 +1,14 @@
 package me.apocalipsis.skills;
 
-import me.apocalipsis.Apocalipsis;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Sound;
@@ -16,9 +24,7 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
+import me.apocalipsis.Apocalipsis;
 
 /**
  * Sistema de mochila virtual para habilidades de almacenamiento.
@@ -30,8 +36,9 @@ public class BackpackService implements Listener {
     private final SkillService skillService;
     private final File dataFile;
     
-    // UUID -> número de mochila (1-10) -> contenido de la mochila
-    private final Map<UUID, Map<Integer, ItemStack[]>> backpacks = new HashMap<>();
+    // NUEVA ESTRUCTURA: UUID -> Mundo -> número de mochila (1-10) -> contenido de la mochila
+    // Esto separa las mochilas por ciclo/mundo para evitar transferencia entre ciclos
+    private final Map<UUID, Map<String, Map<Integer, ItemStack[]>>> backpacks = new HashMap<>();
     
     public BackpackService(Apocalipsis plugin, SkillService skillService) {
         this.plugin = plugin;
@@ -45,19 +52,22 @@ public class BackpackService implements Listener {
     public class BackpackHolder implements InventoryHolder {
         private final UUID owner;
         private final int backpackNumber;
+        private final String worldName;
         private Inventory inventory;
         
         public BackpackHolder(UUID owner) {
-            this(owner, 1);
+            this(owner, 1, "world");
         }
         
-        public BackpackHolder(UUID owner, int backpackNumber) {
+        public BackpackHolder(UUID owner, int backpackNumber, String worldName) {
             this.owner = owner;
             this.backpackNumber = backpackNumber;
+            this.worldName = worldName;
         }
         
         public UUID getOwner() { return owner; }
         public int getBackpackNumber() { return backpackNumber; }
+        public String getWorldName() { return worldName; }
         
         @Override
         public Inventory getInventory() { return inventory; }
@@ -78,6 +88,7 @@ public class BackpackService implements Listener {
      */
     public void openBackpack(Player player, int backpackNumber) {
         UUID uuid = player.getUniqueId();
+        String worldName = player.getWorld().getName();
         
         // Validar número de mochila
         if (backpackNumber < 1 || backpackNumber > 2) {
@@ -94,13 +105,13 @@ public class BackpackService implements Listener {
             return;
         }
         
-        BackpackHolder holder = new BackpackHolder(uuid, backpackNumber);
-        String title = getBackpackTitle(uuid, backpackNumber);
+        BackpackHolder holder = new BackpackHolder(uuid, backpackNumber, worldName);
+        String title = getBackpackTitle(uuid, backpackNumber) + " §8(§b" + worldName + "§8)";
         Inventory inv = Bukkit.createInventory(holder, size, title);
         holder.setInventory(inv);
         
         // Cargar contenido (preservando todo el contenido previo)
-        ItemStack[] contents = getBackpackContents(uuid, backpackNumber);
+        ItemStack[] contents = getBackpackContents(uuid, worldName, backpackNumber);
         if (contents != null) {
             // Si el tamaño guardado es menor que el actual, expandir
             if (contents.length < size) {
@@ -108,7 +119,7 @@ public class BackpackService implements Listener {
                     " de " + contents.length + " a " + size + " slots");
                 ItemStack[] expanded = new ItemStack[size];
                 System.arraycopy(contents, 0, expanded, 0, contents.length);
-                setBackpackContents(uuid, backpackNumber, expanded);
+                setBackpackContents(uuid, worldName, backpackNumber, expanded);
                 contents = expanded;
             }
             
@@ -125,7 +136,7 @@ public class BackpackService implements Listener {
         
         // Mensaje si es mochila 2+
         if (backpackNumber > 1) {
-            player.sendMessage("§e§l✦ §6Mochila #" + backpackNumber + " abierta");
+            player.sendMessage("§e§l✦ §6Mochila #" + backpackNumber + " abierta §8(§b" + worldName + "§8)");
         }
     }
     
@@ -202,6 +213,7 @@ public class BackpackService implements Listener {
         if (inv.getHolder() instanceof BackpackHolder holder) {
             UUID uuid = holder.getOwner();
             int backpackNumber = holder.getBackpackNumber();
+            String worldName = holder.getWorldName();
             
             // Guardar contenido con el tamaño actual
             int currentSize = inv.getSize();
@@ -212,7 +224,7 @@ public class BackpackService implements Listener {
                 contents[i] = inv.getItem(i);
             }
             
-            setBackpackContents(uuid, backpackNumber, contents);
+            setBackpackContents(uuid, worldName, backpackNumber, contents);
             
             // Guardar a archivo
             saveBackpacks();
@@ -224,6 +236,7 @@ public class BackpackService implements Listener {
         if (inv.getHolder() instanceof ModViewHolder modHolder) {
             UUID ownerUuid = modHolder.getOwner();
             int backpackNumber = modHolder.getBackpackNumber();
+            String worldName = modHolder.getWorldName();
             
             // Guardar contenido modificado
             ItemStack[] contents = new ItemStack[inv.getSize()];
@@ -231,11 +244,11 @@ public class BackpackService implements Listener {
                 contents[i] = inv.getItem(i);
             }
             
-            setBackpackContents(ownerUuid, backpackNumber, contents);
+            setBackpackContents(ownerUuid, worldName, backpackNumber, contents);
             saveBackpacks();
             
             player.playSound(player.getLocation(), Sound.BLOCK_CHEST_CLOSE, 0.7f, 0.8f);
-            player.sendMessage("§a✓ Cambios guardados en la mochila #" + backpackNumber + ".");
+            player.sendMessage("§a✓ Cambios guardados en la mochila #" + backpackNumber + " (§e" + worldName + "§a).");
         }
     }
     
@@ -268,12 +281,87 @@ public class BackpackService implements Listener {
         for (String uuidStr : playersSection.getKeys(false)) {
             try {
                 UUID uuid = UUID.fromString(uuidStr);
-                
-                // Verificar si es formato nuevo (tiene subsecciones numéricas) o antiguo (lista directa)
                 ConfigurationSection playerSection = playersSection.getConfigurationSection(uuidStr);
                 
-                if (playerSection != null) {
-                    // Formato nuevo: backpacks.uuid.1, backpacks.uuid.2, etc.
+                if (playerSection == null) {
+                    // Formato muy antiguo: backpacks.uuid = lista directa
+                    List<?> itemsList = playersSection.getList(uuidStr);
+                    if (itemsList != null) {
+                        ItemStack[] contents = new ItemStack[54];
+                        for (int i = 0; i < itemsList.size() && i < 54; i++) {
+                            Object item = itemsList.get(i);
+                            if (item instanceof ItemStack) {
+                                contents[i] = (ItemStack) item;
+                            }
+                        }
+                        
+                        // Migrar a formato nuevo: UUID -> "world" -> 1
+                        Map<String, Map<Integer, ItemStack[]>> worldBackpacks = new HashMap<>();
+                        Map<Integer, ItemStack[]> playerBackpacks = new HashMap<>();
+                        playerBackpacks.put(1, contents);
+                        worldBackpacks.put("world", playerBackpacks);
+                        backpacks.put(uuid, worldBackpacks);
+                        
+                        migratedCount++;
+                        plugin.getLogger().info("[Backpack] Migrado formato antiguo de " + uuidStr + " a world/mochila #1");
+                    }
+                    continue;
+                }
+                
+                Map<String, Map<Integer, ItemStack[]>> worldBackpacks = new HashMap<>();
+                
+                // Verificar si tiene subsecciones de mundos o es formato sin mundos
+                boolean hasWorldSections = false;
+                for (String key : playerSection.getKeys(false)) {
+                    if (playerSection.isConfigurationSection(key)) {
+                        // Si tiene subsecciones, verificar si son mundos (no números)
+                        try {
+                            Integer.parseInt(key);
+                            // Es un número, formato antiguo sin mundos
+                        } catch (NumberFormatException e) {
+                            // No es un número, probablemente es un nombre de mundo
+                            hasWorldSections = true;
+                            break;
+                        }
+                    }
+                }
+                
+                if (hasWorldSections) {
+                    // Formato nuevo: backpacks.uuid.worldName.1
+                    for (String worldName : playerSection.getKeys(false)) {
+                        ConfigurationSection worldSection = playerSection.getConfigurationSection(worldName);
+                        if (worldSection == null) continue;
+                        
+                        Map<Integer, ItemStack[]> playerBackpacks = new HashMap<>();
+                        
+                        for (String numberStr : worldSection.getKeys(false)) {
+                            try {
+                                int backpackNumber = Integer.parseInt(numberStr);
+                                if (backpackNumber < 1 || backpackNumber > 10) continue;
+                                
+                                List<?> itemsList = worldSection.getList(numberStr);
+                                if (itemsList != null) {
+                                    ItemStack[] contents = new ItemStack[54];
+                                    for (int i = 0; i < itemsList.size() && i < 54; i++) {
+                                        Object item = itemsList.get(i);
+                                        if (item instanceof ItemStack) {
+                                            contents[i] = (ItemStack) item;
+                                        }
+                                    }
+                                    playerBackpacks.put(backpackNumber, contents);
+                                    loadedCount++;
+                                }
+                            } catch (NumberFormatException e) {
+                                // Ignorar claves que no sean números
+                            }
+                        }
+                        
+                        if (!playerBackpacks.isEmpty()) {
+                            worldBackpacks.put(worldName, playerBackpacks);
+                        }
+                    }
+                } else {
+                    // Formato antiguo sin mundo: backpacks.uuid.1, backpacks.uuid.2, etc.
                     Map<Integer, ItemStack[]> playerBackpacks = new HashMap<>();
                     
                     for (String numberStr : playerSection.getKeys(false)) {
@@ -283,7 +371,7 @@ public class BackpackService implements Listener {
                             
                             List<?> itemsList = playerSection.getList(numberStr);
                             if (itemsList != null) {
-                                ItemStack[] contents = new ItemStack[54]; // Máximo tamaño
+                                ItemStack[] contents = new ItemStack[54];
                                 for (int i = 0; i < itemsList.size() && i < 54; i++) {
                                     Object item = itemsList.get(i);
                                     if (item instanceof ItemStack) {
@@ -291,7 +379,6 @@ public class BackpackService implements Listener {
                                     }
                                 }
                                 playerBackpacks.put(backpackNumber, contents);
-                                loadedCount++;
                             }
                         } catch (NumberFormatException e) {
                             // Ignorar claves que no sean números
@@ -299,29 +386,15 @@ public class BackpackService implements Listener {
                     }
                     
                     if (!playerBackpacks.isEmpty()) {
-                        backpacks.put(uuid, playerBackpacks);
-                    }
-                } else {
-                    // Formato antiguo: backpacks.uuid = lista
-                    List<?> itemsList = playersSection.getList(uuidStr);
-                    
-                    if (itemsList != null) {
-                        ItemStack[] contents = new ItemStack[54]; // Máximo tamaño
-                        for (int i = 0; i < itemsList.size() && i < 54; i++) {
-                            Object item = itemsList.get(i);
-                            if (item instanceof ItemStack) {
-                                contents[i] = (ItemStack) item;
-                            }
-                        }
-                        
-                        // Migrar a formato nuevo (mochila #1)
-                        Map<Integer, ItemStack[]> playerBackpacks = new HashMap<>();
-                        playerBackpacks.put(1, contents);
-                        backpacks.put(uuid, playerBackpacks);
-                        
+                        // Migrar a formato con mundo
+                        worldBackpacks.put("world", playerBackpacks);
                         migratedCount++;
-                        plugin.getLogger().info("[Backpack] Migrado formato antiguo de " + uuidStr + " a mochila #1");
+                        plugin.getLogger().info("[Backpack] Migrado " + uuidStr + " a formato con mundos");
                     }
+                }
+                
+                if (!worldBackpacks.isEmpty()) {
+                    backpacks.put(uuid, worldBackpacks);
                 }
             } catch (Exception e) {
                 plugin.getLogger().warning("Error cargando mochila de " + uuidStr + ": " + e.getMessage());
@@ -340,16 +413,21 @@ public class BackpackService implements Listener {
     public void saveBackpacks() {
         FileConfiguration config = new YamlConfiguration();
         
-        for (Map.Entry<UUID, Map<Integer, ItemStack[]>> entry : backpacks.entrySet()) {
+        for (Map.Entry<UUID, Map<String, Map<Integer, ItemStack[]>>> entry : backpacks.entrySet()) {
             String uuidStr = entry.getKey().toString();
-            Map<Integer, ItemStack[]> playerBackpacks = entry.getValue();
+            Map<String, Map<Integer, ItemStack[]>> worldBackpacks = entry.getValue();
             
-            for (Map.Entry<Integer, ItemStack[]> backpackEntry : playerBackpacks.entrySet()) {
-                int backpackNumber = backpackEntry.getKey();
-                ItemStack[] contents = backpackEntry.getValue();
+            for (Map.Entry<String, Map<Integer, ItemStack[]>> worldEntry : worldBackpacks.entrySet()) {
+                String worldName = worldEntry.getKey();
+                Map<Integer, ItemStack[]> playerBackpacks = worldEntry.getValue();
                 
-                String path = "backpacks." + uuidStr + "." + backpackNumber;
-                config.set(path, Arrays.asList(contents));
+                for (Map.Entry<Integer, ItemStack[]> backpackEntry : playerBackpacks.entrySet()) {
+                    int backpackNumber = backpackEntry.getKey();
+                    ItemStack[] contents = backpackEntry.getValue();
+                    
+                    String path = "backpacks." + uuidStr + "." + worldName + "." + backpackNumber;
+                    config.set(path, Arrays.asList(contents));
+                }
             }
         }
         
@@ -364,15 +442,26 @@ public class BackpackService implements Listener {
      * Obtiene el contenido de la mochila para un jugador (mochila 1 por defecto)
      */
     public ItemStack[] getBackpackContents(UUID uuid) {
-        return getBackpackContents(uuid, 1);
+        return getBackpackContents(uuid, "world", 1);
     }
     
     /**
      * Obtiene el contenido de la mochila para un jugador (con número específico)
      */
     public ItemStack[] getBackpackContents(UUID uuid, int backpackNumber) {
-        Map<Integer, ItemStack[]> playerBackpacks = backpacks.get(uuid);
+        return getBackpackContents(uuid, "world", backpackNumber);
+    }
+    
+    /**
+     * Obtiene el contenido de la mochila para un jugador en un mundo específico
+     */
+    public ItemStack[] getBackpackContents(UUID uuid, String worldName, int backpackNumber) {
+        Map<String, Map<Integer, ItemStack[]>> worldBackpacks = backpacks.get(uuid);
+        if (worldBackpacks == null) return null;
+        
+        Map<Integer, ItemStack[]> playerBackpacks = worldBackpacks.get(worldName);
         if (playerBackpacks == null) return null;
+        
         return playerBackpacks.get(backpackNumber);
     }
     
@@ -380,7 +469,15 @@ public class BackpackService implements Listener {
      * Establece el contenido de una mochila específica
      */
     private void setBackpackContents(UUID uuid, int backpackNumber, ItemStack[] contents) {
-        Map<Integer, ItemStack[]> playerBackpacks = backpacks.computeIfAbsent(uuid, k -> new HashMap<>());
+        setBackpackContents(uuid, "world", backpackNumber, contents);
+    }
+    
+    /**
+     * Establece el contenido de una mochila específica en un mundo específico
+     */
+    private void setBackpackContents(UUID uuid, String worldName, int backpackNumber, ItemStack[] contents) {
+        Map<String, Map<Integer, ItemStack[]>> worldBackpacks = backpacks.computeIfAbsent(uuid, k -> new HashMap<>());
+        Map<Integer, ItemStack[]> playerBackpacks = worldBackpacks.computeIfAbsent(worldName, k -> new HashMap<>());
         playerBackpacks.put(backpackNumber, contents);
     }
     
@@ -400,21 +497,24 @@ public class BackpackService implements Listener {
         private final UUID owner;
         private final UUID moderator;
         private final int backpackNumber;
+        private final String worldName;
         private Inventory inventory;
         
         public ModViewHolder(UUID owner, UUID moderator) {
-            this(owner, moderator, 1);
+            this(owner, moderator, 1, "world");
         }
         
-        public ModViewHolder(UUID owner, UUID moderator, int backpackNumber) {
+        public ModViewHolder(UUID owner, UUID moderator, int backpackNumber, String worldName) {
             this.owner = owner;
             this.moderator = moderator;
             this.backpackNumber = backpackNumber;
+            this.worldName = worldName;
         }
         
         public UUID getOwner() { return owner; }
         public UUID getModerator() { return moderator; }
         public int getBackpackNumber() { return backpackNumber; }
+        public String getWorldName() { return worldName; }
         
         @Override
         public Inventory getInventory() { return inventory; }
@@ -425,13 +525,34 @@ public class BackpackService implements Listener {
      * Permite a un moderador ver la mochila de otro jugador (mochila 1 por defecto)
      */
     public void openBackpackAsAdmin(Player moderator, UUID targetUuid, String targetName) {
-        openBackpackAsAdmin(moderator, targetUuid, targetName, 1);
+        // Detectar mundo del jugador objetivo
+        Player targetPlayer = Bukkit.getPlayer(targetUuid);
+        String worldName;
+        if (targetPlayer != null) {
+            // Si está online, usar su mundo actual
+            worldName = targetPlayer.getWorld().getName();
+        } else {
+            // Si está offline, usar ciclo activo o mundo del moderador
+            String activeCycle = plugin.getCicloManager().getActiveCycle();
+            worldName = activeCycle != null ? activeCycle : moderator.getWorld().getName();
+        }
+        openBackpackAsAdmin(moderator, targetUuid, targetName, 1, worldName);
     }
     
     /**
      * Permite a un moderador ver la mochila de otro jugador (con número específico)
      */
     public void openBackpackAsAdmin(Player moderator, UUID targetUuid, String targetName, int backpackNumber) {
+        // Detectar mundo del jugador objetivo o usar "world" por defecto
+        Player targetPlayer = Bukkit.getPlayer(targetUuid);
+        String worldName = targetPlayer != null ? targetPlayer.getWorld().getName() : "world";
+        openBackpackAsAdmin(moderator, targetUuid, targetName, backpackNumber, worldName);
+    }
+    
+    /**
+     * Permite a un moderador ver la mochila de otro jugador en un mundo específico
+     */
+    public void openBackpackAsAdmin(Player moderator, UUID targetUuid, String targetName, int backpackNumber, String worldName) {
         // Validar número de mochila
         if (backpackNumber < 1 || backpackNumber > 10) {
             moderator.sendMessage("§c✗ Número de mochila inválido. Usa del 1 al 10.");
@@ -444,13 +565,13 @@ public class BackpackService implements Listener {
             return;
         }
         
-        ModViewHolder holder = new ModViewHolder(targetUuid, moderator.getUniqueId(), backpackNumber);
-        String title = "§c[MOD] §eMochila #" + backpackNumber + " de " + targetName;
+        ModViewHolder holder = new ModViewHolder(targetUuid, moderator.getUniqueId(), backpackNumber, worldName);
+        String title = "§c[MOD] §eMochila #" + backpackNumber + " de " + targetName + " §8(§b" + worldName + "§8)";
         Inventory inv = Bukkit.createInventory(holder, size, title);
         holder.setInventory(inv);
         
         // Cargar contenido
-        ItemStack[] contents = getBackpackContents(targetUuid, backpackNumber);
+        ItemStack[] contents = getBackpackContents(targetUuid, worldName, backpackNumber);
         if (contents != null) {
             for (int i = 0; i < Math.min(contents.length, size); i++) {
                 inv.setItem(i, contents[i]);
@@ -459,10 +580,10 @@ public class BackpackService implements Listener {
         
         moderator.openInventory(inv);
         moderator.playSound(moderator.getLocation(), Sound.BLOCK_CHEST_OPEN, 0.7f, 0.8f);
-        moderator.sendMessage("§a✓ Viendo mochila #" + backpackNumber + " de §e" + targetName);
+        moderator.sendMessage("§a✓ Viendo mochila #" + backpackNumber + " de §e" + targetName + " §7en mundo §b" + worldName);
         
         // Log para seguridad
-        plugin.getLogger().info("[MOCHILA-MOD] " + moderator.getName() + " abrió mochila #" + backpackNumber + " de " + targetName);
+        plugin.getLogger().info("[MOCHILA-MOD] " + moderator.getName() + " abrió mochila #" + backpackNumber + " de " + targetName + " (mundo: " + worldName + ")");
     }
     
     /**
@@ -471,27 +592,33 @@ public class BackpackService implements Listener {
     public List<String> getBackpackList() {
         List<String> list = new ArrayList<>();
         
-        for (Map.Entry<UUID, Map<Integer, ItemStack[]>> entry : backpacks.entrySet()) {
+        for (Map.Entry<UUID, Map<String, Map<Integer, ItemStack[]>>> entry : backpacks.entrySet()) {
             UUID uuid = entry.getKey();
-            Map<Integer, ItemStack[]> playerBackpacks = entry.getValue();
+            Map<String, Map<Integer, ItemStack[]>> worldBackpacks = entry.getValue();
             String name = Bukkit.getOfflinePlayer(uuid).getName();
             String displayName = name != null ? name : uuid.toString().substring(0, 8);
             
-            // Iterar sobre cada mochila del jugador
-            for (Map.Entry<Integer, ItemStack[]> backpackEntry : playerBackpacks.entrySet()) {
-                int backpackNumber = backpackEntry.getKey();
-                ItemStack[] contents = backpackEntry.getValue();
+            // Iterar sobre cada mundo
+            for (Map.Entry<String, Map<Integer, ItemStack[]>> worldEntry : worldBackpacks.entrySet()) {
+                String worldName = worldEntry.getKey();
+                Map<Integer, ItemStack[]> playerBackpacks = worldEntry.getValue();
                 
-                int itemCount = 0;
-                for (ItemStack item : contents) {
-                    if (item != null && item.getType() != Material.AIR) {
-                        itemCount++;
+                // Iterar sobre cada mochila del jugador
+                for (Map.Entry<Integer, ItemStack[]> backpackEntry : playerBackpacks.entrySet()) {
+                    int backpackNumber = backpackEntry.getKey();
+                    ItemStack[] contents = backpackEntry.getValue();
+                    
+                    int itemCount = 0;
+                    for (ItemStack item : contents) {
+                        if (item != null && item.getType() != Material.AIR) {
+                            itemCount++;
+                        }
                     }
-                }
-                
-                if (itemCount > 0) {
-                    String entry_text = displayName + " (mochila #" + backpackNumber + ", " + itemCount + " items)";
-                    list.add(entry_text);
+                    
+                    if (itemCount > 0) {
+                        String entry_text = displayName + " (mochila #" + backpackNumber + ", mundo: " + worldName + ", " + itemCount + " items)";
+                        list.add(entry_text);
+                    }
                 }
             }
         }
@@ -503,20 +630,44 @@ public class BackpackService implements Listener {
      * Vacía la mochila de un jugador (comando de moderación) - mochila 1 por defecto
      */
     public boolean clearBackpack(UUID targetUuid, Player moderator) {
-        return clearBackpack(targetUuid, moderator, 1);
+        // Detectar mundo del jugador objetivo
+        Player targetPlayer = Bukkit.getPlayer(targetUuid);
+        String worldName;
+        if (targetPlayer != null) {
+            worldName = targetPlayer.getWorld().getName();
+        } else {
+            String activeCycle = plugin.getCicloManager().getActiveCycle();
+            worldName = activeCycle != null ? activeCycle : moderator.getWorld().getName();
+        }
+        return clearBackpack(targetUuid, moderator, 1, worldName);
     }
     
     /**
      * Vacía la mochila de un jugador (comando de moderación) - con número específico
      */
     public boolean clearBackpack(UUID targetUuid, Player moderator, int backpackNumber) {
+        // Detectar mundo del jugador objetivo o usar "world" por defecto
+        Player targetPlayer = Bukkit.getPlayer(targetUuid);
+        String worldName = targetPlayer != null ? targetPlayer.getWorld().getName() : "world";
+        return clearBackpack(targetUuid, moderator, backpackNumber, worldName);
+    }
+    
+    /**
+     * Vacía la mochila de un jugador en un mundo específico (comando de moderación)
+     */
+    public boolean clearBackpack(UUID targetUuid, Player moderator, int backpackNumber, String worldName) {
         // Validar número de mochila
         if (backpackNumber < 1 || backpackNumber > 10) {
             moderator.sendMessage("§c✗ Número de mochila inválido. Usa del 1 al 10.");
             return false;
         }
         
-        Map<Integer, ItemStack[]> playerBackpacks = backpacks.get(targetUuid);
+        Map<String, Map<Integer, ItemStack[]>> worldBackpacks = backpacks.get(targetUuid);
+        if (worldBackpacks == null) {
+            return false;
+        }
+        
+        Map<Integer, ItemStack[]> playerBackpacks = worldBackpacks.get(worldName);
         if (playerBackpacks == null || !playerBackpacks.containsKey(backpackNumber)) {
             return false;
         }
@@ -526,7 +677,7 @@ public class BackpackService implements Listener {
         
         // Log para seguridad
         String targetName = Bukkit.getOfflinePlayer(targetUuid).getName();
-        plugin.getLogger().warning("[MOCHILA-MOD] " + moderator.getName() + " vació la mochila #" + backpackNumber + " de " + targetName);
+        plugin.getLogger().warning("[MOCHILA-MOD] " + moderator.getName() + " vació la mochila #" + backpackNumber + " de " + targetName + " (mundo: " + worldName + ")");
         
         return true;
     }

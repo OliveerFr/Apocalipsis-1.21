@@ -1,8 +1,12 @@
 package me.apocalipsis.missions;
 
 import java.io.File;
-import java.io.IOException;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -22,6 +26,7 @@ public class TokenDatabase {
     
     // Cache en memoria para acceso rápido
     private final Map<UUID, Integer> tokenCache = new HashMap<>();
+    private final Map<UUID, Integer> fragmentCache = new HashMap<>();  // Cache para fragmentos
     
     public TokenDatabase(Apocalipsis plugin) {
         this.plugin = plugin;
@@ -62,6 +67,16 @@ public class TokenDatabase {
                 ")"
             );
             
+            // Crear tabla de fragmentos
+            stmt.execute(
+                "CREATE TABLE IF NOT EXISTS player_fragments (" +
+                "uuid TEXT PRIMARY KEY NOT NULL, " +
+                "fragments INTEGER NOT NULL DEFAULT 0, " +
+                "total_earned INTEGER NOT NULL DEFAULT 0, " +
+                "last_updated INTEGER NOT NULL" +
+                ")"
+            );
+            
             // Crear tabla de historial de transacciones
             stmt.execute(
                 "CREATE TABLE IF NOT EXISTS token_transactions (" +
@@ -76,6 +91,7 @@ public class TokenDatabase {
             
             // Crear índices para mejorar rendimiento
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_uuid ON player_tokens(uuid)");
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_fragments_uuid ON player_fragments(uuid)");
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_transactions_uuid ON token_transactions(uuid)");
         }
     }
@@ -84,6 +100,7 @@ public class TokenDatabase {
      * Carga el cache desde la base de datos
      */
     private void loadCache() throws SQLException {
+        // Cargar tokens
         String query = "SELECT uuid, tokens FROM player_tokens";
         try (Statement stmt = connection.createStatement();
              ResultSet rs = stmt.executeQuery(query)) {
@@ -95,7 +112,22 @@ public class TokenDatabase {
                 tokenCache.put(uuid, tokens);
             }
             
-            plugin.getLogger().info("[TokenDatabase] Cache cargado: " + tokenCache.size() + " jugadores");
+            plugin.getLogger().info("[TokenDatabase] Cache de tokens cargado: " + tokenCache.size() + " jugadores");
+        }
+        
+        // Cargar fragmentos
+        String fragmentQuery = "SELECT uuid, fragments FROM player_fragments";
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery(fragmentQuery)) {
+            
+            fragmentCache.clear();
+            while (rs.next()) {
+                UUID uuid = UUID.fromString(rs.getString("uuid"));
+                int fragments = rs.getInt("fragments");
+                fragmentCache.put(uuid, fragments);
+            }
+            
+            plugin.getLogger().info("[TokenDatabase] Cache de fragmentos cargado: " + fragmentCache.size() + " jugadores");
         }
     }
     
@@ -104,6 +136,69 @@ public class TokenDatabase {
      */
     public int getTokens(UUID uuid) {
         return tokenCache.getOrDefault(uuid, 0);
+    }
+    
+    /**
+     * Obtiene los fragmentos de un jugador (desde cache)
+     */
+    public int getFragments(UUID uuid) {
+        return fragmentCache.getOrDefault(uuid, 0);
+    }
+    
+    /**
+     * Añade fragmentos a un jugador de forma asíncrona
+     * Convierte automáticamente cada 10 fragmentos en 1 token
+     * @return CompletableFuture con el número de tokens convertidos (0 si no hubo conversión)
+     */
+    public CompletableFuture<Integer> addFragments(UUID uuid, int amount, String reason) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                int currentFragments = getFragments(uuid);
+                int newTotal = currentFragments + amount;
+                
+                // Calcular cuántos tokens se pueden obtener
+                int tokensToConvert = newTotal / 10;  // Cada 10 fragmentos = 1 token
+                int remainingFragments = newTotal % 10;  // Fragmentos que sobran
+                
+                // Actualizar fragmentos en la base de datos
+                String upsert = 
+                    "INSERT INTO player_fragments (uuid, fragments, total_earned, last_updated) " +
+                    "VALUES (?, ?, ?, ?) " +
+                    "ON CONFLICT(uuid) DO UPDATE SET " +
+                    "fragments = ?, " +
+                    "total_earned = total_earned + ?, " +
+                    "last_updated = ?";
+                
+                try (PreparedStatement stmt = connection.prepareStatement(upsert)) {
+                    long now = System.currentTimeMillis();
+                    stmt.setString(1, uuid.toString());
+                    stmt.setInt(2, remainingFragments);  // Fragmentos después de conversión
+                    stmt.setInt(3, amount);  // Total ganado (original)
+                    stmt.setLong(4, now);
+                    stmt.setInt(5, remainingFragments);  // Fragmentos después de conversión
+                    stmt.setInt(6, amount);  // Total ganado (original)
+                    stmt.setLong(7, now);
+                    stmt.executeUpdate();
+                }
+                
+                // Actualizar cache de fragmentos
+                fragmentCache.put(uuid, remainingFragments);
+                
+                // Registrar transacción de fragmentos
+                logFragmentTransaction(uuid, amount, "ADD", reason);
+                
+                // Si hay tokens para convertir, añadirlos
+                if (tokensToConvert > 0) {
+                    addTokens(uuid, tokensToConvert, "Conversión automática de " + (tokensToConvert * 10) + " fragmentos").join();
+                    logFragmentTransaction(uuid, -(tokensToConvert * 10), "CONVERT", "Convertidos a " + tokensToConvert + " tokens");
+                }
+                
+                return tokensToConvert;  // Retorna cuántos tokens se generaron
+            } catch (SQLException e) {
+                plugin.getLogger().severe("[TokenDatabase] Error añadiendo fragmentos: " + e.getMessage());
+                return 0;
+            }
+        });
     }
     
     /**
@@ -217,6 +312,28 @@ public class TokenDatabase {
             }
         } catch (SQLException e) {
             plugin.getLogger().warning("[TokenDatabase] Error registrando transacción: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Registra una transacción de fragmentos en el historial
+     */
+    private void logFragmentTransaction(UUID uuid, int amount, String type, String reason) {
+        try {
+            String insert = 
+                "INSERT INTO token_transactions (uuid, amount, type, reason, timestamp) " +
+                "VALUES (?, ?, ?, ?, ?)";
+            
+            try (PreparedStatement stmt = connection.prepareStatement(insert)) {
+                stmt.setString(1, uuid.toString());
+                stmt.setInt(2, amount);
+                stmt.setString(3, "FRAGMENT_" + type);  // Prefijo para distinguir de tokens
+                stmt.setString(4, reason);
+                stmt.setLong(5, System.currentTimeMillis());
+                stmt.executeUpdate();
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().warning("[TokenDatabase] Error registrando transacción de fragmentos: " + e.getMessage());
         }
     }
     

@@ -24,12 +24,64 @@ public class DisasterRegistry {
         plugin.getLogger().info(String.format("[DisasterRegistry] Limpiando %d desastres anteriores", disasters.size()));
         clearAll();
         
-        plugin.getLogger().info("[DisasterRegistry] Registrando desastres nuevos...");
-        register(new HuracanNew(plugin, messageBus, soundUtil, timeService, performanceAdapter));
-        register(new LluviaFuegoNew(plugin, messageBus, soundUtil, timeService, performanceAdapter));
-        register(new TerremotoNew(plugin, messageBus, soundUtil, timeService, performanceAdapter));
+        // Verificar si usar desastres nuevos (Ciclo 2) o viejos (Ciclo 1)
+        boolean usarNuevos = plugin.getConfig().getBoolean("ciclo.usar_desastres_nuevos", true);
+        
+        plugin.getLogger().info("[DisasterRegistry] ═══════════════════════════════════════════════");
+        plugin.getLogger().info("[DisasterRegistry] Registrando desastres " + (usarNuevos ? "NUEVOS (Ciclo 2)" : "ANTIGUOS (Ciclo 1)") + "...");
+        plugin.getLogger().info("[DisasterRegistry] ═══════════════════════════════════════════════");
+        
+        try {
+            if (usarNuevos) {
+                // CICLO 2: Nuevos desastres elementales
+                plugin.getLogger().info("[DisasterRegistry] Creando TormentaGlacial...");
+                register(new TormentaGlacial(plugin, messageBus, soundUtil, timeService, performanceAdapter));
+                
+                plugin.getLogger().info("[DisasterRegistry] Creando TormentaElectrica...");
+                register(new TormentaElectrica(plugin, messageBus, soundUtil, timeService, performanceAdapter));
+                
+                plugin.getLogger().info("[DisasterRegistry] Creando ErupcionVolcanica...");
+                register(new ErupcionVolcanica(plugin, messageBus, soundUtil, timeService, performanceAdapter));
+            } else {
+                // CICLO 1: Desastres originales
+                plugin.getLogger().info("[DisasterRegistry] Creando HuracanNew...");
+                register(new HuracanNew(plugin, messageBus, soundUtil, timeService, performanceAdapter));
+                
+                plugin.getLogger().info("[DisasterRegistry] Creando LluviaFuegoNew...");
+                register(new LluviaFuegoNew(plugin, messageBus, soundUtil, timeService, performanceAdapter));
+                
+                plugin.getLogger().info("[DisasterRegistry] Creando TerremotoNew...");
+                register(new TerremotoNew(plugin, messageBus, soundUtil, timeService, performanceAdapter));
+            }
+        } catch (Exception e) {
+            plugin.getLogger().severe("[DisasterRegistry] ¡ERROR CRÍTICO al registrar desastres!");
+            plugin.getLogger().severe("[DisasterRegistry] " + e.getMessage());
+            e.printStackTrace();
+        }
+        
         // EcoBrasas movido a EventController - NO es un desastre automático
-        plugin.getLogger().info(String.format("[DisasterRegistry] ✓ %d desastres registrados", disasters.size()));
+        
+        // [FIX] Validación post-registro
+        plugin.getLogger().info("[DisasterRegistry] ═══════════════════════════════════════════════");
+        plugin.getLogger().info("[DisasterRegistry] ✓ " + disasters.size() + " desastres registrados:");
+        for (String id : disasters.keySet()) {
+            Disaster d = disasters.get(id);
+            if (d != null) {
+                plugin.getLogger().info("[DisasterRegistry]   • " + id + " (" + d.getClass().getSimpleName() + ")");
+            } else {
+                plugin.getLogger().severe("[DisasterRegistry]   ✗ " + id + " (NULL - ERROR)");
+            }
+        }
+        plugin.getLogger().info("[DisasterRegistry] ═══════════════════════════════════════════════");
+        
+        // Verificación de integridad
+        if (disasters.isEmpty()) {
+            plugin.getLogger().severe("[DisasterRegistry] ¡ADVERTENCIA! Ningún desastre registrado - sistema no funcional");
+        } else if (usarNuevos && disasters.size() != 3) {
+            plugin.getLogger().warning("[DisasterRegistry] ¡ADVERTENCIA! Se esperaban 3 desastres (Ciclo 2) pero hay " + disasters.size());
+        } else if (!usarNuevos && disasters.size() != 3) {
+            plugin.getLogger().warning("[DisasterRegistry] ¡ADVERTENCIA! Se esperaban 3 desastres (Ciclo 1) pero hay " + disasters.size());
+        }
     }
 
     public void register(Disaster disaster) {

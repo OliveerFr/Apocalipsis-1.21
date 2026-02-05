@@ -1,7 +1,16 @@
 package me.apocalipsis.skills;
 
-import me.apocalipsis.Apocalipsis;
-import me.apocalipsis.missions.MissionRank;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
 import org.bukkit.Bukkit;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
@@ -11,10 +20,8 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-import java.util.stream.Collectors;
+import me.apocalipsis.Apocalipsis;
+import me.apocalipsis.missions.MissionRank;
 
 /**
  * Servicio principal para gestionar el árbol de habilidades.
@@ -60,6 +67,27 @@ public class SkillService {
     // Cooldowns para sinergias avanzadas
     private final Map<UUID, Long> omnipresenteCooldowns = new HashMap<>();
     private final Map<UUID, Long> avatarCaosCooldowns = new HashMap<>();
+    
+    // Tracking de efectos aplicados (UUID jugador -> PotionEffectType -> último amplifier aplicado)
+    private final Map<UUID, Map<org.bukkit.potion.PotionEffectType, Integer>> appliedEffects = new HashMap<>();
+    
+    // Límites máximos globales para efectos de poción (amplifier máximo permitido)
+    private static final Map<org.bukkit.potion.PotionEffectType, Integer> MAX_EFFECT_LEVELS = new HashMap<>();
+    
+    static {
+        // Configurar límites máximos razonables
+        MAX_EFFECT_LEVELS.put(org.bukkit.potion.PotionEffectType.HASTE, 2);           // Haste III máximo
+        MAX_EFFECT_LEVELS.put(org.bukkit.potion.PotionEffectType.SPEED, 3);           // Speed IV máximo
+        MAX_EFFECT_LEVELS.put(org.bukkit.potion.PotionEffectType.STRENGTH, 2);        // Strength III máximo
+        MAX_EFFECT_LEVELS.put(org.bukkit.potion.PotionEffectType.JUMP_BOOST, 2);      // Jump Boost III máximo
+        MAX_EFFECT_LEVELS.put(org.bukkit.potion.PotionEffectType.REGENERATION, 2);    // Regeneration III máximo
+        MAX_EFFECT_LEVELS.put(org.bukkit.potion.PotionEffectType.RESISTANCE, 2);      // Resistance III máximo
+        MAX_EFFECT_LEVELS.put(org.bukkit.potion.PotionEffectType.ABSORPTION, 4);      // Absorption V máximo
+        MAX_EFFECT_LEVELS.put(org.bukkit.potion.PotionEffectType.NIGHT_VISION, 0);    // Night Vision I siempre
+        MAX_EFFECT_LEVELS.put(org.bukkit.potion.PotionEffectType.FIRE_RESISTANCE, 0); // Fire Resistance I siempre
+        MAX_EFFECT_LEVELS.put(org.bukkit.potion.PotionEffectType.WATER_BREATHING, 0); // Water Breathing I siempre
+        MAX_EFFECT_LEVELS.put(org.bukkit.potion.PotionEffectType.DOLPHINS_GRACE, 0);  // Dolphin's Grace I siempre
+    }
     
     // Configuración
     private int minXpRestante = 100;
@@ -262,6 +290,9 @@ public class SkillService {
         if (data != null) {
             plugin.getLogger().info("[Skills] Cache limpiado para UUID: " + uuid);
         }
+        
+        // Limpiar tracking de efectos aplicados para prevenir fugas de memoria
+        appliedEffects.remove(uuid);
     }
     
     // ==================== SISTEMA DE NIVELES ====================
@@ -443,8 +474,16 @@ public class SkillService {
     public boolean meetsRequirements(Player player, Skill skill) {
         for (String reqId : skill.getRequirements()) {
             Skill required = Skill.fromId(reqId);
-            if (required != null && !hasSkill(player, required)) {
-                return false;
+            if (required != null) {
+                // [FIX] Si el requisito está deshabilitado, considerarlo automáticamente cumplido
+                if (!required.isEnabled()) {
+                    plugin.getLogger().info("[Skills] Requisito '" + reqId + "' deshabilitado, omitiendo para " + player.getName());
+                    continue;
+                }
+                // Solo verificar si el requisito está habilitado
+                if (!hasSkill(player, required)) {
+                    return false;
+                }
             }
         }
         return true;
@@ -454,8 +493,14 @@ public class SkillService {
         List<Skill> missing = new ArrayList<>();
         for (String reqId : skill.getRequirements()) {
             Skill required = Skill.fromId(reqId);
-            if (required != null && !hasSkill(player, required)) {
-                missing.add(required);
+            if (required != null) {
+                // [FIX] No incluir habilidades deshabilitadas en la lista de requisitos faltantes
+                if (!required.isEnabled()) {
+                    continue;
+                }
+                if (!hasSkill(player, required)) {
+                    missing.add(required);
+                }
             }
         }
         return missing;
@@ -479,6 +524,25 @@ public class SkillService {
      * Intenta comprar una habilidad para el jugador
      */
     public PurchaseResult purchaseSkill(Player player, Skill skill) {
+        UUID uuid = player.getUniqueId();
+        
+        // [DEBUG] Log inicial
+        plugin.getLogger().info("[SkillService] purchaseSkill called - Player: " + player.getName() + 
+            " | World: " + player.getWorld().getName() + 
+            " | Skill: " + skill.name());
+        
+        // [FIX CRÍTICO] Refrescar datos del jugador desde el mundo actual
+        // Esto asegura que estamos leyendo la XP correcta del mundo donde está el jugador
+        if (plugin.getCicloManager() != null && plugin.getCicloManager().getDataManager() != null) {
+            String worldName = player.getWorld().getName();
+            var dataManager = plugin.getCicloManager().getDataManager();
+            var worldData = dataManager.loadPlayerData(uuid, worldName);
+            dataManager.applyStateToServices(uuid, worldData);
+            
+            plugin.getLogger().info("[SkillService] Refreshed player data from world: " + worldName + 
+                " | XP: " + worldData.getXp());
+        }
+        
         // Verificar si ya la tiene
         if (hasSkill(player, skill)) {
             return PurchaseResult.ALREADY_OWNED;
@@ -494,9 +558,14 @@ public class SkillService {
             return PurchaseResult.DURING_DISASTER;
         }
         
-        // Obtener XP del jugador
+        // Obtener XP del jugador (después del refresh)
         int playerXP = plugin.getExperienceService().getXP(player);
         int cost = skill.getBaseCost(); // Usamos costo base directo
+        
+        // [DEBUG] Log de XP check
+        plugin.getLogger().info("[SkillService] XP Check - PlayerXP: " + playerXP + 
+            " | Cost: " + cost + 
+            " | Has enough: " + (playerXP >= cost));
         
         // Verificar si tiene suficiente XP
         if (playerXP < cost) {
@@ -513,7 +582,7 @@ public class SkillService {
         plugin.getExperienceService().setXP(player, newXP);
         
         // Añadir habilidad
-        PlayerSkillData data = getData(player.getUniqueId());
+        PlayerSkillData data = getData(uuid);
         data.addSkill(skill);
         data.addXpGastada(cost);
         
@@ -522,6 +591,19 @@ public class SkillService {
         
         // Guardar datos
         saveData();
+        
+        // [FIX] Guardar cambios también en el WorldDataManager del mundo actual
+        if (plugin.getCicloManager() != null && plugin.getCicloManager().getDataManager() != null) {
+            String worldName = player.getWorld().getName();
+            var dataManager = plugin.getCicloManager().getDataManager();
+            var updatedData = dataManager.captureCurrentState(uuid);
+            dataManager.savePlayerData(uuid, worldName, updatedData);
+            dataManager.saveData();
+            
+            plugin.getLogger().info("[SkillService] Saved purchase to world data: " + worldName + 
+                " | New XP: " + newXP + 
+                " | Skill: " + skill.name());
+        }
         
         return PurchaseResult.SUCCESS;
     }
@@ -534,8 +616,13 @@ public class SkillService {
         int cost = skill.getBaseCost();
         int newXP = currentXP - cost;
         
-        MissionRank currentRank = plugin.getRankService().getRank(player);
-        MissionRank newRank = plugin.getRankService().getRankForXP(newXP);
+        // Calcular nivel actual y nuevo nivel después de gastar XP
+        int currentLevel = plugin.getExperienceService().getLevel(player);
+        int newLevel = plugin.getExperienceService().calculateLevel(newXP);
+        
+        // Usar niveles para determinar rangos (nuevo sistema)
+        MissionRank currentRank = plugin.getRankService().getRankForLevel(currentLevel);
+        MissionRank newRank = plugin.getRankService().getRankForLevel(newLevel);
         
         boolean willDropRank = newRank != currentRank && newRank.ordinal() < currentRank.ordinal();
         
@@ -600,10 +687,10 @@ public class SkillService {
                     break;
                 
                 // === VELOCIDAD DE ATAQUE ===
-                case REFLEJOS:
-                    attackSpeedBonus += getLevelEffect(uuid, Skill.REFLEJOS) / 100.0; // 10/15/20%
-                    skillsApplied++;
-                    break;
+                // case REFLEJOS:
+                //     attackSpeedBonus += getLevelEffect(uuid, Skill.REFLEJOS) / 100.0; // 10/15/20%
+                //     skillsApplied++;
+                //     break;
                     
                 // === NADADOR ===
                 case NADADOR:
@@ -687,8 +774,12 @@ public class SkillService {
     }
     
     /**
-     * Aplica un efecto de poción de forma ADITIVA.
-     * Si el jugador ya tiene el efecto (beacon/poción), suma los niveles.
+     * Aplica un efecto de poción de forma ADITIVA con múltiples capas de seguridad.
+     * - Tracking de efectos aplicados previamente por skills
+     * - Detección de fuentes externas (beacons, pociones)
+     * - Límites globales máximos configurados
+     * - Prevención de bucles de acumulación
+     * 
      * @param player El jugador
      * @param effectType Tipo de efecto
      * @param duration Duración en ticks
@@ -698,19 +789,70 @@ public class SkillService {
      */
     private void applyAdditiveEffect(Player player, org.bukkit.potion.PotionEffectType effectType, 
                                       int duration, int skillAmplifier, boolean ambient, boolean showParticles) {
+        UUID uuid = player.getUniqueId();
         org.bukkit.potion.PotionEffect existing = player.getPotionEffect(effectType);
         int finalAmplifier = skillAmplifier;
         
+        // Inicializar tracking si no existe
+        appliedEffects.putIfAbsent(uuid, new HashMap<>());
+        Map<org.bukkit.potion.PotionEffectType, Integer> playerEffects = appliedEffects.get(uuid);
+        
         if (existing != null) {
-            // Sumar el nivel del efecto existente + el de la habilidad + 1
-            // Ejemplo: Beacon Haste I (amp 0) + Skill Haste I (amp 0) = Haste II (amp 1)
-            finalAmplifier = existing.getAmplifier() + skillAmplifier + 1;
-            // Limitar a nivel máximo razonable (nivel 5 = amplifier 4)
+            // CAPA 1: Verificar si es de skill (duración similar) o fuente externa
+            int timeDiff = Math.abs(existing.getDuration() - duration);
+            Integer lastApplied = playerEffects.get(effectType);
+            
+            if (timeDiff > 50 || (lastApplied != null && existing.getAmplifier() > lastApplied)) {
+                // Es de otra fuente (beacon/poción/otro jugador), sumar niveles
+                // Ejemplo: Beacon Haste I (amp 0) + Skill Haste I (amp 0) = Haste II (amp 1)
+                finalAmplifier = existing.getAmplifier() + skillAmplifier + 1;
+            } else {
+                // Es probable que sea de la propia skill, mantener el mayor
+                finalAmplifier = Math.max(existing.getAmplifier(), skillAmplifier);
+            }
+        }
+        
+        // CAPA 2: Aplicar límite global máximo configurado para este tipo de efecto
+        Integer globalMax = MAX_EFFECT_LEVELS.get(effectType);
+        if (globalMax != null) {
+            finalAmplifier = Math.min(finalAmplifier, globalMax);
+        } else {
+            // Fallback: límite genérico de nivel 5 (amplifier 4)
             finalAmplifier = Math.min(finalAmplifier, 4);
         }
         
+        // CAPA 3: Validación de sanidad - nunca permitir valores negativos o excesivos
+        finalAmplifier = Math.max(0, Math.min(finalAmplifier, 5));
+        
+        // Aplicar efecto y guardar tracking
         player.addPotionEffect(new org.bukkit.potion.PotionEffect(
             effectType, duration, finalAmplifier, ambient, showParticles));
+        
+        playerEffects.put(effectType, finalAmplifier);
+    }
+    
+    /**
+     * Aplica un efecto de poción con validación de límites globales.
+     * Usar este método en lugar de addPotionEffect directamente.
+     */
+    private void applySafeEffect(Player player, org.bukkit.potion.PotionEffectType effectType,
+                                 int duration, int amplifier, boolean ambient, boolean showParticles) {
+        // Validar y aplicar límite global
+        Integer globalMax = MAX_EFFECT_LEVELS.get(effectType);
+        int safeAmplifier = amplifier;
+        
+        if (globalMax != null) {
+            safeAmplifier = Math.min(amplifier, globalMax);
+        } else {
+            // Límite genérico
+            safeAmplifier = Math.min(amplifier, 5);
+        }
+        
+        // Validación de sanidad
+        safeAmplifier = Math.max(0, safeAmplifier);
+        
+        player.addPotionEffect(new org.bukkit.potion.PotionEffect(
+            effectType, duration, safeAmplifier, ambient, showParticles));
     }
     
     private void processPeriodicEffects(Player player) {
@@ -731,12 +873,12 @@ public class SkillService {
                     }
                     break;
                     
-                case AUTOSUFICIENTE:
+                // case AUTOSUFICIENTE:
                     // Regenerar 0.5 hambre cada 30s (se ejecuta cada 20s, así que ~0.33)
-                    if (player.getFoodLevel() < 20) {
-                        player.setFoodLevel(Math.min(player.getFoodLevel() + 1, 20));
-                    }
-                    break;
+                    // if (player.getFoodLevel() < 20) {
+                    //     player.setFoodLevel(Math.min(player.getFoodLevel() + 1, 20));
+                    // }
+                    // break;
                 
                 case VISION_NOCTURNA:
                     // Aplicar visión nocturna permanente (no necesita ser aditiva, solo nivel 1)
@@ -806,33 +948,33 @@ public class SkillService {
                     }
                     break;
                 
-                case BRUJULA_INTERNA:
+                // case BRUJULA_INTERNA:
                     // Mostrar coordenadas en action bar
-                    org.bukkit.Location loc = player.getLocation();
-                    String coords = String.format("§e⬤ §fX: §a%d §f| Y: §a%d §f| Z: §a%d",
-                        loc.getBlockX(), loc.getBlockY(), loc.getBlockZ());
-                    player.sendActionBar(coords);
-                    break;
+                    // org.bukkit.Location loc = player.getLocation();
+                    // String coords = String.format("§e⬤ §fX: §a%d §f| Y: §a%d §f| Z: §a%d",
+                    //     loc.getBlockX(), loc.getBlockY(), loc.getBlockZ());
+                    // player.sendActionBar(coords);
+                    // break;
                 
-                case EXPLORADOR_LIGERO:
+                // case EXPLORADOR_LIGERO:
                     // +20% velocidad cuando mochila llena (sinergia) - Se SUMA con Speed existente
-                    int backpackSize = plugin.getBackpackService().getBackpackSize(uuid);
-                    if (backpackSize > 0) {
-                        org.bukkit.inventory.ItemStack[] backpackContents = plugin.getBackpackService().getBackpackContents(uuid);
-                        if (backpackContents != null) {
-                            int itemCount = 0;
-                            for (org.bukkit.inventory.ItemStack item : backpackContents) {
-                                if (item != null && item.getType() != org.bukkit.Material.AIR) {
-                                    itemCount++;
-                                }
-                            }
-                            // Si la mochila está 80%+ llena
-                            if (itemCount >= backpackSize * 0.8) {
-                                applyAdditiveEffect(player, org.bukkit.potion.PotionEffectType.SPEED, 500, 0, true, false);
-                            }
-                        }
-                    }
-                    break;
+                    // int backpackSize = plugin.getBackpackService().getBackpackSize(uuid);
+                    // if (backpackSize > 0) {
+                    //     org.bukkit.inventory.ItemStack[] backpackContents = plugin.getBackpackService().getBackpackContents(uuid);
+                    //     if (backpackContents != null) {
+                    //         int itemCount = 0;
+                    //         for (org.bukkit.inventory.ItemStack item : backpackContents) {
+                    //             if (item != null && item.getType() != org.bukkit.Material.AIR) {
+                    //                 itemCount++;
+                    //             }
+                    //         }
+                    //         // Si la mochila está 80%+ llena
+                    //         if (itemCount >= backpackSize * 0.8) {
+                    //             applyAdditiveEffect(player, org.bukkit.potion.PotionEffectType.SPEED, 500, 0, true, false);
+                    //         }
+                    //     }
+                    // }
+                    // break;
                     
                 default:
                     break;
@@ -887,7 +1029,7 @@ public class SkillService {
     public boolean activateRastroOro(Player player) {
         UUID uuid = player.getUniqueId();
         
-        if (!hasSkill(uuid, Skill.RASTRO_ORO)) {
+        if (!/* hasSkill(uuid, Skill.RASTRO_ORO) */ false) {
             player.sendMessage("§c✗ No tienes la habilidad Rastro de Oro");
             return false;
         }
@@ -923,7 +1065,7 @@ public class SkillService {
     public boolean activateDetectorSpawners(Player player) {
         UUID uuid = player.getUniqueId();
         
-        if (!hasSkill(uuid, Skill.DETECTOR_SPAWNERS)) {
+        if (!/* hasSkill(uuid, Skill.DETECTOR_SPAWNERS) */ false) {
             player.sendMessage("§c✗ No tienes la habilidad Detector de Spawners");
             return false;
         }
@@ -958,7 +1100,7 @@ public class SkillService {
     public boolean activateXrayDiamantes(Player player) {
         UUID uuid = player.getUniqueId();
         
-        if (!hasSkill(uuid, Skill.XRAY_DIAMANTES)) {
+        if (!/* hasSkill(uuid, Skill.XRAY_DIAMANTES) */ false) {
             player.sendMessage("§c✗ No tienes la habilidad Sentido del Diamante");
             return false;
         }
@@ -1356,7 +1498,7 @@ public class SkillService {
     public boolean invocarGato(Player player) {
         UUID uuid = player.getUniqueId();
         
-        if (!hasSkill(uuid, Skill.GATO_GUARDIAN)) {
+        if (!/* hasSkill(uuid, Skill.GATO_GUARDIAN) */ false) {
             player.sendMessage("§c✗ No tienes la habilidad Gato Guardián");
             return false;
         }
@@ -1437,7 +1579,7 @@ public class SkillService {
     public boolean invocarAllay(Player player) {
         UUID uuid = player.getUniqueId();
         
-        if (!hasSkill(uuid, Skill.ALLAY_RECOLECTOR)) {
+        if (!/* hasSkill(uuid, Skill.ALLAY_RECOLECTOR) */ false) {
             player.sendMessage("§c✗ No tienes la habilidad Allay Recolector");
             return false;
         }
@@ -1952,7 +2094,7 @@ public class SkillService {
     public boolean activateOmnipresente(Player player) {
         UUID uuid = player.getUniqueId();
         
-        if (!hasSkill(uuid, Skill.OMNIPRESENTE)) {
+        if (!/* hasSkill(uuid, Skill.OMNIPRESENTE) */ false) {
             player.sendMessage("§c✗ No tienes la habilidad Omnipresente");
             return false;
         }
@@ -1965,12 +2107,10 @@ public class SkillService {
         }
         
         // Efecto de visión espectral (ver mobs a través de paredes)
-        player.addPotionEffect(new org.bukkit.potion.PotionEffect(
-            org.bukkit.potion.PotionEffectType.GLOWING, 100, 0, true, false)); // 5s
+        applySafeEffect(player, org.bukkit.potion.PotionEffectType.GLOWING, 100, 0, true, false); // 5s
         
         // También dar visión nocturna
-        player.addPotionEffect(new org.bukkit.potion.PotionEffect(
-            org.bukkit.potion.PotionEffectType.NIGHT_VISION, 100, 0, true, false));
+        applySafeEffect(player, org.bukkit.potion.PotionEffectType.NIGHT_VISION, 100, 0, true, false);
         
         // Resaltar TODOS los bloques importantes cercanos (minerales, cofres, spawners)
         scanEverything(player);
@@ -2053,48 +2193,37 @@ public class SkillService {
         player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_WITHER_SPAWN, 0.5f, 1.2f);
         
         // Vida extra temporal (absorción)
-        player.addPotionEffect(new org.bukkit.potion.PotionEffect(
-            org.bukkit.potion.PotionEffectType.ABSORPTION, 600, 4, true, true)); // 10 hearts extra
+        applySafeEffect(player, org.bukkit.potion.PotionEffectType.ABSORPTION, 600, 4, true, true); // 10 hearts extra
         
         // Velocidad máxima
-        player.addPotionEffect(new org.bukkit.potion.PotionEffect(
-            org.bukkit.potion.PotionEffectType.SPEED, 600, 2, true, true));
+        applySafeEffect(player, org.bukkit.potion.PotionEffectType.SPEED, 600, 2, true, true);
         
         // Fuerza
-        player.addPotionEffect(new org.bukkit.potion.PotionEffect(
-            org.bukkit.potion.PotionEffectType.STRENGTH, 600, 1, true, true));
+        applySafeEffect(player, org.bukkit.potion.PotionEffectType.STRENGTH, 600, 1, true, true);
         
-        // Haste
-        player.addPotionEffect(new org.bukkit.potion.PotionEffect(
-            org.bukkit.potion.PotionEffectType.HASTE, 600, 2, true, true));
+        // Haste (reducido de 2 a 1 para evitar niveles excesivos)
+        applySafeEffect(player, org.bukkit.potion.PotionEffectType.HASTE, 600, 1, true, true);
         
         // Resistencia
-        player.addPotionEffect(new org.bukkit.potion.PotionEffect(
-            org.bukkit.potion.PotionEffectType.RESISTANCE, 600, 1, true, true));
+        applySafeEffect(player, org.bukkit.potion.PotionEffectType.RESISTANCE, 600, 1, true, true);
         
         // Regeneración
-        player.addPotionEffect(new org.bukkit.potion.PotionEffect(
-            org.bukkit.potion.PotionEffectType.REGENERATION, 600, 1, true, true));
+        applySafeEffect(player, org.bukkit.potion.PotionEffectType.REGENERATION, 600, 1, true, true);
         
         // Visión nocturna
-        player.addPotionEffect(new org.bukkit.potion.PotionEffect(
-            org.bukkit.potion.PotionEffectType.NIGHT_VISION, 600, 0, true, true));
+        applySafeEffect(player, org.bukkit.potion.PotionEffectType.NIGHT_VISION, 600, 0, true, true);
         
         // Fire resistance
-        player.addPotionEffect(new org.bukkit.potion.PotionEffect(
-            org.bukkit.potion.PotionEffectType.FIRE_RESISTANCE, 600, 0, true, true));
+        applySafeEffect(player, org.bukkit.potion.PotionEffectType.FIRE_RESISTANCE, 600, 0, true, true);
         
         // Water breathing
-        player.addPotionEffect(new org.bukkit.potion.PotionEffect(
-            org.bukkit.potion.PotionEffectType.WATER_BREATHING, 600, 0, true, true));
+        applySafeEffect(player, org.bukkit.potion.PotionEffectType.WATER_BREATHING, 600, 0, true, true);
         
         // Dolphins grace
-        player.addPotionEffect(new org.bukkit.potion.PotionEffect(
-            org.bukkit.potion.PotionEffectType.DOLPHINS_GRACE, 600, 0, true, true));
+        applySafeEffect(player, org.bukkit.potion.PotionEffectType.DOLPHINS_GRACE, 600, 0, true, true);
         
         // Jump boost
-        player.addPotionEffect(new org.bukkit.potion.PotionEffect(
-            org.bukkit.potion.PotionEffectType.JUMP_BOOST, 600, 1, true, true));
+        applySafeEffect(player, org.bukkit.potion.PotionEffectType.JUMP_BOOST, 600, 1, true, true);
         
         // Efectos visuales épicos
         player.getWorld().spawnParticle(org.bukkit.Particle.EXPLOSION_EMITTER, player.getLocation(), 1);

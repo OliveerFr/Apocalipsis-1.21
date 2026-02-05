@@ -80,6 +80,7 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
     // NUEVO: Sistema de fases
     private boolean fasesEnabled;
     private double faseMultiplicador;
+    private int lastPhaseAnnounced = 0;  // Control de mensajes por fase
     
     // NUEVO: Rotura de bloques de protección (agua) - MEJORADO
     private boolean romperProteccionEnabled;
@@ -274,33 +275,72 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
         // Apagar fuegos temporales programados
         for (org.bukkit.block.Block block : fuegosTemporal) {
             if (block.getType() == Material.FIRE) {
-                block.setType(Material.AIR);
+                setBlockTracked(block, Material.AIR);
             }
         }
         fuegosTemporal.clear();
         
-        // Apagar fuegos globales
+        // [OPTIMIZACIÓN v1.22.68] Apagar fuegos globales en async con batch limiting
         if (apagaTodoAlFinalizar) {
-            int extinguished = 0;
-            for (World world : Bukkit.getWorlds()) {
-                for (Chunk chunk : world.getLoadedChunks()) {
-                    for (int x = 0; x < 16; x++) {
-                        for (int z = 0; z < 16; z++) {
-                            for (int y = world.getMinHeight(); y < world.getMaxHeight(); y++) {
-                                org.bukkit.block.Block block = chunk.getBlock(x, y, z);
-                                if (block.getType() == Material.FIRE) {
-                                    block.setType(Material.AIR);
-                                    extinguished++;
+            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                java.util.concurrent.atomic.AtomicInteger extinguished = new java.util.concurrent.atomic.AtomicInteger(0);
+                java.util.List<org.bukkit.Location> firesToExtinguish = new java.util.ArrayList<>();
+                
+                // Fase 1: Recolectar bloques de fuego (async scan)
+                for (World world : Bukkit.getWorlds()) {
+                    Chunk[] chunks = world.getLoadedChunks();
+                    
+                    // Limitar a 100 chunks por mundo para prevenir lag
+                    int maxChunks = Math.min(chunks.length, 100);
+                    
+                    for (int i = 0; i < maxChunks && firesToExtinguish.size() < 1000; i++) {
+                        Chunk chunk = chunks[i];
+                        for (int x = 0; x < 16; x++) {
+                            for (int z = 0; z < 16; z++) {
+                                for (int y = world.getMinHeight(); y < world.getMaxHeight(); y++) {
+                                    org.bukkit.block.Block block = chunk.getBlock(x, y, z);
+                                    if (block.getType() == Material.FIRE) {
+                                        firesToExtinguish.add(block.getLocation());
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            }
-            
-            if (extinguished > 0) {
-                plugin.getLogger().info("[LluviaFuego] Apagados " + extinguished + " bloques de fuego");
-            }
+                
+                plugin.getLogger().info("[LluviaFuego] Encontrados " + firesToExtinguish.size() + " bloques de fuego a apagar");
+                
+                // Fase 2: Apagar en el hilo principal en lotes pequeños
+                final int BATCH_SIZE = 50;
+                for (int i = 0; i < firesToExtinguish.size(); i += BATCH_SIZE) {
+                    final int startIdx = i;
+                    final int endIdx = Math.min(i + BATCH_SIZE, firesToExtinguish.size());
+                    
+                    Bukkit.getScheduler().runTask(plugin, () -> {
+                        for (int j = startIdx; j < endIdx; j++) {
+                            org.bukkit.Location loc = firesToExtinguish.get(j);
+                            org.bukkit.block.Block block = loc.getBlock();
+                            if (block.getType() == Material.FIRE) {
+                                setBlockTracked(block, Material.AIR);
+                                extinguished.incrementAndGet();
+                            }
+                        }
+                        
+                        // Log final cuando termine el último lote
+                        if (endIdx >= firesToExtinguish.size() && extinguished.get() > 0) {
+                            plugin.getLogger().info("[LluviaFuego] Apagados " + extinguished.get() + " bloques de fuego");
+                        }
+                    });
+                    
+                    // Pequeña pausa entre lotes
+                    try {
+                        Thread.sleep(50);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            });
         }
         
         // [v1.18.0] Remover dragón de fuego
@@ -316,7 +356,7 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
         // Restaurar bloques transformados
         for (Block b : blocksTransformados) {
             if (b.getType() == Material.COARSE_DIRT) {
-                b.setType(Material.GRASS_BLOCK);
+                setBlockTracked(b, Material.GRASS_BLOCK);
             }
         }
         blocksTransformados.clear();
@@ -585,25 +625,93 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
                     soundUtil.playSound(player, Sound.WEATHER_RAIN, 0.4f, 1.2f);
                 }
             } else {
-                // Agua normal
+                // Agua normal - sugerir mejora
+                int bloquesFaltantes = Math.max(0, 5 - waterInfo.waterBlocks);
                 plugin.getMessageBus().sendActionBar(player,
-                    "§b§l💧 AGUA PROTECTORA §8| §e" + waterInfo.waterBlocks + " §7bloques §8| §7-§a60%");
+                    "§b§l💧 AGUA PROTECTORA §8| §e" + waterInfo.waterBlocks + "§7/5 §8- §7-§a60% §8| §7Profundiza §e+1");
                 
                 // Consejo cada 15 segundos
                 if (tickCounter % 300 == 0 && waterInfo.waterBlocks < 5) {
-                    player.sendMessage("§b💧 §7Añade más §bagua profunda§7 (2+ bloques) para protección anti-evaporación.");
+                    player.sendMessage("§b💧 §7Protección activa (§e" + waterInfo.waterBlocks + " bloques§7). Añade §e+1 bloque de profundidad§7 para anti-evaporación.");
+                    player.sendMessage("§7  §8→ §7El agua profunda (§e2+ bloques§7) no se evapora con magma");
                 }
             }
         } else {
-            // Sin agua - peligro
-            plugin.getMessageBus().sendActionBar(player,
-                "§c§l⚠ SIN PROTECCIÓN §8| §7Coloca §bagua§7 para §a-60% §7explosiones");
+            // Sin agua - DIAGNÓSTICO COMPLETO
+            String diagnostico = diagnosticarProteccionAgua(player);
             
-            // Alertas periódicas
+            plugin.getMessageBus().sendActionBar(player,
+                "§c§l⚠ SIN PROTECCIÓN §8| §7" + diagnostico);
+            
+            // Alertas periódicas con instrucciones claras
             if (tickCounter % 400 == 0) {
-                player.sendMessage("§c🔥 §7Tu base está desprotegida. Coloca §bagua§7 en techos y alrededores.");
+                player.sendMessage("§c🔥 §7LLUVIA DE FUEGO: Sin protección de agua");
+                player.sendMessage("§7  §8→ §7Coloca §bagua§7 en techos y alrededores para §a-60% §7explosiones");
+                player.sendMessage("§7  §8→ §7Usa §bagua profunda §7(2+ bloques) para evitar evaporación");
                 soundUtil.playSound(player, Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
             }
+        }
+    }
+    
+    /**
+     * Diagnostica por QUÉ el jugador no tiene protección de agua
+     */
+    private String diagnosticarProteccionAgua(Player player) {
+        Location loc = player.getLocation();
+        int aguaCerca = 0;
+        int aguaProfundaCerca = 0;
+        double distanciaMinima = 999;
+        int profundidadMaxima = 0;
+        
+        // Escanear radio amplio (12 bloques) para diagnóstico
+        for (int x = -12; x <= 12; x++) {
+            for (int y = -5; y <= 5; y++) {
+                for (int z = -12; z <= 12; z++) {
+                    Block b = loc.getWorld().getBlockAt(
+                        loc.getBlockX() + x,
+                        loc.getBlockY() + y,
+                        loc.getBlockZ() + z
+                    );
+                    
+                    if (b.getType() == Material.WATER) {
+                        aguaCerca++;
+                        double distancia = Math.sqrt(x*x + y*y + z*z);
+                        
+                        if (distancia < distanciaMinima) {
+                            distanciaMinima = distancia;
+                            
+                            // Verificar profundidad en este punto
+                            int profundidad = 1;
+                            Block below = b.getRelative(0, -1, 0);
+                            if (below.getType() == Material.WATER) {
+                                profundidad = 2;
+                                if (below.getRelative(0, -1, 0).getType() == Material.WATER) {
+                                    profundidad = 3;
+                                }
+                            }
+                            profundidadMaxima = Math.max(profundidadMaxima, profundidad);
+                            
+                            if (profundidad >= 2) {
+                                aguaProfundaCerca++;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        if (aguaCerca == 0) {
+            // No hay agua cerca
+            return "Coloca §bagua§7 cerca para §a-60% §7daño";
+        } else if (distanciaMinima > 8) {
+            // Hay agua pero MUY LEJOS
+            return "Tienes §e" + aguaCerca + " bloques de agua§7 a §c" + String.format("%.1f", distanciaMinima) + " bloques §7(máx §e8§7)";
+        } else if (profundidadMaxima < 2 && aguaCerca > 0) {
+            // Hay agua cerca pero es MUY SUPERFICIAL
+            return "Tu agua es §esuperficial §7(§e" + profundidadMaxima + " bloque§7) - hazla §e2+ bloques profunda";
+        } else {
+            // Error: hay agua en radio pero no se detectó
+            return "Tienes §e" + aguaCerca + " agua§7 cerca - verifica distancia (máx §e8 bloques§7)";
         }
     }
     
@@ -643,7 +751,7 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
                                 continue;
                             }
                             
-                            block.setType(Material.FIRE);
+                            setBlockTracked(block, Material.FIRE);
                             fuegosTemporal.add(block);
                             
                             // Registrar para zona persistente
@@ -655,7 +763,7 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
                             long ticks = fuegoDuraSeg * 20L;
                             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                                 if (block.getType() == Material.FIRE) {
-                                    block.setType(Material.AIR);
+                                    setBlockTracked(block, Material.AIR);
                                 }
                                 fuegosTemporal.remove(block);
                             }, ticks);
@@ -690,6 +798,14 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
         if (progress < 0.25) {
             // Fase 1: inicio moderado 0.8x
             faseMultiplicador = 0.8;
+            
+            // Mensaje educativo al inicio (una vez)
+            if (lastPhaseAnnounced == 0 && elapsedSeconds >= 5) {
+                lastPhaseAnnounced = 1;
+                messageBus.broadcast("§e§l💡 TIP: §7Sumérgete en §bagua profunda§7 (2+ bloques) para protección completa", "lluvia_tip_1");
+                messageBus.broadcast("§7  §8→ El agua superficial se evapora - necesitas profundidad", "lluvia_tip_1b");
+            }
+            
         } else if (progress < 0.75) {
             // Fase 2: pico intenso 1.4x
             faseMultiplicador = 1.4;
@@ -698,9 +814,24 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
                 messageBus.broadcast("§c§l⚠ ¡LA LLUVIA DE FUEGO SE INTENSIFICA!", "lluvia_peak");
                 soundUtil.playSoundAll(Sound.ENTITY_ENDER_DRAGON_GROWL, 1.0f, 0.6f);
             }
+            
+            // Mensaje educativo en fase intensa (una vez)
+            if (lastPhaseAnnounced < 2 && progress >= 0.40) {
+                lastPhaseAnnounced = 2;
+                messageBus.broadcast("§c§l⚠ FASE INTENSA: §7¡Protégete bajo agua o estructuras sólidas!", "lluvia_tip_2");
+                messageBus.broadcast("§7  §8→ Evita estar al descubierto - los §cmeteoritos§7 son devastadores", "lluvia_tip_2b");
+            }
+            
         } else {
             // Fase 3: declive 0.9x
             faseMultiplicador = 0.9;
+            
+            // Mensaje educativo en fase final (una vez)
+            if (lastPhaseAnnounced < 3 && progress >= 0.80) {
+                lastPhaseAnnounced = 3;
+                messageBus.broadcast("§a§l✓ La lluvia de fuego disminuye... §7¡Resiste un poco más!", "lluvia_tip_3");
+                messageBus.broadcast("§7  §8→ Apágate si estás ardiendo y busca agua cercana", "lluvia_tip_3b");
+            }
         }
     }
     
@@ -737,45 +868,131 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
     }
     
     /**
-     * Advertencia visual del meteorito
+     * [CINEMÁTICO] Advertencia visual del meteorito con countdown dramático
      */
     private void spawnMeteorWarning(Location loc) {
         World world = loc.getWorld();
         
-        // Sonido de advertencia
-        soundUtil.playSoundAll(Sound.ENTITY_WITHER_SPAWN, 0.8f, 1.5f);
-        messageBus.sendActionBarAll("§c§l⚠ ¡METEORITO ENTRANTE! ⚠", "meteor_warning");
+        // CINEMÁTICO: Sonidos épicos de advertencia
+        soundUtil.playSoundAll(Sound.ENTITY_WITHER_SPAWN, 1.0f, 1.5f);
+        soundUtil.playSoundAll(Sound.BLOCK_END_PORTAL_SPAWN, 0.6f, 1.8f);
         
-        // Partículas de advertencia (columna roja)
-        for (int i = 0; i < meteoritosAdvertenciaTicks / 5; i++) {
+        // CINEMÁTICO: Mensaje dramático global
+        messageBus.broadcast("§c§l⚠§l §6§lMETEORITO ENTRANTE §c§l⚠", "meteor_warning");
+        
+        // CINEMÁTICO: Columna de advertencia con múltiples efectos
+        int warningDuration = meteoritosAdvertenciaTicks / 5;
+        for (int i = 0; i < warningDuration; i++) {
+            final int tick = i;
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                for (int y = 0; y < 20; y++) {
+                // Columna de partículas con gradiente de color
+                for (int y = 0; y < 30; y++) {
                     Location particleLoc = loc.clone().add(0, y, 0);
-                    spawnParticleForNonExempt(world, Particle.FLAME, particleLoc, 5, 0.5, 0.5, 0.5, 0.01);
-                    spawnParticleForNonExempt(world, Particle.LAVA, particleLoc, 2, 0.3, 0.3, 0.3, 0);
+                    
+                    // Partículas rojas/naranjas intensas
+                    spawnParticleForNonExempt(world, Particle.FLAME, particleLoc, 8, 0.6, 0.3, 0.6, 0.02);
+                    spawnParticleForNonExempt(world, Particle.LAVA, particleLoc, 3, 0.4, 0.2, 0.4, 0);
+                    world.spawnParticle(Particle.DUST, particleLoc, 5, 0.5, 0.3, 0.5, 
+                        new Particle.DustOptions(org.bukkit.Color.fromRGB(255, 100, 0), 2.0f));
+                    
+                    // Partículas de humo en el centro
+                    if (y % 3 == 0) {
+                        spawnParticleForNonExempt(world, Particle.CAMPFIRE_SIGNAL_SMOKE, particleLoc, 2, 0.1, 0.3, 0.1, 0.01);
+                    }
+                }
+                
+                // CINEMÁTICO: Anillo expansivo en el suelo
+                for (int angle = 0; angle < 360; angle += 20) {
+                    double rad = Math.toRadians(angle);
+                    double radius = 3 + (tick * 0.5);
+                    double x = loc.getX() + radius * Math.cos(rad);
+                    double z = loc.getZ() + radius * Math.sin(rad);
+                    Location ringLoc = new Location(world, x, loc.getY(), z);
+                    spawnParticleForNonExempt(world, Particle.FLAME, ringLoc, 1, 0, 0, 0, 0);
+                }
+                
+                // CINEMÁTICO: Sonido pulsante cada segundo
+                if (tick % 4 == 0) {
+                    world.playSound(loc, Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
                 }
             }, (long) i * 5);
+        }
+        
+        // CINEMÁTICO: Countdown en títulos para jugadores cercanos
+        for (Player player : world.getPlayers()) {
+            if (isPlayerExempt(player)) continue;
+            if (player.getLocation().distance(loc) < 30) {
+                player.sendTitle("§c§l⚠ METEORITO", "§6§l3 segundos...", 10, 40, 10);
+                
+                // Countdown 3, 2, 1
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    player.sendTitle("§c§l2", "", 0, 15, 5);
+                    player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_HAT, 1.0f, 1.2f);
+                }, 20L);
+                
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    player.sendTitle("§c§l1", "", 0, 15, 5);
+                    player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_HAT, 1.0f, 1.5f);
+                }, 40L);
+            }
         }
     }
     
     /**
-     * Impacto del meteorito
+     * [CINEMÁTICO] Impacto del meteorito con efectos dramáticos épicos
      */
     private void spawnMeteorImpact(Location loc) {
         World world = loc.getWorld();
         
-        // Explosión masiva
+        // CINEMÁTICO: Explosión masiva con efectos múltiples
         world.createExplosion(loc, (float) meteoritosExplosionPower, false, romperBloques);
         
-        // Efectos visuales
-        spawnParticleForNonExempt(world, Particle.EXPLOSION_EMITTER, loc, 2, 1, 1, 1, 0);
-        spawnParticleForNonExempt(world, Particle.FLAME, loc, 60, 3, 3, 3, 0.2);
-        spawnParticleForNonExempt(world, Particle.LAVA, loc, 30, 2, 2, 2, 0);
-        spawnParticleForNonExempt(world, Particle.CAMPFIRE_COSY_SMOKE, loc, 50, 4, 4, 4, 0.1);
+        // CINEMÁTICO: Efectos visuales épicos masivos
+        spawnParticleForNonExempt(world, Particle.EXPLOSION_EMITTER, loc, 5, 2, 2, 2, 0);
+        spawnParticleForNonExempt(world, Particle.FLAME, loc, 100, 4, 4, 4, 0.3);
+        spawnParticleForNonExempt(world, Particle.LAVA, loc, 60, 3, 3, 3, 0.1);
+        spawnParticleForNonExempt(world, Particle.CAMPFIRE_SIGNAL_SMOKE, loc, 80, 5, 5, 5, 0.15);
+        spawnParticleForNonExempt(world, Particle.FLASH, loc, 3, 1, 1, 1, 0);
         
-        // Sonidos
-        world.playSound(loc, Sound.ENTITY_GENERIC_EXPLODE, 2.0f, 0.5f);
-        world.playSound(loc, Sound.ENTITY_DRAGON_FIREBALL_EXPLODE, 2.0f, 0.7f);
+        // CINEMÁTICO: Ondas de choque expansivas
+        for (int radius = 1; radius <= 12; radius++) {
+            final int r = radius;
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                for (int angle = 0; angle < 360; angle += 15) {
+                    double rad = Math.toRadians(angle);
+                    double x = loc.getX() + r * Math.cos(rad);
+                    double z = loc.getZ() + r * Math.sin(rad);
+                    Location shockwaveLoc = new Location(world, x, loc.getY(), z);
+                    
+                    spawnParticleForNonExempt(world, Particle.FLAME, shockwaveLoc, 5, 0.3, 0.5, 0.3, 0.05);
+                    spawnParticleForNonExempt(world, Particle.BLOCK, shockwaveLoc, 8, 0.4, 0.3, 0.4, 0, Material.MAGMA_BLOCK.createBlockData());
+                    spawnParticleForNonExempt(world, Particle.LAVA, shockwaveLoc, 3, 0.2, 0.2, 0.2, 0);
+                }
+            }, (long) r * 2);
+        }
+        
+        // CINEMÁTICO: Sonidos épicos múltiples
+        soundUtil.playSoundAll(Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 0.6f);
+        soundUtil.playSoundAll(Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 1.0f, 0.8f);
+        soundUtil.playSoundAll(Sound.ENTITY_DRAGON_FIREBALL_EXPLODE, 1.0f, 0.7f);
+        
+        // CINEMÁTICO: Efectos para jugadores cercanos
+        for (Player player : world.getPlayers()) {
+            if (isPlayerExempt(player)) continue;
+            double distance = player.getLocation().distance(loc);
+            
+            if (distance < 40) {
+                player.sendTitle("§4§l☆ IMPACTO ☆", "", 5, 30, 10);
+                
+                // Shake de cámara proporcional a la distancia
+                if (distance < 15) {
+                    player.playSound(player.getLocation(), Sound.ENTITY_WARDEN_SONIC_BOOM, 0.8f, 0.9f);
+                }
+            }
+        }
+        
+        // CINEMÁTICO: Intentar romper protección de agua cercana
+        evaporateNearbyWater(loc, romperProteccionCantidad * 3); // Más destrucción en meteoritos
         
         // Crear zona de fuego persistente
         if (fuegosPersistentesEnabled) {
@@ -786,7 +1003,7 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
                     Block below = block.getRelative(org.bukkit.block.BlockFace.DOWN);
                     
                     if (block.getType() == Material.AIR && below.getType().isSolid()) {
-                        block.setType(Material.FIRE);
+                        setBlockTracked(block, Material.FIRE);
                         fuegosTemporal.add(block);
                         fuegosPersistentesLocations.add(fireLoc.clone());
                     }
@@ -854,7 +1071,7 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
                     
                     if (transformaciones.containsKey(type)) {
                         Material newType = transformaciones.get(type);
-                        block.setType(newType);
+                        setBlockTracked(block, newType);
                         blocksTransformados.add(block);
                         
                         // Partículas de transformación
@@ -912,7 +1129,7 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
                     continue;
                 }
                 
-                block.setType(Material.FIRE);
+                setBlockTracked(block, Material.FIRE);
                 fuegosTemporal.add(block);
             }
         }
@@ -1011,7 +1228,7 @@ public class LluviaFuegoNew extends DisasterBase implements Listener {
             // Guardar ubicación antes de destruir el bloque
             Location vaporLoc = water.getLocation().add(0.5, 0.5, 0.5);
             
-            water.setType(Material.AIR);
+            setBlockTracked(water, Material.AIR);
             
             // Partículas de vapor en el bloque evaporado
             spawnParticleForNonExempt(world, Particle.CLOUD, vaporLoc, 8, 0.3, 0.3, 0.3, 0.05);

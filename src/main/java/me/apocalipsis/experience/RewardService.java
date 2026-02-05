@@ -67,7 +67,9 @@ public class RewardService {
      * Carga el registro de recompensas ya entregadas desde archivo
      */
     private void loadDeliveredRewards() {
+        plugin.getLogger().info("[Rewards] DEBUG - Cargando recompensas entregadas desde: " + dataFile.getAbsolutePath());
         if (!dataFile.exists()) {
+            plugin.getLogger().info("[Rewards] DEBUG - Archivo no existe, creando conjunto vacío");
             return;
         }
         
@@ -76,6 +78,18 @@ public class RewardService {
             List<String> delivered = config.getStringList("delivered_rewards");
             deliveredRewards.addAll(delivered);
             plugin.getLogger().info("[Rewards] Cargadas " + deliveredRewards.size() + " recompensas ya entregadas");
+            
+            // Debug: mostrar algunas claves
+            int count = 0;
+            for (String key : deliveredRewards) {
+                if (count < 5) { // Solo mostrar las primeras 5
+                    plugin.getLogger().info("[Rewards] DEBUG - Clave cargada: " + key);
+                    count++;
+                } else if (count == 5) {
+                    plugin.getLogger().info("[Rewards] DEBUG - ... y " + (deliveredRewards.size() - 5) + " más");
+                    break;
+                }
+            }
         } catch (Exception e) {
             plugin.getLogger().warning("[Rewards] Error cargando rewards_delivered.yml: " + e.getMessage());
         }
@@ -86,9 +100,11 @@ public class RewardService {
      */
     private void saveDeliveredRewards() {
         try {
+            plugin.getLogger().info("[Rewards] DEBUG - Guardando " + deliveredRewards.size() + " recompensas entregadas");
             FileConfiguration config = new YamlConfiguration();
             config.set("delivered_rewards", new ArrayList<>(deliveredRewards));
             config.save(dataFile);
+            plugin.getLogger().info("[Rewards] DEBUG - Archivo guardado exitosamente en: " + dataFile.getAbsolutePath());
         } catch (IOException e) {
             plugin.getLogger().warning("[Rewards] Error guardando rewards_delivered.yml: " + e.getMessage());
         }
@@ -130,14 +146,22 @@ public class RewardService {
     /**
      * Entrega las recompensas de un rango a un jugador
      * Las recompensas se añaden al sistema de reclamación (/recompensa)
+     * FIX v1.22.63: Añadido log de quién llama al método para debug
      * @return true si se añadieron recompensas, false si ya las había recibido
      */
     public boolean deliverRewards(Player player, MissionRank rank) {
-        // Verificar si ya recibió esta recompensa
+        // Verificar si ya recibió esta recompensa GLOBALMENTE (sin importar el mundo)
+        // FIX v1.22.62: Removido worldName para evitar recompensas duplicadas al cambiar de mundo
         String key = player.getUniqueId().toString() + ":" + rank.name();
+        
+        plugin.getLogger().info("[Rewards] DEBUG - Verificando recompensas para " + player.getName() + " (" + rank.name() + ")");
+        plugin.getLogger().info("[Rewards] DEBUG - Clave: " + key);
+        plugin.getLogger().info("[Rewards] DEBUG - Total entregadas en memoria: " + deliveredRewards.size());
+        plugin.getLogger().info("[Rewards] DEBUG - ¿Contiene clave?: " + deliveredRewards.contains(key));
+        
         if (deliveredRewards.contains(key)) {
-            plugin.getLogger().info("[Rewards] " + player.getName() + " ya recibió recompensas de " + rank.name());
-            return false; // Ya recibió esta recompensa
+            plugin.getLogger().info("[Rewards] " + player.getName() + " ya recibió recompensas de " + rank.name() + " (global) - Llamada desde: " + Thread.currentThread().getStackTrace()[2].getClassName());
+            return false; // Ya recibió esta recompensa globalmente
         }
         
         RankReward reward = rewardsByRank.get(rank);
@@ -146,7 +170,7 @@ public class RewardService {
             return false; // No hay recompensas para este rango
         }
         
-        plugin.getLogger().info("[Rewards] Procesando recompensas de " + rank.name() + " para " + player.getName());
+        plugin.getLogger().info("[Rewards] Procesando recompensas de " + rank.name() + " para " + player.getName() + " - Llamada desde: " + Thread.currentThread().getStackTrace()[2].getClassName());
         plugin.getLogger().info("[Rewards] Comandos configurados: " + reward.getCommands().size());
         
         // Convertir comandos give a ItemStacks y separar comandos especiales
@@ -231,6 +255,9 @@ public class RewardService {
         
         // Marcar como entregado y guardar
         deliveredRewards.add(key);
+        plugin.getLogger().info("[Rewards] DEBUG - Agregando clave a conjunto: " + key);
+        plugin.getLogger().info("[Rewards] DEBUG - Total después de agregar: " + deliveredRewards.size());
+        plugin.getLogger().info("[Rewards] DEBUG - ¿Contiene clave después de agregar?: " + deliveredRewards.contains(key));
         saveDeliveredRewards();
         
         // Efectos visuales
@@ -246,6 +273,7 @@ public class RewardService {
      * Verifica y entrega recompensas pendientes SOLO del rango actual
      * (cuando el jugador sube de rango mientras está offline)
      * Ya NO entrega recompensas de rangos anteriores al reconectar
+     * FIX v1.22.63: No se llama al cambiar de mundo para evitar duplicados
      */
     public void checkAndDeliverPendingRewards(Player player) {
         MissionRank currentRank = plugin.getRankService().getRank(player);
@@ -262,8 +290,9 @@ public class RewardService {
      * Solo para uso administrativo
      */
     public void forceDeliverRewards(Player player, MissionRank rank) {
+        // FIX v1.22.62: Removido worldName para usar clave global
         String key = player.getUniqueId().toString() + ":" + rank.name();
-        deliveredRewards.remove(key); // Remover el registro
+        deliveredRewards.remove(key); // Remover el registro global
         deliverRewards(player, rank);
     }
     
@@ -277,7 +306,7 @@ public class RewardService {
     
     /**
      * Obtiene las recompensas entregadas a un jugador específico
-     * Para uso del sistema de ciclos multi-mundo
+     * FIX v1.22.62: Ahora las recompensas son globales (sin worldName)
      * @return Set con las claves "UUID:RANGO" del jugador
      */
     public Set<String> getDeliveredRewards(UUID uuid) {
@@ -295,7 +324,7 @@ public class RewardService {
     
     /**
      * Establece las recompensas entregadas de un jugador
-     * Para uso del sistema de ciclos multi-mundo
+     * FIX v1.22.62: Ahora usa claves globales sin worldName
      * Reemplaza todas las recompensas del jugador con las proporcionadas
      * @param uuid UUID del jugador
      * @param rewards Set con las claves "UUID:RANGO" a establecer
@@ -321,7 +350,8 @@ public class RewardService {
     }
     
     /**
-     * Verifica si un jugador ya recibió las recompensas de un rango
+     * Verifica si un jugador ya recibió las recompensas de un rango GLOBALMENTE
+     * FIX v1.22.62: Ahora verifica globalmente sin importar el mundo actual
      */
     public boolean hasReceivedRewards(Player player, MissionRank rank) {
         String key = player.getUniqueId().toString() + ":" + rank.name();

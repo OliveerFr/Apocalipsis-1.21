@@ -237,6 +237,7 @@ public class PlayerListener implements Listener {
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
+        UUID playerId = player.getUniqueId();
         
         // [TIEMPO JUGADO] Limpiar tracking al desconectarse
         trackPlayerQuit(player);
@@ -244,6 +245,13 @@ public class PlayerListener implements Listener {
         // [XP] Resetear combos al desconectarse
         if (plugin.getExperienceListener() != null && plugin.getExperienceListener().getXPManager() != null) {
             plugin.getExperienceListener().getXPManager().resetPlayerCombos(player);
+            // [NUEVO v1.22.68] Limpiar trackers de XP para prevenir memory leaks
+            plugin.getExperienceListener().getXPManager().cleanupPlayer(playerId);
+        }
+        
+        // [HABILIDADES v1.22.68] Limpiar cooldowns de habilidades para prevenir memory leaks
+        if (plugin.getAbilityService() != null) {
+            plugin.getAbilityService().cleanupPlayer(playerId);
         }
         
         // [RECONSTRUCCIÓN] Remover jugador del BossBar único del DisasterController
@@ -295,6 +303,16 @@ public class PlayerListener implements Listener {
     public void onPlayerDeath(PlayerDeathEvent event) {
         Player player = event.getEntity();
         UUID uuid = player.getUniqueId();
+        
+        // [NUEVO] Registrar muerte en DeathTracker
+        if (plugin.getDeathTracker() != null) {
+            plugin.getDeathTracker().addDeath(uuid);
+            
+            // Actualizar TAB inmediatamente para mostrar nueva muerte
+            if (plugin.getTablistManager() != null) {
+                plugin.getTablistManager().applyTabPrefix(player);
+            }
+        }
         
         // Verificar si el sistema de castigos está habilitado
         if (!castigosConfig.getBoolean("enabled", true)) return;

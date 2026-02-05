@@ -92,6 +92,7 @@ public class HuracanNew extends DisasterBase {
     // NUEVO: Sistema de fases (inicio/pico/declive)
     private boolean fasesEnabled;
     private double faseMultiplicador;
+    private int lastPhaseAnnounced = 0;  // Control de mensajes por fase
     
     // ANTI-GRIEFING: Tracker para verificar ownership de bloques
     private final BlockOwnershipTracker blockTracker;
@@ -393,7 +394,7 @@ public class HuracanNew extends DisasterBase {
                 while (index < blocksToClean.size() && removed < blocksPerTick) {
                     Block block = blocksToClean.get(index);
                     if (block != null && block.getType() == Material.WATER) {
-                        block.setType(Material.AIR);
+                        setBlockTracked(block, Material.AIR);
                         
                         // Partículas de evaporación
                         block.getWorld().spawnParticle(Particle.CLOUD, 
@@ -643,7 +644,7 @@ public class HuracanNew extends DisasterBase {
             if (isSneaking) {
                 // Máxima protección
                 plugin.getMessageBus().sendActionBar(player,
-                    "§a§l✓ REFUGIO SEGURO §8| §7Techo §a+60% §8| §7Agachado §a+55%");
+                    "§a§l✓ REFUGIO SEGURO §8| §7Techo §a-60% §8| §7Agachado §a-55%");
                 
                 // Partículas de seguridad
                 if (tickCounter % 60 == 0) {
@@ -652,13 +653,13 @@ public class HuracanNew extends DisasterBase {
                     soundUtil.playSound(player, Sound.BLOCK_NOTE_BLOCK_CHIME, 0.4f, 2.0f);
                 }
             } else {
-                // Buena protección
+                // Buena protección - sugerir agacharse
                 plugin.getMessageBus().sendActionBar(player,
-                    "§a§l🏠 BAJO TECHO §8| §7Empuje §a-60%");
+                    "§a§l🏠 BAJO TECHO §8| §a-60% §8| §7Agáchate para §e-55% extra");
                 
                 // Consejo cada 20 segundos
                 if (tickCounter % 400 == 0) {
-                    player.sendMessage("§a💡 §7Agáchate para §amáxima protección§7 (-55% adicional)");
+                    player.sendMessage("§a💡 §7Bajo techo (§a-60%§7). Agáchate (Shift) para §amáxima protección§7 (-55% adicional)");
                 }
             }
         } else {
@@ -673,15 +674,58 @@ public class HuracanNew extends DisasterBase {
                     soundUtil.playSound(player, Sound.ENTITY_ENDER_DRAGON_FLAP, 0.6f, 0.8f);
                 }
             } else {
-                // Peligro normal
-                plugin.getMessageBus().sendActionBar(player,
-                    "§e§l⚠ EXPUESTO §8| §7Busca §atecho§7 o §aagáchate");
+                // Peligro normal - DIAGNÓSTICO de protección disponible
+                if (isSneaking) {
+                    plugin.getMessageBus().sendActionBar(player,
+                        "§e§l⚠ EXPUESTO §8| §7Agachado §a-55% §8| §7Busca §atecho §7para §a-60% extra");
+                } else {
+                    String diagnostico = diagnosticarProteccionHuracan(player);
+                    plugin.getMessageBus().sendActionBar(player,
+                        "§c§l⚠ SIN PROTECCIÓN §8| §7" + diagnostico);
+                }
                 
                 // Consejos periódicos
                 if (tickCounter % 600 == 0) {
-                    player.sendMessage("§e💨 §7Construye §atechos§7 o §acuevas§7 para protegerte del viento");
+                    player.sendMessage("§e💨 §7HURACÁN: Necesitas protección contra el viento");
+                    player.sendMessage("§7  §8→ §7Construye §atechos§7 o entra en §acuevas§7 para §a-60% §7empuje");
+                    player.sendMessage("§7  §8→ §7Agáchate (Shift) para §a-55% §7empuje adicional");
+                    player.sendMessage("§7  §8→ §7Combina ambos para §amáxima protección§7 contra ráfagas");
                 }
             }
+        }
+    }
+    
+    /**
+     * Diagnostica por QUÉ el jugador no tiene protección contra huracán
+     */
+    private String diagnosticarProteccionHuracan(Player player) {
+        boolean underRoof = isUnderRoof(player);
+        boolean isSneaking = player.isSneaking();
+        int alturaActual = player.getLocation().getBlockY();
+        
+        // Buscar bloques sólidos arriba (hasta 10 bloques)
+        int bloquesHastaTecho = 0;
+        Location loc = player.getLocation().clone();
+        for (int y = 1; y <= 10; y++) {
+            Block bloqueArriba = loc.clone().add(0, y, 0).getBlock();
+            if (bloqueArriba.getType().isSolid()) {
+                bloquesHastaTecho = y;
+                break;
+            }
+        }
+        
+        if (!underRoof && !isSneaking) {
+            if (bloquesHastaTecho > 0) {
+                return "Tienes techo a §e" + bloquesHastaTecho + " bloques§7 arriba (acércate a §e5 bloques§7)";
+            } else {
+                return "Busca §atecho§7 (-60%) o §aagáchate§7 (-55%)";
+            }
+        } else if (!underRoof && isSneaking) {
+            return "Agachado §a-55%§7 - busca §atecho§7 para §a-60% extra";
+        } else if (underRoof && !isSneaking) {
+            return "Bajo techo §a-60%§7 - §aagáchate§7 para §a-55% extra";
+        } else {
+            return "Protección máxima activa";
         }
     }
     
@@ -708,6 +752,14 @@ public class HuracanNew extends DisasterBase {
         if (progress < 0.2) {
             // Fase inicio: 0.5x → 1.0x
             faseMultiplicador = 0.5 + (progress / 0.2) * 0.5;
+            
+            // Mensaje educativo al inicio (una vez)
+            if (lastPhaseAnnounced == 0 && elapsedSeconds >= 5) {
+                lastPhaseAnnounced = 1;
+                messageBus.broadcast("§e§l💡 TIP: §7¡Agáchate (Shift) y usa bloques pesados como §bpiedra§7 para protección!", "huracan_tip_1");
+                messageBus.broadcast("§7  §8→ Distribuye 4-5 bloques pesados en radio de 4 bloques alrededor", "huracan_tip_1b");
+            }
+            
         } else if (progress < 0.8) {
             // Fase pico: 1.0x → 1.5x en el centro
             double pikoProg = (progress - 0.2) / 0.6; // 0 a 1
@@ -722,32 +774,108 @@ public class HuracanNew extends DisasterBase {
                 messageBus.broadcast("§c§l⚠ ¡EL HURACÁN ALCANZA SU MÁXIMA INTENSIDAD!", "huracan_peak");
                 soundUtil.playSoundAll(Sound.ENTITY_ENDER_DRAGON_GROWL, 1.0f, 0.8f);
             }
+            
+            // Mensaje educativo en fase intensa (una vez)
+            if (lastPhaseAnnounced < 2 && progress >= 0.40) {
+                lastPhaseAnnounced = 2;
+                messageBus.broadcast("§c§l⚠ FASE INTENSA: §7¡Agáchate para máxima protección!", "huracan_tip_2");
+                messageBus.broadcast("§7  §8→ Los vientos arrastran objetos y entidades - evita saltar", "huracan_tip_2b");
+            }
+            
         } else {
             // Fase declive: 1.0x → 0.8x
             double decliveProg = (progress - 0.8) / 0.2;
             faseMultiplicador = 1.0 - decliveProg * 0.2;
+            
+            // Mensaje educativo en fase final (una vez)
+            if (lastPhaseAnnounced < 3 && progress >= 0.85) {
+                lastPhaseAnnounced = 3;
+                messageBus.broadcast("§a§l✓ El huracán se debilita... §7¡Ya casi termina!", "huracan_tip_3");
+                messageBus.broadcast("§7  §8→ Cuidado con las §cráfagas residuales§7 que aún pueden empujarte", "huracan_tip_3b");
+            }
         }
     }
     
     /**
-     * Sistema de rachas de viento (intervalos de viento calma vs ráfagas extremas)
+     * [CINEMÁTICO] Sistema de rachas de viento con advertencias épicas
      */
     private void updateRachas() {
         if (!rachaSistemaEnabled) return;
+        
+        // CINEMÁTICO: Advertencia 3 segundos antes de ráfaga
+        int timeUntilRacha = rachaNextTick - tickCounter;
+        if (!rachaActiva && timeUntilRacha == 60) {
+            messageBus.broadcast("§e§l⚡ RÁFAGA EXTREMA EN 3 SEGUNDOS", "racha_warning");
+            soundUtil.playSoundAll(Sound.BLOCK_BELL_USE, 1.0f, 1.5f);
+            
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                if (isPlayerExempt(player)) continue;
+                player.sendTitle("§e§l⚡ RÁFAGA", "§73 segundos...", 5, 30, 10);
+            }
+        }
+        
+        // CINEMÁTICO: Countdown
+        if (!rachaActiva && timeUntilRacha == 40) {
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                if (!isPlayerExempt(p)) p.sendTitle("§e§l2", "", 0, 15, 5);
+            }
+            soundUtil.playSoundAll(Sound.BLOCK_NOTE_BLOCK_HAT, 1.0f, 1.2f);
+        } else if (!rachaActiva && timeUntilRacha == 20) {
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                if (!isPlayerExempt(p)) p.sendTitle("§e§l1", "", 0, 15, 5);
+            }
+            soundUtil.playSoundAll(Sound.BLOCK_NOTE_BLOCK_HAT, 1.0f, 1.5f);
+        }
         
         if (tickCounter >= rachaNextTick) {
             rachaActiva = !rachaActiva;
             
             if (rachaActiva) {
-                // Iniciar ráfaga
+                // CINEMÁTICO: Iniciar ráfaga con efectos épicos
                 rachaNextTick = tickCounter + rachaDuracionTicks;
-                messageBus.broadcast("§e⚠ §c¡RÁFAGA DE VIENTO FUERTE!", "racha_start");
+                
+                // Mensajes y sonidos épicos
+                messageBus.broadcast("§c§l⚡§e§l RÁFAGA EXTREMA §c§l⚡", "racha_start");
                 soundUtil.playSoundAll(Sound.ENTITY_ENDER_DRAGON_FLAP, 1.0f, 0.6f);
                 soundUtil.playSoundAll(Sound.ITEM_ELYTRA_FLYING, 1.0f, 0.5f);
+                soundUtil.playSoundAll(Sound.ENTITY_WITHER_SPAWN, 0.6f, 1.8f);
+                
+                // CINEMÁTICO: Efectos visuales para todos
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    if (isPlayerExempt(player)) continue;
+                    
+                    player.sendTitle("§c§l⚡ RÁFAGA ⚡", "§e¡AGÁCHATE!", 5, 40, 10);
+                    
+                    Location loc = player.getLocation();
+                    // Espiral de partículas de viento
+                    for (int i = 0; i < 20; i++) {
+                        final int tick = i;
+                        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                            for (int j = 0; j < 3; j++) {
+                                double angle = (tick * 30 + j * 120) % 360;
+                                double rad = Math.toRadians(angle);
+                                double radius = 2 + (tick * 0.1);
+                                double x = loc.getX() + radius * Math.cos(rad);
+                                double z = loc.getZ() + radius * Math.sin(rad);
+                                double y = loc.getY() + 1 + (tick * 0.1);
+                                Location particleLoc = new Location(loc.getWorld(), x, y, z);
+                                
+                                loc.getWorld().spawnParticle(Particle.CLOUD, particleLoc, 3, 0.2, 0.2, 0.2, 0.05);
+                                loc.getWorld().spawnParticle(Particle.SWEEP_ATTACK, particleLoc, 1, 0, 0, 0, 0);
+                            }
+                        }, (long) i);
+                    }
+                }
             } else {
-                // Fin de ráfaga, programar siguiente
+                // CINEMÁTICO: Fin de ráfaga más suave
                 rachaNextTick = tickCounter + rachaIntervaloTicks;
-                messageBus.broadcast("§7El viento se calma momentáneamente...", "racha_end");
+                messageBus.broadcast("§a§l✓ El viento se calma...", "racha_end");
+                soundUtil.playSoundAll(Sound.BLOCK_BEACON_DEACTIVATE, 0.8f, 1.2f);
+                
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    if (isPlayerExempt(player)) continue;
+                    player.sendTitle("", "§7Viento calmado", 5, 20, 10);
+                }
             }
         }
     }
@@ -912,7 +1040,7 @@ public class HuracanNew extends DisasterBase {
                     }
                     
                     if (currentLevel < inundacionNivelMax) {
-                        waterPos.setType(Material.WATER);
+                        setBlockTracked(waterPos, Material.WATER);
                         waterBlocks.add(waterPos);
                         
                         // Partículas de splash

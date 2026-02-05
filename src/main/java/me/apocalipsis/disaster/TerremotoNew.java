@@ -11,6 +11,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Particle;
@@ -68,6 +69,7 @@ public class TerremotoNew extends DisasterBase {
     private double aftershockMultiplicador;
     private int nextAfterShock;
     private boolean isAfterShock;
+    private boolean aftershockWarningShown; // CINEMÁTICO: advertencia mostrada
     
     // NUEVO: Ondas sísmicas visuales
     private boolean ondasEnabled;
@@ -80,6 +82,7 @@ public class TerremotoNew extends DisasterBase {
     // NUEVO: Sistema de fases
     private boolean fasesEnabled;
     private double faseMultiplicador;
+    private int lastPhaseAnnounced = 0;  // Control de mensajes por fase
     
     // NUEVO: Sistema de absorción de impacto
     private boolean absorcionEnabled;
@@ -380,7 +383,7 @@ public class TerremotoNew extends DisasterBase {
             if (b.getType() == Material.AIR || b.getType() == Material.LAVA) {
                 // Restaurar al material original guardado
                 Material originalType = grietaOriginalStates.getOrDefault(b, Material.STONE);
-                b.setType(originalType);
+                setBlockTracked(b, originalType);
             }
         }
         grietaBlocks.clear();
@@ -420,13 +423,24 @@ public class TerremotoNew extends DisasterBase {
         // Actualizar aftershocks
         updateAfterShocks();
         
-        // Sonidos ambiente
+        // CINEMÁTICO: Sonidos ambiente progresivos según intensidad
         if (tickCounter % 60 == 0) {
-            soundUtil.playSoundAll(Sound.BLOCK_ANVIL_PLACE, 0.4f, 0.6f);
+            float volumeScale = (float) faseMultiplicador;
+            soundUtil.playSoundAll(Sound.BLOCK_ANVIL_PLACE, 0.4f * volumeScale, 0.6f);
+            soundUtil.playSoundAll(Sound.ENTITY_WARDEN_HEARTBEAT, 0.3f * volumeScale, 0.5f); // Tensión
         }
 
         if (tickCounter % 80 == 0) {
-            soundUtil.playSoundAll(Sound.BLOCK_STONE_BREAK, 0.5f, 0.5f);
+            float volumeScale = (float) faseMultiplicador;
+            soundUtil.playSoundAll(Sound.BLOCK_STONE_BREAK, 0.5f * volumeScale, 0.5f);
+            if (faseMultiplicador > 1.1) { // Fase intensa
+                soundUtil.playSoundAll(Sound.ENTITY_RAVAGER_ROAR, 0.2f, 0.8f);
+            }
+        }
+        
+        // CINEMÁTICO: Rumble bajo constante en fase intensa
+        if (tickCounter % 40 == 0 && faseMultiplicador > 1.1) {
+            soundUtil.playSoundAll(Sound.ENTITY_WARDEN_DIG, 0.25f, 0.6f);
         }
         
         // Ondas sísmicas visuales
@@ -643,7 +657,7 @@ public class TerremotoNew extends DisasterBase {
             w.spawnParticle(Particle.BLOCK, particleLoc, 8, 0.25, 0.15, 0.25, 0.01, b.getBlockData());
             w.playSound(particleLoc, Sound.BLOCK_STONE_BREAK, 0.6f, 0.9f);
 
-            b.setType(Material.AIR, false); // sin actualizar física masiva
+            setBlockTracked(b, Material.AIR);
             broken++;
         }
     }
@@ -704,6 +718,14 @@ public class TerremotoNew extends DisasterBase {
         if (progress < 0.30) {
             // Fase 1: inicio ligero
             faseMultiplicador = 0.7;
+            
+            // Mensaje educativo al inicio (una vez)
+            if (lastPhaseAnnounced == 0 && elapsedSeconds >= 5) {
+                lastPhaseAnnounced = 1;
+                messageBus.broadcast("§e§l💡 TIP: §7Coloca §blana§7, §aslime§7 o §bhielo§7 alrededor para absorber impactos", "terremoto_tip_1");
+                messageBus.broadcast("§7  §8→ Necesitas 4-5 bloques en radio de 6 bloques para protección máxima", "terremoto_tip_1b");
+            }
+            
         } else if (progress < 0.70) {
             // Fase 2: pico intenso
             faseMultiplicador = 1.3;
@@ -713,15 +735,31 @@ public class TerremotoNew extends DisasterBase {
                 messageBus.broadcast("§c§l⚠ ¡EL TERREMOTO ALCANZA SU MÁXIMA INTENSIDAD!", "terremoto_peak");
                 soundUtil.playSoundAll(Sound.ENTITY_WARDEN_ROAR, 1.0f, 0.6f);
             }
+            
+            // Mensaje educativo en fase intensa (una vez)
+            if (lastPhaseAnnounced < 2 && progress >= 0.40) {
+                lastPhaseAnnounced = 2;
+                messageBus.broadcast("§c§l⚠ FASE INTENSA: §7¡Mantente en tu refugio con bloques absorbentes!", "terremoto_tip_2");
+                messageBus.broadcast("§7  §8→ Evita espacios cerrados sin protección - pueden colapsarte", "terremoto_tip_2b");
+            }
+            
         } else {
             // Fase 3: declive
             faseMultiplicador = 0.9;
+            
+            // Mensaje educativo en fase final (una vez)
+            if (lastPhaseAnnounced < 3 && progress >= 0.75) {
+                lastPhaseAnnounced = 3;
+                messageBus.broadcast("§a§l✓ El terremoto está debilitándose... §7¡Aguanta un poco más!", "terremoto_tip_3");
+                messageBus.broadcast("§7  §8→ Cuidado con las §créplicas sísmicas§8 que aún pueden ocurrir", "terremoto_tip_3b");
+            }
         }
     }
     
     /**
      * Sistema de aftershocks (réplicas): cada intervalo aumenta intensidad temporalmente.
      * [FIX DUPLICACIÓN] Asegurar que el aftershock no se acumule infinitamente
+     * [CINEMÁTICO] Countdown dramático con efectos visuales épicos
      */
     private void updateAfterShocks() {
         if (!aftershocksEnabled) {
@@ -729,12 +767,68 @@ public class TerremotoNew extends DisasterBase {
             return;
         }
         
+        // CINEMÁTICO: Advertencia 5 segundos antes (100 ticks)
+        int timeUntilAfterShock = nextAfterShock - tickCounter;
+        if (timeUntilAfterShock == 100) {
+            messageBus.broadcast("§e⚠ §c§lRÉPLICA INMINENTE §e⚠", "terremoto_aftershock_warning");
+            soundUtil.playSoundAll(Sound.BLOCK_BELL_USE, 1.0f, 1.2f);
+            
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                if (isPlayerExempt(player)) continue;
+                player.sendTitle("§c§l⚠ RÉPLICA", "§75 segundos...", 5, 30, 10);
+                
+                // Columna de partículas rojas
+                Location loc = player.getLocation();
+                for (int i = 0; i < 10; i++) {
+                    final int height = i;
+                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                        loc.getWorld().spawnParticle(Particle.DUST, loc.clone().add(0, height, 0), 
+                            5, 0.3, 0.1, 0.3, new Particle.DustOptions(org.bukkit.Color.RED, 1.5f));
+                    }, i * 2L);
+                }
+            }
+        }
+        
+        // CINEMÁTICO: Countdown en títulos (3, 2, 1...)
+        if (timeUntilAfterShock == 60) { // 3 segundos
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                if (!isPlayerExempt(p)) p.sendTitle("§c§l3", "", 0, 15, 5);
+            }
+            soundUtil.playSoundAll(Sound.BLOCK_NOTE_BLOCK_HAT, 1.0f, 1.0f);
+        } else if (timeUntilAfterShock == 40) { // 2 segundos
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                if (!isPlayerExempt(p)) p.sendTitle("§c§l2", "", 0, 15, 5);
+            }
+            soundUtil.playSoundAll(Sound.BLOCK_NOTE_BLOCK_HAT, 1.0f, 1.2f);
+        } else if (timeUntilAfterShock == 20) { // 1 segundo
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                if (!isPlayerExempt(p)) p.sendTitle("§c§l1", "", 0, 15, 5);
+            }
+            soundUtil.playSoundAll(Sound.BLOCK_NOTE_BLOCK_HAT, 1.0f, 1.5f);
+        }
+        
         if (tickCounter >= nextAfterShock) {
             // Solo activar si no está ya activo (prevenir duplicación)
             if (!isAfterShock) {
                 isAfterShock = true;
+                
+                // CINEMÁTICO: Efectos épicos de réplica
+                soundUtil.playSoundAll(Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 0.6f);
+                soundUtil.playSoundAll(Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 0.8f, 0.8f);
                 soundUtil.playSoundAll(Sound.ENTITY_WARDEN_HEARTBEAT, 1.0f, 0.5f);
-                messageBus.sendActionBarAll("§c§l⚠ RÉPLICA SÍSMICA ⚠", "aftershock");
+                
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    if (isPlayerExempt(player)) continue;
+                    
+                    player.sendTitle("§4§l⚡ RÉPLICA ⚡", "§c¡Agárrate!", 5, 40, 10);
+                    messageBus.sendActionBar(player, "§c§l⚠ RÉPLICA SÍSMICA ⚠");
+                    
+                    Location loc = player.getLocation();
+                    // Explosión de partículas
+                    loc.getWorld().spawnParticle(Particle.EXPLOSION, loc, 3, 2, 0.5, 2, 0);
+                    loc.getWorld().spawnParticle(Particle.LAVA, loc, 20, 3, 1, 3, 0);
+                    loc.getWorld().spawnParticle(Particle.BLOCK, loc, 50, 2, 1, 2, 0, Material.STONE.createBlockData());
+                }
                 
                 // Duración de la réplica: 60 ticks (3 segundos)
                 plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
@@ -797,7 +891,7 @@ public class TerremotoNew extends DisasterBase {
             
             // 70% aire, 30% lava
             Material newType = random.nextDouble() < 0.7 ? Material.AIR : Material.LAVA;
-            block.setType(newType, false);
+            setBlockTracked(block, newType);
             grietaBlocks.add(block);
             
             // Partículas de grieta
@@ -838,7 +932,7 @@ public class TerremotoNew extends DisasterBase {
         Location spawnLoc = sourceBlock.getLocation().clone().add(0.5, 0, 0.5);
         Material mat = sourceBlock.getType();
         BlockData blockData = mat.createBlockData();
-        sourceBlock.setType(Material.AIR);
+        setBlockTracked(sourceBlock, Material.AIR);
         
         world.spawn(spawnLoc, org.bukkit.entity.FallingBlock.class, (fb) -> {
             fb.setBlockData(blockData);
@@ -852,7 +946,7 @@ public class TerremotoNew extends DisasterBase {
     }
     
     /**
-     * Ondas sísmicas: anillos de partículas expandiéndose desde epicentros
+     * [CINEMÁTICO] Ondas sísmicas mejoradas: anillos épicos expandiéndose desde epicentros
      */
     private void spawnSeismicWave() {
         double scale = getPerformanceScale();
@@ -868,24 +962,53 @@ public class TerremotoNew extends DisasterBase {
         
         World world = epicentro.getWorld();
         
-        // Animar onda expansiva (3 anillos concéntricos)
-        for (int radius = 1; radius <= 8; radius++) {
+        // CINEMÁTICO: Efectos visuales épicos en el epicentro
+        spawnParticleForNonExempt(world, Particle.EXPLOSION, epicentro.clone().add(0, 0.5, 0), 2, 0.5, 0.2, 0.5, 0);
+        spawnParticleForNonExempt(world, Particle.LAVA, epicentro.clone().add(0, 0.5, 0), 15, 1, 0.5, 1, 0);
+        
+        // CINEMÁTICO: Animar ondas expansivas más densas y dramáticas
+        for (int radius = 1; radius <= 10; radius++) {
             final int r = radius;
             plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-                for (int angle = 0; angle < 360; angle += 15) {
+                // Más partículas por anillo para efecto más denso
+                for (int angle = 0; angle < 360; angle += 8) {
                     double rad = Math.toRadians(angle);
                     double x = epicentro.getX() + r * Math.cos(rad);
                     double z = epicentro.getZ() + r * Math.sin(rad);
                     Location particleLoc = new Location(world, x, epicentro.getY(), z);
                     
-                    spawnParticleForNonExempt(world, Particle.CAMPFIRE_COSY_SMOKE, particleLoc, 1, 0, 0, 0, 0.01);
-                    spawnParticleForNonExempt(world, Particle.BLOCK, particleLoc, 2, 0.1, 0, 0.1, 0, Material.STONE.createBlockData());
+                    // CINEMÁTICO: Partículas múltiples para efecto dramático
+                    spawnParticleForNonExempt(world, Particle.CAMPFIRE_COSY_SMOKE, particleLoc, 3, 0.1, 0.3, 0.1, 0.02);
+                    spawnParticleForNonExempt(world, Particle.BLOCK, particleLoc, 5, 0.2, 0.2, 0.2, 0, Material.COARSE_DIRT.createBlockData());
+                    spawnParticleForNonExempt(world, Particle.SWEEP_ATTACK, particleLoc, 1, 0, 0, 0, 0);
+                    
+                    // CINEMÁTICO: Grietas brillantes en fase intensa
+                    if (faseMultiplicador > 1.1) {
+                        spawnParticleForNonExempt(world, Particle.LAVA, particleLoc, 2, 0.1, 0, 0.1, 0);
+                        world.spawnParticle(Particle.DUST, particleLoc.clone().add(0, 0.3, 0), 3, 0.2, 0.1, 0.2, 
+                            new Particle.DustOptions(org.bukkit.Color.ORANGE, 1.3f));
+                    }
                 }
                 
-                if (r == 4) {
-                    world.playSound(epicentro, Sound.ENTITY_GENERIC_EXPLODE, 0.3f, 0.6f);
+                // CINEMÁTICO: Sonidos épicos progresivos
+                if (r == 3 || r == 6) {
+                    world.playSound(epicentro, Sound.ENTITY_LIGHTNING_BOLT_IMPACT, 0.5f * (float)faseMultiplicador, 0.7f);
+                }
+                if (r == 5) {
+                    world.playSound(epicentro, Sound.ENTITY_GENERIC_EXPLODE, 0.4f * (float)faseMultiplicador, 0.6f);
+                    world.playSound(epicentro, Sound.ENTITY_WARDEN_DIG, 0.3f, 0.8f);
                 }
             }, (long) r * 2); // Delay progresivo
+        }
+        
+        // CINEMÁTICO: Mensaje y título para jugadores cercanos
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            if (isPlayerExempt(player)) continue;
+            if (player.getLocation().distance(epicentro) < 15) {
+                if (faseMultiplicador > 1.2) {
+                    player.sendTitle("", "§8§l⚠", 0, 15, 5);
+                }
+            }
         }
     }
     
@@ -1035,7 +1158,7 @@ public class TerremotoNew extends DisasterBase {
             if (broken >= maxAllowed) break;
             
             Material originalType = block.getType();
-            block.setType(Material.AIR);
+            setBlockTracked(block, Material.AIR);
             
             // Partículas de rotura (según tipo de bloque)
             Location breakLoc = block.getLocation().add(0.5, 0.5, 0.5);
@@ -1089,14 +1212,18 @@ public class TerremotoNew extends DisasterBase {
         int reduccionPorcentaje = (int)((1.0 - absorption.damageMultiplier) * 100);
         
         if (bloques == 0) {
-            // Sin protección - advertencia urgente
+            // Sin protección - DIAGNÓSTICO COMPLETO
+            String diagnostico = diagnosticarBloquesProtectores(player);
+            
             plugin.getMessageBus().sendActionBar(player, 
-                "§c§l⚠ SIN PROTECCIÓN §8| §7Busca §blana§7, §aslime§7 o §bhielo");
+                "§c§l⚠ SIN PROTECCIÓN §8| §7" + diagnostico);
             
             // Sonido de alerta cada 10 segundos
             if (tickCounter % 200 == 0) {
                 soundUtil.playSound(player, Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
-                player.sendMessage("§c💥 §7Tu base necesita protección antisísmica. Usa §blana§7, §aslime§7 o §bhielo§7.");
+                player.sendMessage("§c💥 §7TERREMOTO: Necesitas bloques absorbentes cerca");
+                player.sendMessage("§7  §8→ §7Usa §blana§7, §aslime§7 o §bhielo§7 en radio de §e6 bloques");
+                player.sendMessage("§7  §8→ §7Coloca §e3-5 bloques§7 para reducir daño hasta §a-25%");
             }
             
         } else if (bloques >= 5) {
@@ -1117,24 +1244,92 @@ public class TerremotoNew extends DisasterBase {
                 "§a§l🛡 PROTECCIÓN ACTIVA §8| §e" + bloques + " §7bloques §8(§a-" + reduccionPorcentaje + "%§8)");
             
         } else if (bloques >= 2) {
-            // Protección parcial
+            // Protección parcial - sugerir mejora
+            int faltantes = 5 - bloques;
             plugin.getMessageBus().sendActionBar(player,
-                "§e§l⚠ PROTECCIÓN PARCIAL §8| §e" + bloques + " §7bloques §8(§a-" + reduccionPorcentaje + "%§8)");
+                "§e§l⚠ PROTECCIÓN PARCIAL §8| §e" + bloques + "§7/5 bloques §8- §7Agrega §e+" + faltantes);
             
             // Recordatorio cada 20 segundos
             if (tickCounter % 400 == 0) {
-                player.sendMessage("§e⚡ §7Añade más bloques absorbentes para mejor protección (actual: §e" + bloques + "§7/§a5§7)");
+                player.sendMessage("§e⚡ §7Protección parcial activa. Añade §e" + faltantes + " bloques más§7 para máxima protección (-25%)");
             }
             
         } else {
-            // Protección mínima
+            // Protección mínima - advertencia urgente
+            int faltantes = 3 - bloques;
             plugin.getMessageBus().sendActionBar(player,
-                "§6§l⚠ PROTECCIÓN MÍNIMA §8| §e" + bloques + " §7bloque §8(§a-" + reduccionPorcentaje + "%§8)");
+                "§6§l⚠ PROTECCIÓN MÍNIMA §8| §e" + bloques + "§7/5 §8- §cNecesitas §e+" + faltantes);
             
             // Consejo cada 15 segundos
             if (tickCounter % 300 == 0) {
-                player.sendMessage("§6⚠ §7Protección débil. Distribuye §b4-5 bloques absorbentes§7 en un radio de 6 bloques.");
+                player.sendMessage("§6⚠ §7Protección débil (§e" + bloques + " bloque§7). Añade §e" + faltantes + " bloques más§7 para protección decente.");
+                player.sendMessage("§7  §8→ §7Distribuye §blana§7, §aslime§7 o §bhielo§7 en radio de §e6 bloques");
             }
+        }
+    }
+    
+    /**
+     * Diagnostica por QUÉ el jugador no tiene protección antisísmica
+     */
+    private String diagnosticarBloquesProtectores(Player player) {
+        Location loc = player.getLocation();
+        int lanasCerca = 0;
+        int slimeCerca = 0;
+        int hieloCerca = 0;
+        double distanciaMinima = 999;
+        String tipoMasCercano = "";
+        
+        // Escanear radio amplio (10 bloques) para diagnóstico completo
+        for (int x = -10; x <= 10; x++) {
+            for (int y = -3; y <= 3; y++) {
+                for (int z = -10; z <= 10; z++) {
+                    Block b = loc.getWorld().getBlockAt(
+                        loc.getBlockX() + x,
+                        loc.getBlockY() + y,
+                        loc.getBlockZ() + z
+                    );
+                    
+                    double distancia = Math.sqrt(x*x + y*y + z*z);
+                    
+                    if (b.getType().name().contains("WOOL")) {
+                        lanasCerca++;
+                        if (distancia < distanciaMinima) {
+                            distanciaMinima = distancia;
+                            tipoMasCercano = "§blana";
+                        }
+                    } else if (b.getType() == Material.SLIME_BLOCK) {
+                        slimeCerca++;
+                        if (distancia < distanciaMinima) {
+                            distanciaMinima = distancia;
+                            tipoMasCercano = "§aslime";
+                        }
+                    } else if (b.getType() == Material.BLUE_ICE || b.getType() == Material.PACKED_ICE || b.getType() == Material.ICE) {
+                        hieloCerca++;
+                        if (distancia < distanciaMinima) {
+                            distanciaMinima = distancia;
+                            tipoMasCercano = "§bhielo";
+                        }
+                    }
+                }
+            }
+        }
+        
+        int totalCerca = lanasCerca + slimeCerca + hieloCerca;
+        
+        if (totalCerca == 0) {
+            // No hay ningún bloque protector
+            return "Coloca §blana§7, §aslime§7 o §bhielo§7 cerca";
+        } else if (distanciaMinima > 6) {
+            // Hay bloques pero están MUY LEJOS
+            String bloquesTotales = "";
+            if (lanasCerca > 0) bloquesTotales += "§b" + lanasCerca + " lana ";
+            if (slimeCerca > 0) bloquesTotales += "§a" + slimeCerca + " slime ";
+            if (hieloCerca > 0) bloquesTotales += "§b" + hieloCerca + " hielo";
+            
+            return "Tienes " + bloquesTotales.trim() + " §7pero a §c" + String.format("%.1f", distanciaMinima) + " bloques §7(máx §e6§7)";
+        } else {
+            // Esto no debería pasar (si hay bloques en radio de 6, el contador debería detectarlos)
+            return "Error: tienes §e" + totalCerca + " bloques§7 en radio pero no se detectan";
         }
     }
     

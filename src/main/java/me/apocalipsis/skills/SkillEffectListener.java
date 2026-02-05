@@ -1,6 +1,21 @@
 package me.apocalipsis.skills;
 
-import me.apocalipsis.Apocalipsis;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.PriorityQueue;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -12,6 +27,7 @@ import org.bukkit.block.Block;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.Arrow;
 import org.bukkit.entity.Item;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -23,6 +39,7 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
+import org.bukkit.event.entity.EntityShootBowEvent;
 import org.bukkit.event.entity.FoodLevelChangeEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -33,16 +50,12 @@ import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.Merchant;
 import org.bukkit.inventory.MerchantRecipe;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Vector;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import me.apocalipsis.Apocalipsis;
 
 /**
  * Listener que aplica los efectos de las habilidades del árbol.
@@ -72,7 +85,7 @@ public class SkillEffectListener implements Listener {
     private double toqueFortunaChance = 0.10;
     private double sedaNaturalChance = 0.05;
     private int nadadorDuracionEfecto = 40;
-    private int waypointCooldownTeleport = 300;
+    private int waypointCooldownTeleport = 30;
     private boolean waypointPersistencia = true;
     private long mensajeCooldownMs = 2000;
     private boolean statsEnabled = true;
@@ -80,20 +93,21 @@ public class SkillEffectListener implements Listener {
     private int cacheTtlSegundos = 30;
     
     // === LEÑADOR CONFIG (3 niveles) ===
-    // Nivel 1 (Nato): cooldown 5s, max 256 bloques
-    // Nivel 2 (Experto): cooldown 2s, max 384 bloques  
-    // Nivel 3 (Maestro): SIN cooldown, max 512 bloques, auto-replant siempre, bonus XP
-    private int lenadorCooldownNivel1 = 5;    // Leñador Nato
-    private int lenadorCooldownNivel2 = 2;    // Leñador Experto
-    private int lenadorCooldownNivel3 = 0;    // Leñador Maestro (sin cooldown)
-    private int lenadorMaxBloquesNivel1 = 256;
-    private int lenadorMaxBloquesNivel2 = 384;
-    private int lenadorMaxBloquesNivel3 = 512;
+    // MEJORADO: SIN COOLDOWN para todos los niveles + más bloques para árboles altos
+    // Nivel 1 (Nato): SIN cooldown, max 512 bloques
+    // Nivel 2 (Experto): SIN cooldown, max 768 bloques  
+    // Nivel 3 (Maestro): SIN cooldown, max 1024 bloques, auto-replant siempre, bonus XP
+    private int lenadorCooldownNivel1 = 0;    // Leñador Nato - SIN COOLDOWN
+    private int lenadorCooldownNivel2 = 0;    // Leñador Experto - SIN COOLDOWN
+    private int lenadorCooldownNivel3 = 0;    // Leñador Maestro - SIN COOLDOWN
+    private int lenadorMaxBloquesNivel1 = 512;  // Incrementado para árboles altos
+    private int lenadorMaxBloquesNivel2 = 768;  // Incrementado para árboles altos
+    private int lenadorMaxBloquesNivel3 = 1024; // Incrementado para árboles altos
     private boolean lenadorDesactivarSneaking = true;
     private boolean lenadorAutoReplant = true;
     private boolean lenadorVerificarArbolReal = true;
-    private int lenadorRadioBuscarHojas = 4;
-    private int lenadorMinHojasRequeridas = 3;
+    private int lenadorRadioBuscarHojas = 8;     // Incrementado para mejor detección
+    private int lenadorMinHojasRequeridas = 2;   // Reducido para árboles más flexibles
     private int lenadorXpPorArbolBase = 5;
     private int lenadorXpBonusMaestro = 10;   // XP extra para nivel 3
     private boolean lenadorSonidosProgresivos = true;
@@ -134,6 +148,7 @@ public class SkillEffectListener implements Listener {
     private int waterEffectsTaskId = -1;
     private int cacheCleanupTaskId = -1;
     private int statsAutoSaveTaskId = -1;
+    private int waypointAutoSaveTaskId = -1;
     
     public SkillEffectListener(Apocalipsis plugin, SkillService skillService) {
         this.plugin = plugin;
@@ -169,7 +184,7 @@ public class SkillEffectListener implements Listener {
         toqueFortunaChance = skillsConfig.getDouble("efectos.mineria.toque_fortuna_chance", 0.10);
         sedaNaturalChance = skillsConfig.getDouble("efectos.mineria.seda_natural_chance", 0.05);
         nadadorDuracionEfecto = skillsConfig.getInt("efectos.nadador.duracion_efecto", 40);
-        waypointCooldownTeleport = skillsConfig.getInt("waypoints.cooldown_teleport", 300);
+        waypointCooldownTeleport = skillsConfig.getInt("waypoints.cooldown_teleport", 30);
         waypointPersistencia = skillsConfig.getBoolean("waypoints.persistencia", true);
         mensajeCooldownMs = skillsConfig.getLong("mensajes.cooldown_ms", 2000);
         statsEnabled = skillsConfig.getBoolean("estadisticas.enabled", true);
@@ -231,6 +246,14 @@ public class SkillEffectListener implements Listener {
             statsAutoSaveTaskId = Bukkit.getScheduler().runTaskTimer(plugin, this::saveStats, 
                 intervalTicks, intervalTicks).getTaskId();
         }
+        
+        // Auto-guardar waypoints cada 5 minutos
+        if (waypointPersistencia) {
+            waypointAutoSaveTaskId = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+                saveWaypoints();
+                plugin.getLogger().info("[Skills] Auto-guardado de waypoints completado");
+            }, 6000L, 6000L).getTaskId(); // 5 minutos = 6000 ticks
+        }
     }
     
     public void shutdown() {
@@ -239,6 +262,7 @@ public class SkillEffectListener implements Listener {
         if (waterEffectsTaskId != -1) Bukkit.getScheduler().cancelTask(waterEffectsTaskId);
         if (cacheCleanupTaskId != -1) Bukkit.getScheduler().cancelTask(cacheCleanupTaskId);
         if (statsAutoSaveTaskId != -1) Bukkit.getScheduler().cancelTask(statsAutoSaveTaskId);
+        if (waypointAutoSaveTaskId != -1) Bukkit.getScheduler().cancelTask(waypointAutoSaveTaskId);
         
         // Guardar datos
         if (waypointPersistencia) saveWaypoints();
@@ -422,11 +446,26 @@ public class SkillEffectListener implements Listener {
     
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
-        UUID uuid = event.getPlayer().getUniqueId();
+        Player player = event.getPlayer();
+        UUID uuid = player.getUniqueId();
+        
+        // ✅ CRÍTICO: Guardar waypoints cuando el jugador se desconecta (SÍNCRONO para evitar pérdida de datos)
+        if (playerWaypoints.containsKey(uuid) && waypointPersistencia) {
+            saveWaypoints();
+            plugin.getLogger().info("[Skills] Waypoints guardados por desconexión de " + player.getName());
+        }
+        
+        // Limpiar cachés
         playersGliding.remove(uuid);
         phoenixRevive.remove(uuid);
         skillCache.remove(uuid);
         glideCooldowns.remove(uuid);
+        waypointCooldowns.remove(uuid);
+        lenadorCooldowns.remove(uuid);
+        
+        // Limpiar mensajes anti-spam del jugador
+        String prefix = uuid.toString() + "_";
+        lastMessages.entrySet().removeIf(entry -> entry.getKey().startsWith(prefix));
     }
     
     // ==================== DAÑO ====================
@@ -456,9 +495,9 @@ public class SkillEffectListener implements Listener {
             cause == EntityDamageEvent.DamageCause.FIRE_TICK ||
             cause == EntityDamageEvent.DamageCause.LAVA) {
             
-            if (hasSkillCached(uuid, Skill.IGNIFUGO)) {
+            if (/* hasSkillCached(uuid, Skill.IGNIFUGO) */ false) {
                 reduction = ignifugoReduccion;
-                trackSkillUsage(uuid, Skill.IGNIFUGO);
+                // trackSkillUsage(uuid, Skill.IGNIFUGO);
                 // Inmune a daño por pisar fuego
                 if (cause == EntityDamageEvent.DamageCause.FIRE_TICK) {
                     Block below = player.getLocation().subtract(0, 1, 0).getBlock();
@@ -467,9 +506,9 @@ public class SkillEffectListener implements Listener {
                         return;
                     }
                 }
-            } else if (hasSkillCached(uuid, Skill.RESISTENCIA_FUEGO)) {
+            } else if (/* hasSkillCached(uuid, Skill.RESISTENCIA_FUEGO) */ false) {
                 reduction = resistenciaFuegoReduccion;
-                trackSkillUsage(uuid, Skill.RESISTENCIA_FUEGO);
+                // trackSkillUsage(uuid, Skill.RESISTENCIA_FUEGO);
             }
         }
         
@@ -647,12 +686,12 @@ public class SkillEffectListener implements Listener {
         double reduction = 0;
         Skill usedSkill = null;
         
-        if (hasSkillCached(uuid, Skill.METABOLISMO_LENTO)) {
+        if (/* hasSkillCached(uuid, Skill.METABOLISMO_LENTO) */ false) {
             reduction = metabolismoLentoReduccion;
-            usedSkill = Skill.METABOLISMO_LENTO;
-        } else if (hasSkillCached(uuid, Skill.ESTOMAGO_HIERRO)) {
+            usedSkill = null; // Skill.METABOLISMO_LENTO;
+        } else if (/* hasSkillCached(uuid, Skill.ESTOMAGO_HIERRO) */ false) {
             reduction = estomagoHierroReduccion;
-            usedSkill = Skill.ESTOMAGO_HIERRO;
+            usedSkill = null; // Skill.ESTOMAGO_HIERRO;
         }
         
         if (reduction > 0) {
@@ -968,6 +1007,7 @@ public class SkillEffectListener implements Listener {
     
     /**
      * Tala un árbol completo empezando desde el tronco dado (con límite personalizado).
+     * MEJORADO: Detección vertical mejorada para árboles altos y árboles con ramas
      * @return Número de bloques talados
      */
     private int fellTreeWithLimit(Player player, Block startBlock, ItemStack tool, int maxBlocks) {
@@ -990,11 +1030,35 @@ public class SkillEffectListener implements Listener {
             if (isLog(current.getType())) {
                 logsToBreak.add(current);
                 
-                // Buscar en las 26 direcciones (cubo 3x3x3 alrededor)
-                for (int dx = -1; dx <= 1; dx++) {
-                    for (int dy = -1; dy <= 1; dy++) {
-                        for (int dz = -1; dz <= 1; dz++) {
+                // MEJORA: Búsqueda optimizada para árboles muy altos y complejos
+                // Arriba: área 5x5 (árboles con ramas extensas)
+                // Mismo nivel y abajo: 3x3 (troncos gruesos 2x2 como dark oak)
+                for (int dx = -2; dx <= 2; dx++) {
+                    for (int dy = -1; dy <= 4; dy++) { // MEJORADO: dy va hasta +4 para árboles muy altos
+                        for (int dz = -2; dz <= 2; dz++) {
                             if (dx == 0 && dy == 0 && dz == 0) continue;
+                            
+                            // MEJORA: Para bloques arriba (dy > 0), buscar en área más amplia para detectar ramas
+                            int searchRadius = (dy > 0) ? 3 : 1; // Incrementado de 2 a 3
+                            
+                            // Solo aplicar radio ampliado si estamos buscando arriba
+                            if (dy > 0 && (Math.abs(dx) > 1 || Math.abs(dz) > 1)) {
+                                // Buscar ramas diagonales solo hacia arriba
+                                for (int rdx = -searchRadius; rdx <= searchRadius; rdx++) {
+                                    for (int rdz = -searchRadius; rdz <= searchRadius; rdz++) {
+                                        if (rdx == 0 && rdz == 0) continue;
+                                        Block branch = current.getRelative(rdx, dy, rdz);
+                                        
+                                        if (!visited.contains(branch)) {
+                                            visited.add(branch);
+                                            if (isLog(branch.getType())) {
+                                                queue.add(branch);
+                                            }
+                                        }
+                                    }
+                                }
+                                continue; // Saltar la búsqueda normal para este dy
+                            }
                             
                             Block neighbor = current.getRelative(dx, dy, dz);
                             
@@ -1110,20 +1174,41 @@ public class SkillEffectListener implements Listener {
     /**
      * Mejora 4: Verifica si un bloque es parte de un árbol real (tiene hojas cercanas).
      * Evita talar estructuras de madera hechas por jugadores.
+     * MEJORADO: Búsqueda vertical más inteligente y priorización de hojas arriba
      */
     private boolean isRealTree(Block logBlock) {
         int leavesCount = 0;
         int radius = lenadorRadioBuscarHojas;
         
-        // Buscar hojas en un cubo alrededor del tronco
-        for (int dx = -radius; dx <= radius; dx++) {
-            for (int dy = -1; dy <= radius * 2; dy++) { // Más arriba que abajo
-                for (int dz = -radius; dz <= radius; dz++) {
-                    Block check = logBlock.getRelative(dx, dy, dz);
+        // MEJORA 1: Búsqueda optimizada para árboles muy altos (hasta 32 bloques de altura)
+        // Esto detecta mejor árboles gigantes y estructuras naturales complejas
+        for (int y = 0; y <= Math.max(radius * 3, 32); y++) { // MEJORADO: búsqueda hasta 32 bloques arriba
+            for (int x = -radius; x <= radius; x++) {
+                for (int z = -radius; z <= radius; z++) {
+                    Block check = logBlock.getRelative(x, y, z);
+                    if (isLeaves(check.getType())) {
+                        leavesCount++;
+                        // MEJORA 2: Si encontramos hojas arriba rápidamente, es definitivamente un árbol
+                        if (y > 0 && leavesCount >= 1) { // MEJORADO: reducido a 1 hoja para ser más flexible
+                            return true; // Hojas arriba = árbol real
+                        }
+                        if (leavesCount >= lenadorMinHojasRequeridas) {
+                            return true; // Suficientes hojas encontradas
+                        }
+                    }
+                }
+            }
+        }
+        
+        // MEJORA 3: Buscar también un poco abajo (para árboles con base de hojas)
+        for (int y = -1; y >= -2; y--) {
+            for (int x = -radius; x <= radius; x++) {
+                for (int z = -radius; z <= radius; z++) {
+                    Block check = logBlock.getRelative(x, y, z);
                     if (isLeaves(check.getType())) {
                         leavesCount++;
                         if (leavesCount >= lenadorMinHojasRequeridas) {
-                            return true; // Suficientes hojas encontradas
+                            return true;
                         }
                     }
                 }
@@ -1248,23 +1333,24 @@ public class SkillEffectListener implements Listener {
     
     /**
      * Obtiene el límite de waypoints para un jugador según su rango permanente y habilidades
+     * MEJORADO: Todos los jugadores tienen acceso básico
      */
     public int getWaypointLimit(Player player) {
         UUID uuid = player.getUniqueId();
         var permRank = plugin.getPermRankManager().getPlayerPermRank(uuid);
         
-        // Si tiene el rango hunter_adventurer, puede tener hasta 10 waypoints (prioridad máxima)
+        // Si tiene el rango hunter_adventurer, puede tener hasta 15 waypoints (prioridad máxima)
         if (permRank != null && permRank.getId().equalsIgnoreCase("hunter_adventurer")) {
-            return 10;
+            return 15;
         }
         
-        // Si tiene la habilidad WAYPOINT comprada, puede tener 3 waypoints
+        // Si tiene la habilidad WAYPOINT comprada, puede tener 5 waypoints
         if (plugin.getSkillService().hasSkill(uuid, Skill.WAYPOINT)) {
-            return 3;
+            return 5;
         }
         
-        // Sin habilidad comprada: 1 waypoint
-        return 1;
+        // MEJORADO: Sin habilidad comprada: 2 waypoints (1 personalizable + bed automático)
+        return 2;
     }
     
     /**
@@ -1273,6 +1359,26 @@ public class SkillEffectListener implements Listener {
     public void setWaypoint(Player player, String name) {
         UUID uuid = player.getUniqueId();
         Location loc = player.getLocation();
+        
+        // Validar nombre del waypoint (alfanumérico + guiones y guiones bajos)
+        if (!isValidWaypointName(name)) {
+            player.sendMessage("§c✖ §7Nombre inválido. Usa solo letras, números, - y _");
+            player.sendMessage("§7Ejemplos: §ecasa§7, §ebase_nether§7, §egranja-1");
+            return;
+        }
+        
+        // Validar longitud del nombre
+        if (name.length() > 20) {
+            player.sendMessage("§c✖ §7Nombre demasiado largo (máximo 20 caracteres).");
+            return;
+        }
+        
+        // Verificar ubicación segura
+        if (!isSafeWaypointLocation(loc)) {
+            player.sendMessage("§c✖ §7Ubicación peligrosa detectada (lava, void, etc).");
+            player.sendMessage("§7Muévete a un lugar más seguro antes de crear el waypoint.");
+            return;
+        }
         
         // Obtener o crear el mapa de waypoints del jugador
         Map<String, Location> waypoints = playerWaypoints.computeIfAbsent(uuid, k -> new ConcurrentHashMap<>());
@@ -1285,6 +1391,8 @@ public class SkillEffectListener implements Listener {
             return;
         }
         
+        // Verificar si es actualización o creación nueva
+        boolean isUpdate = waypoints.containsKey(name);
         waypoints.put(name, loc);
         
         // Guardar inmediatamente si persistencia está activa
@@ -1292,9 +1400,17 @@ public class SkillEffectListener implements Listener {
             saveWaypoints();
         }
         
-        player.sendMessage("§a✓ §eWaypoint '§f" + name + "§e' establecido en: §f" + 
-            loc.getBlockX() + ", " + loc.getBlockY() + ", " + loc.getBlockZ());
-        player.playSound(loc, Sound.BLOCK_NOTE_BLOCK_PLING, 0.8f, 1.2f);
+        String worldName = loc.getWorld().getName();
+        String action = isUpdate ? "actualizado" : "creado";
+        
+        player.sendMessage("§a✓ §eWaypoint '§f" + name + "§e' " + action + ":");
+        player.sendMessage("  §7Coordenadas: §f" + loc.getBlockX() + "§7, §f" + 
+            loc.getBlockY() + "§7, §f" + loc.getBlockZ());
+        player.sendMessage("  §7Mundo: §e" + worldName);
+        player.sendMessage("  §7Waypoints: §e" + waypoints.size() + "§7/§e" + limit);
+        player.sendMessage("§7Usa §e/wp " + name + " §7para teletransportarte.");
+        
+        player.playSound(loc, Sound.BLOCK_NOTE_BLOCK_PLING, 0.8f, isUpdate ? 1.0f : 1.2f);
         
         // Efectos visuales mejorados
         spawnWaypointSetParticles(loc);
@@ -1311,6 +1427,79 @@ public class SkillEffectListener implements Listener {
     private void spawnWaypointSetParticles(Location loc) {
         loc.getWorld().spawnParticle(Particle.END_ROD, loc.clone().add(0, 1, 0), 30, 0.5, 0.5, 0.5, 0.05);
         loc.getWorld().spawnParticle(Particle.ENCHANT, loc.clone().add(0, 0.5, 0), 20, 0.3, 0.3, 0.3, 0.5);
+    }
+    
+    /**
+     * NUEVO: Teleporta al jugador a su cama (respawn point)
+     */
+    public void teleportToBed(Player player) {
+        UUID uuid = player.getUniqueId();
+        
+        // Verificar cooldown solo si tiene la habilidad WAYPOINT (sin habilidad = sin cooldown para bed)
+        if (plugin.getSkillService().hasSkill(uuid, Skill.WAYPOINT) && isWaypointOnCooldown(uuid)) {
+            long remaining = getWaypointCooldownRemaining(uuid) / 1000;
+            player.sendMessage("§c✖ §7Debes esperar §e" + remaining + "s §7antes de usar teleport.");
+            return;
+        }
+        
+        // Obtener ubicación de la cama
+        Location bedLocation = player.getBedSpawnLocation();
+        
+        if (bedLocation == null) {
+            player.sendMessage("§c✖ §7No tienes una cama establecida como punto de respawn.");
+            player.sendMessage("§7Duerme en una cama para establecer tu punto de respawn.");
+            return;
+        }
+        
+        // Verificar que el mundo de la cama esté cargado
+        if (bedLocation.getWorld() == null) {
+            player.sendMessage("§c✖ §7El mundo de tu cama no está disponible.");
+            return;
+        }
+        
+        // Verificar que la ubicación sea segura
+        if (!isSafeWaypointLocation(bedLocation)) {
+            player.sendMessage("§c✖ §7Tu cama ya no es segura (obstruida, destruida, etc).");
+            player.sendMessage("§7Vuelve a dormir en una cama para actualizar tu punto de respawn.");
+            return;
+        }
+        
+        // Teleportar al jugador
+        boolean success = player.teleport(bedLocation);
+        
+        if (!success) {
+            player.sendMessage("§c✖ §7Error al teleportarse a tu cama. Intenta de nuevo.");
+            return;
+        }
+        
+        // Solo aplicar cooldown si tiene la habilidad WAYPOINT
+        if (plugin.getSkillService().hasSkill(uuid, Skill.WAYPOINT)) {
+            setWaypointCooldown(uuid);
+        }
+        
+        // Efectos visuales y mensaje
+        double distance = player.getLocation().distance(bedLocation);
+        player.sendMessage("§a✓ §7Teletransportado a tu §bcama§7.");
+        player.sendMessage("§7Distancia recorrida: §e" + Math.round(distance) + " bloques");
+        player.playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 0.8f, 1.2f);
+        
+        // Efectos visuales especiales para cama
+        spawnBedTeleportParticles(bedLocation);
+        trackSkillUsage(uuid, Skill.WAYPOINT); // Trackear como uso de waypoint
+    }
+    
+    /**
+     * Efectos visuales específicos para teleport a cama
+     */
+    private void spawnBedTeleportParticles(Location loc) {
+        if (loc.getWorld() == null) return;
+        
+        // Partículas rosas/rojas como una cama
+        loc.getWorld().spawnParticle(Particle.HEART, loc.clone().add(0.5, 1, 0.5), 10, 0.5, 0.5, 0.5, 0.1);
+        loc.getWorld().spawnParticle(Particle.HAPPY_VILLAGER, loc.clone().add(0.5, 0.5, 0.5), 15, 0.8, 0.5, 0.8, 0.05);
+        
+        // Sonido especial de cama
+        loc.getWorld().playSound(loc, Sound.BLOCK_WOOL_PLACE, 0.5f, 0.8f);
     }
     
     /**
@@ -1347,11 +1536,54 @@ public class SkillEffectListener implements Listener {
             return;
         }
         
-        player.teleport(waypoint);
+        // NUEVA RESTRICCIÓN: Verificar mundo/ciclo
+        String currentWorld = player.getWorld().getName();
+        String waypointWorld = waypoint.getWorld().getName();
+        
+        // Solo permitir si:
+        // 1. Mismo mundo
+        // 2. Es admin (bypass)
+        boolean sameWorld = currentWorld.equals(waypointWorld);
+        boolean isAdmin = player.hasPermission("apocalipsis.waypoint.bypass") || player.hasPermission("apocalipsis.admin");
+        
+        if (!sameWorld && !isAdmin) {
+            player.sendMessage("§c✖ §7Este waypoint fue creado en: §e" + waypointWorld);
+            player.sendMessage("§c✖ §7Solo puedes usarlo desde el mismo mundo/ciclo.");
+            player.sendMessage("§7Tu mundo actual: §e" + currentWorld);
+            return;
+        }
+        
+        // [SEGURIDAD] Verificar que el destino siga siendo seguro
+        if (!isSafeWaypointLocation(waypoint)) {
+            player.sendMessage("§c✖ §7El destino del waypoint '§f" + name + "§7' ya no es seguro (lava, void, etc).");
+            player.sendMessage("§7Se recomienda eliminarlo y crear uno nuevo: §e/wp delete " + name);
+            
+            // Mostrar detalles de ubicación para debugging
+            if (player.hasPermission("apocalipsis.admin")) {
+                player.sendMessage("§8[DEBUG] Ubicación: " + waypoint.getBlockX() + ", " + 
+                    waypoint.getBlockY() + ", " + waypoint.getBlockZ());
+                player.sendMessage("§8[DEBUG] Bloque pies: " + waypoint.getBlock().getType());
+                player.sendMessage("§8[DEBUG] Bloque cabeza: " + waypoint.clone().add(0, 1, 0).getBlock().getType());
+            }
+            return;
+        }
+        
+        // [FIX] Teleportar al jugador al waypoint
+        boolean success = player.teleport(waypoint);
+        
+        if (!success) {
+            player.sendMessage("§c✖ §7Error al teleportarse. El destino podría estar en un chunk no cargado.");
+            player.sendMessage("§7Intenta de nuevo en unos segundos.");
+            return;
+        }
+        
         setWaypointCooldown(uuid);
         
-        player.sendMessage("§a✓ §eTeletransportado al waypoint '§f" + name + "§e'.");
-        player.playSound(waypoint, Sound.ENTITY_ENDERMAN_TELEPORT, 0.8f, 1.0f);
+        // Efectos visuales y mensaje
+        double distance = player.getLocation().distance(waypoint);
+        player.sendMessage("§a✓ §7Teletransportado a waypoint '§f" + name + "§7'.");
+        player.sendMessage("§7Distancia recorrida: §e" + Math.round(distance) + " bloques");
+        player.playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 1.0f);
         
         // Efectos visuales mejorados
         spawnWaypointTeleportParticles(waypoint);
@@ -1374,17 +1606,54 @@ public class SkillEffectListener implements Listener {
         
         if (waypoints == null || waypoints.isEmpty()) {
             player.sendMessage("§c✖ §7No tienes waypoints establecidos.");
+            player.sendMessage("§7Usa §e/wp set <nombre> §7para crear uno.");
             return;
         }
         
         int limit = getWaypointLimit(player);
-        player.sendMessage("§e§l⚑ Waypoints §7(" + waypoints.size() + "/" + limit + ")§e:");
+        String currentWorld = player.getWorld().getName();
+        boolean isAdmin = player.hasPermission("apocalipsis.waypoint.bypass") || player.hasPermission("apocalipsis.admin");
+        boolean onCooldown = isWaypointOnCooldown(uuid);
+        
+        player.sendMessage("§e§l⚑ Tus Waypoints §7(" + waypoints.size() + "/" + limit + ")§e:");
+        player.sendMessage("§7Mundo actual: §e" + currentWorld + (isAdmin ? " §8[ADMIN]" : ""));
+        
+        // Mostrar estado de cooldown
+        if (onCooldown) {
+            long remaining = getWaypointCooldownRemaining(uuid) / 1000;
+            player.sendMessage("§7Cooldown: §c" + remaining + "s §7restantes");
+        } else {
+            player.sendMessage("§7Cooldown: §a✓ Disponible");
+        }
+        
+        player.sendMessage("");
         
         for (Map.Entry<String, Location> entry : waypoints.entrySet()) {
             Location loc = entry.getValue();
-            player.sendMessage("  §f" + entry.getKey() + " §7→ §f" + 
-                loc.getBlockX() + ", " + loc.getBlockY() + ", " + loc.getBlockZ() + 
-                " §8(" + (loc.getWorld() != null ? loc.getWorld().getName() : "?") + ")");
+            String worldName = (loc.getWorld() != null ? loc.getWorld().getName() : "?");
+            boolean available = isAdmin || currentWorld.equals(worldName);
+            String status = available ? "§a✓" : "§c✗";
+            
+            // Calcular distancia desde posición actual
+            double distance = -1;
+            if (available && loc.getWorld() != null && loc.getWorld().equals(player.getWorld())) {
+                distance = player.getLocation().distance(loc);
+            }
+            
+            player.sendMessage("  " + status + " §f" + entry.getKey() + " §7→ §f" + 
+                loc.getBlockX() + "§7, §f" + loc.getBlockY() + "§7, §f" + loc.getBlockZ());
+            
+            if (distance >= 0) {
+                player.sendMessage("    §8Distancia: " + Math.round(distance) + " bloques");
+            } else {
+                player.sendMessage("    §8Mundo: " + worldName + (available ? "" : " (no disponible)"));
+            }
+        }
+        
+        player.sendMessage("");
+        player.sendMessage("§7Usa §e/wp <nombre> §7para teletransportarte.");
+        if (!isAdmin) {
+            player.sendMessage("§8§oSolo puedes usar waypoints del mundo actual");
         }
     }
     
@@ -1397,8 +1666,15 @@ public class SkillEffectListener implements Listener {
         
         if (waypoints == null || !waypoints.containsKey(name)) {
             player.sendMessage("§c✖ §7Waypoint '§f" + name + "§7' no encontrado.");
+            if (waypoints != null && !waypoints.isEmpty()) {
+                player.sendMessage("§7Waypoints disponibles: §e" + String.join("§7, §e", waypoints.keySet()));
+            }
             return;
         }
+        
+        // Obtener info antes de eliminar para mostrarla
+        Location loc = waypoints.get(name);
+        String worldName = (loc.getWorld() != null ? loc.getWorld().getName() : "?");
         
         waypoints.remove(name);
         
@@ -1410,7 +1686,11 @@ public class SkillEffectListener implements Listener {
             saveWaypoints();
         }
         
+        int limit = getWaypointLimit(player);
         player.sendMessage("§a✓ §7Waypoint '§f" + name + "§7' eliminado.");
+        player.sendMessage("  §8Era: " + loc.getBlockX() + ", " + loc.getBlockY() + ", " + loc.getBlockZ() + " (" + worldName + ")");
+        player.sendMessage("  §7Waypoints restantes: §e" + waypoints.size() + "§7/§e" + limit);
+        player.playSound(player.getLocation(), Sound.BLOCK_FIRE_EXTINGUISH, 0.5f, 1.0f);
     }
     
     private void spawnWaypointTeleportParticles(Location loc) {
@@ -1469,17 +1749,67 @@ public class SkillEffectListener implements Listener {
         waypointCooldowns.put(uuid, cooldownEnd);
     }
     
+    /**
+     * Valida que el nombre del waypoint sea seguro (alfanumérico + guiones)
+     */
+    private boolean isValidWaypointName(String name) {
+        if (name == null || name.isEmpty()) return false;
+        // Solo permitir letras, números, guiones y guiones bajos
+        return name.matches("^[a-zA-Z0-9_-]+$");
+    }
+    
+    /**
+     * Verifica que la ubicación sea segura para un waypoint
+     */
+    private boolean isSafeWaypointLocation(Location loc) {
+        if (loc == null || loc.getWorld() == null) return false;
+        
+        // Verificar que no esté en el void
+        if (loc.getY() < -60) return false;
+        
+        // Verificar que no esté en el techo del mundo
+        if (loc.getY() > loc.getWorld().getMaxHeight() - 5) return false;
+        
+        // Verificar que no esté en lava
+        org.bukkit.Material feetBlock = loc.getBlock().getType();
+        org.bukkit.Material headBlock = loc.clone().add(0, 1, 0).getBlock().getType();
+        
+        if (feetBlock == org.bukkit.Material.LAVA || headBlock == org.bukkit.Material.LAVA) {
+            return false;
+        }
+        
+        // Verificar que no esté en fuego
+        if (feetBlock == org.bukkit.Material.FIRE || headBlock == org.bukkit.Material.FIRE) {
+            return false;
+        }
+        
+        return true;
+    }
+    
     // ==================== PERSISTENCIA WAYPOINTS ====================
     
     private void loadWaypoints() {
-        if (!waypointPersistencia) return;
+        if (!waypointPersistencia) {
+            plugin.getLogger().info("[Skills] Persistencia de waypoints desactivada, omitiendo carga");
+            return;
+        }
         
         File waypointsFile = new File(plugin.getDataFolder(), "waypoints.yml");
-        if (!waypointsFile.exists()) return;
+        
+        if (!waypointsFile.exists()) {
+            plugin.getLogger().info("[Skills] Archivo waypoints.yml no existe todavía. Se creará cuando se guarde el primer waypoint.");
+            plugin.getLogger().info("[Skills] Ruta esperada: " + waypointsFile.getAbsolutePath());
+            return;
+        }
+        
+        plugin.getLogger().info("[Skills] Cargando waypoints desde: " + waypointsFile.getAbsolutePath());
         
         FileConfiguration config = YamlConfiguration.loadConfiguration(waypointsFile);
         
-        if (!config.isConfigurationSection("waypoints")) return;
+        if (!config.isConfigurationSection("waypoints")) {
+            plugin.getLogger().warning("[Skills] No se encontró la sección 'waypoints' en el archivo.");
+            return;
+        }
         
         for (String uuidStr : config.getConfigurationSection("waypoints").getKeys(false)) {
             try {
@@ -1528,7 +1858,15 @@ public class SkillEffectListener implements Listener {
                         float yaw = (float) config.getDouble(wpPath + ".yaw");
                         float pitch = (float) config.getDouble(wpPath + ".pitch");
                         
+                        // Leer creation_world si existe (nuevo formato)
+                        String creationWorld = config.getString(wpPath + ".creation_world", worldName);
+                        
                         waypoints.put(waypointName, new Location(world, x, y, z, yaw, pitch));
+                        
+                        // Log si hay discrepancia entre mundos (debugging)
+                        if (!worldName.equals(creationWorld)) {
+                            plugin.getLogger().info("[Skills] Waypoint '" + waypointName + "' migrado: " + creationWorld + " → " + worldName);
+                        }
                     }
                 }
                 
@@ -1546,9 +1884,18 @@ public class SkillEffectListener implements Listener {
     }
     
     private void saveWaypoints() {
-        if (!waypointPersistencia) return;
+        if (!waypointPersistencia) {
+            plugin.getLogger().info("[Skills] Persistencia de waypoints desactivada, omitiendo guardado");
+            return;
+        }
         
         FileConfiguration config = new YamlConfiguration();
+        int totalWaypoints = 0;
+        
+        // Agregar metadata
+        config.set("metadata.version", "2.0");
+        config.set("metadata.last_save", System.currentTimeMillis());
+        config.set("metadata.server_time", new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
         
         for (Map.Entry<UUID, Map<String, Location>> playerEntry : playerWaypoints.entrySet()) {
             String uuidStr = playerEntry.getKey().toString();
@@ -1565,17 +1912,149 @@ public class SkillEffectListener implements Listener {
                     config.set(path + ".z", loc.getZ());
                     config.set(path + ".yaw", loc.getYaw());
                     config.set(path + ".pitch", loc.getPitch());
+                    config.set(path + ".created_time", System.currentTimeMillis());
+                    config.set(path + ".creation_world", loc.getWorld().getName());
+                    totalWaypoints++;
+                } else {
+                    plugin.getLogger().warning("[Skills] Waypoint '" + waypointName + "' del jugador " + uuidStr + " tiene mundo null, omitiendo");
                 }
             }
         }
         
+        config.set("metadata.total_waypoints", totalWaypoints);
+        
         try {
-            config.save(new File(plugin.getDataFolder(), "waypoints.yml"));
+            // Asegurar que el directorio del plugin existe
+            File dataFolder = plugin.getDataFolder();
+            if (!dataFolder.exists()) {
+                boolean created = dataFolder.mkdirs();
+                plugin.getLogger().info("[Skills] Directorio del plugin creado: " + created);
+            }
+            
+            File waypointsFile = new File(dataFolder, "waypoints.yml");
+            
+            // Crear el archivo si no existe
+            if (!waypointsFile.exists()) {
+                boolean fileCreated = waypointsFile.createNewFile();
+                plugin.getLogger().info("[Skills] Archivo waypoints.yml creado: " + fileCreated);
+            }
+            
+            config.save(waypointsFile);
+            plugin.getLogger().info("[Skills] ✓ Waypoints guardados exitosamente: " + totalWaypoints + " waypoints de " + playerWaypoints.size() + " jugadores en " + waypointsFile.getAbsolutePath());
         } catch (IOException e) {
-            plugin.getLogger().warning("[Skills] Error guardando waypoints: " + e.getMessage());
+            plugin.getLogger().severe("[Skills] ✗ Error crítico guardando waypoints: " + e.getMessage());
+            e.printStackTrace();
         }
     }
     
+    // ==================== COMANDOS PÚBLICOS ====================
+    
+    /**
+     * Maneja el comando de waypoints para administradores
+     */
+    public boolean handleWaypointCommand(org.bukkit.command.CommandSender sender, org.bukkit.command.Command command, String[] args) {
+        if (!sender.hasPermission("apocalipsis.admin")) {
+            sender.sendMessage("§cNo tienes permisos para este comando.");
+            return true;
+        }
+        
+        if (args.length == 0) {
+            sender.sendMessage("§e§l⚑ Comandos de Waypoints Admin:");
+            sender.sendMessage("  §f/wp save §7- Forzar guardado de waypoints");
+            sender.sendMessage("  §f/wp reload §7- Recargar waypoints desde archivo");
+            sender.sendMessage("  §f/wp stats §7- Ver estadísticas de waypoints");
+            sender.sendMessage("  §f/wp backup §7- Crear respaldo manual");
+            return true;
+        }
+        
+        switch (args[0].toLowerCase()) {
+            case "save":
+                sender.sendMessage("§e⏳ Guardando waypoints...");
+                Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                    saveWaypoints();
+                    sender.sendMessage("§a✓ Waypoints guardados exitosamente");
+                });
+                return true;
+                
+            case "reload":
+                sender.sendMessage("§e⏳ Recargando waypoints...");
+                playerWaypoints.clear();
+                loadWaypoints();
+                sender.sendMessage("§a✓ Waypoints recargados desde archivo");
+                return true;
+                
+            case "stats":
+                int totalPlayers = playerWaypoints.size();
+                int totalWaypoints = playerWaypoints.values().stream().mapToInt(Map::size).sum();
+                
+                // Contar waypoints por mundo
+                Map<String, Integer> waypointsByWorld = new HashMap<>();
+                for (Map<String, Location> playerWps : playerWaypoints.values()) {
+                    for (Location loc : playerWps.values()) {
+                        if (loc.getWorld() != null) {
+                            String worldName = loc.getWorld().getName();
+                            waypointsByWorld.put(worldName, waypointsByWorld.getOrDefault(worldName, 0) + 1);
+                        }
+                    }
+                }
+                
+                sender.sendMessage("§6§l📊 Estadísticas de Waypoints:");
+                sender.sendMessage("  §f• Jugadores con waypoints: §e" + totalPlayers);
+                sender.sendMessage("  §f• Total de waypoints: §e" + totalWaypoints);
+                sender.sendMessage("  §f• Mundos con waypoints: §e" + waypointsByWorld.size());
+                sender.sendMessage("  §f• Persistencia activa: " + (waypointPersistencia ? "§a✓" : "§c✗"));
+                
+                if (totalPlayers > 0) {
+                    double promedio = (double) totalWaypoints / totalPlayers;
+                    sender.sendMessage("  §f• Promedio por jugador: §e" + String.format("%.1f", promedio));
+                    
+                    // Mostrar distribución por mundos
+                    sender.sendMessage("  §f• Waypoints por mundo:");
+                    waypointsByWorld.entrySet().stream()
+                        .sorted((a, b) -> Integer.compare(b.getValue(), a.getValue()))
+                        .forEach(entry -> {
+                            sender.sendMessage("    §7- §e" + entry.getKey() + "§7: §f" + entry.getValue() + " waypoints");
+                        });
+                    
+                    // Top 5 jugadores con más waypoints
+                    sender.sendMessage("  §f• Top jugadores:");
+                    playerWaypoints.entrySet().stream()
+                        .sorted((a, b) -> Integer.compare(b.getValue().size(), a.getValue().size()))
+                        .limit(5)
+                        .forEach(entry -> {
+                            String playerName = Bukkit.getOfflinePlayer(entry.getKey()).getName();
+                            int count = entry.getValue().size();
+                            sender.sendMessage("    §7- §f" + playerName + "§7: §e" + count + " waypoints");
+                        });
+                }
+                return true;
+                
+            case "backup":
+                sender.sendMessage("§e⏳ Creando respaldo...");
+                try {
+                    String timestamp = new java.text.SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+                    File backupDir = new File(plugin.getDataFolder(), "backups");
+                    backupDir.mkdirs();
+                    
+                    File sourceFile = new File(plugin.getDataFolder(), "waypoints.yml");
+                    if (sourceFile.exists()) {
+                        File backupFile = new File(backupDir, "waypoints_" + timestamp + ".yml");
+                        java.nio.file.Files.copy(sourceFile.toPath(), backupFile.toPath());
+                        sender.sendMessage("§a✓ Respaldo creado: " + backupFile.getName());
+                    } else {
+                        sender.sendMessage("§c✗ No existe archivo waypoints.yml para respaldar");
+                    }
+                } catch (Exception e) {
+                    sender.sendMessage("§c✗ Error creando respaldo: " + e.getMessage());
+                }
+                return true;
+                
+            default:
+                sender.sendMessage("§cSubcomando desconocido. Usa §e/wp §cpara ver la ayuda.");
+                return true;
+        }
+    }
+
     // ==================== MERCADER SUPREMO - DESCUENTOS EN TRADES ====================
     
     /**
@@ -1739,6 +2218,160 @@ public class SkillEffectListener implements Listener {
     }
     
     // ==================== VAMPIRISMO - LIFESTEAL Y HEAL ON KILL ====================
+    
+    // ==================== MODIFICADORES DE DAÑO - COMBATE ====================
+    
+    /**
+     * Modifica el daño infligido según habilidades de combate
+     * Habilidades: GOLPE_CERTERO, GUERRERO, EJECUTOR, FURIA, ARQUERO, FRANCOTIRADOR
+     */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onCombatDamage(EntityDamageByEntityEvent event) {
+        if (!(event.getEntity() instanceof LivingEntity)) return;
+        
+        Player attacker = null;
+        boolean isArrow = false;
+        double distance = 0;
+        
+        // Detectar si el daño es de jugador o flecha
+        if (event.getDamager() instanceof Player) {
+            attacker = (Player) event.getDamager();
+        } else if (event.getDamager() instanceof Arrow arrow) {
+            if (arrow.getShooter() instanceof Player) {
+                attacker = (Player) arrow.getShooter();
+                isArrow = true;
+                distance = arrow.getLocation().distance(event.getEntity().getLocation());
+            }
+        }
+        
+        if (attacker == null) return;
+        
+        UUID uuid = attacker.getUniqueId();
+        LivingEntity victim = (LivingEntity) event.getEntity();
+        double baseDamage = event.getDamage();
+        double finalMultiplier = 1.0;
+        
+        // === DAÑO CUERPO A CUERPO ===
+        if (!isArrow) {
+            // GOLPE_CERTERO: +5% daño base
+            if (hasSkillCached(uuid, Skill.GOLPE_CERTERO)) {
+                double level = skillService.getLevelEffect(uuid, Skill.GOLPE_CERTERO);
+                finalMultiplier += level / 100.0; // 5%, 8%, 12%
+                trackSkillUsage(uuid, Skill.GOLPE_CERTERO);
+            }
+            
+            // GUERRERO: +10% daño cuerpo a cuerpo
+            if (hasSkillCached(uuid, Skill.GUERRERO)) {
+                double level = skillService.getLevelEffect(uuid, Skill.GUERRERO);
+                finalMultiplier += level / 100.0; // 10%, 15%, 20%
+                trackSkillUsage(uuid, Skill.GUERRERO);
+            }
+            
+            // EJECUTOR: +25% daño a enemigos <30% vida
+            if (hasSkillCached(uuid, Skill.EJECUTOR)) {
+                double healthPercent = victim.getHealth() / victim.getAttribute(Attribute.MAX_HEALTH).getValue();
+                if (healthPercent < 0.30) {
+                    double level = skillService.getLevelEffect(uuid, Skill.EJECUTOR);
+                    finalMultiplier += level / 100.0; // 25%, 35%, 50%
+                    trackSkillUsage(uuid, Skill.EJECUTOR);
+                    
+                    // Efecto visual de ejecución
+                    victim.getWorld().spawnParticle(Particle.CRIT, 
+                        victim.getLocation().add(0, victim.getHeight() / 2, 0), 
+                        15, 0.3, 0.5, 0.3, 0.1);
+                }
+            }
+            
+            // FURIA: Daño aumenta +1% por cada 1% de vida perdida (toggleable)
+            if (hasSkillCached(uuid, Skill.FURIA) && isSkillEnabledCached(uuid, Skill.FURIA)) {
+                double maxHealth = attacker.getAttribute(Attribute.MAX_HEALTH).getValue();
+                double currentHealth = attacker.getHealth();
+                double healthLostPercent = ((maxHealth - currentHealth) / maxHealth) * 100.0;
+                
+                double level = skillService.getSkillLevel(uuid, Skill.FURIA).getLevel();
+                double furyBonus = healthLostPercent * (level * 0.5); // Lvl1: x1, Lvl2: x1.5, Lvl3: x2
+                finalMultiplier += furyBonus / 100.0;
+                
+                if (furyBonus > 10) { // Solo mostrar si es significativo
+                    trackSkillUsage(uuid, Skill.FURIA);
+                    attacker.getWorld().spawnParticle(Particle.ANGRY_VILLAGER,
+                        attacker.getLocation().add(0, 2, 0), 2, 0.3, 0.3, 0.3, 0);
+                }
+            }
+        }
+        
+        // === DAÑO CON ARCO/BALLESTA ===
+        else {
+            // ARQUERO: +10% daño con arcos
+            if (hasSkillCached(uuid, Skill.ARQUERO)) {
+                double level = skillService.getLevelEffect(uuid, Skill.ARQUERO);
+                finalMultiplier += level / 100.0; // 10%, 15%, 25%
+                trackSkillUsage(uuid, Skill.ARQUERO);
+            }
+            
+            // FRANCOTIRADOR: +20% daño a distancia >15 bloques
+            if (hasSkillCached(uuid, Skill.FRANCOTIRADOR) && distance > 15.0) {
+                double level = skillService.getLevelEffect(uuid, Skill.FRANCOTIRADOR);
+                finalMultiplier += level / 100.0; // 15%, 25%, 35%
+                trackSkillUsage(uuid, Skill.FRANCOTIRADOR);
+                
+                // Efecto visual de disparo lejano
+                victim.getWorld().spawnParticle(Particle.FLAME,
+                    victim.getLocation().add(0, victim.getHeight() / 2, 0),
+                    10, 0.3, 0.5, 0.3, 0.05);
+                attacker.playSound(attacker.getLocation(), Sound.ENTITY_ARROW_HIT_PLAYER, 0.5f, 1.5f);
+            }
+        }
+        
+        // Aplicar multiplicador de daño
+        if (finalMultiplier != 1.0) {
+            event.setDamage(baseDamage * finalMultiplier);
+        }
+    }
+    
+    /**
+     * MULTISHOT: 15% chance de disparar 2 flechas extra
+     */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onMultishot(EntityShootBowEvent event) {
+        if (!(event.getEntity() instanceof Player)) return;
+        
+        Player player = (Player) event.getEntity();
+        UUID uuid = player.getUniqueId();
+        
+        if (!hasSkillCached(uuid, Skill.MULTISHOT)) return;
+        
+        // Obtener chance según nivel
+        double chance = skillService.getLevelEffect(uuid, Skill.MULTISHOT); // 15%, 25%, 35%
+        
+        if (Math.random() * 100 < chance) {
+            Arrow originalArrow = (Arrow) event.getProjectile();
+            
+            // Disparar 2 flechas adicionales con ligero ángulo
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                for (int i = 0; i < 2; i++) {
+                    Arrow extraArrow = player.launchProjectile(Arrow.class);
+                    extraArrow.setVelocity(originalArrow.getVelocity().clone().rotateAroundY(Math.toRadians((i == 0 ? -10 : 10))));
+                    extraArrow.setShooter(player);
+                    extraArrow.setPickupStatus(Arrow.PickupStatus.CREATIVE_ONLY);
+                    
+                    // Nivel 3: Flechas extras causan 100% daño (por defecto serían 50%)
+                    int level = skillService.getSkillLevel(uuid, Skill.MULTISHOT).getLevel();
+                    if (level < 3) {
+                        extraArrow.setDamage(originalArrow.getDamage() * 0.5);
+                    }
+                }
+                
+                // Efectos
+                player.getWorld().spawnParticle(Particle.FIREWORK,
+                    player.getEyeLocation().add(player.getLocation().getDirection().multiply(0.5)),
+                    15, 0.2, 0.2, 0.2, 0.05);
+                player.playSound(player.getLocation(), Sound.ENTITY_ARROW_SHOOT, 0.5f, 0.8f);
+                
+                trackSkillUsage(uuid, Skill.MULTISHOT);
+            }, 1L);
+        }
+    }
     
     /**
      * Aplica lifesteal cuando un jugador daña a una entidad

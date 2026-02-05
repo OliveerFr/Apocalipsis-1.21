@@ -3,18 +3,30 @@
 # ═══════════════════════════════════════════════════════════════════
 ciclo:
   auto_cycle: true                # Si false, NUNCA iniciar automáticamente
-  start_on_boot: false             # No iniciar al encender/reload
+  start_on_boot: true              # ✅ ACTIVADO: Iniciar automáticamente al encender/reload
   min_jugadores: 1                 # No iniciar si < este número online
   respectar_cooldown: true         # Respetar cooldown entre desastres
-  cooldown_fin_segundos: 900       # Segundos de espera tras finalizar un desastre
-  preparacion_inicial_segundos: 900  # Duración de preparación al usar /avo start (15 min default)
+  cooldown_fin_segundos: 900        # ⚡ 1 minuto de cooldown entre desastres (reducido de 15min)
+  preparacion_inicial_segundos: 900  # Duración de preparación al usar /avo start (15 min)
+  
+  # NUEVO: Toggle para usar desastres del Ciclo 2 (nuevos) o Ciclo 1 (originales)
+  usar_desastres_nuevos: true      # true = Ciclo 2 (Tormenta Glacial, etc), false = Ciclo 1 (Huracán, etc)
 
+# ═══════════════════════════════════════════════════════════════════
+# DESASTRES CICLO 1 (ORIGINALES) - Desactivados cuando usar_desastres_nuevos=true
+# ═══════════════════════════════════════════════════════════════════
 desastres:
   weights:
-    huracan: 1
-    lluvia_fuego: 1
-    terremoto: 1
-    # eco_brasas: NO incluir - evento manual único
+    huracan: 0                     # Desactivado - reemplazado por tormenta_glacial
+    lluvia_fuego: 0                # Desactivado - reemplazado por tormenta_electrica  
+    terremoto: 0                   # Desactivado - reemplazado por erupcion_volcanica
+  
+  # NUEVO: Pesos para desastres del Ciclo 2
+  weights_ciclo_2:
+    tormenta_glacial: 1
+    tormenta_electrica: 1
+    erupcion_volcanica: 1
+  
   explosion_power: 1.2
   
   rayos:
@@ -27,7 +39,7 @@ desastres:
     max_por_jugador: 2
   
   huracan:
-    duracion_segundos: 75
+    duracion_segundos: 90
     romper_bloques: false  # [#6] Controla si altera bloques físicamente
     
     # Sistema de fases de intensidad (inicio/pico/declive)
@@ -92,7 +104,7 @@ desastres:
       chance: 0.10
 
   lluvia_fuego:
-    duracion_segundos: 70
+    duracion_segundos: 90
     romper_bloques: true
     prender_fuego: true
     fuego_dura_seg: 8
@@ -156,7 +168,7 @@ desastres:
       chance: 0.25
 
   terremoto:
-    duracion_segundos: 80
+    duracion_segundos: 90
     romper_bloques: true
     # Lista de bloques débiles que puede romper el terremoto
     romper_whitelist: 
@@ -280,6 +292,274 @@ desastres:
       cantidad_bloques: 1         # Romper solo 1 bloque absorbente por evento
       cooldown_ticks: 200         # Cooldown de 10 segundos entre roturas (NUEVO)
       priorizar_bloques_viejos: true  # Romper primero los bloques más antiguos (NUEVO)
+
+  # ❄️ TORMENTA GLACIAL - Reemplazo del Huracán (CICLO 2)
+  tormenta_glacial:
+    duracion_segundos: 90
+    
+    congelacion:
+      enabled: true
+      radio: 3
+      intervalo_ticks: 100  # Cada 5s
+      agua_a_hielo: true
+      bloques_mojados: true
+    
+    hipotermia:
+      enabled: true
+      damage_base: 0.5
+      intervalo_base_ticks: 200  # 10s
+      incremento_acumulativo: 0.25
+      intervalo_incremento_ticks: 600  # 30s
+    
+    rafagas_heladas:
+      enabled: true
+      intervalo_ticks: 400  # 20s
+      slowness_level: 2
+      slowness_duration_ticks: 120  # 6s
+      mining_fatigue_level: 1
+      mining_fatigue_duration_ticks: 80  # 4s
+      multiplicador_intensidad: 2.5
+    
+    cristales_hielo:
+      enabled: true
+      intervalo_ticks: 300  # 15s
+      min_cristales: 3
+      max_cristales: 6
+      damage: 1.0
+      freeze_duration_ticks: 60  # 3s
+    
+    estalactitas:
+      enabled: true
+      advertencia_ticks: 40  # 2s
+      damage_min: 2.0
+      damage_max: 4.0
+      chance_por_jugador: 0.15
+    
+    niebla:
+      enabled: true
+      solo_en_pico: true
+      intervalo_ticks: 800  # 40s
+      duracion_ticks: 100  # 5s
+      particle_count: 300
+    
+    proteccion:
+      zonas_calientes:
+        enabled: true
+        radio_deteccion: 4
+        reduccion_damage: 0.80
+        fuentes:
+          - "CAMPFIRE"
+          - "SOUL_CAMPFIRE"
+          - "LAVA"
+          - "MAGMA_BLOCK"
+          - "FIRE"
+      
+      armadura:
+        cuero_reduccion: 0.30
+        netherite_reduccion: 0.50
+      
+      refugio:
+        techo_reduccion: 0.40
+        paredes_completas_reduccion: 0.60
+    
+    fases:
+      enabled: true
+
+  # ⚡ TORMENTA ELÉCTRICA - Reemplazo de Lluvia de Fuego (CICLO 2)
+  tormenta_electrica:
+    duracion_segundos: 90
+    
+    rayos_dirigidos:
+      enabled: true
+      advertencia_ticks: 60  # 3s
+      damage: 3.0
+      incendiar_bloques: true
+      priorizar_sin_techo: true
+    
+    cadenas_electricas:
+      enabled: true
+      radio_salto: 5
+      max_saltos: 3
+      damage_base: 3.0
+      reduccion_por_salto: 1.0
+    
+    sobrecarga_electrica:
+      enabled: true
+      multiplicador_atraccion: 3.0
+      items_metalicos:
+        - "IRON_HELMET"
+        - "IRON_CHESTPLATE"
+        - "IRON_LEGGINGS"
+        - "IRON_BOOTS"
+        - "GOLDEN_HELMET"
+        - "GOLDEN_CHESTPLATE"
+        - "GOLDEN_LEGGINGS"
+        - "GOLDEN_BOOTS"
+        - "NETHERITE_HELMET"
+        - "NETHERITE_CHESTPLATE"
+        - "NETHERITE_LEGGINGS"
+        - "NETHERITE_BOOTS"
+        - "IRON_SWORD"
+        - "IRON_AXE"
+        - "IRON_PICKAXE"
+    
+    zonas_ionizadas:
+      enabled: true
+      radio: 4
+      duracion_ticks: 300  # 15s
+      damage_por_segundo: 0.5
+      particle_density: 40
+    
+    emp_pulse:
+      enabled: true
+      solo_en_pico: true
+      intervalo_ticks: 900  # 45s
+      radio: 12
+      duracion_ticks: 200  # 10s
+      afecta_elytras: true
+      afecta_riptide: true
+      afecta_crossbows: true
+    
+    cortocircuito:
+      enabled: true
+      radio_desde_rayo: 6
+      duracion_ticks: 160  # 8s
+    
+    proteccion:
+      lightning_rods:
+        enabled: true
+        radio_proteccion: 16
+        prioridad_sobre_jugador: true
+      
+      bloques_aislantes:
+        enabled: true
+        reduccion_probabilidad: 0.70
+        materiales:
+          - "OAK_PLANKS"
+          - "SPRUCE_PLANKS"
+          - "BIRCH_PLANKS"
+          - "JUNGLE_PLANKS"
+          - "ACACIA_PLANKS"
+          - "DARK_OAK_PLANKS"
+          - "CRIMSON_PLANKS"
+          - "WARPED_PLANKS"
+          - "WHITE_WOOL"
+          - "ORANGE_WOOL"
+          - "MAGENTA_WOOL"
+          - "LIGHT_BLUE_WOOL"
+          - "YELLOW_WOOL"
+          - "LIME_WOOL"
+          - "PINK_WOOL"
+          - "GRAY_WOOL"
+          - "LIGHT_GRAY_WOOL"
+          - "CYAN_WOOL"
+          - "PURPLE_WOOL"
+          - "BLUE_WOOL"
+          - "BROWN_WOOL"
+          - "GREEN_WOOL"
+          - "RED_WOOL"
+          - "BLACK_WOOL"
+          - "GLASS"
+      
+      agua_vulnerabilidad:
+        multiplicador_damage: 2.0
+        multiplicador_radio_cadenas: 2.0
+        multiplicador_duracion_zonas: 2.0
+      
+      techo_solido:
+        inmunidad_completa: true
+        altura_minima: 3
+    
+    fases:
+      enabled: true
+
+  # 🌋 ERUPCIÓN VOLCÁNICA - Reemplazo del Terremoto (CICLO 2)
+  erupcion_volcanica:
+    duracion_segundos: 90
+    
+    geiseres_lava:
+      enabled: true
+      altura_min: 6
+      altura_max: 12
+      advertencia_ticks: 50  # 2.5s
+      duracion_ticks: 180  # 9s
+      damage: 2.5
+      aplicar_fire: true
+    
+    rocas_volcanicas:
+      enabled: true
+      min_rocas: 10
+      max_rocas: 15
+      intervalo_ticks: 160  # 8s
+      explosion_power: 1.7
+      radio_fuego: 3
+      material: "MAGMA_BLOCK"
+    
+    grietas_magmaticas:
+      enabled: true
+      longitud_min: 5
+      longitud_max: 9
+      profundidad_min: 2
+      profundidad_max: 4
+      max_activas: 7
+      advertencia_ticks: 40  # 2s
+      lava_permanente: true
+    
+    ceniza_volcanica:
+      enabled: true
+      intervalo_ticks: 500  # 25s
+      radio: 17
+      nausea_level: 2
+      nausea_duration_ticks: 100  # 5s
+      blindness_level: 1
+      blindness_duration_ticks: 80  # 4s
+      particle_count: 650
+    
+    bombas_magma:
+      enabled: true
+      solo_en_pico: true
+      intervalo_ticks: 350  # 17.5s
+      explosion_power: 2.5
+      radio_fuego: 3
+      duracion_fuego_ticks: 400  # 20s
+    
+    temblores_previos:
+      enabled: true
+      duracion_ticks: 100  # 5s
+      intensidad_vibration: 0.15
+    
+    proteccion:
+      bloques_resistentes:
+        enabled: true
+        obsidiana_inmune: true
+        piedra_reduccion: 0.60
+        materiales_resistentes:
+          - "OBSIDIAN"
+          - "CRYING_OBSIDIAN"
+          - "STONE"
+          - "COBBLESTONE"
+          - "DEEPSLATE"
+          - "BLACKSTONE"
+      
+      water_buckets:
+        solidificar_lava: true
+        geiser_rompe_agua_chance: 0.20
+      
+      altura_elevada:
+        altura_minima: 10
+        inmunidad_grietas: true
+        reduccion_damage_rocas: 0.40
+      
+      bloques_hielo:
+        enabled: true
+        radio_efecto: 3
+        reduccion_geiser: 0.50
+        materiales:
+          - "BLUE_ICE"
+          - "PACKED_ICE"
+    
+    fases:
+      enabled: true
 
 common:
   random_damage:

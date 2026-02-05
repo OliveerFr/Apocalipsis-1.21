@@ -1,9 +1,7 @@
 package me.apocalipsis.skills;
 
-import org.bukkit.Material;
-import org.bukkit.entity.EntityType;
-
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Configuración extendida de habilidades.
@@ -44,23 +42,23 @@ public class SkillConfig {
         // ===== UTILIDAD =====
         addLevelEffect("paso_ligero", 10, 15, 20);               // % velocidad
         addLevelEffect("minero_eficiente", 15, 25, 35);          // % velocidad minado
-        addLevelEffect("estomago_hierro", 20, 35, 50);           // % reducción hambre
+        addLevelEffect("organizador", 1, 1, 1);                 // activado/desactivado
         addLevelEffect("lenador_nato", 1, 2, 3);                 // árboles por activación
         addLevelEffect("zancadas", 15, 20, 25);                  // % velocidad + salto [BALANCEADO: era 20/30/40]
         addLevelEffect("toque_fortuna", 8, 12, 15);              // % drop extra [BALANCEADO: era 10/20/30]
-        addLevelEffect("metabolismo_lento", 40, 60, 80);         // % reducción hambre
+        addLevelEffect("reparacion_natural", 1, 2, 3);          // durabilidad cada 10 min
         addLevelEffect("velocista", 25, 30, 35);                 // % velocidad [BALANCEADO: era 30/40/50]
         addLevelEffect("seda_natural", 3, 5, 8);                 // % silk touch [BALANCEADO: era 5/10/15]
-        addLevelEffect("autosuficiente", 0.5, 1.0, 1.5);         // hambre regenerada
+        addLevelEffect("maestro_crafteo", 10, 15, 20);          // % chance doble crafteo
         
         // ===== SUPERVIVENCIA =====
         addLevelEffect("piel_gruesa", 2, 3, 4);                  // corazones extra
         addLevelEffect("caida_suave", 25, 40, 60);               // % reducción caída
-        addLevelEffect("resistencia_fuego", 20, 35, 50);         // % reducción fuego
+        addLevelEffect("pies_calientes", 3, 4, 5);              // segundos sobre lava
         addLevelEffect("nadador", 30, 50, 70);                   // % velocidad nadando
         addLevelEffect("tanque", 3, 5, 7);                       // corazones extra (+piel) [BALANCEADO: era 4/6/8]
         addLevelEffect("pluma", 50, 70, 90);                     // % reducción caída
-        addLevelEffect("ignifugo", 40, 60, 80);                  // % reducción fuego
+        addLevelEffect("escudo_magma", 50, 75, 100);            // % daño reflejado
         addLevelEffect("branquias", 60, 120, 999);               // segundos extra (999=infinito)
         addLevelEffect("regeneracion_pasiva", 0.5, 1.0, 1.5);    // corazones cada 20s
         addLevelEffect("inmortal", 6, 8, 10);                    // corazones extra total [BALANCEADO: era 8/10/14]
@@ -70,12 +68,12 @@ public class SkillConfig {
         
         // ===== COMBATE =====
         addLevelEffect("golpe_certero", 5, 10, 15);              // % daño extra
-        addLevelEffect("reflejos", 10, 15, 20);                  // % velocidad ataque
-        addLevelEffect("piel_escamas", 5, 10, 15);               // % reducción daño
+        addLevelEffect("contraataque", 10, 15, 20);             // % chance contraataque
+        addLevelEffect("armadura_viviente", 25, 40, 50);        // % menos desgaste armadura
         addLevelEffect("arquero", 10, 15, 25);                   // % daño arco
         addLevelEffect("guerrero", 10, 15, 25);                  // % daño melee
         addLevelEffect("furia", 1, 1.5, 2);                      // % daño por % vida perdida
-        addLevelEffect("bloqueo_perfecto", 15, 25, 35);          // % reducción con escudo
+        addLevelEffect("escudo_toxico", 2, 3, 4);               // duración poison segundos
         addLevelEffect("francotirador", 15, 25, 35);             // % daño a distancia [BALANCEADO: era 20/35/50]
         addLevelEffect("ejecutor", 20, 30, 40);                  // % daño a enemigos bajos [BALANCEADO: era 25/40/60]
         addLevelEffect("berserker", 30, 40, 50);                 // % daño cuando bajo vida [BALANCEADO: era 40/60/80]
@@ -84,32 +82,32 @@ public class SkillConfig {
         
         // ===== EXPLORACIÓN =====
         addLevelEffect("vision_nocturna", 1, 1, 1);              // siempre activo
-        addLevelEffect("brujula_interna", 1, 1, 1);              // siempre activo
-        addLevelEffect("rastro_oro", 30, 20, 10);                // cooldown en segundos
-        addLevelEffect("pisadas_silenciosas", 30, 50, 70);       // % menos detección
-        addLevelEffect("telescopio", 2, 4, 8);                   // nivel de zoom
-        addLevelEffect("mapa_mental", 10, 20, 30);               // minutos recordar muerte
-        addLevelEffect("detector_spawners", 20, 35, 50);         // rango en bloques
-        addLevelEffect("sombra", 50, 70, 90);                    // % ignorar mobs
+        addLevelEffect("orientacion", 1, 1, 1);                 // siempre activo
+        addLevelEffect("detector_tesoros", 20, 30, 40);         // % loot extra cofres
+        addLevelEffect("paso_fantasma", 1, 1, 1);               // siempre activo
+        addLevelEffect("vista_aguila", 20, 30, 40);             // bloques extra renderizado
+        addLevelEffect("cartografo", 1, 1, 1);                  // siempre activo
+        addLevelEffect("cazador_dungeons", 30, 50, 70);         // % XP extra dungeons
+        addLevelEffect("camuflaje", 5, 7, 10);                  // segundos invisible
         addLevelEffect("ojo_aguila", 15, 25, 40);                // rango glowing
         addLevelEffect("waypoint", 5, 3, 1);                     // cooldown en minutos
-        addLevelEffect("xray_diamantes", 10, 15, 20);            // rango en bloques
+        addLevelEffect("sentido_mineral", 15, 20, 25);          // bloques rango partículas
         addLevelEffect("fantasma", 10, 15, 20);                  // segundos invisible
         
         // ===== INVOCACIÓN (nuevas) =====
         addLevelEffect("lobo_fiel", 1, 2, 3);                    // número de lobos
-        addLevelEffect("gato_guardian", 1, 1, 2);                // número de gatos
-        addLevelEffect("allay_recolector", 1, 2, 3);             // allays
+        addLevelEffect("zorro_explorador", 1, 2, 3);            // número de zorros
+        addLevelEffect("loro_mensajero", 15, 20, 25);           // rango detección bloques
         addLevelEffect("golem_temporal", 30, 60, 120);           // duración segundos
-        addLevelEffect("enjambre_abejas", 3, 5, 8);              // número de abejas
+        addLevelEffect("enjambre_abejas", 2, 3, 5);              // número de abejas [BALANCEADO: era 3/5/8]
         addLevelEffect("caballo_espectral", 60, 120, 300);       // duración segundos
-        addLevelEffect("ejercito_esqueletos", 2, 4, 6);          // esqueletos
+        addLevelEffect("ejercito_esqueletos", 2, 3, 5);          // esqueletos [BALANCEADO: era 2/4/6]
         addLevelEffect("dragon_mini", 1, 1, 1);                  // siempre 1
         
         // ===== INVOCACIÓN (adicionales) =====
         addLevelEffect("lobo_companero", 1, 1, 2);               // número de lobos
-        addLevelEffect("manada_lobos", 2, 3, 5);                 // número de lobos en manada
-        addLevelEffect("abejas_protectoras", 2, 4, 6);           // número de abejas
+        addLevelEffect("manada_lobos", 2, 3, 4);                 // número de lobos en manada [BALANCEADO: era 2/3/5]
+        addLevelEffect("abejas_protectoras", 2, 3, 5);           // número de abejas [BALANCEADO: era 2/4/6]
         addLevelEffect("golem_protector", 1, 1, 1);              // siempre 1 golem
         addLevelEffect("vex_vengador", 1, 2, 3);                 // número de vex
         addLevelEffect("warden_temporal", 30, 45, 60);           // duración segundos
@@ -123,12 +121,12 @@ public class SkillConfig {
         addLevelEffect("maestro_elemental", 25, 40, 60);         // % resistencia total [BALANCEADO: era 30/50/75]
         
         // ===== SINERGIAS (adicionales) =====
-        addLevelEffect("cazador_experto", 12, 20, 30);           // % daño extra a mobs [BALANCEADO: era 15/25/40]
-        addLevelEffect("minero_guerrero", 20, 30, 40);           // % daño con pico [BALANCEADO: era 25/40/60]
-        addLevelEffect("explorador_ligero", 15, 25, 35);         // % velocidad extra [BALANCEADO: era 20/35/50]
+        addLevelEffect("pescador_maestro", 20, 30, 40);         // % tesoros raros pesca
+        addLevelEffect("herrero_experto", 1, 2, 3);             // nivel extra encantamientos
+        addLevelEffect("aventurero", 30, 50, 70);               // % spawn estructuras
         addLevelEffect("mercader_supremo", 10, 15, 20);          // % descuento trades [BALANCEADO: era 10/20/30]
         addLevelEffect("domador_bestias", 20, 35, 50);           // % daño mascotas
-        addLevelEffect("omnipresente", 50, 75, 100);             // rango teleport
+        addLevelEffect("sabio", 50, 75, 100);                   // % XP extra
         addLevelEffect("avatar_caos", 25, 35, 50);               // % stats totales [BALANCEADO: era 30/50/75]
         
         // ===== ALMACENAMIENTO (adicional) =====

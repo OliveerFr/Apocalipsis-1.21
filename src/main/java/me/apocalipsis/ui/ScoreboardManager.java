@@ -26,22 +26,26 @@ import me.apocalipsis.tutorial.OnboardingManager;
 public class ScoreboardManager {
 
     // ═══════════════════════════════════════════════════════════════════════
-    // CONSTANTES
+    // CONSTANTES - DISEÑO MODERNO
     // ═══════════════════════════════════════════════════════════════════════
-    private static final int PROGRESS_BAR_SIZE = 10;
-    private static final int MAX_MISSION_NAME_LENGTH = 15;
+    private static final int PROGRESS_BAR_SIZE = 12;
+    private static final int MAX_MISSION_NAME_LENGTH = 18;
     private static final int UPDATE_INTERVAL_TICKS = 40; // 2 segundos
-    private static final String SEPARATOR = "§8━━━━━━━━━━━━━";
+    private static final String TOP_SEPARATOR = "§8§l┏━━━━━━━━━━━━━━━┓";
+    private static final String MID_SEPARATOR = "§8§l┣━━━━━━━━━━━━━━━┫";
+    private static final String BOTTOM_SEPARATOR = "§8§l┗━━━━━━━━━━━━━━━┛";
+    private static final String LINE_PREFIX = "§8§l┃ ";
     
-    // Iconos Unicode
+    // Iconos Unicode Modernos
     private static final String ICON_RANK = "⚔";
-    private static final String ICON_LEVEL = "★";
-    private static final String ICON_STATE = "◈";
+    private static final String ICON_LEVEL = "✦";
+    private static final String ICON_STATE = "◆";
     private static final String ICON_DISASTER = "☠";
-    private static final String ICON_TIME = "⏱";
-    private static final String ICON_MISSIONS = "✎";
-    private static final String ICON_ONLINE = "👥";
+    private static final String ICON_TIME = "⌚";
+    private static final String ICON_MISSIONS = "◈";
+    private static final String ICON_ONLINE = "⚙";
     private static final String ICON_EVENT = "✦";
+    private static final String ICON_PROGRESS = "▸";
     
     private final Apocalipsis plugin;
     private final StateManager stateManager;
@@ -135,39 +139,60 @@ public class ScoreboardManager {
     private String generateScoreboardContent(Player player) {
         StringBuilder content = new StringBuilder();
         
-        // [FIX] Sistema de rangos con display_name traducido y scoreboard_color desde rangos.yml
-        int xp = rankService.getXP(player);
+        // Top decorativo
+        content.append(TOP_SEPARATOR).append("\n");
+        
+        // [FIX] Sistema de rangos con display_name traducido
         int ps = missionService.getPlayerPs(player);
         String displayName = rankService.getTranslatedDisplayName(player);
         MissionRank currentRank = rankService.getRank(player);
         
-        // Mostrar rango actual con PS y Nivel
+        // Info del jugador (compacta y elegante)
         if (plugin.getExperienceService() != null) {
             int nivel = plugin.getExperienceService().getLevel(player);
-            content.append("§7").append(ICON_RANK).append(" Rango: ").append(displayName).append(" §8(§e").append(ps).append(" PS §7| §b").append(nivel).append(" Nv§8)\n");
+            int xp = plugin.getExperienceService().getXP(player);
+            content.append(LINE_PREFIX).append("§f").append(ICON_RANK).append(" ").append(displayName);
+            content.append(" §8[§b").append(nivel).append("§8]\n");
+            content.append(LINE_PREFIX).append("§7PS: §e").append(ps).append(" §8| §7Nivel: §b").append(nivel).append("\n");
         } else {
-            content.append("§7").append(ICON_RANK).append(" Rango: ").append(displayName).append(" §8(§e").append(ps).append(" PS§8)\n");
+            content.append(LINE_PREFIX).append("§f").append(ICON_RANK).append(" ").append(displayName).append("\n");
+            content.append(LINE_PREFIX).append("§7PS: §e").append(ps).append("\n");
         }
         
+        content.append(MID_SEPARATOR).append("\n");
+        
+        // Estado del servidor con colores dinámicos
         ServerState state = stateManager.getCurrentState();
+        String stateColor = switch(state) {
+            case ACTIVO -> "§c";
+            case PREPARACION -> "§e";
+            case DETENIDO -> "§7";
+            default -> "§7";
+        };
         String stateDisplay = state.getDisplay();
-        String disasterName = stateManager.getActiveDisasterId() != null 
-            ? stateManager.getActiveDisasterId().toUpperCase().replace("_", " ") 
-            : "§7Ninguno";
         
-        content.append("§7").append(ICON_STATE).append(" Estado: §f").append(stateDisplay).append("\n");
-        content.append("§7").append(ICON_DISASTER).append(" Desastre: §f").append(disasterName).append("\n");
+        content.append(LINE_PREFIX).append("§f").append(ICON_STATE).append(" ").append(stateColor).append(stateDisplay).append("\n");
         
-        // Mostrar evento activo si existe
+        // Desastre activo (solo si hay uno)
+        if (stateManager.getActiveDisasterId() != null) {
+            String disasterName = stateManager.getActiveDisasterId().toUpperCase().replace("_", " ");
+            content.append(LINE_PREFIX).append("§c").append(ICON_DISASTER).append(" §f").append(disasterName).append("\n");
+        }
+        
+        // Evento activo (destacado)
         String activeEvent = getActiveEventDisplay();
         if (activeEvent != null) {
-            content.append("§7").append(ICON_EVENT).append(" Evento: ").append(activeEvent).append("\n");
+            content.append(LINE_PREFIX).append("§6").append(ICON_EVENT).append(" ").append(activeEvent).append("\n");
         }
         
+        // Tiempo (solo en ACTIVO con gradiente visual)
         if (state == ServerState.ACTIVO) {
             String timeMMSS = calculateTimeFromStateYml();
-            content.append("§7").append(ICON_TIME).append(" Tiempo: §a").append(timeMMSS).append("\n");
-        } else if (state == ServerState.PREPARACION) {
+            content.append(LINE_PREFIX).append("§f").append(ICON_TIME).append(" §a").append(timeMMSS).append("\n");
+        }
+        // [DESACTIVADO] No mostrar countdown/cooldown del próximo desastre
+        /*
+        else if (state == ServerState.PREPARACION) {
             boolean prepForzada = stateManager.isPrepForzada();
             
             if (prepForzada) {
@@ -193,34 +218,38 @@ public class ScoreboardManager {
                 content.append("§7").append(ICON_TIME).append(" Cooldown: §e").append(cooldownMMSS).append("\n");
             }
         }
+        */
         
-        content.append(SEPARATOR).append("\n"); // Separador visual
+        content.append(MID_SEPARATOR).append("\n");
         
-        // Progreso de rango (basado en XP según rangos.yml)
+        // Progreso de rango con diseño elegante (usando NIVELES)
         if (!rankService.isMaxRank(player)) {
             MissionRank nextRank = currentRank.getNext();
-            if (nextRank != null) {
-                int currentThreshold = currentRank.getXpRequired();
-                int nextThreshold = nextRank.getXpRequired();
-                int xpNeeded = nextThreshold - currentThreshold;
-                int xpProgress = xp - currentThreshold;
-                double progress = (double) xpProgress / xpNeeded;
+            if (nextRank != null && plugin.getExperienceService() != null) {
+                int currentLevel = plugin.getExperienceService().getLevel(player);
+                int currentLevelRequired = currentRank.getLevelRequired();
+                int nextLevelRequired = nextRank.getLevelRequired();
+                int levelsNeeded = nextLevelRequired - currentLevelRequired;
+                int levelsProgress = currentLevel - currentLevelRequired;
+                double progress = (double) levelsProgress / levelsNeeded;
                 progress = Math.max(0.0, Math.min(1.0, progress));
                 
-                content.append("§7Próx. rango: ").append(nextRank.getDisplayName()).append("\n");
-                content.append(buildProgressBar(progress)).append(" §7").append(xpProgress).append("/").append(xpNeeded).append(" XP\n");
+                content.append(LINE_PREFIX).append("§7").append(ICON_PROGRESS).append(" Siguiente: ").append(nextRank.getDisplayName()).append("\n");
+                content.append(LINE_PREFIX).append(buildProgressBar(progress)).append("\n");
+                content.append(LINE_PREFIX).append("§7Nivel ").append(currentLevel).append("§8/§f").append(nextLevelRequired).append(" §8(").append(String.format("%.0f", progress * 100)).append("%§8)\n");
             }
         } else {
-            content.append("§6§l★ RANGO MÁXIMO ★\n");
+            content.append(LINE_PREFIX).append("§6§l✦ RANGO MÁXIMO ✦\n");
         }
         
-        content.append(SEPARATOR).append("\n"); // Separador visual
+        content.append(MID_SEPARATOR).append("\n");
         
-        // Misiones con sistema de caché (Sprint 3)
+        // Misiones con diseño mejorado
         content.append(getCachedMissionsDisplay(player));
         
-        content.append(SEPARATOR).append("\n"); // Separador visual
-        content.append("§7").append(ICON_ONLINE).append(" Online: §f").append(plugin.getOnlinePlayersCache().getOnlineCount()).append("\n");
+        content.append(MID_SEPARATOR).append("\n");
+        content.append(LINE_PREFIX).append("§f").append(ICON_ONLINE).append(" §7Jugadores: §b").append(plugin.getOnlinePlayersCache().getOnlineCount()).append("\n");
+        content.append(BOTTOM_SEPARATOR).append("\n");
         
         return content.toString();
     }
@@ -241,14 +270,19 @@ public class ScoreboardManager {
             ? stateManager.getActiveDisasterId().toUpperCase().replace("_", " ") 
             : "§7Ninguno";
         
-        objective.getScore("§7Estado: §f" + stateDisplay).setScore(line--);
-        objective.getScore("§7Desastre: §f" + disasterName).setScore(line--);
+        objective.getScore(LINE_PREFIX + "§f" + ICON_STATE + " " + stateDisplay).setScore(line--);
+        if (!disasterName.equals("§7Ninguno")) {
+            objective.getScore(LINE_PREFIX + "§c" + ICON_DISASTER + " §f" + disasterName).setScore(line--);
+        }
         
         if (state == ServerState.ACTIVO) {
             // [FIX] Leer tiempo desde state.yml (cero-drift)
             String timeMMSS = calculateTimeFromStateYml();
             objective.getScore("§7Tiempo: §a" + timeMMSS).setScore(line--);
-        } else if (state == ServerState.PREPARACION) {
+        }
+        // [DESACTIVADO] No mostrar countdown/cooldown del próximo desastre
+        /*
+        else if (state == ServerState.PREPARACION) {
             // Verificar si es preparación forzada
             boolean prepForzada = stateManager.isPrepForzada();
             
@@ -280,72 +314,80 @@ public class ScoreboardManager {
                 objective.getScore("§7Cooldown: §e" + cooldownMMSS).setScore(line--);
             }
         }
+        */
         
         objective.getScore(" ").setScore(line--); // Línea vacía
         
-        // Progreso de rango (solo si no es max rank)
-        if (!rankService.isMaxRank(player)) {
-            int xp = rankService.getXP(player);
+        // Progreso de rango usando NIVELES (solo si no es max rank)
+        if (!rankService.isMaxRank(player) && plugin.getExperienceService() != null) {
+            int currentLevel = plugin.getExperienceService().getLevel(player);
             MissionRank currentRank = rankService.getRank(player);
-            int nextThreshold = rankService.getNextRankThreshold(player);
-            int currentThreshold = currentRank.getXpRequired();
+            int nextLevelRequired = rankService.getNextRankThreshold(player); // Ahora devuelve nivel
+            int currentLevelRequired = currentRank.getLevelRequired();
             double progress = rankService.getProgressToNextRank(player);
             objective.getScore("§7Progreso de rango:").setScore(line--);
             String progressBar = buildProgressBar(progress);
-            objective.getScore(progressBar + " §7" + (xp - currentThreshold) + "/" + (nextThreshold - currentThreshold) + " XP").setScore(line--);
+            objective.getScore(progressBar + " §7Nivel " + currentLevel + "/" + nextLevelRequired).setScore(line--);
         } else {
             objective.getScore("§6§l★ RANGO MÁXIMO ★").setScore(line--);
         }
         
-        objective.getScore("  ").setScore(line--); // Línea vacía
+        objective.getScore(MID_SEPARATOR).setScore(line--);
         
-        // Misiones - [FIX] Mostrar solo incompletas, máximo 3
-        objective.getScore("§e§lMisiones:").setScore(line--);
+        // Misiones - diseño mejorado
+        objective.getScore(LINE_PREFIX + "§f" + ICON_MISSIONS + " §e§lMISIONES").setScore(line--);
         
         var assignments = missionService.getActiveAssignments(player);
         
         // Filtrar solo incompletas y tipos habilitados
         var incompletas = assignments.stream()
             .filter(a -> !a.isCompleted() && !a.isFailed())
-            .filter(a -> a.getMission().getTipo().isEnabled())  // [REMOVAL] Excluir tipos deshabilitados
-            .limit(3) // Máximo 3 visibles
+            .filter(a -> a.getMission().getTipo().isEnabled())
+            .limit(3)
             .toList();
         
         if (incompletas.isEmpty()) {
-            objective.getScore("§a§lTodas completadas ✓").setScore(line--);
+            objective.getScore(LINE_PREFIX + "§a§l✓ Todas completadas").setScore(line--);
         } else {
             for (var assignment : incompletas) {
                 String alias = assignment.getMission().getNombre();
-                if (alias.length() > 18) alias = alias.substring(0, 15) + "...";
-                objective.getScore("§7• §f" + alias + " §8(" + assignment.getProgress() + "/" + assignment.getMission().getCantidad() + ")").setScore(line--);
+                if (alias.length() > MAX_MISSION_NAME_LENGTH) alias = alias.substring(0, MAX_MISSION_NAME_LENGTH - 3) + "...";
+                objective.getScore(LINE_PREFIX + "§7▸ §f" + alias).setScore(line--);
+                objective.getScore(LINE_PREFIX + "  §8[§7" + assignment.getProgress() + "§8/§f" + assignment.getMission().getCantidad() + "§8]").setScore(line--);
             }
         }
         
         int completed = missionService.getCompletedCount(player);
         int total = assignments.size();
-        objective.getScore("§7Completadas: §a" + completed + "§7/§f" + total).setScore(line--);
+        objective.getScore(LINE_PREFIX + "§7Total: §a" + completed + "§8/§f" + total).setScore(line--);
         
-        objective.getScore("   ").setScore(line--); // Línea vacía
-        objective.getScore("§7Online: §f" + plugin.getOnlinePlayersCache().getOnlineCount()).setScore(line--);
+        objective.getScore(MID_SEPARATOR).setScore(line--);
+        objective.getScore(LINE_PREFIX + "§f" + ICON_ONLINE + " §7Jugadores: §b" + plugin.getOnlinePlayersCache().getOnlineCount()).setScore(line--);
+        objective.getScore(BOTTOM_SEPARATOR).setScore(line--);
     }
 
     private String buildProgressBar(double progress) {
         int filled = (int) Math.max(0, Math.min(PROGRESS_BAR_SIZE, progress * PROGRESS_BAR_SIZE));
         
-        // Colores dinámicos según progreso
-        String fillColor = progress >= 0.75 ? "§a" : (progress >= 0.50 ? "§e" : (progress >= 0.25 ? "§6" : "§c"));
+        // Gradiente de colores según progreso (más suave)
+        String fillColor;
+        if (progress >= 0.85) fillColor = "§a§l";      // Verde brillante
+        else if (progress >= 0.65) fillColor = "§2";   // Verde
+        else if (progress >= 0.45) fillColor = "§e";   // Amarillo
+        else if (progress >= 0.25) fillColor = "§6";   // Naranja
+        else fillColor = "§c";                          // Rojo
         
-        StringBuilder sb = new StringBuilder(32); // Pre-allocate capacity
-        sb.append("§8[");
+        StringBuilder sb = new StringBuilder(40);
+        sb.append("§8[§r");
         
-        // Usar append múltiple para mejor performance
+        // Barra con símbolos mejorados
         if (filled > 0) {
             sb.append(fillColor);
-            for (int i = 0; i < filled; i++) sb.append('█');
+            for (int i = 0; i < filled; i++) sb.append('■');
         }
         if (filled < PROGRESS_BAR_SIZE) {
-            sb.append("§7");
-            for (int i = filled; i < PROGRESS_BAR_SIZE; i++) sb.append('█');
+            sb.append("§8");
+            for (int i = filled; i < PROGRESS_BAR_SIZE; i++) sb.append('□');
         }
         
         sb.append("§8]");
@@ -457,7 +499,7 @@ public class ScoreboardManager {
             
             // Solo mostrar misiones globales si NO está en tutorial
             if (!isInTutorial) {
-                missionContent.append("§7").append(ICON_MISSIONS).append(" §e§lMisiones:\n");
+                missionContent.append(LINE_PREFIX).append("§f").append(ICON_MISSIONS).append(" §e§lMISIONES\n");
                 
                 var assignments = missionService.getActiveAssignments(player);
                 var incompletas = assignments.stream()
@@ -467,22 +509,23 @@ public class ScoreboardManager {
                     .toList();
                 
                 if (incompletas.isEmpty()) {
-                    missionContent.append("§a§lTodas completadas ✓\n");
+                    missionContent.append(LINE_PREFIX).append("§a§l✓ Todas completadas\n");
                 } else {
                     for (var assignment : incompletas) {
                         String alias = assignment.getMission().getNombre();
                         if (alias.length() > MAX_MISSION_NAME_LENGTH) {
-                            alias = alias.substring(0, MAX_MISSION_NAME_LENGTH) + "...";
+                            alias = alias.substring(0, MAX_MISSION_NAME_LENGTH - 3) + "...";
                         }
-                        missionContent.append("§7• §f").append(alias).append(" §8(")
-                            .append(assignment.getProgress()).append("/")
-                            .append(assignment.getMission().getCantidad()).append(")\n");
+                        missionContent.append(LINE_PREFIX).append("§7▸ §f").append(alias).append("\n");
+                        missionContent.append(LINE_PREFIX).append("  §8[§7")
+                            .append(assignment.getProgress()).append("§8/§f")
+                            .append(assignment.getMission().getCantidad()).append("§8]\n");
                     }
                 }
                 
                 int completed = missionService.getCompletedCount(player);
                 int total = assignments.size();
-                missionContent.append("§7Completadas: §a").append(completed).append("§7/§f").append(total).append("\n");
+                missionContent.append(LINE_PREFIX).append("§7Total: §a").append(completed).append("§8/§f").append(total).append("\n");
             }
             
             // Guardar en caché

@@ -13,7 +13,8 @@ import org.bukkit.inventory.meta.ItemMeta;
 import me.apocalipsis.Apocalipsis;
 
 /**
- * Protege los tokens y fragmentos de stream para que solo se usen en el sistema de canje
+ * Protege los tokens y fragmentos de stream (legacy) para que solo se usen en el sistema de canje
+ * NOTA: Los tokens y fragmentos ahora van directamente a la base de datos, esta protección es solo para items legacy
  * Bloquea: crafting, anvil, grindstone, smithing, brewing, drop intencional
  */
 public class TokenProtectionListener implements Listener {
@@ -25,7 +26,8 @@ public class TokenProtectionListener implements Listener {
     }
     
     /**
-     * Verifica si un item es un token o fragmento de stream
+     * Verifica si un item es un token o fragmento de stream (legacy)
+     * NOTA: Los nuevos tokens/fragmentos van directamente a la DB, esto es solo para items viejos que aún existan
      */
     private boolean isStreamItem(ItemStack item) {
         if (item == null || !item.hasItemMeta()) return false;
