@@ -1,7 +1,13 @@
 package me.apocalipsis.skills;
 
-import me.apocalipsis.Apocalipsis;
-import me.apocalipsis.missions.MissionRank;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Sound;
@@ -16,8 +22,8 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 
-import java.util.*;
-import java.util.Arrays;
+import me.apocalipsis.Apocalipsis;
+import me.apocalipsis.missions.MissionRank;
 
 /**
  * GUI del árbol de habilidades con menú principal.
@@ -1331,6 +1337,13 @@ public class SkillTreeGUI implements Listener {
     }
     
     private void handleSkillClick(Player player, Skill skill, SkillBranch branch, boolean isShiftClick) {
+        // [FIX] Verificar si la skill está habilitada antes de permitir cualquier acción
+        if (!skill.isEnabled()) {
+            player.sendMessage("§c§l✗ §cEsta habilidad está temporalmente deshabilitada.");
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 0.7f, 1.0f);
+            return;
+        }
+        
         boolean owned = skillService.hasSkill(player, skill);
         boolean meetsReqs = skillService.meetsRequirements(player, skill);
         
@@ -1405,6 +1418,10 @@ public class SkillTreeGUI implements Listener {
                 }
                 case MISSING_REQUIREMENTS -> {
                     player.sendMessage("§c§l✗ §cNo cumples los requisitos.");
+                    player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 0.7f, 1.0f);
+                }
+                case DISABLED -> {
+                    player.sendMessage("§c§l✗ §cEsta habilidad está temporalmente deshabilitada.");
                     player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 0.7f, 1.0f);
                 }
                 default -> {

@@ -517,7 +517,8 @@ public class SkillService {
         MISSING_REQUIREMENTS,
         NOT_ENOUGH_XP,
         WOULD_DROP_TOO_LOW,
-        DURING_DISASTER
+        DURING_DISASTER,
+        DISABLED
     }
     
     /**
@@ -530,6 +531,12 @@ public class SkillService {
         plugin.getLogger().info("[SkillService] purchaseSkill called - Player: " + player.getName() + 
             " | World: " + player.getWorld().getName() + 
             " | Skill: " + skill.name());
+        
+        // [FIX] Verificar si la skill está habilitada
+        if (!skill.isEnabled()) {
+            plugin.getLogger().warning("[SkillService] Attempted to purchase disabled skill: " + skill.name());
+            return PurchaseResult.DISABLED;
+        }
         
         // [FIX CRÍTICO] Refrescar datos del jugador desde el mundo actual
         // Esto asegura que estamos leyendo la XP correcta del mundo donde está el jugador
@@ -583,8 +590,16 @@ public class SkillService {
         
         // Añadir habilidad
         PlayerSkillData data = getData(uuid);
+        
+        // [DEBUG] Log antes de añadir
+        plugin.getLogger().info("[SkillService] Pre-purchase - Skills count: " + data.getSkills().size());
+        
         data.addSkill(skill);
         data.addXpGastada(cost);
+        
+        // [DEBUG] Log después de añadir
+        plugin.getLogger().info("[SkillService] Post-purchase - Skills count: " + data.getSkills().size() + 
+            " | Has skill: " + data.hasSkill(skill));
         
         // Aplicar efectos
         applySkillEffects(player);
@@ -597,6 +612,11 @@ public class SkillService {
             String worldName = player.getWorld().getName();
             var dataManager = plugin.getCicloManager().getDataManager();
             var updatedData = dataManager.captureCurrentState(uuid);
+            
+            // [DEBUG] Verificar que la skill está en los datos capturados
+            plugin.getLogger().info("[SkillService] Captured skills: " + updatedData.getSkillsDesbloqueadas().size() + 
+                " | Contains " + skill.name() + ": " + updatedData.getSkillsDesbloqueadas().contains(skill.name()));
+            
             dataManager.savePlayerData(uuid, worldName, updatedData);
             dataManager.saveData();
             
