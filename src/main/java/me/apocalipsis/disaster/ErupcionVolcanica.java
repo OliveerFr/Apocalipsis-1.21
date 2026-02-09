@@ -96,6 +96,8 @@ public class ErupcionVolcanica extends DisasterBase {
     private BukkitRunnable grietasTask;
     private BukkitRunnable cenizaTask;
     private BukkitRunnable bombasTask;
+    private BukkitRunnable sonidosTask;
+    private BukkitRunnable meteorosTask;
     
     // Fases
     private boolean fasesEnabled;
@@ -330,6 +332,9 @@ public class ErupcionVolcanica extends DisasterBase {
         lavaColocada.clear();
         faseMultiplicador = 1.0;
         
+        // Efectos climáticos globales
+        aplicarEfectosClimaticos(1); // Fase inicial
+        
         // Anuncios
         messageBus.broadcast("§8§m                                                    ", "disaster");
         messageBus.broadcast("§c§l      🌋 ERUPCIÓN VOLCÁNICA 🌋", "disaster");
@@ -347,6 +352,8 @@ public class ErupcionVolcanica extends DisasterBase {
         if (grietasEnabled) startGrietas();
         if (cenizaEnabled) startCeniza();
         if (bombasEnabled) startBombas();
+        startSonidosAmbientales();
+        startMeteoros();
         
         plugin.getLogger().info("[ErupcionVolcanica] Desastre iniciado");
     }
@@ -355,6 +362,15 @@ public class ErupcionVolcanica extends DisasterBase {
     protected void onTick() {
         // Actualizar multiplicador de fase
         if (fasesEnabled) {
+            double progreso = (double) tickCounter / maxTicks;
+            int faseAnterior = getFaseActual(progreso - 0.01);
+            int faseActual = getFaseActual(progreso);
+            
+            // Actualizar efectos climáticos cuando cambia fase
+            if (faseAnterior != faseActual) {
+                aplicarEfectosClimaticos(faseActual);
+            }
+            
             actualizarFase();
         }
         
@@ -388,6 +404,22 @@ public class ErupcionVolcanica extends DisasterBase {
         if (bombasTask != null) {
             bombasTask.cancel();
             bombasTask = null;
+        }
+        if (sonidosTask != null) {
+            sonidosTask.cancel();
+            sonidosTask = null;
+        }
+        if (meteorosTask != null) {
+            meteorosTask.cancel();
+            meteorosTask = null;
+        }
+        
+        // Restaurar clima normal
+        for (World world : Bukkit.getWorlds()) {
+            if (world.getEnvironment() == World.Environment.NORMAL) {
+                world.setStorm(false);
+                world.setThundering(false);
+            }
         }
         
         // Limpiar entities
@@ -474,24 +506,112 @@ public class ErupcionVolcanica extends DisasterBase {
     
     private void actualizarFase() {
         double progreso = (double) tickCounter / maxTicks;
+        int faseAnterior = getFaseActual(progreso - 0.01);
+        int faseActual = getFaseActual(progreso);
         
-        if (progreso < 0.30) {
-            // INICIO
+        // Aplicar multiplicador de fase
+        if (progreso < 0.15) {
+            // FASE 1: INICIO - Temblores iniciales (mantener base)
             faseMultiplicador = 0.7;
-        } else if (progreso < 0.70) {
-            // PICO
-            faseMultiplicador = 1.5;
+        } else if (progreso < 0.35) {
+            // FASE 2: ACTIVACIÓN - La tierra se agrieta
+            faseMultiplicador = 1.3;
+        } else if (progreso < 0.60) {
+            // FASE 3: ERUPCIÓN - Lava y rocas masivas
+            faseMultiplicador = 2.2;
+        } else if (progreso < 0.75) {
+            // FASE 4: CATACLISMO - ¡ESTALLIDO VOLCÁNICO TOTAL!
+            faseMultiplicador = 3.5;
         } else {
-            // DECLIVE
-            faseMultiplicador = 0.9;
+            // FASE 5: DECLIVE - La tierra se calma
+            faseMultiplicador = 1.0;
         }
+        
+        // Transición de fase - efectos cinematográficos
+        if (faseActual != faseAnterior && faseActual >= 2) {
+            activarEfectoTransicionFase(faseActual);
+        }
+    }
+    
+    /**
+     * Activa efectos volcánicos cinematográficos dramáticos al subir de fase
+     */
+    private void activarEfectoTransicionFase(int fase) {
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (isPlayerExempt(p)) continue;
+            
+            switch (fase) {
+                case 2: // ACTIVACIÓN
+                    p.sendTitle("§6§l🌋 ACTIVACIÓN", "§eLa tierra §cse agrieta", 10, 40, 10);
+                    p.playSound(p.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 1.5f, 0.5f);
+                    p.spawnParticle(Particle.LAVA, p.getLocation(), 100, 5, 2, 5, 0);
+                    p.spawnParticle(Particle.FLAME, p.getLocation(), 200, 5, 3, 5, 0.1);
+                    break;
+                    
+                case 3: // ERUPCIÓN
+                    p.sendTitle("§c§l🌋§l PELIGRO", "§6§lERUPCIÓN §c§lINTENSA", 10, 60, 10);
+                    p.playSound(p.getLocation(), Sound.ENTITY_WITHER_SPAWN, 1.5f, 0.6f);
+                    p.playSound(p.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 2.0f, 0.5f);
+                    p.spawnParticle(Particle.LAVA, p.getLocation(), 300, 8, 4, 8, 0);
+                    p.spawnParticle(Particle.EXPLOSION, p.getLocation(), 30, 6, 3, 6, 0);
+                    p.spawnParticle(Particle.FLAME, p.getLocation(), 400, 8, 5, 8, 0.2);
+                    break;
+                    
+                case 4: // CATACLISMO
+                    p.sendTitle("§4§l§k!!!§r §4§l¡CATACLISMO VOLCÁNICO!§r §4§l§k!!!", "§c§lHUYE DE LA LAVA §6§lYA", 10, 80, 15);
+                    p.playSound(p.getLocation(), Sound.ENTITY_WITHER_SPAWN, 2.0f, 0.4f);
+                    p.playSound(p.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 2.0f, 0.5f);
+                    p.playSound(p.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 2.0f, 0.4f);
+                    // Shake masivo con explosiones
+                    for (int i = 0; i < 6; i++) {
+                        int finalI = i;
+                        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                            p.spawnParticle(Particle.LAVA, p.getLocation(), 600, 12, 8, 12, 0);
+                            p.spawnParticle(Particle.FLAME, p.getLocation(), 800, 12, 8, 12, 0.3);
+                            p.spawnParticle(Particle.EXPLOSION, p.getLocation(), 50, 8, 5, 8, 0);
+                            p.spawnParticle(Particle.SMOKE, p.getLocation(), 400, 10, 6, 10, 0.2);
+                            p.playSound(p.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 1.5f, 0.7f);
+                        }, i * 5L);
+                    }
+                    break;
+                    
+                case 5: // DECLIVE
+                    p.sendTitle("§7🌋 La tierra se calma", "§ePero aún §chardé lava", 10, 40, 10);
+                    p.playSound(p.getLocation(), Sound.BLOCK_BEACON_DEACTIVATE, 1.0f, 0.7f);
+                    break;
+            }
+        }
+        
+        // Broadcast global
+        String mensajeFase = getMensajeFase(fase);
+        messageBus.broadcast(mensajeFase, "disaster_phase");
+    }
+    
+    private String getMensajeFase(int fase) {
+        switch (fase) {
+            case 2: return "§6§l🌋 §eActividad volcánica §cse intensifica";
+            case 3: return "§c§l🌋§l ERUPCIÓN INTENSA §8- §6Evita la §clava";
+            case 4: return "§4§l🌋§l§l ¡CATACLISMO VOLCÁNICO! §8- §c§lPELIGRO EXTREMO";
+            case 5: return "§7🌋 La erupción §ccomienza a cesar";
+            default: return "";
+        }
+    }
+    
+    private int getFaseActual(double progreso) {
+        if (progreso < 0.15) return 1;
+        else if (progreso < 0.35) return 2;
+        else if (progreso < 0.60) return 3;
+        else if (progreso < 0.75) return 4;
+        else return 5;
     }
     
     private String getCurrentPhaseString() {
         double progreso = (double) tickCounter / maxTicks;
         
-        if (progreso < 0.30) return "INICIO";
-        else if (progreso < 0.70) return "PICO";
+        if (progreso < 0.15) return "INICIO";
+        else if (progreso < 0.35) return "ACTIVACION";
+        else if (progreso < 0.60) return "PICO";
+        else if (progreso < 0.75) return "CATACLISMO";
         else return "DECLIVE";
     }
     
@@ -520,7 +640,9 @@ public class ErupcionVolcanica extends DisasterBase {
     private int getCantidadGeiseresPorFase(String phase) {
         switch (phase) {
             case "INICIO": return 1;
-            case "PICO": return 5;
+            case "ACTIVACION": return 3;
+            case "PICO": return 7; // Aumentado de 5 a 7
+            case "CATACLISMO": return 12; // FASE CRÍTICA - GÉISERES MASIVOS
             case "DECLIVE": return 2;
             default: return 1;
         }
@@ -530,7 +652,9 @@ public class ErupcionVolcanica extends DisasterBase {
         String phase = getCurrentPhaseString();
         switch (phase) {
             case "INICIO": return 400L; // 20s
-            case "PICO": return 200L;   // 10s
+            case "ACTIVACION": return 250L; // 12.5s
+            case "PICO": return 140L;   // 7s - MÁS FRECUENTES
+            case "CATACLISMO": return 60L; // 3s - CONSTANTES
             case "DECLIVE": return 360L; // 18s
             default: return 300L;
         }
@@ -1184,5 +1308,190 @@ public class ErupcionVolcanica extends DisasterBase {
                 }
             }
         }.runTaskTimer(plugin, 0L, 2L);
+    }
+    
+    /**
+     * Verifica si un FallingBlock es una roca activa de este desastre.
+     * Usado por DisasterFallingBlockListener para evitar que dejen bloques.
+     */
+    public boolean isRocaActiva(FallingBlock fb) {
+        return rocasActivas.contains(fb);
+    }
+    
+    /**
+     * Aplica efectos climáticos globales según la fase
+     */
+    private void aplicarEfectosClimaticos(int faseNumero) {
+        for (World world : Bukkit.getWorlds()) {
+            if (world.getEnvironment() == World.Environment.NORMAL) {
+                // Ceniza volcánica = Weather oscuro
+                world.setStorm(true);
+                world.setThundering(faseNumero >= 4); // Fase CRÍTICO
+                world.setWeatherDuration(Integer.MAX_VALUE);
+                
+                // Oscurecer cielo en fases intensas
+                if (faseNumero >= 3) { // PICO y CRÍTICO
+                    world.setTime(18000); // Medianoche - ceniza bloquea el sol
+                }
+            }
+        }
+    }
+    
+    /**
+     * Inicia sonidos ambientales de volcán
+     */
+    private void startSonidosAmbientales() {
+        sonidosTask = new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (!isActive()) {
+                    cancel();
+                    return;
+                }
+                
+                double progreso = (double) tickCounter / maxTicks;
+                int faseNum = getFaseActual(progreso);
+                String fase = getFaseString(faseNum);
+                
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    if (isPlayerExempt(p)) continue;
+                    
+                    // Rumble volcánico constante
+                    p.playSound(p.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 0.3f, 0.5f);
+                    
+                    // Sonidos según fase
+                    switch (fase) {
+                        case "ESCALADA":
+                        case "PICO":
+                            p.playSound(p.getLocation(), Sound.BLOCK_LAVA_POP, 0.5f, 0.8f);
+                            p.playSound(p.getLocation(), Sound.BLOCK_FIRE_AMBIENT, 0.4f, 0.9f);
+                            break;
+                        case "CRITICO":
+                            p.playSound(p.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 0.3f, 0.7f);
+                            p.playSound(p.getLocation(), Sound.ENTITY_BLAZE_SHOOT, 0.5f, 0.6f);
+                            break;
+                    }
+                }
+            }
+        };
+        sonidosTask.runTaskTimer(plugin, 40L, 80L); // Cada 4 segundos
+    }
+    
+    /**
+     * Inicia lluvia de meteoros incandescentes en fases intensas
+     */
+    private void startMeteoros() {
+        meteorosTask = new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (!isActive()) {
+                    cancel();
+                    return;
+                }
+                
+                double progreso = (double) tickCounter / maxTicks;
+                int faseNum = getFaseActual(progreso);
+                String fase = getFaseString(faseNum);
+                
+                // Meteoros solo en fase CRÍTICO
+                if (!fase.equals("CRITICO")) {
+                    return;
+                }
+                
+                List<Player> jugadores = new ArrayList<>();
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    if (!isPlayerExempt(p)) {
+                        jugadores.add(p);
+                    }
+                }
+                
+                if (jugadores.isEmpty()) return;
+                
+                // Lanzar 2-4 meteoros masivos
+                int cantidad = 2 + random.nextInt(3);
+                
+                for (int i = 0; i < cantidad; i++) {
+                    Player target = jugadores.get(random.nextInt(jugadores.size()));
+                    Location spawn = target.getLocation().add(
+                        random.nextDouble() * 20 - 10,
+                        30 + random.nextDouble() * 15,
+                        random.nextDouble() * 20 - 10
+                    );
+                    
+                    // Advertencia masiva
+                    spawn.getWorld().playSound(spawn, Sound.ENTITY_GHAST_SCREAM, 2.0f, 0.5f);
+                    
+                    // Meteoro de NETHERRACK incandescente
+                    FallingBlock meteoro = spawn.getWorld().spawnFallingBlock(spawn, Material.NETHERRACK.createBlockData());
+                    meteoro.setDropItem(false);
+                    meteoro.setHurtEntities(true);
+                    meteoro.setGlowing(true);
+                    rocasActivas.add(meteoro);
+                    
+                    // Estela de fuego masiva
+                    new BukkitRunnable() {
+                        int ticks = 0;
+                        @Override
+                        public void run() {
+                            if (!meteoro.isValid() || ticks++ > 120) {
+                                // IMPACTO EXPLOSIVO
+                                if (meteoro.isValid()) {
+                                    Location impacto = meteoro.getLocation();
+                                    impacto.getWorld().createExplosion(impacto, 4.0f, true, false);
+                                    impacto.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, impacto, 3);
+                                    
+                                    // Ondas de choque
+                                    for (int r = 1; r <= 5; r++) {
+                                        final int radio = r;
+                                        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                                            for (double angle = 0; angle < 2 * Math.PI; angle += Math.PI / 8) {
+                                                Location particleLoc = impacto.clone().add(
+                                                    Math.cos(angle) * radio,
+                                                    0.5,
+                                                    Math.sin(angle) * radio
+                                                );
+                                                impacto.getWorld().spawnParticle(Particle.FLAME, particleLoc, 5, 0.2, 0.2, 0.2, 0.1);
+                                                impacto.getWorld().spawnParticle(Particle.LAVA, particleLoc, 2);
+                                            }
+                                        }, r * 3L);
+                                    }
+                                }
+                                cancel();
+                                return;
+                            }
+                            
+                            Location loc = meteoro.getLocation();
+                            // Estela de fuego masiva
+                            loc.getWorld().spawnParticle(Particle.FLAME, loc, 20, 0.5, 0.5, 0.5, 0.05);
+                            loc.getWorld().spawnParticle(Particle.LAVA, loc, 10, 0.3, 0.3, 0.3, 0);
+                            loc.getWorld().spawnParticle(Particle.SMOKE, loc, 15, 0.4, 0.4, 0.4, 0.02);
+                            loc.getWorld().spawnParticle(Particle.DRIPPING_LAVA, loc, 5);
+                        }
+                    }.runTaskTimer(plugin, 0L, 1L);
+                    
+                    // Título de advertencia
+                    for (Player p : jugadores) {
+                        if (p.getLocation().distance(spawn) < 30) {
+                            p.sendTitle("§c§l☂️ METEORO", "§6§l¡BUSCA COBERTURA!", 10, 30, 10);
+                        }
+                    }
+                }
+            }
+        };
+        meteorosTask.runTaskTimer(plugin, 200L, 150L); // Cada 7.5 segundos
+    }
+    
+    /**
+     * Convierte el número de fase a su nombre String
+     */
+    private String getFaseString(int faseNum) {
+        switch (faseNum) {
+            case 1: return "INICIO";
+            case 2: return "ESCALADA";
+            case 3: return "PICO";
+            case 4: return "CRITICO";
+            case 5: return "DECLIVE";
+            default: return "INICIO";
+        }
     }
 }

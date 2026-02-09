@@ -384,7 +384,7 @@ public enum Skill {
         6000, Material.TOTEM_OF_UNDYING, false, new String[]{"tanque", "regeneracion_pasiva", "berserker"}),
     
     MERCADER_SUPREMO("mercader_supremo", "Mercader Supremo",
-        "Villagers dan 50% descuento + trades infinitos",
+        "10%/15%/20% descuento en trades + usos infinitos",
         SkillBranch.SINERGIAS, SkillTier.TIER_3, SkillRarity.EPICO,
         4500, Material.EMERALD_BLOCK, false, new String[]{"toque_fortuna", "auto_recoleccion"}),
     

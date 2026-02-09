@@ -275,7 +275,11 @@ public class DynamicXPManager {
         }
         
         // ═══ VERIFICACIÓN DE SEGURIDAD ANTI-AUTOCLICK ═══
-        if (securityManager != null) {
+        // EXCEPCIÓN: Los trades con aldeanos NO pasan por anticlicker
+        // Razón: Stock limitado, cooldowns naturales, clics rápidos son legítimos (shift+click)
+        boolean isTrading = (source == XPSource.TRADE || source == XPSource.TRADE_RARE);
+        
+        if (securityManager != null && !isTrading) {
             // Determinar tipo de acción según la fuente de XP
             AntiFarmSecurityManager.ActionType actionType = isMiningSource(source) ? 
                 AntiFarmSecurityManager.ActionType.MINING : 

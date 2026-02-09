@@ -85,6 +85,8 @@ public class TormentaGlacial extends DisasterBase {
     private BukkitRunnable cristalesTask;
     private BukkitRunnable estalactitasTask;
     private BukkitRunnable nieblaTask;
+    private BukkitRunnable sonidosTask;
+    private BukkitRunnable ventiscaTask;
     
     // Fases
     private boolean fasesEnabled;
@@ -298,6 +300,9 @@ public class TormentaGlacial extends DisasterBase {
         bloquesCambiados.clear();
         faseMultiplicador = 1.0;
         
+        // Efectos climáticos globales
+        aplicarEfectosClimaticos(1); // Fase inicial
+        
         // Anuncios
         messageBus.broadcast("§8§m                                                    ", "disaster");
         messageBus.broadcast("§b§l      ❄️ TORMENTA GLACIAL ❄️", "disaster");
@@ -316,6 +321,8 @@ public class TormentaGlacial extends DisasterBase {
         if (cristalesEnabled) startCristales();
         if (estalactitasEnabled) startEstalactitas();
         if (nieblaEnabled) startNiebla();
+        startSonidosAmbientales();
+        startVentisca();
         
         plugin.getLogger().info("[TormentaGlacial] Desastre iniciado");
     }
@@ -324,6 +331,15 @@ public class TormentaGlacial extends DisasterBase {
     protected void onTick() {
         // Actualizar multiplicador de fase
         if (fasesEnabled) {
+            double progreso = (double) tickCounter / maxTicks;
+            int faseAnterior = getFaseActual(progreso - 0.01);
+            int faseActual = getFaseActual(progreso);
+            
+            // Actualizar efectos climáticos cuando cambia fase
+            if (faseAnterior != faseActual) {
+                aplicarEfectosClimaticos(faseActual);
+            }
+            
             actualizarFase();
         }
         
@@ -358,6 +374,22 @@ public class TormentaGlacial extends DisasterBase {
         if (nieblaTask != null) {
             nieblaTask.cancel();
             nieblaTask = null;
+        }
+        if (sonidosTask != null) {
+            sonidosTask.cancel();
+            sonidosTask = null;
+        }
+        if (ventiscaTask != null) {
+            ventiscaTask.cancel();
+            ventiscaTask = null;
+        }
+        
+        // Restaurar clima normal
+        for (World world : Bukkit.getWorlds()) {
+            if (world.getEnvironment() == World.Environment.NORMAL) {
+                world.setStorm(false);
+                world.setThundering(false);
+            }
         }
         
         // Limpiar entities
@@ -423,24 +455,108 @@ public class TormentaGlacial extends DisasterBase {
     
     private void actualizarFase() {
         double progreso = (double) tickCounter / maxTicks;
+        int faseAnterior = getFaseActual(progreso - 0.01);
+        int faseActual = getFaseActual(progreso);
         
-        if (progreso < 0.25) {
-            // INICIO
+        // Aplicar multiplicador de fase
+        if (progreso < 0.15) {
+            // FASE 1: INICIO - Frío Suave (mantener base)
             faseMultiplicador = 0.7;
+        } else if (progreso < 0.35) {
+            // FASE 2: ESCALADA - Temperatura cae rápidamente
+            faseMultiplicador = 1.2;
+        } else if (progreso < 0.60) {
+            // FASE 3: PICO - Ventisca intensa
+            faseMultiplicador = 2.0;
         } else if (progreso < 0.75) {
-            // PICO
-            faseMultiplicador = 1.5;
+            // FASE 4: CRÍTICO - ¡CONGELACIÓN EXTREMA!
+            faseMultiplicador = 2.8;
         } else {
-            // DECLIVE
+            // FASE 5: DECLIVE - La tormenta se calma
             faseMultiplicador = 0.9;
         }
+        
+        // Transición de fase - efectos cinematográficos
+        if (faseActual != faseAnterior && faseActual >= 2) {
+            activarEfectoTransicionFase(faseActual);
+        }
+    }
+    
+    /**
+     * Activa efectos cinematográficos dramáticos al subir de fase
+     */
+    private void activarEfectoTransicionFase(int fase) {
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (isPlayerExempt(p)) continue;
+            
+            switch (fase) {
+                case 2: // ESCALADA
+                    p.sendTitle("§b§l❄ VENTISCA", "§fLa temperatura §bcae rápidamente", 10, 40, 10);
+                    p.playSound(p.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 1.0f, 0.6f);
+                    p.spawnParticle(Particle.SNOWFLAKE, p.getLocation(), 200, 5, 3, 5, 0.2);
+                    break;
+                    
+                case 3: // PICO
+                    p.sendTitle("§b§l❄§l§l PELIGRO", "§f§lVENTISCA §b§lINTENSA", 10, 60, 10);
+                    p.playSound(p.getLocation(), Sound.ENTITY_WITHER_SPAWN, 1.0f, 0.8f);
+                    p.playSound(p.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 1.5f, 0.5f);
+                    p.spawnParticle(Particle.SNOWFLAKE, p.getLocation(), 400, 8, 5, 8, 0.3);
+                    p.spawnParticle(Particle.EXPLOSION, p.getLocation(), 20, 5, 3, 5, 0);
+                    break;
+                    
+                case 4: // CRÍTICO
+                    p.sendTitle("§3§l§k!!!§r §3§l¡CONGELACIÓN EXTREMA!§r §3§l§k!!!", "§f§lBUSCA REFUGIO §c§lYA", 10, 80, 15);
+                    p.playSound(p.getLocation(), Sound.ENTITY_WITHER_SPAWN, 2.0f, 0.5f);
+                    p.playSound(p.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 1.5f, 0.5f);
+                    p.playSound(p.getLocation(), Sound.ITEM_TRIDENT_THUNDER, 2.0f, 0.7f);
+                    // Shake de pantalla con partículas masivas
+                    for (int i = 0; i < 5; i++) {
+                        int finalI = i;
+                        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                            p.spawnParticle(Particle.SNOWFLAKE, p.getLocation(), 500, 10, 6, 10, 0.5);
+                            p.spawnParticle(Particle.FLASH, p.getLocation(), 30, 6, 4, 6, 0);
+                            p.playSound(p.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 0.5f, 0.8f);
+                        }, i * 5L);
+                    }
+                    break;
+                    
+                case 5: // DECLIVE
+                    p.sendTitle("§7❄ La tormenta se calma", "§fPero sigue siendo §bpeligrosa", 10, 40, 10);
+                    p.playSound(p.getLocation(), Sound.BLOCK_BEACON_DEACTIVATE, 1.0f, 0.8f);
+                    break;
+            }
+        }
+        
+        // Broadcast global
+        String mensajeFase = getMensajeFase(fase);
+        messageBus.broadcast(mensajeFase, "disaster_phase");
+    }
+    
+    private String getMensajeFase(int fase) {
+        switch (fase) {
+            case 2: return "§b§l❄ §fLa ventisca se §bintensifica";
+            case 3: return "§b§l❄§l VENTISCA INTENSA §8- §fBusca §bcalor urgente";
+            case 4: return "§3§l❄§l§l ¡CONGELACIÓN EXTREMA! §8- §c§lPELIGRO CRÍTICO";
+            case 5: return "§7❄ La tormenta §bcomienza a calmarse";
+            default: return "";
+        }
+    }
+    
+    private int getFaseActual(double progreso) {
+        if (progreso < 0.15) return 1;
+        else if (progreso < 0.35) return 2;
+        else if (progreso < 0.60) return 3;
+        else if (progreso < 0.75) return 4;
+        else return 5;
     }
     
     private String getCurrentPhaseString() {
         double progreso = (double) tickCounter / maxTicks;
         
-        if (progreso < 0.25) return "INICIO";
-        else if (progreso < 0.75) return "PICO";
+        if (progreso < 0.15) return "INICIO";
+        else if (progreso < 0.35) return "ESCALADA";
+        else if (progreso < 0.60) return "PICO";
+        else if (progreso < 0.75) return "CRITICO";
         else return "DECLIVE";
     }
     
@@ -764,7 +880,11 @@ public class TormentaGlacial extends DisasterBase {
     }
     
     private void lanzarCristales() {
-        int cantidad = random.nextInt(cristalesMax - cristalesMin + 1) + cristalesMin;
+        String phase = getCurrentPhaseString();
+        int cantidadBase = random.nextInt(cristalesMax - cristalesMin + 1) + cristalesMin;
+        
+        // Escalar cantidad por fase
+        int cantidad = getCantidadCristalesPorFase(phase, cantidadBase);
         
         List<Player> jugadores = new ArrayList<>();
         for (Player p : Bukkit.getOnlinePlayers()) {
@@ -775,8 +895,9 @@ public class TormentaGlacial extends DisasterBase {
         
         if (jugadores.isEmpty()) return;
         
-        // CINEMÁTICO: Mensaje dramático global
-        messageBus.broadcast("§b§l❄§l §f§lLLUVIA DE CRISTALES §b§l❄", "crystal_rain");
+        // CINEMÁTICO: Mensaje dramático según fase
+        String mensajeCristales = getMensajeCristalesPorFase(getCurrentPhaseString());
+        messageBus.broadcast(mensajeCristales, "crystal_rain");
         
         // CINEMÁTICO: Sonidos de advertencia épicos
         soundUtil.playSoundAll(Sound.BLOCK_GLASS_BREAK, 1.0f, 0.5f);
@@ -1013,6 +1134,181 @@ public class TormentaGlacial extends DisasterBase {
         for (Player p : jugadores) {
             p.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, nieblaDuracion, 0, false, true));
             p.spawnParticle(Particle.SNOWFLAKE, p.getLocation(), 300, 5, 3, 5, 0.05);
+        }
+    }
+    
+    /**
+     * Verifica si un FallingBlock es un cristal activo de este desastre.
+     * Usado por DisasterFallingBlockListener para evitar que dejen bloques.
+     */
+    public boolean isCristalActivo(FallingBlock fb) {
+        return cristalesActivos.contains(fb);
+    }
+    
+    /**
+     * Verifica si un FallingBlock es una estalactita activa de este desastre.
+     * Usado por DisasterFallingBlockListener para evitar que dejen bloques.
+     */
+    public boolean isEstalactitaActiva(FallingBlock fb) {
+        return estalactitasActivas.contains(fb);
+    }
+    
+    /**
+     * Obtiene cantidad de cristales escalada por fase
+     */
+    private int getCantidadCristalesPorFase(String phase, int cantidadBase) {
+        switch (phase) {
+            case "INICIO": return cantidadBase; // Normal
+            case "ESCALADA": return (int)(cantidadBase * 1.5); // +50%
+            case "PICO": return cantidadBase * 2; // x2
+            case "CRITICO": return cantidadBase * 3; // x3 - LLUVIA MASIVA
+            case "DECLIVE": return cantidadBase;
+            default: return cantidadBase;
+        }
+    }
+    
+    /**
+     * Mensaje de cristales según fase
+     */
+    private String getMensajeCristalesPorFase(String phase) {
+        switch (phase) {
+            case "INICIO": return "§b§l❄ §f§lCristales de hielo caen";
+            case "ESCALADA": return "§b§l❄§l §f§lLluvia de cristales §b§lintensa";
+            case "PICO": return "§b§l❄§l§l §f§l¡TORMENTA DE CRISTALES!";
+            case "CRITICO": return "§3§l❄§l§l§l §c§l¡AVALANCHA DE CRISTALES MORTALES!";
+            case "DECLIVE": return "§7❄ Últimos cristales cayendo";
+            default: return "§b§l❄ Cristales de hielo";
+        }
+    }
+    
+    /**
+     * Aplica efectos climáticos globales según la fase
+     */
+    private void aplicarEfectosClimaticos(int faseNumero) {
+        for (World world : Bukkit.getWorlds()) {
+            if (world.getEnvironment() == World.Environment.NORMAL) {
+                // Establecer clima de tormenta
+                world.setStorm(true);
+                world.setThundering(faseNumero >= 3); // Truenos desde fase PICO
+                world.setWeatherDuration(Integer.MAX_VALUE);
+                
+                // Ajustar tiempo del día para más dramático
+                if (faseNumero >= 4) { // Fase CRÍTICO
+                    world.setTime(18000); // Medianoche
+                }
+            }
+        }
+    }
+    
+    /**
+     * Inicia sonidos ambientales continuos
+     */
+    private void startSonidosAmbientales() {
+        sonidosTask = new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (!isActive()) {
+                    cancel();
+                    return;
+                }
+                
+                double progreso = (double) tickCounter / maxTicks;
+                int faseNum = getFaseActual(progreso);
+                String fase = getFaseString(faseNum);
+                
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    if (isPlayerExempt(p)) continue;
+                    
+                    // Viento helado constante
+                    p.playSound(p.getLocation(), Sound.ITEM_ELYTRA_FLYING, 0.3f, 0.6f);
+                    
+                    // Sonidos según fase
+                    switch (fase) {
+                        case "ESCALADA":
+                        case "PICO":
+                            p.playSound(p.getLocation(), Sound.BLOCK_GLASS_BREAK, 0.2f, 0.8f);
+                            break;
+                        case "CRITICO":
+                            p.playSound(p.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 0.4f, 1.5f);
+                            p.playSound(p.getLocation(), Sound.ENTITY_WITHER_AMBIENT, 0.3f, 0.7f);
+                            break;
+                    }
+                }
+            }
+        };
+        sonidosTask.runTaskTimer(plugin, 60L, 60L); // Cada 3 segundos
+    }
+    
+    /**
+     * Inicia ventisca cegadora en fases intensas
+     */
+    private void startVentisca() {
+        ventiscaTask = new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (!isActive()) {
+                    cancel();
+                    return;
+                }
+                
+                double progreso = (double) tickCounter / maxTicks;
+                int faseNum = getFaseActual(progreso);
+                String fase = getFaseString(faseNum);
+                
+                // Ventisca solo en fases intensas
+                if (!fase.equals("PICO") && !fase.equals("CRITICO")) {
+                    return;
+                }
+                
+                List<Player> jugadores = new ArrayList<>();
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    if (!isPlayerExempt(p)) {
+                        jugadores.add(p);
+                    }
+                }
+                
+                if (jugadores.isEmpty()) return;
+                
+                for (Player p : jugadores) {
+                    Location loc = p.getLocation();
+                    
+                    // Partículas de ventisca masivas
+                    int cantidad = fase.equals("CRITICO") ? 150 : 80;
+                    p.getWorld().spawnParticle(Particle.SNOWFLAKE, loc, cantidad, 8, 4, 8, 0.3);
+                    p.getWorld().spawnParticle(Particle.CLOUD, loc, cantidad / 2, 6, 3, 6, 0.1);
+                    p.getWorld().spawnParticle(Particle.WHITE_ASH, loc, cantidad, 10, 5, 10, 0.2);
+                    
+                    // Sonido de ventisca
+                    p.playSound(loc, Sound.ITEM_ELYTRA_FLYING, 0.8f, 0.4f);
+                    
+                    // Ceguera temporal en fase CRÍTICO
+                    if (fase.equals("CRITICO") && random.nextDouble() < 0.3) {
+                        p.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 60, 0, false, false));
+                        p.sendActionBar("§f§l❄ §c§l¡VENTISCA CEGADORA!");
+                    }
+                    
+                    // Ralentización por viento
+                    if (random.nextDouble() < 0.5) {
+                        int amplifier = fase.equals("CRITICO") ? 2 : 1;
+                        p.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 40, amplifier, false, false));
+                    }
+                }
+            }
+        };
+        ventiscaTask.runTaskTimer(plugin, 80L, 100L); // Cada 5 segundos
+    }
+    
+    /**
+     * Convierte el número de fase a su nombre String
+     */
+    private String getFaseString(int faseNum) {
+        switch (faseNum) {
+            case 1: return "INICIO";
+            case 2: return "ESCALADA";
+            case 3: return "PICO";
+            case 4: return "CRITICO";
+            case 5: return "DECLIVE";
+            default: return "INICIO";
         }
     }
 }

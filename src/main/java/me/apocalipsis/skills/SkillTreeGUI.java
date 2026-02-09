@@ -111,12 +111,34 @@ public class SkillTreeGUI implements Listener {
         public void setInventory(Inventory inv) { this.inventory = inv; }
     }
     
+    // ==================== HELPERS ====================
+    
+    /**
+     * Refresca los datos del jugador desde el mundo actual
+     * Esto asegura que la XP y habilidades mostradas sean las correctas del mundo donde está el jugador
+     */
+    private void refreshPlayerData(Player player) {
+        if (plugin.getCicloManager() != null && plugin.getCicloManager().getDataManager() != null) {
+            String worldName = player.getWorld().getName();
+            var dataManager = plugin.getCicloManager().getDataManager();
+            var worldData = dataManager.loadPlayerData(player.getUniqueId(), worldName);
+            dataManager.applyStateToServices(player.getUniqueId(), worldData);
+            
+            plugin.getLogger().info("[SkillGUI] Refreshed player data from world: " + worldName + 
+                " | XP: " + worldData.getXp() + 
+                " | Player: " + player.getName());
+        }
+    }
+    
     // ==================== ABRIR MENÚS ====================
     
     /**
      * Abre el menú principal de habilidades
      */
     public void openMainMenu(Player player) {
+        // [FIX] Refrescar datos del mundo actual antes de mostrar el menú
+        refreshPlayerData(player);
+        
         MainMenuHolder holder = new MainMenuHolder();
         String title = "§6§l✦ §e§lHabilidades §6§l✦";
         Inventory inv = Bukkit.createInventory(holder, 54, title);
@@ -132,6 +154,9 @@ public class SkillTreeGUI implements Listener {
      * Abre el árbol de una rama específica
      */
     public void openBranchMenu(Player player, SkillBranch branch) {
+        // [FIX] Refrescar datos del mundo actual antes de mostrar el menú
+        refreshPlayerData(player);
+        
         TreeMenuHolder holder = new TreeMenuHolder(branch);
         String title = getBranchTitle(branch);
         Inventory inv = Bukkit.createInventory(holder, 54, title);
@@ -147,6 +172,9 @@ public class SkillTreeGUI implements Listener {
      * Abre confirmación de compra
      */
     public void openConfirmMenu(Player player, Skill skill, SkillBranch returnBranch) {
+        // [FIX] Refrescar datos del mundo actual antes de mostrar el menú
+        refreshPlayerData(player);
+        
         ConfirmMenuHolder holder = new ConfirmMenuHolder(skill, returnBranch);
         String title = "§8Confirmar: §6" + skill.getDisplayName();
         Inventory inv = Bukkit.createInventory(holder, 27, title);
@@ -162,6 +190,9 @@ public class SkillTreeGUI implements Listener {
      * Abre el menú de mejora de skill
      */
     public void openUpgradeMenu(Player player, Skill skill, SkillBranch returnBranch) {
+        // [FIX] Refrescar datos del mundo actual antes de mostrar el menú
+        refreshPlayerData(player);
+        
         UpgradeMenuHolder holder = new UpgradeMenuHolder(skill, returnBranch);
         String title = "§8Mejorar: §a" + skill.getDisplayName();
         Inventory inv = Bukkit.createInventory(holder, 27, title);

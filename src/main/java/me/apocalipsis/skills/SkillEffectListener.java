@@ -43,7 +43,6 @@ import org.bukkit.event.entity.EntityShootBowEvent;
 import org.bukkit.event.entity.FoodLevelChangeEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -1176,10 +1175,25 @@ public class SkillEffectListener implements Listener {
      * Mejora 4: Verifica si un bloque es parte de un árbol real (tiene hojas cercanas).
      * Evita talar estructuras de madera hechas por jugadores.
      * MEJORADO: Búsqueda vertical más inteligente y priorización de hojas arriba
+     * [FIX v1.22.77] Detección especial para árboles del Nether
      */
     private boolean isRealTree(Block logBlock) {
+        Material blockType = logBlock.getType();
+        
+        // [FIX NETHER] Los árboles del Nether tienen estructuras muy irregulares
+        // Hacer verificación más flexible para Crimson y Warped Stems
+        boolean isNetherTree = (blockType == Material.CRIMSON_STEM || 
+                               blockType == Material.WARPED_STEM ||
+                               blockType == Material.STRIPPED_CRIMSON_STEM ||
+                               blockType == Material.STRIPPED_WARPED_STEM);
+        
         int leavesCount = 0;
         int radius = lenadorRadioBuscarHojas;
+        
+        // [FIX NETHER] Aumentar radio de búsqueda para árboles del Nether
+        if (isNetherTree) {
+            radius = Math.max(radius, 10); // Mínimo radio 10 para Nether
+        }
         
         // MEJORA 1: Búsqueda optimizada para árboles muy altos (hasta 32 bloques de altura)
         // Esto detecta mejor árboles gigantes y estructuras naturales complejas
@@ -1193,7 +1207,10 @@ public class SkillEffectListener implements Listener {
                         if (y > 0 && leavesCount >= 1) { // MEJORADO: reducido a 1 hoja para ser más flexible
                             return true; // Hojas arriba = árbol real
                         }
-                        if (leavesCount >= lenadorMinHojasRequeridas) {
+                        
+                        // [FIX NETHER] Solo 1 hoja requerida para árboles del Nether
+                        int minHojasNecesarias = isNetherTree ? 1 : lenadorMinHojasRequeridas;
+                        if (leavesCount >= minHojasNecesarias) {
                             return true; // Suficientes hojas encontradas
                         }
                     }
@@ -1208,7 +1225,10 @@ public class SkillEffectListener implements Listener {
                     Block check = logBlock.getRelative(x, y, z);
                     if (isLeaves(check.getType())) {
                         leavesCount++;
-                        if (leavesCount >= lenadorMinHojasRequeridas) {
+                        
+                        // [FIX NETHER] Solo 1 hoja requerida para árboles del Nether
+                        int minHojasNecesarias = isNetherTree ? 1 : lenadorMinHojasRequeridas;
+                        if (leavesCount >= minHojasNecesarias) {
                             return true;
                         }
                     }
@@ -1216,7 +1236,9 @@ public class SkillEffectListener implements Listener {
             }
         }
         
-        return leavesCount >= lenadorMinHojasRequeridas;
+        // [FIX NETHER] Solo 1 hoja requerida para árboles del Nether
+        int minHojasNecesarias = isNetherTree ? 1 : lenadorMinHojasRequeridas;
+        return leavesCount >= minHojasNecesarias;
     }
     
     /**
@@ -1808,6 +1830,36 @@ public class SkillEffectListener implements Listener {
     
     // ==================== PERSISTENCIA WAYPOINTS ====================
     
+    /**
+     * [FIX CRÍTICO] Recarga waypoints después de que todos los mundos estén cargados.
+     * Esto es necesario porque en el constructor, los mundos de ciclos aún no existen.
+     * Debe llamarse desde Apocalipsis.onEnable() DESPUÉS de inicializar CicloManager.
+     */
+    public void reloadWaypointsAfterWorldsLoaded() {
+        if (!waypointPersistencia) {
+            return;
+        }
+        
+        File waypointsFile = new File(plugin.getDataFolder(), "waypoints.yml");
+        if (!waypointsFile.exists()) {
+            return;
+        }
+        
+        plugin.getLogger().info("[Skills] Recargando waypoints tras cargar mundos de ciclos...");
+        
+        // Limpiar waypoints actuales
+        int beforeCount = playerWaypoints.values().stream().mapToInt(Map::size).sum();
+        playerWaypoints.clear();
+        
+        // Recargar desde archivo
+        loadWaypoints();
+        
+        int afterCount = playerWaypoints.values().stream().mapToInt(Map::size).sum();
+        if (afterCount > beforeCount) {
+            plugin.getLogger().info("[Skills] ✓ Recuperados " + (afterCount - beforeCount) + " waypoints de mundos que no estaban cargados inicialmente");
+        }
+    }
+    
     private void loadWaypoints() {
         if (!waypointPersistencia) {
             plugin.getLogger().info("[Skills] Persistencia de waypoints desactivada, omitiendo carga");
@@ -1868,7 +1920,10 @@ public class SkillEffectListener implements Listener {
                         
                         org.bukkit.World world = Bukkit.getWorld(worldName);
                         if (world == null) {
-                            plugin.getLogger().warning("[Skills] Mundo no encontrado para waypoint '" + waypointName + "': " + worldName);
+                            // [FIX CRÍTICO] NO omitir waypoints de mundos no cargados
+                            // Esto sucede cuando los waypoints se cargan ANTES que CicloManager
+                            plugin.getLogger().warning("[Skills] Mundo '" + worldName + "' no cargado aún para waypoint '" + waypointName + "' del jugador " + uuidStr);
+                            plugin.getLogger().warning("[Skills] → El waypoint se cargará cuando los mundos estén disponibles (llamar reloadWaypointsAfterWorldsLoaded)");
                             continue;
                         }
                         
@@ -2079,33 +2134,42 @@ public class SkillEffectListener implements Listener {
     
     /**
      * Listener para aplicar descuentos de MERCADER_SUPREMO cuando el jugador
-     * abre el inventario de comercio con un villager.
+     * interactúa con un villager (ANTES de abrir el trade).
+     * Esto es crucial en MC 1.21+ donde modificar recetas después de abrir no funciona.
      */
-    @EventHandler(priority = EventPriority.HIGH)
-    public void onVillagerTradeOpen(org.bukkit.event.inventory.InventoryOpenEvent event) {
-        if (!(event.getPlayer() instanceof Player player)) return;
-        if (event.getInventory().getType() != InventoryType.MERCHANT) return;
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onVillagerInteract(PlayerInteractEntityEvent event) {
+        Player player = event.getPlayer();
+        
+        // Verificar si la entidad es un villager o wandering trader
+        if (!(event.getRightClicked() instanceof org.bukkit.entity.Villager) &&
+            !(event.getRightClicked() instanceof org.bukkit.entity.WanderingTrader)) {
+            return;
+        }
         
         UUID uuid = player.getUniqueId();
         
         // Verificar si tiene la habilidad MERCADER_SUPREMO
         if (!hasSkillCached(uuid, Skill.MERCADER_SUPREMO)) return;
         
-        // Obtener el merchant (villager)
-        if (!(event.getInventory().getHolder() instanceof org.bukkit.inventory.Merchant merchant)) return;
+        // Obtener el merchant
+        org.bukkit.inventory.Merchant merchant = (org.bukkit.inventory.Merchant) event.getRightClicked();
         
         // Obtener el porcentaje de descuento según el nivel
         double descuentoPercent = skillService.getLevelEffect(uuid, Skill.MERCADER_SUPREMO);
         if (descuentoPercent <= 0) return;
         
         // Aplicar descuento a todos los trades del merchant
-        applyTradeDiscount(merchant, descuentoPercent);
-        
-        // Mensaje sutil de confirmación (con anti-spam)
-        if (canSendMessage(uuid, "mercader_supremo")) {
-            player.sendMessage("§a§l✦ §eMercader Supremo: §7-" + (int)descuentoPercent + "% en trades");
-            trackSkillUsage(uuid, Skill.MERCADER_SUPREMO);
-        }
+        // Se ejecuta en el siguiente tick para asegurar que las recetas estén cargadas
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            applyTradeDiscount(merchant, descuentoPercent);
+            
+            // Mensaje sutil de confirmación (con anti-spam)
+            if (canSendMessage(uuid, "mercader_supremo")) {
+                player.sendMessage("§a§l✦ §eMercader Supremo: §7-" + (int)descuentoPercent + "% en trades");
+                trackSkillUsage(uuid, Skill.MERCADER_SUPREMO);
+            }
+        });
     }
     
     /**

@@ -7,6 +7,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.util.Vector;
 
 import me.apocalipsis.Apocalipsis;
 import me.apocalipsis.disaster.adapters.PerformanceAdapter;
@@ -75,6 +76,9 @@ public class TormentaElectrica extends DisasterBase {
     private BukkitRunnable rayosTask;
     private BukkitRunnable zonasTask;
     private BukkitRunnable empTask;
+    private BukkitRunnable sonidosTask;
+    private BukkitRunnable cadenasTask;
+    private BukkitRunnable sobrecargaTask;
     
     // Fases
     private boolean fasesEnabled;
@@ -285,6 +289,9 @@ public class TormentaElectrica extends DisasterBase {
         ultimoEMP.clear();
         faseMultiplicador = 1.0;
         
+        // Efectos climáticos globales
+        aplicarEfectosClimaticos(1); // Fase inicial
+        
         // Anuncios
         messageBus.broadcast("§8§m                                                    ", "disaster");
         messageBus.broadcast("§e§l      ⚡ TORMENTA ELÉCTRICA ⚡", "disaster");
@@ -300,6 +307,9 @@ public class TormentaElectrica extends DisasterBase {
         startRayos();
         if (zonasEnabled) startZonasMonitor();
         if (empEnabled) startEMP();
+        startSonidosAmbientales();
+        startCadenasElectricas();
+        startSobrecargaElectrica();
         
         plugin.getLogger().info("[TormentaElectrica] Desastre iniciado");
     }
@@ -308,6 +318,15 @@ public class TormentaElectrica extends DisasterBase {
     protected void onTick() {
         // Actualizar multiplicador de fase
         if (fasesEnabled) {
+            double progreso = (double) tickCounter / maxTicks;
+            int faseAnterior = getFaseActual(progreso - 0.01);
+            int faseActual = getFaseActual(progreso);
+            
+            // Actualizar efectos climáticos cuando cambia fase
+            if (faseAnterior != faseActual) {
+                aplicarEfectosClimaticos(faseActual);
+            }
+            
             actualizarFase();
         }
         
@@ -333,6 +352,26 @@ public class TormentaElectrica extends DisasterBase {
         if (empTask != null) {
             empTask.cancel();
             empTask = null;
+        }
+        if (sonidosTask != null) {
+            sonidosTask.cancel();
+            sonidosTask = null;
+        }
+        if (cadenasTask != null) {
+            cadenasTask.cancel();
+            cadenasTask = null;
+        }
+        if (sobrecargaTask != null) {
+            sobrecargaTask.cancel();
+            sobrecargaTask = null;
+        }
+        
+        // Restaurar clima normal
+        for (World world : Bukkit.getWorlds()) {
+            if (world.getEnvironment() == World.Environment.NORMAL) {
+                world.setStorm(false);
+                world.setThundering(false);
+            }
         }
         
         // Limpiar data
@@ -382,24 +421,112 @@ public class TormentaElectrica extends DisasterBase {
     
     private void actualizarFase() {
         double progreso = (double) tickCounter / maxTicks;
+        int faseAnterior = getFaseActual(progreso - 0.01);
+        int faseActual = getFaseActual(progreso);
         
-        if (progreso < 0.30) {
-            // INICIO
+        // Aplicar multiplicador de fase
+        if (progreso < 0.15) {
+            // FASE 1: INICIO - Carga eléctrica inicial (mantener base)
             faseMultiplicador = 0.8;
-        } else if (progreso < 0.70) {
-            // PICO
-            faseMultiplicador = 1.5;
+        } else if (progreso < 0.35) {
+            // FASE 2: IONIZACIÓN - La atmósfera se carga
+            faseMultiplicador = 1.4;
+        } else if (progreso < 0.60) {
+            // FASE 3: TORMENTA - Descargas eléctricas masivas
+            faseMultiplicador = 2.1;
+        } else if (progreso < 0.75) {
+            // FASE 4: CAOS ELÉCTRICO - ¡APOCALIPSIS ELÉCTRICO!
+            faseMultiplicador = 3.2;
         } else {
-            // DECLIVE
+            // FASE 5: DECLIVE - La tormenta se disipa
             faseMultiplicador = 0.9;
         }
+        
+        // Transición de fase - efectos cinematográficos
+        if (faseActual != faseAnterior && faseActual >= 2) {
+            activarEfectoTransicionFase(faseActual);
+        }
+    }
+    
+    /**
+     * Activa efectos eléctricos cinematográficos espectaculares al subir de fase
+     */
+    private void activarEfectoTransicionFase(int fase) {
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (isPlayerExempt(p)) continue;
+            
+            switch (fase) {
+                case 2: // IONIZACIÓN
+                    p.sendTitle("§e§l⚡ IONIZACIÓN", "§6La atmósfera se §ecarga", 10, 40, 10);
+                    p.playSound(p.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 1.0f, 1.2f);
+                    p.spawnParticle(Particle.ELECTRIC_SPARK, p.getLocation(), 150, 5, 3, 5, 0.1);
+                    p.spawnParticle(Particle.FIREWORK, p.getLocation(), 100, 4, 2, 4, 0.05);
+                    break;
+                    
+                case 3: // TORMENTA
+                    p.sendTitle("§e§l⚡§l PELIGRO", "§6§lTORMENTA §e§lELÉCTRICA", 10, 60, 10);
+                    p.playSound(p.getLocation(), Sound.ENTITY_WITHER_SPAWN, 1.5f, 1.0f);
+                    p.playSound(p.getLocation(), Sound.ITEM_TRIDENT_THUNDER, 2.0f, 1.0f);
+                    p.spawnParticle(Particle.ELECTRIC_SPARK, p.getLocation(), 400, 8, 5, 8, 0.2);
+                    p.spawnParticle(Particle.FLASH, p.getLocation(), 40, 6, 3, 6, 0);
+                    p.spawnParticle(Particle.FIREWORK, p.getLocation(), 200, 6, 4, 6, 0.1);
+                    break;
+                    
+                case 4: // CAOS ELÉCTRICO
+                    p.sendTitle("§6§l§k!!!§r §6§l¡CAOS ELÉCTRICO!§r §6§l§k!!!", "§e§lRAYOS §c§lPOR TODAS PARTES", 10, 80, 15);
+                    p.playSound(p.getLocation(), Sound.ENTITY_WITHER_SPAWN, 2.0f, 0.8f);
+                    p.playSound(p.getLocation(), Sound.ITEM_TRIDENT_THUNDER, 2.0f, 0.8f);
+                    p.playSound(p.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 2.0f, 1.0f);
+                    // Shake con rayos masivos
+                    for (int i = 0; i < 7; i++) {
+                        int finalI = i;
+                        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                            p.spawnParticle(Particle.ELECTRIC_SPARK, p.getLocation(), 700, 15, 10, 15, 0.4);
+                            p.spawnParticle(Particle.FLASH, p.getLocation(), 80, 10, 6, 10, 0);
+                            p.spawnParticle(Particle.FIREWORK, p.getLocation(), 300, 12, 8, 12, 0.2);
+                            p.spawnParticle(Particle.END_ROD, p.getLocation(), 200, 10, 8, 10, 0.3);
+                            p.playSound(p.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 1.5f, 1.2f);
+                        }, i * 4L);
+                    }
+                    break;
+                    
+                case 5: // DECLIVE
+                    p.sendTitle("§7⚡ La tormenta se disipa", "§6Aún hay §erayos", 10, 40, 10);
+                    p.playSound(p.getLocation(), Sound.BLOCK_BEACON_DEACTIVATE, 1.0f, 1.2f);
+                    break;
+            }
+        }
+        
+        // Broadcast global
+        String mensajeFase = getMensajeFase(fase);
+        messageBus.broadcast(mensajeFase, "disaster_phase");
+    }
+    
+    private String getMensajeFase(int fase) {
+        switch (fase) {
+            case 2: return "§e§l⚡ §6La atmósfera se §eioniza";
+            case 3: return "§e§l⚡§l TORMENTA ELÉCTRICA §8- §6Busca §epararra`yos";
+            case 4: return "§6§l⚡§l§l ¡CAOS ELÉCTRICO TOTAL! §8- §c§lPELIGRO EXTREMO";
+            case 5: return "§7⚡ La tormenta §ecomienza a disiparse";
+            default: return "";
+        }
+    }
+    
+    private int getFaseActual(double progreso) {
+        if (progreso < 0.15) return 1;
+        else if (progreso < 0.35) return 2;
+        else if (progreso < 0.60) return 3;
+        else if (progreso < 0.75) return 4;
+        else return 5;
     }
     
     private String getCurrentPhaseString() {
         double progreso = (double) tickCounter / maxTicks;
         
-        if (progreso < 0.30) return "INICIO";
-        else if (progreso < 0.70) return "PICO";
+        if (progreso < 0.15) return "INICIO";
+        else if (progreso < 0.35) return "IONIZACION";
+        else if (progreso < 0.60) return "PICO";
+        else if (progreso < 0.75) return "CAOS";
         else return "DECLIVE";
     }
     
@@ -428,7 +555,9 @@ public class TormentaElectrica extends DisasterBase {
     private int getCantidadRayosPorFase(String phase) {
         switch (phase) {
             case "INICIO": return 1;
-            case "PICO": return 4;
+            case "IONIZACION": return 3;
+            case "PICO": return 6; // Aumentado de 4 a 6
+            case "CAOS": return 15; // FASE CRÍTICA - RAYOS MASIVOS
             case "DECLIVE": return 2;
             default: return 1;
         }
@@ -438,7 +567,9 @@ public class TormentaElectrica extends DisasterBase {
         String phase = getCurrentPhaseString();
         switch (phase) {
             case "INICIO": return 240L; // 12s
-            case "PICO": return 160L;   // 8s
+            case "IONIZACION": return 160L; // 8s
+            case "PICO": return 80L; // 4s - MÁS FRECUENTES
+            case "CAOS": return 30L; // 1.5s - CONSTANTES Y CAÓTICOS
             case "DECLIVE": return 300L; // 15s
             default: return 200L;
         }
@@ -909,6 +1040,203 @@ public class TormentaElectrica extends DisasterBase {
             p.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, empDuracion, 0, false, true));
             p.sendActionBar("§c⚡ EMP - Equipamiento desactivado");
             ultimoEMP.put(p.getUniqueId(), System.currentTimeMillis());
+        }
+    }
+    
+    /**
+     * Aplica efectos climáticos globales según la fase
+     */
+    private void aplicarEfectosClimaticos(int faseNumero) {
+        for (World world : Bukkit.getWorlds()) {
+            if (world.getEnvironment() == World.Environment.NORMAL) {
+                // Tormenta eléctrica permanente
+                world.setStorm(true);
+                world.setThundering(true);
+                world.setWeatherDuration(Integer.MAX_VALUE);
+                
+                // Oscurecer en fases críticas
+                if (faseNumero >= 4) { // CRÍTICO
+                    world.setTime(18000); // Medianoche
+                }
+            }
+        }
+    }
+    
+    /**
+     * Inicia sonidos ambientales eléctricos
+     */
+    private void startSonidosAmbientales() {
+        sonidosTask = new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (!isActive()) {
+                    cancel();
+                    return;
+                }
+                
+                double progreso = (double) tickCounter / maxTicks;
+                int faseNum = getFaseActual(progreso);
+                String fase = getFaseString(faseNum);
+                
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    if (isPlayerExempt(p)) continue;
+                    
+                    // Electricidad ambiental
+                    p.playSound(p.getLocation(), Sound.BLOCK_BEACON_AMBIENT, 0.2f, 1.5f);
+                    
+                    // Sonidos según fase
+                    switch (fase) {
+                        case "ESCALADA":
+                        case "PICO":
+                            p.playSound(p.getLocation(), Sound.ENTITY_FIREWORK_ROCKET_BLAST, 0.3f, 1.2f);
+                            break;
+                        case "CRITICO":
+                            p.playSound(p.getLocation(), Sound.ENTITY_WARDEN_SONIC_BOOM, 0.5f, 1.5f);
+                            p.playSound(p.getLocation(), Sound.BLOCK_RESPAWN_ANCHOR_CHARGE, 0.4f, 0.8f);
+                            break;
+                    }
+                }
+            }
+        };
+        sonidosTask.runTaskTimer(plugin, 50L, 70L); // Cada 3.5 segundos
+    }
+    
+    /**
+     * Inicia cadenas eléctricas entre jugadores
+     */
+    private void startCadenasElectricas() {
+        cadenasTask = new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (!isActive()) {
+                    cancel();
+                    return;
+                }
+                
+                double progreso = (double) tickCounter / maxTicks;
+                int faseNum = getFaseActual(progreso);
+                String fase = getFaseString(faseNum);
+                
+                // Cadenas más frecuentes en fases intensas
+                if (!fase.equals("PICO") && !fase.equals("CRITICO")) {
+                    return;
+                }
+                
+                List<Player> jugadores = new ArrayList<>();
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    if (!isPlayerExempt(p)) {
+                        jugadores.add(p);
+                    }
+                }
+                
+                if (jugadores.size() < 2) return;
+                
+                // Seleccionar jugador origen
+                Player origen = jugadores.get(random.nextInt(jugadores.size()));
+                
+                // Buscar jugadores cercanos para cadena
+                List<Player> cercanos = new ArrayList<>();
+                for (Player p : jugadores) {
+                    if (p != origen && origen.getLocation().distance(p.getLocation()) < 15) {
+                        cercanos.add(p);
+                    }
+                }
+                
+                if (cercanos.isEmpty()) return;
+                
+                // Advertencia visual
+                origen.sendActionBar("§e§l⚡ ¡CADENA ELÉCTRICA DESDE TI!");
+                origen.getWorld().playSound(origen.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 1.0f, 1.2f);
+                
+                // Crear cadena
+                int maxSaltos = fase.equals("CRITICO") ? 4 : 2;
+                Player actual = origen;
+                
+                for (int salto = 0; salto < maxSaltos && !cercanos.isEmpty(); salto++) {
+                    Player siguiente = cercanos.get(random.nextInt(cercanos.size()));
+                    cercanos.remove(siguiente);
+                    
+                    // Partículas de rayo entre jugadores
+                    Location locActual = actual.getLocation().add(0, 1, 0);
+                    Location locSiguiente = siguiente.getLocation().add(0, 1, 0);
+                    
+                    Vector direction = locSiguiente.toVector().subtract(locActual.toVector()).normalize();
+                    double distance = locActual.distance(locSiguiente);
+                    
+                    for (double d = 0; d < distance; d += 0.3) {
+                        Location particleLoc = locActual.clone().add(direction.clone().multiply(d));
+                        locActual.getWorld().spawnParticle(Particle.ELECTRIC_SPARK, particleLoc, 3, 0.1, 0.1, 0.1, 0.05);
+                        locActual.getWorld().spawnParticle(Particle.FIREWORK, particleLoc, 1, 0.05, 0.05, 0.05, 0.01);
+                    }
+                    
+                    // Daño al siguiente
+                    double damage = (rayosDamage * faseMultiplicador) * 0.6; // 60% del daño de rayo normal
+                    siguiente.damage(damage);
+                    siguiente.sendActionBar("§c⚡ Golpeado por cadena eléctrica!");
+                    siguiente.getWorld().playSound(siguiente.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_IMPACT, 0.8f, 1.0f);
+                    
+                    actual = siguiente;
+                }
+            }
+        };
+        cadenasTask.runTaskTimer(plugin, 100L, 100L);
+    }
+    
+    /**
+     * Inicia sobrecarga eléctrica (damage over time)
+     */
+    private void startSobrecargaElectrica() {
+        sobrecargaTask = new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (!isActive()) {
+                    cancel();
+                    return;
+                }
+                
+                double progreso = (double) tickCounter / maxTicks;
+                int faseNum = getFaseActual(progreso);
+                String fase = getFaseString(faseNum);
+                
+                // Sobrecarga solo en fase CRÍTICO
+                if (!fase.equals("CRITICO")) {
+                    return;
+                }
+                
+                List<Player> jugadores = new ArrayList<>();
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    if (!isPlayerExempt(p)) {
+                        jugadores.add(p);
+                    }
+                }
+                
+                for (Player p : jugadores) {
+                    // Daño eléctrico ambiental
+                    if (random.nextDouble() < 0.4) { // 40% de probabilidad cada tick
+                        p.damage(0.5);
+                        p.getWorld().spawnParticle(Particle.ELECTRIC_SPARK, p.getLocation().add(0, 1, 0), 10, 0.5, 0.5, 0.5, 0.1);
+                        
+                        if (random.nextDouble() < 0.3) { // 30% de mostrar mensaje
+                            p.sendActionBar("§e⚡ Sobrecarga eléctrica ambiental");
+                        }
+                    }
+                }
+            }
+        };
+        sobrecargaTask.runTaskTimer(plugin, 100L, 40L); // Cada 2 segundos
+    }
+    
+    /**
+     * Convierte el número de fase a su nombre String
+     */
+    private String getFaseString(int faseNum) {
+        switch (faseNum) {
+            case 1: return "INICIO";
+            case 2: return "ESCALADA";
+            case 3: return "PICO";
+            case 4: return "CRITICO";
+            case 5: return "DECLIVE";
+            default: return "INICIO";
         }
     }
 }

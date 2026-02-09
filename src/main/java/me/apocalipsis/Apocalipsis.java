@@ -42,6 +42,7 @@ import me.apocalipsis.experience.ExperienceService;
 import me.apocalipsis.experience.RewardService;
 import me.apocalipsis.listeners.BlockTrackListener;
 import me.apocalipsis.listeners.DisasterEvasionListener;
+import me.apocalipsis.listeners.DisasterFallingBlockListener;
 import me.apocalipsis.listeners.ExperienceListener;
 import me.apocalipsis.listeners.MissionListener;
 import me.apocalipsis.listeners.PlayerListener;
@@ -842,6 +843,7 @@ public final class Apocalipsis extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new me.apocalipsis.utils.ExplosionGuard(this), this);
         getServer().getPluginManager().registerEvents(new BlockTrackListener(this), this);
         getServer().getPluginManager().registerEvents(new DisasterEvasionListener(this), this);
+        getServer().getPluginManager().registerEvents(new me.apocalipsis.listeners.DisasterFallingBlockListener(this), this);
         getServer().getPluginManager().registerEvents(new me.apocalipsis.events.SusurroPiedraRotaListener(this), this);
         
         // Registrar listener de stream drops
@@ -886,6 +888,12 @@ public final class Apocalipsis extends JavaPlugin {
         getLogger().info("[EndProtection] ✓ Protección del End compartido activada");
         getLogger().info("[PortalRedirección] ✓ Sistema de redirección de portales activado");
         getLogger().info("[PlayerRespawn] ✓ Sistema de respawn en ciclos activado");
+        
+        // [FIX CRÍTICO] Recargar waypoints después de que los mundos de ciclos estén cargados
+        // Esto previene que los waypoints se pierdan al reiniciar el servidor
+        if (skillEffectListener != null) {
+            skillEffectListener.reloadWaypointsAfterWorldsLoaded();
+        }
         // ═══════════════════════════════════════════════
         
         // ═══════ EVENTO 6: CUANDO EL MUNDO DECIDE OLVIDAR ═══════
