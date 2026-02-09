@@ -1,8 +1,20 @@
 package me.apocalipsis.experience;
 
-import me.apocalipsis.Apocalipsis;
-import net.md_5.bungee.api.ChatMessageType;
-import net.md_5.bungee.api.chat.TextComponent;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+
 import org.bukkit.Bukkit;
 import org.bukkit.Sound;
 import org.bukkit.World;
@@ -11,13 +23,10 @@ import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 
-import java.time.DayOfWeek;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
+import me.apocalipsis.Apocalipsis;
+import me.apocalipsis.security.AntiFarmSecurityManager;
+import net.md_5.bungee.api.ChatMessageType;
+import net.md_5.bungee.api.chat.TextComponent;
 
 /**
  * Sistema dinámico de XP con bonificaciones, rachas, combos, milestones y protección anti-farm
@@ -26,6 +35,7 @@ public class DynamicXPManager {
     
     private final Apocalipsis plugin;
     private final ExperienceService experienceService;
+    private final AntiFarmSecurityManager securityManager;
     
     // Cache de configuración
     private final Map<XPSource, Integer> baseXPCache = new EnumMap<>(XPSource.class);
@@ -82,6 +92,7 @@ public class DynamicXPManager {
     public DynamicXPManager(Apocalipsis plugin, ExperienceService experienceService) {
         this.plugin = plugin;
         this.experienceService = experienceService;
+        this.securityManager = plugin.getSecurityManager();
         reloadConfig();
         startHoraFelizScheduler();
     }
@@ -263,6 +274,35 @@ public class DynamicXPManager {
             return XPResult.disabled();
         }
         
+        // ═══ VERIFICACIÓN DE SEGURIDAD ANTI-AUTOCLICK ═══
+        if (securityManager != null) {
+            // Determinar tipo de acción según la fuente de XP
+            AntiFarmSecurityManager.ActionType actionType = isMiningSource(source) ? 
+                AntiFarmSecurityManager.ActionType.MINING : 
+                AntiFarmSecurityManager.ActionType.XP_GAIN;
+            
+            AntiFarmSecurityManager.SecurityCheckResult securityCheck = 
+                securityManager.checkAction(player, actionType);
+            
+            if (!securityCheck.isAllowed()) {
+                // Jugador suspendido por autoclick/bot
+                long remainingMs = securityCheck.getSuspensionTime();
+                long remainingMin = remainingMs / 60000;
+                player.sendMessage("§c⚠ XP bloqueado - Cuenta suspendida (" + remainingMin + " min restantes)");
+                return XPResult.blocked();
+            }
+            
+            // Aplicar penalización por strikes si existe
+            if (securityCheck.getStrikes() > 0) {
+                extraMultiplier *= securityCheck.getPenaltyMultiplier();
+                if (verboseLogging) {
+                    plugin.getLogger().warning("[XP-Security] " + player.getName() + 
+                        " tiene " + securityCheck.getStrikes() + " strikes, XP reducido a " + 
+                        (int)(securityCheck.getPenaltyMultiplier() * 100) + "%");
+                }
+            }
+        }
+        
         // [LEYENDA+] Bloquear XP pasiva para rangos LEYENDA o superiores
         // Solo pueden ganar XP por misiones
         if (source.isPassive()) {
@@ -433,6 +473,15 @@ public class DynamicXPManager {
             case THE_END -> "End";
             default -> "Overworld";
         };
+    }
+    
+    /**
+     * Verifica si una fuente de XP es de minado
+     */
+    private boolean isMiningSource(XPSource source) {
+        return source == XPSource.MINE_COMMON || 
+               source == XPSource.MINE_RARE || 
+               source == XPSource.MINE_EPIC;
     }
     
     /**
@@ -976,6 +1025,10 @@ public class DynamicXPManager {
         }
         
         public static XPResult blockedByRank() {
+            return new XPResult(false, 0, 0, 0, List.of(), false);
+        }
+        
+        public static XPResult blocked() {
             return new XPResult(false, 0, 0, 0, List.of(), false);
         }
     }

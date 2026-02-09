@@ -113,12 +113,17 @@ public enum MissionRank {
     /**
      * Determina el rango según el nivel del jugador (MÉTODO PRINCIPAL)
      * Compara con levelRequired configurado en rangos.yml
+     * 
+     * FIX: Para obtener un rango, debes SUPERAR el nivel requerido, no solo alcanzarlo.
+     * Esto evita que se notifique "¡Subiste a EXPLORADOR!" cuando alcanzas nivel 5,
+     * en su lugar se notifica cuando alcanzas nivel 6 (habiendo COMPLETADO el nivel 5).
      */
     public static MissionRank fromLevel(int level) {
         MissionRank result = NOVATO;
         for (MissionRank rank : values()) {
-            // Solo asignar el rango si el nivel es MAYOR O IGUAL al requerido
-            if (level >= rank.getLevelRequired()) {
+            // Para obtener un rango, necesitas SUPERAR el nivel requerido
+            // Ejemplo: EXPLORADOR requiere nivel 5, pero lo obtienes al llegar a nivel 6
+            if (level > rank.getLevelRequired()) {
                 result = rank;
             } else {
                 break;

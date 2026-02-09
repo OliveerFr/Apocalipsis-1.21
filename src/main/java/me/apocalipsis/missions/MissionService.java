@@ -1488,7 +1488,7 @@ public class MissionService {
             if (player != null && player.isOnline()) {
                 playRankUpEffects(player, newRank);
                 
-                // Entregar recompensas de rango
+                // Entregar recompensas de rango (solo si no las tiene)
                 if (plugin.getRewardService() != null) {
                     plugin.getRewardService().deliverRewards(player, newRank);
                 }
@@ -1506,6 +1506,19 @@ public class MissionService {
                     plugin.getTablistManager().updatePlayer(player);
                 }
             }
+        }
+        
+        // [FIX v1.22.72] Aplicar habilidades SIEMPRE (no solo en rank up)
+        // Las habilidades son pasivas y deben estar activas según el rango actual
+        Player player = plugin.getServer().getPlayer(uuid);
+        if (player != null && player.isOnline() && plugin.getAbilityService() != null) {
+            final Player finalPlayer = player;
+            final me.apocalipsis.missions.MissionRank finalRank = newRank;
+            org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (finalPlayer.isOnline()) {
+                    plugin.getAbilityService().applyAbilities(finalPlayer, false); // Sin notificar
+                }
+            }, 40L); // 2 segundos después
         }
     }
     
@@ -1528,7 +1541,7 @@ public class MissionService {
             if (player != null && player.isOnline()) {
                 playRankUpEffects(player, newRank);
                 
-                // Entregar recompensas de rango
+                // Entregar recompensas de rango (solo si no las tiene)
                 if (plugin.getRewardService() != null) {
                     plugin.getRewardService().deliverRewards(player, newRank);
                 }
@@ -1546,6 +1559,18 @@ public class MissionService {
                     plugin.getTablistManager().updatePlayer(player);
                 }
             }
+        }
+        
+        // [FIX v1.22.72] Aplicar habilidades SIEMPRE (no solo en rank up)
+        // Las habilidades son pasivas y deben estar activas según el rango actual
+        Player player = plugin.getServer().getPlayer(uuid);
+        if (player != null && player.isOnline() && plugin.getAbilityService() != null) {
+            final Player finalPlayer = player;
+            org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (finalPlayer.isOnline()) {
+                    plugin.getAbilityService().applyAbilities(finalPlayer, false); // Sin notificar
+                }
+            }, 40L); // 2 segundos después
         }
     }
 

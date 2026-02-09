@@ -36,6 +36,29 @@ drops_stream:
   # Los mobs que salen de spawners NO dan tokens ni fragmentos (evita farmeo AFK)
   ignorar_spawners: true        # Siempre habilitado para evitar abuso
   
+  # ═══════════════════════════════════════════════════════════════
+  # 🛡️ DETECCIÓN AVANZADA DE GRANJAS DE MOBS
+  # Sistema multi-capa para prevenir farmeo automatizado
+  # ═══════════════════════════════════════════════════════════════
+  
+  deteccion_granjas:
+    # 1. Edad del mob: Mobs muy jóvenes probablemente vienen de granja
+    min_ticks_vida: 100         # Mínimo 5 segundos de vida (20 ticks = 1 segundo)
+    
+    # 2. Concentración de mobs: Múltiples mobs del mismo tipo en área pequeña
+    max_mobs_cercanos: 5        # Si hay 5+ mobs del mismo tipo en radio de 3 bloques
+    radio_busqueda: 3.0         # Radio de búsqueda en bloques
+    
+    # 3. Granjas de caída: Mobs que cayeron desde muy alto
+    max_distancia_caida: 10.0   # Si cayó más de 10 bloques, es sospechoso
+    
+    # 4. Espacios confinados: Mobs encerrados en jaulas pequeñas
+    min_bloques_solidos: 4      # Si está rodeado de 4+ bloques sólidos, está enjaulado
+    
+    # Mensaje de advertencia (aparece aleatoriamente para no hacer spam)
+    mostrar_mensaje: true
+    chance_mensaje: 0.1         # 10% de probabilidad de mostrar mensaje
+  
   # Chance de drop especial (solo cuando streamer online)
   chance_base: 0.08             # 12% de chance por mob hostil (balanceado)
   
@@ -213,7 +236,7 @@ canje_tokens:
       costo_tokens: 4
       items:
         - "give %player% minecraft:arrow 320"
-        - "give %player% minecraft:bow{Enchantments:[{id:\"minecraft:power\",lvl:5},{id:\"minecraft:infinity\",lvl:1}]} 1"
+        - "give %player% minecraft:bow[enchantments={levels:{\"minecraft:power\":5,\"minecraft:infinity\":1}}] 1"
     
     pack_xp:
       nombre: "&b&lPack de Experiencia"
@@ -277,7 +300,7 @@ canje_tokens:
       nombre: "&d&lÉlitro del Stream"
       descripcion: "Élitro + 128 cohetes"
       categoria: "🦅"
-      costo_tokens: 15
+      costo_tokens: 25
       items:
         - "give %player% minecraft:elytra 1"
         - "give %player% minecraft:firework_rocket 128"
@@ -351,7 +374,7 @@ canje_tokens:
         - "give %player% minecraft:quartz_block 64"
         - "give %player% minecraft:glowstone 64"
         - "give %player% minecraft:sea_lantern 32"
-        - "give %player% minecraft:netherite_pickaxe{Enchantments:[{id:\"minecraft:efficiency\",lvl:5}]} 1"
+        - "give %player% minecraft:netherite_pickaxe[enchantments={levels:{\"minecraft:efficiency\":5}}] 1"
     
     pack_manzanas_encantadas:
       nombre: "&6&lPack de Manzanas Encantadas"
@@ -390,15 +413,15 @@ canje_tokens:
       nombre: "&c&l🔥 PACK SUPREMO DEL STREAM 🔥"
       descripcion: "El pack definitivo: Kit Netherite Full + Extras"
       categoria: "👑"
-      costo_tokens: 60
+      costo_tokens: 75
       items:
-        - "give %player% minecraft:netherite_helmet{Enchantments:[{id:\"minecraft:protection\",lvl:4},{id:\"minecraft:unbreaking\",lvl:3},{id:\"minecraft:mending\",lvl:1}]} 1"
-        - "give %player% minecraft:netherite_chestplate{Enchantments:[{id:\"minecraft:protection\",lvl:4},{id:\"minecraft:unbreaking\",lvl:3},{id:\"minecraft:mending\",lvl:1}]} 1"
-        - "give %player% minecraft:netherite_leggings{Enchantments:[{id:\"minecraft:protection\",lvl:4},{id:\"minecraft:unbreaking\",lvl:3},{id:\"minecraft:mending\",lvl:1}]} 1"
-        - "give %player% minecraft:netherite_boots{Enchantments:[{id:\"minecraft:protection\",lvl:4},{id:\"minecraft:unbreaking\",lvl:3},{id:\"minecraft:mending\",lvl:1},{id:\"minecraft:feather_falling\",lvl:4}]} 1"
-        - "give %player% minecraft:netherite_sword{Enchantments:[{id:\"minecraft:sharpness\",lvl:5},{id:\"minecraft:unbreaking\",lvl:3},{id:\"minecraft:mending\",lvl:1},{id:\"minecraft:looting\",lvl:3}]} 1"
-        - "give %player% minecraft:netherite_pickaxe{Enchantments:[{id:\"minecraft:efficiency\",lvl:5},{id:\"minecraft:unbreaking\",lvl:3},{id:\"minecraft:mending\",lvl:1},{id:\"minecraft:fortune\",lvl:3}]} 1"
-        - "give %player% minecraft:elytra{Enchantments:[{id:\"minecraft:unbreaking\",lvl:3},{id:\"minecraft:mending\",lvl:1}]} 1"
+        - "give %player% minecraft:netherite_helmet[enchantments={levels:{\"minecraft:protection\":4,\"minecraft:unbreaking\":3,\"minecraft:mending\":1}}] 1"
+        - "give %player% minecraft:netherite_chestplate[enchantments={levels:{\"minecraft:protection\":4,\"minecraft:unbreaking\":3,\"minecraft:mending\":1}}] 1"
+        - "give %player% minecraft:netherite_leggings[enchantments={levels:{\"minecraft:protection\":4,\"minecraft:unbreaking\":3,\"minecraft:mending\":1}}] 1"
+        - "give %player% minecraft:netherite_boots[enchantments={levels:{\"minecraft:protection\":4,\"minecraft:unbreaking\":3,\"minecraft:mending\":1,\"minecraft:feather_falling\":4}}] 1"
+        - "give %player% minecraft:netherite_sword[enchantments={levels:{\"minecraft:sharpness\":5,\"minecraft:unbreaking\":3,\"minecraft:mending\":1,\"minecraft:looting\":3}}] 1"
+        - "give %player% minecraft:netherite_pickaxe[enchantments={levels:{\"minecraft:efficiency\":5,\"minecraft:unbreaking\":3,\"minecraft:mending\":1,\"minecraft:fortune\":3}}] 1"
+        - "give %player% minecraft:elytra[enchantments={levels:{\"minecraft:unbreaking\":3,\"minecraft:mending\":1}}] 1"
         - "give %player% minecraft:enchanted_golden_apple 32"
         - "give %player% minecraft:totem_of_undying 5"
         - "give %player% minecraft:nether_star 10"

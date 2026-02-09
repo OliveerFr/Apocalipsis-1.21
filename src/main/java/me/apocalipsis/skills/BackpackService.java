@@ -49,7 +49,7 @@ public class BackpackService implements Listener {
     
     // ==================== INVENTORY HOLDER ====================
     
-    public class BackpackHolder implements InventoryHolder {
+    private static class BackpackHolder implements InventoryHolder {
         private final UUID owner;
         private final int backpackNumber;
         private final String worldName;

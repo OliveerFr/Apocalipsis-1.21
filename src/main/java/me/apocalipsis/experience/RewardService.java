@@ -359,6 +359,17 @@ public class RewardService {
     }
     
     /**
+     * Elimina una marca de recompensa entregada (para forzar re-entrega)
+     * Usado cuando un admin ajusta XP manualmente y queremos re-entregar recompensas
+     */
+    public void removeDeliveredReward(String key) {
+        if (deliveredRewards.remove(key)) {
+            plugin.getLogger().info("[Rewards] DEBUG - Eliminada marca de recompensa: " + key);
+            saveDeliveredRewards();
+        }
+    }
+    
+    /**
      * Recarga las recompensas desde la configuración
      */
     public void reload() {

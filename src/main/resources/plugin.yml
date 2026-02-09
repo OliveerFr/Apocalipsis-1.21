@@ -86,6 +86,10 @@ commands:
     description: Escapar del End y volver al Overworld
     usage: /volver
     aliases: [overworld, salir, escape]
+  security:
+    description: Gestionar el sistema de seguridad anti-autoclick (solo admins)
+    usage: /security [info|clear|reload|help] [jugador]
+    aliases: [sec, antifarm, antibot]
 
 permissions:
   avo.admin:

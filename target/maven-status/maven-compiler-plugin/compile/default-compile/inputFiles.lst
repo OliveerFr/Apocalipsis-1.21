@@ -87,6 +87,7 @@ Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ui\MainM
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\missions\RankService.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\missions\StreamFeaturesManager.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\events\EcoBrasasListener.java
+Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\commands\SecurityCommand.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\events\SusurroPiedraRotaEvent.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\disaster\adapters\PerformanceAdapter.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\events\testing\scenarios\GuardianFightScenario.java
@@ -148,6 +149,7 @@ Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\ciclos\W
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\listeners\MissionListener.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\skills\SkillConfig.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\commands\AvoTabCompleter.java
+Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\security\AntiFarmSecurityManager.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\utils\EffectUtil.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\listeners\TokenProtectionListener.java
 Z:\riolu\Videos\Eventos\Apocalipsis-1.21.8\src\main\java\me\apocalipsis\events\EcoSombrasItems.java

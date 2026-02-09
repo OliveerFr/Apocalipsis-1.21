@@ -1,0 +1,204 @@
+# ═══════════════════════════════════════════════════════════════
+# SISTEMA AVANZADO DE SEGURIDAD ANTI-FARM Y ANTI-AUTOCLICK
+# ═══════════════════════════════════════════════════════════════
+# Este sistema detecta automáticamente:
+# - Autoclick/macros (patrones temporales muy regulares)
+# - AFK farming (jugadores sin movimiento)
+# - Bots (acciones muy rápidas sin variación humana)
+# - Explotación de granjas automáticas
+
+enabled: true
+
+# ═══════════════════════════════════════════════════════════════
+# PARÁMETROS DE DETECCIÓN
+# ═══════════════════════════════════════════════════════════════
+
+detection:
+  # Número mínimo de acciones antes de analizar patrones
+  # Valores bajos = más sensible pero más falsos positivos
+  # Valores altos = menos sensible pero más preciso
+  min_actions_for_analysis: 10
+  
+  # Umbral de regularidad (0.0 - 1.0)
+  # Valores cercanos a 0 = timing muy regular (autoclick)
+  # Valores cercanos a 1 = timing muy variable (humano)
+  # Recomendado: 0.15 (detecta autoclick pero permite juego normal)
+  regularity_threshold: 0.15
+  
+  # Radio de movimiento mínimo (en bloques)
+  # Si el jugador no se mueve más de X bloques mientras farmea = sospechoso
+  # Recomendado: 3.0 bloques (permite granjas pequeñas pero detecta AFK)
+  movement_radius_threshold: 3.0
+  
+  # Intervalos mínimos (en milisegundos)
+  min_interval_between_actions: 100   # Menos de esto = muy rápido (posible bot)
+  
+  # Varianza mínima en intervalos
+  # Si los intervalos varían menos de esto = patrón robótico
+  min_variance: 50
+  
+  # ═══════════════════════════════════════════════════════════════
+  # PARÁMETROS ESPECÍFICOS PARA MINADO
+  # ═══════════════════════════════════════════════════════════════
+  # El minado legítimo puede parecer sospechoso porque:
+  # - Los jugadores permanecen en áreas pequeñas (vetas de mineral)
+  # - Los intervalos son relativamente regulares al minar en cadena
+  # Por eso estos parámetros son más permisivos
+  
+  mining:
+    # Número mínimo de acciones de minado antes de analizar
+    # Valor más alto = menos falsos positivos al minar
+    min_actions_for_analysis: 20
+    
+    # Umbral de regularidad para minado (más bajo = más permisivo)
+    # 0.08 permite patrones de minado eficiente sin detectar como bot
+    regularity_threshold: 0.08
+    
+    # Radio de movimiento para minado (más bajo = más permisivo)
+    # 1.5 bloques permite minar vetas sin ser flagueado
+    movement_radius_threshold: 1.5
+
+# ═══════════════════════════════════════════════════════════════
+# SISTEMA DE STRIKES Y PENALIZACIONES
+# ═══════════════════════════════════════════════════════════════
+
+strikes:
+  # Número máximo de strikes antes de suspensión
+  max_strikes: 3
+  
+  # Duración de la suspensión temporal (en minutos)
+  suspension_duration_minutes: 30
+  
+  # Los strikes se resetean automáticamente después de X horas sin problemas
+  auto_clear_after_hours: 24
+  
+  # Penalizaciones progresivas por strike:
+  penalties:
+    strike_1:
+      xp_multiplier: 0.7      # 70% de XP normal
+      token_multiplier: 0.7   # 70% de chance de tokens
+      message: "§eAlerta: Actividad sospechosa detectada. Ganancias reducidas al 70%"
+    
+    strike_2:
+      xp_multiplier: 0.4      # 40% de XP normal
+      token_multiplier: 0.4   # 40% de chance de tokens
+      message: "§c§l⚠ Segunda alerta. Ganancias reducidas al 40%. Próximo strike = suspensión."
+    
+    strike_3:
+      xp_multiplier: 0.0      # Sin ganancias
+      token_multiplier: 0.0   # Sin tokens
+      message: "§c§l⚠ CUENTA SUSPENDIDA por detección de autoclick/macro"
+
+# ═══════════════════════════════════════════════════════════════
+# ALERTAS Y NOTIFICACIONES
+# ═══════════════════════════════════════════════════════════════
+
+alerts:
+  # Notificar a admins online cuando se detecta actividad sospechosa
+  notify_admins: true
+  
+  # Mostrar logs detallados en consola
+  verbose_logging: true
+  
+  # Formato de notificación a admins
+  admin_notification_format: "§c[AntiAutoclick] §e{player} §7- {reason} ({strikes}/{max_strikes} strikes)"
+  
+  # Enviar reporte semanal de detecciones
+  weekly_report: true
+
+# ═══════════════════════════════════════════════════════════════
+# EXCEPCIONES Y WHITELIST
+# ═══════════════════════════════════════════════════════════════
+
+exceptions:
+  # Jugadores exentos de detección (para testing o staff)
+  whitelisted_players:
+    - "OliveerF"
+    # - "NombreJugador"
+  
+  # Permisos que eximen de detección
+  bypass_permission: "apocalipsis.security.bypass"
+  
+  # Permitir granjas en estas áreas (coordenadas)
+  safe_zones:
+    # Ejemplo:
+    # - world: "world"
+    #   x1: 100
+    #   z1: 100
+    #   x2: 200
+    #   z2: 200
+
+# ═══════════════════════════════════════════════════════════════
+# CONFIGURACIONES AVANZADAS
+# ═══════════════════════════════════════════════════════════════
+
+advanced:
+  # Tamaño del historial de acciones por jugador
+  max_action_history: 50
+  
+  # Tiempo para considerar un perfil inactivo (minutos)
+  profile_inactive_time: 60
+  
+  # Intervalo de limpieza de datos antiguos (minutos)
+  cleanup_interval: 10
+  
+  # Análisis adaptativo: ajustar umbrales según el jugador
+  # (jugadores con buen historial tienen umbrales más permisivos)
+  adaptive_thresholds: true
+  
+  # Machine learning básico: aprender de patrones de juego legítimo
+  # EXPERIMENTAL: puede generar falsos negativos al inicio
+  learn_legitimate_patterns: false
+
+# ═══════════════════════════════════════════════════════════════
+# MENSAJES PERSONALIZADOS
+# ═══════════════════════════════════════════════════════════════
+
+messages:
+  # Mensaje cuando se detecta primera actividad sospechosa
+  first_warning: |
+    §e§l⚠ AVISO DE SEGURIDAD
+    §7Se detectó un patrón inusual en tu actividad.
+    §7Asegúrate de no usar autoclick, macros o bots.
+    §7Strike: §c1§7/§c3
+  
+  # Mensaje de segunda alerta
+  second_warning: |
+    §c§l⚠ SEGUNDA ALERTA
+    §7Continúa detectándose actividad sospechosa.
+    §7Tus ganancias han sido reducidas significativamente.
+    §7Strike: §c2§7/§c3 §e(Una más = suspensión)
+  
+  # Mensaje de suspensión
+  suspension: |
+    §c§l⚠ CUENTA SUSPENDIDA TEMPORALMENTE
+    §7Duración: §c{duration} minutos
+    §7Razón: §fDetección de autoclick/macro/bot
+    §7
+    §7Si crees que esto es un error, contacta a un administrador.
+    §7Tu cuenta será desbloqueada automáticamente.
+  
+  # Tip para evitar detección (mensaje educativo)
+  prevention_tip: |
+    §a§lTips para evitar falsas detecciones:
+    §7- Muévete mientras farmeas (no estés AFK)
+    §7- No uses autoclick o macros
+    §7- Varía tus acciones y tiempos
+    §7- Toma descansos ocasionales
+
+# ═══════════════════════════════════════════════════════════════
+# COMPATIBILIDAD CON OTROS SISTEMAS
+# ═══════════════════════════════════════════════════════════════
+
+integration:
+  # Aplicar a sistema de XP
+  apply_to_xp: true
+  
+  # Aplicar a sistema de tokens
+  apply_to_tokens: true
+  
+  # Aplicar a mining/farming
+  apply_to_farming: true
+  
+  # Aplicar a combate
+  apply_to_combat: true

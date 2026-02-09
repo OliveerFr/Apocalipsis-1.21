@@ -43,6 +43,7 @@ import org.bukkit.event.entity.EntityShootBowEvent;
 import org.bukkit.event.entity.FoodLevelChangeEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -1334,6 +1335,8 @@ public class SkillEffectListener implements Listener {
     /**
      * Obtiene el límite de waypoints para un jugador según su rango permanente y habilidades
      * MEJORADO: Todos los jugadores tienen acceso básico
+     * IMPORTANTE: Este límite solo aplica para CREAR nuevos waypoints.
+     * Los waypoints existentes se conservan incluso si exceden el límite actual.
      */
     public int getWaypointLimit(Player player) {
         UUID uuid = player.getUniqueId();
@@ -1388,6 +1391,7 @@ public class SkillEffectListener implements Listener {
         if (!waypoints.containsKey(name) && waypoints.size() >= limit) {
             player.sendMessage("§c✖ §7Has alcanzado el límite de waypoints (§e" + limit + "§7).");
             player.sendMessage("§7Usa §e/waypoint delete <nombre> §7para eliminar uno.");
+            player.sendMessage("§8§o(Los waypoints existentes se conservan incluso si exceden tu límite actual)");
             return;
         }
         
@@ -1529,10 +1533,13 @@ public class SkillEffectListener implements Listener {
             return;
         }
         
-        // Verificar que el mundo siga cargado
+        // [FIX CRÍTICO] Verificar que el mundo siga cargado
+        // IMPORTANTE: NO eliminar el waypoint si el mundo no está cargado,
+        // ya que podría ser un ciclo inactivo que volverá a estar disponible
         if (waypoint.getWorld() == null) {
-            player.sendMessage("§c✖ §7El mundo del waypoint '§f" + name + "§7' ya no está disponible.");
-            waypoints.remove(name);
+            player.sendMessage("§c✖ §7El waypoint '§f" + name + "§7' está en un mundo no cargado actualmente.");
+            player.sendMessage("§7Este waypoint se conserva y estará disponible cuando el mundo se cargue.");
+            player.sendMessage("§8§o(Puede ser un ciclo anterior - los waypoints NUNCA se eliminan automáticamente)");
             return;
         }
         
@@ -1630,8 +1637,19 @@ public class SkillEffectListener implements Listener {
         
         for (Map.Entry<String, Location> entry : waypoints.entrySet()) {
             Location loc = entry.getValue();
-            String worldName = (loc.getWorld() != null ? loc.getWorld().getName() : "?");
-            boolean available = isAdmin || currentWorld.equals(worldName);
+            
+            // [FIX] Manejar mundos no cargados (ciclos inactivos)
+            String worldName;
+            boolean worldLoaded = loc.getWorld() != null;
+            
+            if (worldLoaded) {
+                worldName = loc.getWorld().getName();
+            } else {
+                // Mundo no cargado - probablemente un ciclo inactivo
+                worldName = "§8[Ciclo inactivo]";
+            }
+            
+            boolean available = isAdmin || (worldLoaded && currentWorld.equals(loc.getWorld().getName()));
             String status = available ? "§a✓" : "§c✗";
             
             // Calcular distancia desde posición actual
@@ -1646,14 +1664,16 @@ public class SkillEffectListener implements Listener {
             if (distance >= 0) {
                 player.sendMessage("    §8Distancia: " + Math.round(distance) + " bloques");
             } else {
-                player.sendMessage("    §8Mundo: " + worldName + (available ? "" : " (no disponible)"));
+                String availMsg = available ? "" : " §c(no disponible ahora)";
+                player.sendMessage("    §8Mundo: " + worldName + availMsg);
             }
         }
         
         player.sendMessage("");
         player.sendMessage("§7Usa §e/wp <nombre> §7para teletransportarte.");
         if (!isAdmin) {
-            player.sendMessage("§8§oSolo puedes usar waypoints del mundo actual");
+            player.sendMessage("§8§oSolo puedes usar waypoints del mundo/ciclo actual");
+            player.sendMessage("§8§oLos waypoints de ciclos inactivos se conservan y estarán disponibles al volver");
         }
     }
     
@@ -2059,24 +2079,27 @@ public class SkillEffectListener implements Listener {
     
     /**
      * Listener para aplicar descuentos de MERCADER_SUPREMO cuando el jugador
-     * interactúa con un villager. Modifica los precios de los trades.
+     * abre el inventario de comercio con un villager.
      */
     @EventHandler(priority = EventPriority.HIGH)
-    public void onVillagerInteract(PlayerInteractEntityEvent event) {
-        if (!(event.getRightClicked() instanceof org.bukkit.entity.Villager villager)) return;
+    public void onVillagerTradeOpen(org.bukkit.event.inventory.InventoryOpenEvent event) {
+        if (!(event.getPlayer() instanceof Player player)) return;
+        if (event.getInventory().getType() != InventoryType.MERCHANT) return;
         
-        Player player = event.getPlayer();
         UUID uuid = player.getUniqueId();
         
         // Verificar si tiene la habilidad MERCADER_SUPREMO
         if (!hasSkillCached(uuid, Skill.MERCADER_SUPREMO)) return;
         
+        // Obtener el merchant (villager)
+        if (!(event.getInventory().getHolder() instanceof org.bukkit.inventory.Merchant merchant)) return;
+        
         // Obtener el porcentaje de descuento según el nivel
         double descuentoPercent = skillService.getLevelEffect(uuid, Skill.MERCADER_SUPREMO);
         if (descuentoPercent <= 0) return;
         
-        // Aplicar descuento a todos los trades del villager
-        applyTradeDiscount(player, villager, descuentoPercent);
+        // Aplicar descuento a todos los trades del merchant
+        applyTradeDiscount(merchant, descuentoPercent);
         
         // Mensaje sutil de confirmación (con anti-spam)
         if (canSendMessage(uuid, "mercader_supremo")) {
@@ -2086,11 +2109,13 @@ public class SkillEffectListener implements Listener {
     }
     
     /**
-     * Aplica el descuento a los trades del villager.
-     * Esto modifica temporalmente los precios cuando el jugador abre el trade.
+     * Aplica el descuento a los trades del merchant.
+     * Esto modifica las recetas cuando el jugador abre el trade.
      */
-    private void applyTradeDiscount(Player player, org.bukkit.entity.Villager villager, double descuentoPercent) {
-        List<MerchantRecipe> originalRecipes = villager.getRecipes();
+    private void applyTradeDiscount(org.bukkit.inventory.Merchant merchant, double descuentoPercent) {
+        List<MerchantRecipe> originalRecipes = merchant.getRecipes();
+        if (originalRecipes == null || originalRecipes.isEmpty()) return;
+        
         List<MerchantRecipe> discountedRecipes = new ArrayList<>();
         
         for (MerchantRecipe originalRecipe : originalRecipes) {
@@ -2121,26 +2146,20 @@ public class SkillEffectListener implements Listener {
             MerchantRecipe newRecipe = new MerchantRecipe(
                 originalRecipe.getResult().clone(),
                 originalRecipe.getUses(),
-                originalRecipe.getMaxUses() * 3, // Trades "infinitos" (triplicar usos)
+                Math.max(originalRecipe.getMaxUses(), 999), // Trades "infinitos" (mínimo 999 usos)
                 originalRecipe.hasExperienceReward(),
                 originalRecipe.getVillagerExperience(),
                 originalRecipe.getPriceMultiplier(),
                 originalRecipe.getDemand(),
-                originalRecipe.getSpecialPrice() - 5 // Reducción adicional de precio especial
+                Math.max(originalRecipe.getSpecialPrice() - 5, -30) // Reducción adicional de precio especial (límite -30)
             );
             
             newRecipe.setIngredients(discountedIngredients);
             discountedRecipes.add(newRecipe);
         }
         
-        // Aplicar las recetas modificadas
-        villager.setRecipes(discountedRecipes);
-        
-        // Programar restauración de precios después de que cierre el inventario (30 seg máx)
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            // Los villagers regeneran sus trades con el tiempo normalmente
-            // No necesitamos restaurar explícitamente
-        }, 600L);
+        // Aplicar las recetas modificadas al merchant
+        merchant.setRecipes(discountedRecipes);
     }
     
     /**

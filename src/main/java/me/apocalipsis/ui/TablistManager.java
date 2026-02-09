@@ -135,15 +135,21 @@ public class TablistManager {
             int currentLevel = plugin.getExperienceService().getLevel(player);
             
             if (!rankService.isMaxRank(player)) {
-                int nextLevelRequired = rankService.getNextRankThreshold(player);
-                int currentLevelRequired = rankService.getRank(player).getLevelRequired();
-                double percentage = ((double) (currentLevel - currentLevelRequired) / (nextLevelRequired - currentLevelRequired)) * 100;
+                // Calcular XP actual y XP necesaria para siguiente nivel
+                int currentXP = plugin.getExperienceService().getXP(player);
+                int nextLevelXP = plugin.getExperienceService().getXPForLevel(currentLevel + 1);
+                int currentLevelXP = plugin.getExperienceService().getXPForLevel(currentLevel);
+                int xpNeeded = nextLevelXP - currentXP;
+                int xpInLevel = currentXP - currentLevelXP;
+                int xpForLevel = nextLevelXP - currentLevelXP;
+                
+                double percentage = ((double) xpInLevel / xpForLevel) * 100;
                 String progressBar = generateProgressBar(percentage, 14);
                 
                 footer.append("§8§l┃ ").append(rankDisplay).append(" §8│ §7Nivel §b§l").append(currentLevel).append(" §8§l┃\n");
                 footer.append("§8§l┃ ").append(progressBar).append(" §8§l┃\n");
-                footer.append("§8§l┃ §7Nivel §a").append(currentLevel).append("§8/§f").append(nextLevelRequired)
-                      .append(" §8(").append(String.format("%.0f", percentage)).append("%§8) §8§l┃\n");
+                footer.append("§8§l┃ §7XP: §a").append(formatNumber(currentXP)).append(" §8│ §7Falta: §e").append(formatNumber(xpNeeded))
+                      .append(" XP §8§l┃\n");
             } else {
                 footer.append("§8§l┃ ").append(rankDisplay).append(" §8│ §6§l✦ MÁXIMO ✦ §8§l┃\n");
                 footer.append("§8§l┃ §7Nivel: §6§l").append(currentLevel).append(" §8§l┃\n");
@@ -399,6 +405,15 @@ public class TablistManager {
         int seconds = totalSeconds % 60;
         
         return String.format("%02d:%02d", minutes, seconds);
+    }
+    
+    /**
+     * Formatea números grandes con separadores de miles
+     * @param number Número a formatear
+     * @return String formateado (ej: 1,234,567)
+     */
+    private String formatNumber(int number) {
+        return String.format("%,d", number);
     }
     
     /**

@@ -488,9 +488,9 @@ desastres:
     
     rocas_volcanicas:
       enabled: true
-      min_rocas: 10
-      max_rocas: 15
-      intervalo_ticks: 160  # 8s
+      min_rocas: 4
+      max_rocas: 7
+      intervalo_ticks: 200  # 10s
       explosion_power: 1.7
       radio_fuego: 3
       material: "MAGMA_BLOCK"

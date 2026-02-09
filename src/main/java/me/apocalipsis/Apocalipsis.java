@@ -130,6 +130,9 @@ public final class Apocalipsis extends JavaPlugin {
     private OnlinePlayersCache onlinePlayersCache; // [OPTIMIZACIÓN] Cache de jugadores online
     private VelocityManager velocityManager; // [FIX] Sistema anti-cheat safe para velocity
     
+    // Sistema de seguridad anti-farm y anti-autoclick
+    private me.apocalipsis.security.AntiFarmSecurityManager securityManager;
+    
     // Stats
     private me.apocalipsis.stats.DeathTracker deathTracker;
     
@@ -161,6 +164,7 @@ public final class Apocalipsis extends JavaPlugin {
         saveResource("tutorial.yml", false);
         saveResource("stream_features.yml", false);
         saveResource("rangos_permanentes.yml", false);
+        saveResource("anti_farm_security.yml", false);
         saveResource("navidad.yml", false);
         saveResource("evento6_mundo_olvidado.yml", false);
 
@@ -219,6 +223,10 @@ public final class Apocalipsis extends JavaPlugin {
         // [FIX] Inicializar velocity manager (anti-cheat safe)
         velocityManager = new VelocityManager(this);
         getLogger().info("[VelocityManager] ✓ Sistema de velocity smoothing iniciado");
+        
+        // [SECURITY] Inicializar sistema de seguridad anti-farm y anti-autoclick
+        securityManager = new me.apocalipsis.security.AntiFarmSecurityManager(this);
+        getLogger().info("[SecurityManager] ✓ Sistema de seguridad anti-autoclick iniciado");
         
         // Cargar configuración de tutorial
         File tutorialFile = new File(getDataFolder(), "tutorial.yml");
@@ -313,6 +321,12 @@ public final class Apocalipsis extends JavaPlugin {
         getCommand("ciclo").setExecutor(cicloCommand);
         getCommand("ciclo").setTabCompleter(cicloCommand);
         
+        // [SECURITY] Comando de seguridad anti-autoclick (solo admins)
+        me.apocalipsis.commands.SecurityCommand securityCommand = new me.apocalipsis.commands.SecurityCommand(this);
+        getCommand("security").setExecutor(securityCommand);
+        getCommand("security").setTabCompleter(securityCommand);
+        getLogger().info("[SECURITY] ✓ Comando /security registrado");
+        
         // Comando de tutorial
         me.apocalipsis.tutorial.TutorialCommand tutorialCommand = 
             new me.apocalipsis.tutorial.TutorialCommand(this, tutorialManager, progressiveDifficultySystem, tutorialManager.getMetrics());
@@ -356,6 +370,11 @@ public final class Apocalipsis extends JavaPlugin {
         // Comandos directos para jugadores
         getCommand("habilidades").setExecutor((sender, cmd, label, args) -> {
             if (sender instanceof org.bukkit.entity.Player player) {
+                // Restringido a moderadores
+                if (!player.hasPermission("apocalipsis.admin")) {
+                    player.sendMessage("§c§l✗ §cNo tienes permiso para usar este comando.");
+                    return true;
+                }
                 skillTreeGUI.openMainMenu(player);
             } else {
                 sender.sendMessage("§cEste comando solo puede ser usado por jugadores.");
@@ -1276,6 +1295,13 @@ public final class Apocalipsis extends JavaPlugin {
     
     public VelocityManager getVelocityManager() {
         return velocityManager;
+    }
+    
+    /**
+     * [SECURITY] Obtiene el gestor de seguridad anti-farm y anti-autoclick
+     */
+    public me.apocalipsis.security.AntiFarmSecurityManager getSecurityManager() {
+        return securityManager;
     }
     
     public RewardClaimSystem getRewardClaimSystem() {

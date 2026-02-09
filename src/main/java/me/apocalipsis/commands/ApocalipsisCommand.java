@@ -8140,18 +8140,11 @@ public class ApocalipsisCommand implements CommandExecutor {
         
         org.bukkit.entity.Player player = (org.bukkit.entity.Player) sender;
         
-        // Verificar que esté en el End (NO en Overworld ni Nether)
+        // Verificar que esté en el End o Nether (NO en Overworld)
         org.bukkit.World.Environment environment = player.getWorld().getEnvironment();
-        if (environment != org.bukkit.World.Environment.THE_END) {
-            player.sendMessage("§c✖ Este comando solo puede usarse en el End.");
-            player.sendMessage("§7Solo funciona si estás atrapado en la dimensión del End.");
-            
-            // Mensaje específico según la dimensión actual
-            if (environment == org.bukkit.World.Environment.NETHER) {
-                player.sendMessage("§7Usa un portal de Nether para volver al Overworld.");
-            } else if (environment == org.bukkit.World.Environment.NORMAL) {
-                player.sendMessage("§7Ya estás en el Overworld.");
-            }
+        if (environment == org.bukkit.World.Environment.NORMAL) {
+            player.sendMessage("§c✖ Ya estás en el Overworld.");
+            player.sendMessage("§7Este comando solo funciona en el End o Nether.");
             return;
         }
         
@@ -8191,15 +8184,16 @@ public class ApocalipsisCommand implements CommandExecutor {
         player.teleport(spawnLoc);
         
         // Mensajes de feedback
+        String dimensionName = environment == org.bukkit.World.Environment.THE_END ? "End" : "Nether";
         player.sendMessage("§a✓ ¡Has regresado al Overworld!");
-        player.sendMessage("§7Fuiste teletransportado al spawn de §e" + activeCycle);
+        player.sendMessage("§7Fuiste teletransportado desde el §c" + dimensionName + " §7al spawn de §e" + activeCycle);
         
         // Efectos visuales y sonoros
         player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 0.8f);
         player.getWorld().spawnParticle(org.bukkit.Particle.PORTAL, spawnLoc, 100, 1, 2, 1, 0.3);
         
         // Log para administradores
-        plugin.getLogger().info("[VOLVER] " + player.getName() + " escapó del End y volvió a " + 
+        plugin.getLogger().info("[VOLVER] " + player.getName() + " escapó del " + dimensionName + " y volvió a " + 
             activeCycle + " (spawn: " + spawnLoc.getBlockX() + ", " + 
             spawnLoc.getBlockY() + ", " + spawnLoc.getBlockZ() + ")");
     }

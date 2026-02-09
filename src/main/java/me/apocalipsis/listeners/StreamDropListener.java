@@ -1,5 +1,9 @@
 package me.apocalipsis.listeners;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -10,10 +14,7 @@ import org.bukkit.event.entity.EntityDeathEvent;
 
 import me.apocalipsis.Apocalipsis;
 import me.apocalipsis.missions.StreamFeaturesManager;
-
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import me.apocalipsis.security.AntiFarmSecurityManager;
 
 /**
  * Listener para manejar drops especiales de stream
@@ -107,6 +108,15 @@ public class StreamDropListener implements Listener {
             return;
         }
         
+        // ═══ ANTI-FARM: DETECTAR GRANJA DE MOBS ═══
+        if (isMobFromFarm(entity, killer)) {
+            // Avisar discretamente al jugador que este mob no da recompensas
+            if (Math.random() < 0.1) { // Solo 10% del tiempo para no hacer spam
+                killer.sendActionBar("§e⚠ Anti-granja: Mob detectado en granja");
+            }
+            return;
+        }
+        
         UUID uuid = killer.getUniqueId();
         long now = System.currentTimeMillis();
         
@@ -145,6 +155,33 @@ public class StreamDropListener implements Listener {
                     killer.sendActionBar("§e⏳ Cooldown: " + remainingSeconds + "s");
                 }
                 return;
+            }
+        }
+        
+        // ═══ VERIFICACIÓN DE SEGURIDAD ANTI-AUTOCLICK ═══
+        AntiFarmSecurityManager securityManager = plugin.getSecurityManager();
+        if (securityManager != null) {
+            AntiFarmSecurityManager.SecurityCheckResult securityCheck = 
+                securityManager.checkAction(killer, AntiFarmSecurityManager.ActionType.TOKEN_DROP);
+            
+            if (!securityCheck.isAllowed()) {
+                // Jugador suspendido por autoclick/bot
+                long remainingMs = securityCheck.getSuspensionTime();
+                long remainingMin = remainingMs / 60000;
+                killer.sendMessage("§c⚠ Drops bloqueados - Cuenta suspendida (" + remainingMin + " min restantes)");
+                return;
+            }
+            
+            // Si tiene strikes, reducir chance de drop
+            if (securityCheck.getStrikes() > 0) {
+                double penalty = securityCheck.getPenaltyMultiplier();
+                if (Math.random() > penalty) {
+                    // No dar drop por penalización
+                    if (Math.random() < 0.1) { // 10% del tiempo mostrar mensaje
+                        killer.sendActionBar("§eDrop reducido por strikes de seguridad");
+                    }
+                    return;
+                }
             }
         }
         
@@ -197,5 +234,79 @@ public class StreamDropListener implements Listener {
             default:
                 return false;
         }
+    }
+    
+    /**
+     * Detecta si un mob proviene de una granja
+     * Señales de granja:
+     * 1. Mob muy joven (spawneado recientemente)
+     * 2. Mob que no se ha movido desde spawn
+     * 3. Mob en área muy confinada (espacio pequeño)
+     * 4. Múltiples mobs en la misma ubicación exacta
+     */
+    private boolean isMobFromFarm(LivingEntity entity, Player killer) {
+        // 1. DETECCIÓN POR EDAD: Mobs muy jóvenes probablemente vienen de granja
+        // Los mobs en granjas suelen morir rápidamente después de spawn
+        int ticksLived = entity.getTicksLived();
+        int minTicksToLive = 100; // 5 segundos mínimo de vida (20 ticks = 1 segundo)
+        
+        if (ticksLived < minTicksToLive) {
+            // Mob muy joven, probablemente de granja
+            return true;
+        }
+        
+        // 2. DETECCIÓN POR MOVIMIENTO: Mobs que no se han movido están encerrados
+        // Nota: Esta validación requiere tracking de posición, por ahora la omitimos
+        // para evitar overhead de memoria. Se puede implementar si es necesario.
+        
+        // 3. DETECCIÓN POR ESPACIO CONFINADO: Verificar si el mob está en área pequeña
+        org.bukkit.Location loc = entity.getLocation();
+        int nearbyMobs = 0;
+        double searchRadius = 3.0; // Buscar en radio de 3 bloques
+        
+        // Contar mobs del mismo tipo en área cercana
+        for (org.bukkit.entity.Entity nearby : entity.getNearbyEntities(searchRadius, searchRadius, searchRadius)) {
+            if (nearby.getType() == entity.getType() && nearby instanceof LivingEntity) {
+                nearbyMobs++;
+            }
+        }
+        
+        // Si hay muchos mobs del mismo tipo juntos, probablemente es granja
+        if (nearbyMobs >= 5) { // 5+ mobs del mismo tipo en radio de 3 bloques
+            return true;
+        }
+        
+        // 4. DETECCIÓN POR ALTURA: Mobs que caen desde muy alto (granjas de caída)
+        // Verificar si el mob tiene daño de caída reciente
+        if (entity.getFallDistance() > 10.0f) { // Cayó más de 10 bloques
+            return true;
+        }
+        
+        // 5. DETECCIÓN POR UBICACIÓN: Mobs en áreas muy pequeñas encerradas
+        // Verificar si hay bloques sólidos en todas direcciones cercanas (jaula)
+        org.bukkit.World world = loc.getWorld();
+        if (world != null) {
+            int solidBlocksNearby = 0;
+            int[][] directions = {{1,0,0}, {-1,0,0}, {0,1,0}, {0,-1,0}, {0,0,1}, {0,0,-1}};
+            
+            for (int[] dir : directions) {
+                org.bukkit.block.Block block = world.getBlockAt(
+                    loc.getBlockX() + dir[0],
+                    loc.getBlockY() + dir[1],
+                    loc.getBlockZ() + dir[2]
+                );
+                if (block.getType().isSolid()) {
+                    solidBlocksNearby++;
+                }
+            }
+            
+            // Si está rodeado de bloques sólidos en 4+ direcciones, está encerrado
+            if (solidBlocksNearby >= 4) {
+                return true;
+            }
+        }
+        
+        // No se detectaron señales de granja
+        return false;
     }
 }
